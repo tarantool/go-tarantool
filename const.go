@@ -21,6 +21,7 @@ const (
 	KeyKey            = 0x20
 	KeyTuple          = 0x21
 	KeyFunctionName   = 0x22
+	KeyUserName       = 0x23
 	KeyData           = 0x30
 	KeyError          = 0x31
 

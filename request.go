@@ -148,7 +148,16 @@ func (conn *Connection) CallAsync(functionName string, tuple []interface{}) *Fut
 //
 // To be implemented
 //
-func (conn *Connection) Auth(key, tuple []interface{}) (resp *Response, err error) {
+func (conn *Connection) Auth(user string, tuple []interface{}) (resp *Response, err error) {
+	// This request does not make sense
+	// It should be a part of connecting process:
+	//     * phisical connection	- tcp
+	//     * logical connection 	- authentication
+	// Functionality implemented in Connection.dial()
+	request := conn.NewRequest(AuthRequest)
+	request.body[KeyUserName] = user
+	request.body[KeyTuple] = tuple
+	resp, err = request.perform()
 	return
 }
 
@@ -197,6 +206,14 @@ func (req *Request) future() (f *Future) {
 		id:   req.requestId,
 		c:    make(chan struct{}),
 	}
+
+	// check connection ready to process packets
+	if f.conn.connection == nil {
+		close(f.c)
+		f.err = errors.New("client connection is not ready")
+		return 	// we shouldn't perform this request
+	}
+
 	var packet []byte
 	if packet, f.err = req.pack(); f.err != nil {
 		close(f.c)
@@ -210,6 +227,7 @@ func (req *Request) future() (f *Future) {
 		close(f.c)
 		return
 	}
+
 	req.conn.requests[req.requestId] = f
 	req.conn.mutex.Unlock()
 	req.conn.packets <- (packet)

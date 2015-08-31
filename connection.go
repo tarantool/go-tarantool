@@ -35,6 +35,8 @@ type Greeting struct {
 type Opts struct {
 	Timeout   time.Duration // milliseconds
 	Reconnect time.Duration // milliseconds
+	User      string
+	Pass      string
 }
 
 func Connect(addr string, opts Opts) (conn *Connection, err error) {
@@ -51,14 +53,10 @@ func Connect(addr string, opts Opts) (conn *Connection, err error) {
 		opts:       opts,
 	}
 
-	err = conn.dial()
-	if err != nil {
-		return
-	}
-
 	go conn.writer()
 	go conn.reader()
-	return
+
+	return conn, err
 }
 
 func (conn *Connection) Close() (err error) {
@@ -74,17 +72,86 @@ func (conn *Connection) dial() (err error) {
 		return
 	}
 	connection.(*net.TCPConn).SetNoDelay(true)
-	conn.connection = connection
-	conn.r = bufio.NewReaderSize(conn.connection, 128*1024)
-	conn.w = bufio.NewWriter(conn.connection)
+	r := bufio.NewReaderSize(connection, 128*1024)
+	w := bufio.NewWriter(connection)
 	greeting := make([]byte, 128)
 	// TODO: read all
-	_, err = conn.connection.Read(greeting)
+	_, err = connection.Read(greeting)
 	if err != nil {
+		connection.Close()
 		return
 	}
 	conn.Greeting.version = bytes.NewBuffer(greeting[:64]).String()
-	conn.Greeting.auth = bytes.NewBuffer(greeting[64:]).String()
+	conn.Greeting.auth = bytes.NewBuffer(greeting[64:108]).String()
+
+	// Auth
+	if err = conn.auth(r, w); err != nil {
+		connection.Close()
+		return
+	}
+
+	// Only if connected and authenticated
+	conn.connection = connection
+	conn.r = r
+	conn.w = w
+
+	return
+}
+
+func (conn *Connection) auth(r io.Reader, w *bufio.Writer) (err error) {
+	if conn.opts.User == "" {
+		return	// without authentication [guest session]
+	}
+	if r == nil || w == nil {
+		return errors.New("auth: reader/writer not ready")
+	}
+	if conn.Greeting.auth == "" {
+		return errors.New("auth: empty greeting")
+	}
+	scr, err := scramble(conn.Greeting.auth, conn.opts.Pass)
+	if err != nil {
+		return errors.New("auth: scrambling failure " + err.Error())
+	}
+	if err = conn.writeAuthRequest(w, scr); err != nil {
+		return
+	}
+	if err = conn.readAuthResponse(r); err !=nil {
+		return
+	}
+	return
+}
+
+func (conn *Connection) writeAuthRequest(w *bufio.Writer, scramble []byte) (err error) {
+	request := conn.NewRequest(AuthRequest)
+	request.body[KeyUserName] = conn.opts.User
+	request.body[KeyTuple] = []interface{}{string("chap-sha1"), string(scramble)}
+	packet, err := request.pack()
+	if err != nil {
+		return errors.New("auth: pack error " + err.Error())
+	}
+	if err := write(w, packet); err != nil {
+		return errors.New("auth: write error " + err.Error())
+	}
+	if err = w.Flush(); err != nil {
+		return errors.New("auth: flush error " + err.Error())
+	}
+	return
+}
+
+func (conn *Connection) readAuthResponse(r io.Reader) (err error) {
+	resp_bytes, err := read(r)
+	if err != nil {
+		return errors.New("auth: read error " + err.Error())
+	}
+	resp := Response{buf:smallBuf{b:resp_bytes}}
+	err = resp.decodeHeader()
+	if err != nil {
+		return errors.New("auth: decode response header error " + err.Error())
+	}
+	err = resp.decodeBody()
+	if err != nil {
+		return errors.New("auth: decode response body error " + err.Error())
+	}
 	return
 }
 
@@ -106,6 +173,13 @@ func (conn *Connection) createConnection() (r io.Reader, w *bufio.Writer) {
 	}
 	return conn.r, conn.w
 }
+
+/*
+func (conn *Connection) connectionIsNil() bool {
+	// function to encapsulate architecture depentent things
+	return conn.connection == nil
+}
+*/
 
 func (conn *Connection) closeConnection(neterr error) (err error) {
 	conn.mutex.Lock()
