@@ -45,6 +45,13 @@ const (
 	PacketLengthBytes = 5
 )
 
+// Tarantool client error codes
+const (
+	ErrConnectionNotReady = 0x4000 + iota
+	ErrConnectionClosed   = 0x4000 + iota
+	ErrProtocolError      = 0x4000 + iota
+)
+
 // Tarantool server error codes
 const (
 	ErrUnknown                       = 0x8000 + iota // Unknown error

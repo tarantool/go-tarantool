@@ -18,6 +18,7 @@ type Connection struct {
 	r         *bufio.Reader
 	w         *bufio.Writer
 	mutex     *sync.Mutex
+	Schema    *Schema
 	requestId uint32
 	Greeting  *Greeting
 	requests  map[uint32]*Future
@@ -28,7 +29,7 @@ type Connection struct {
 }
 
 type Greeting struct {
-	version string
+	Version string
 	auth    string
 }
 
@@ -65,14 +66,18 @@ func Connect(addr string, opts Opts) (conn *Connection, err error) {
 	go conn.writer()
 	go conn.reader()
 
+	// TODO: reload schema after reconnect
+	if err = conn.loadSchema(); err != nil {
+		conn.closeConnection(err)
+		return nil, err
+	}
+
 	return conn, err
 }
 
-func (conn *Connection) Close() (err error) {
-	conn.closed = true
-	close(conn.control)
-	err = conn.closeConnection(errors.New("client closed connection"))
-	return
+func (conn *Connection) Close() error {
+	err := ClientError{ErrConnectionClosed, "connection closed by client"}
+	return conn.closeConnectionForever(err)
 }
 
 func (conn *Connection) RemoteAddr() string {
@@ -108,7 +113,7 @@ func (conn *Connection) dial() (err error) {
 		c.Close()
 		return
 	}
-	conn.Greeting.version = bytes.NewBuffer(greeting[:64]).String()
+	conn.Greeting.Version = bytes.NewBuffer(greeting[:64]).String()
 	conn.Greeting.auth = bytes.NewBuffer(greeting[64:108]).String()
 
 	// Auth
@@ -180,7 +185,7 @@ func (conn *Connection) createConnection() (r *bufio.Reader, w *bufio.Writer, er
 	conn.mutex.Lock()
 	defer conn.mutex.Unlock()
 	if conn.closed {
-		err = errors.New("connection already closed")
+		err = ClientError{ErrConnectionClosed, "using closed connection"}
 		return
 	}
 	if conn.c == nil {
@@ -192,6 +197,9 @@ func (conn *Connection) createConnection() (r *bufio.Reader, w *bufio.Writer, er
 			} else if conn.opts.Reconnect > 0 {
 				if conn.opts.MaxReconnects > 0 && reconnects > conn.opts.MaxReconnects {
 					log.Printf("tarantool: last reconnect to %s failed: %s, giving it up.\n", conn.addr, err.Error())
+					err = ClientError{ErrConnectionClosed, "last reconnect failed"}
+					// mark connection as closed to avoid reopening by another goroutine
+					conn.closed = true
 					return
 				} else {
 					log.Printf("tarantool: reconnect (%d/%d) to %s failed: %s\n", reconnects, conn.opts.MaxReconnects, conn.addr, err.Error())
@@ -221,16 +229,22 @@ func (conn *Connection) closeConnection(neterr error) (err error) {
 	conn.w = nil
 	for rid, fut := range conn.requests {
 		fut.err = neterr
-		close(fut.c)
+		close(fut.ready)
 		delete(conn.requests, rid)
 	}
 	return
 }
 
+func (conn *Connection) closeConnectionForever(err error) error {
+	conn.closed = true
+	close(conn.control)
+	return conn.closeConnection(err)
+}
+
 func (conn *Connection) writer() {
 	var w *bufio.Writer
 	var err error
-	for {
+	for !conn.closed {
 		var packet []byte
 		select {
 		case packet = <-conn.packets:
@@ -251,6 +265,7 @@ func (conn *Connection) writer() {
 		}
 		if w = conn.w; w == nil {
 			if _, w, err = conn.createConnection(); err != nil {
+				conn.closeConnectionForever(err)
 				return
 			}
 		}
@@ -264,9 +279,10 @@ func (conn *Connection) writer() {
 func (conn *Connection) reader() {
 	var r *bufio.Reader
 	var err error
-	for {
+	for !conn.closed {
 		if r = conn.r; r == nil {
 			if r, _, err = conn.createConnection(); err != nil {
+				conn.closeConnectionForever(err)
 				return
 			}
 		}
@@ -277,7 +293,6 @@ func (conn *Connection) reader() {
 		}
 		resp := Response{buf: smallBuf{b: resp_bytes}}
 		err = resp.decodeHeader()
-		//resp, err := newResponse(resp_bytes)
 		if err != nil {
 			conn.closeConnection(err)
 			continue
@@ -286,7 +301,7 @@ func (conn *Connection) reader() {
 		if fut, ok := conn.requests[resp.RequestId]; ok {
 			delete(conn.requests, resp.RequestId)
 			fut.resp = resp
-			close(fut.c)
+			close(fut.ready)
 			conn.mutex.Unlock()
 		} else {
 			conn.mutex.Unlock()

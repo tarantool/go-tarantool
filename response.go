@@ -44,7 +44,7 @@ func (resp *Response) decodeHeader() (err error) {
 				return
 			}
 		default:
-			if _, err = d.DecodeInterface(); err != nil {
+			if err = d.Skip(); err != nil {
 				return
 			}
 		}

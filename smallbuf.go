@@ -50,3 +50,20 @@ func (s *smallBuf) Bytes() []byte {
 	}
 	return nil
 }
+
+type smallWBuf []byte
+
+func (s *smallWBuf) Write(b []byte) (int, error) {
+	*s = append(*s, b...)
+	return len(b), nil
+}
+
+func (s *smallWBuf) WriteByte(b byte) error {
+	*s = append(*s, b)
+	return nil
+}
+
+func (s *smallWBuf) WriteString(ss string) (int, error) {
+	*s = append(*s, ss...)
+	return len(ss), nil
+}
