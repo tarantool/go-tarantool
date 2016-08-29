@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -250,8 +251,11 @@ func (conn *Connection) writer() {
 		case packet = <-conn.packets:
 		default:
 			if w = conn.w; w != nil {
-				if err := w.Flush(); err != nil {
-					conn.closeConnection(err)
+				runtime.Gosched()
+				if len(conn.packets) == 0 {
+					if err := w.Flush(); err != nil {
+						conn.closeConnection(err)
+					}
 				}
 			}
 			select {
