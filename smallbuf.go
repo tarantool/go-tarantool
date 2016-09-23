@@ -1,8 +1,8 @@
 package tarantool
 
 import (
-	"io"
 	"errors"
+	"io"
 )
 
 type smallBuf struct {

@@ -20,7 +20,7 @@ type Connection struct {
 	w         *bufio.Writer
 	mutex     *sync.Mutex
 	Schema    *Schema
-	requestId uint32
+	requestID uint32
 	Greeting  *Greeting
 	requests  map[uint32]*Future
 	packets   chan []byte
@@ -47,7 +47,7 @@ func Connect(addr string, opts Opts) (conn *Connection, err error) {
 	conn = &Connection{
 		addr:      addr,
 		mutex:     &sync.Mutex{},
-		requestId: 0,
+		requestID: 0,
 		Greeting:  &Greeting{},
 		requests:  make(map[uint32]*Future),
 		packets:   make(chan []byte, 64),
@@ -202,12 +202,13 @@ func (conn *Connection) createConnection() (r *bufio.Reader, w *bufio.Writer, er
 					// mark connection as closed to avoid reopening by another goroutine
 					conn.closed = true
 					return
-				} else {
-					log.Printf("tarantool: reconnect (%d/%d) to %s failed: %s\n", reconnects, conn.opts.MaxReconnects, conn.addr, err.Error())
-					reconnects += 1
-					time.Sleep(conn.opts.Reconnect)
-					continue
 				}
+
+				log.Printf("tarantool: reconnect (%d/%d) to %s failed: %s\n", reconnects, conn.opts.MaxReconnects, conn.addr, err.Error())
+				reconnects++
+				time.Sleep(conn.opts.Reconnect)
+
+				continue
 			} else {
 				return
 			}
@@ -295,26 +296,26 @@ func (conn *Connection) reader() {
 				return
 			}
 		}
-		resp_bytes, err := read(r)
+		respBytes, err := read(r)
 		if err != nil {
 			r, _, _ = conn.closeConnection(err, r, nil)
 			continue
 		}
-		resp := Response{buf: smallBuf{b: resp_bytes}}
+		resp := Response{buf: smallBuf{b: respBytes}}
 		err = resp.decodeHeader()
 		if err != nil {
 			r, _, _ = conn.closeConnection(err, r, nil)
 			continue
 		}
 		conn.mutex.Lock()
-		if fut, ok := conn.requests[resp.RequestId]; ok {
-			delete(conn.requests, resp.RequestId)
+		if fut, ok := conn.requests[resp.RequestID]; ok {
+			delete(conn.requests, resp.RequestID)
 			fut.resp = resp
 			close(fut.ready)
 			conn.mutex.Unlock()
 		} else {
 			conn.mutex.Unlock()
-			log.Printf("tarantool: unexpected requestId (%d) in response", uint(resp.RequestId))
+			log.Printf("tarantool: unexpected requestId (%d) in response", uint(resp.RequestID))
 		}
 	}
 }
@@ -331,20 +332,20 @@ func write(w io.Writer, data []byte) (err error) {
 }
 
 func read(r io.Reader) (response []byte, err error) {
-	var lenbuf [PacketLengthBytes]byte
+	var lenBuf [PacketLengthBytes]byte
 	var length int
 
-	if _, err = io.ReadFull(r, lenbuf[:]); err != nil {
+	if _, err = io.ReadFull(r, lenBuf[:]); err != nil {
 		return
 	}
-	if lenbuf[0] != 0xce {
+	if lenBuf[0] != 0xce {
 		err = errors.New("Wrong reponse header")
 		return
 	}
-	length = (int(lenbuf[1]) << 24) +
-		(int(lenbuf[2]) << 16) +
-		(int(lenbuf[3]) << 8) +
-		int(lenbuf[4])
+	length = (int(lenBuf[1]) << 24) +
+		(int(lenBuf[2]) << 16) +
+		(int(lenBuf[3]) << 8) +
+		int(lenBuf[4])
 
 	if length == 0 {
 		err = errors.New("Response should not be 0 length")
@@ -356,6 +357,6 @@ func read(r io.Reader) (response []byte, err error) {
 	return
 }
 
-func (conn *Connection) nextRequestId() (requestId uint32) {
-	return atomic.AddUint32(&conn.requestId, 1)
+func (conn *Connection) nextRequestID() uint32 {
+	return atomic.AddUint32(&conn.requestID, 1)
 }

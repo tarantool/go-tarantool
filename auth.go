@@ -19,9 +19,9 @@ func scramble(encoded_salt, pass string) (scramble []byte, err error) {
 	===================================================================== */
 	scrambleSize := sha1.Size // == 20
 
-    salt, err := base64.StdEncoding.DecodeString(encoded_salt)
+	salt, err := base64.StdEncoding.DecodeString(encoded_salt)
 	if err != nil {
-	    return
+		return
 	}
 	step_1 := sha1.Sum([]byte(pass))
 	step_2 := sha1.Sum(step_1[0:])
@@ -29,13 +29,13 @@ func scramble(encoded_salt, pass string) (scramble []byte, err error) {
 	hash.Write(salt[0:scrambleSize])
 	hash.Write(step_2[0:])
 	step_3 := hash.Sum(nil)
-	
+
 	return xor(step_1[0:], step_3[0:], scrambleSize), nil
 }
 
 func xor(left, right []byte, size int) []byte {
 	result := make([]byte, size)
-	for i := 0; i < size ; i++ {
+	for i := 0; i < size; i++ {
 		result[i] = left[i] ^ right[i]
 	}
 	return result
