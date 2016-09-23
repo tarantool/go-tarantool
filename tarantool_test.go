@@ -10,7 +10,7 @@ import (
 )
 
 type Tuple struct {
-	Id   uint
+	ID   uint
 	Msg  string
 	Name string
 }
@@ -32,7 +32,7 @@ func encodeTuple(e *msgpack.Encoder, v reflect.Value) error {
 	if err := e.EncodeSliceLen(3); err != nil {
 		return err
 	}
-	if err := e.EncodeUint(t.Id); err != nil {
+	if err := e.EncodeUint(t.ID); err != nil {
 		return err
 	}
 	if err := e.EncodeString(t.Msg); err != nil {
@@ -54,7 +54,7 @@ func decodeTuple(d *msgpack.Decoder, v reflect.Value) error {
 	if l != 3 {
 		return fmt.Errorf("array len doesn't match: %d", l)
 	}
-	if t.Id, err = d.DecodeUint(); err != nil {
+	if t.ID, err = d.DecodeUint(); err != nil {
 		return err
 	}
 	if t.Msg, err = d.DecodeString(); err != nil {
@@ -165,19 +165,19 @@ func BenchmarkClientSerial(b *testing.B) {
 
 	conn, err := Connect(server, opts)
 	if err != nil {
-		b.Errorf("No connection available")
+		b.Error("No connection available")
 		return
 	}
 
 	_, err = conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
 	if err != nil {
-		b.Errorf("No connection available")
+		b.Error("No connection available")
 	}
 
 	for i := 0; i < b.N; i++ {
 		_, err = conn.Select(spaceNo, indexNo, 0, 1, IterEq, []interface{}{uint(1111)})
 		if err != nil {
-			b.Errorf("No connection available")
+			b.Error("No connection available")
 		}
 	}
 }
@@ -216,13 +216,13 @@ func BenchmarkClientFutureTyped(b *testing.B) {
 
 	conn, err := Connect(server, opts)
 	if err != nil {
-		b.Errorf("No connection available")
+		b.Error("No connection available")
 		return
 	}
 
 	_, err = conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
 	if err != nil {
-		b.Errorf("No connection available")
+		b.Error("No connection available")
 	}
 
 	for i := 0; i < b.N; i += N {
@@ -236,7 +236,7 @@ func BenchmarkClientFutureTyped(b *testing.B) {
 			if err != nil {
 				b.Error(err)
 			}
-			if len(r) != 1 || r[0].Id != 1111 {
+			if len(r) != 1 || r[0].ID != 1111 {
 				b.Errorf("Doesn't match %v", r)
 			}
 		}
@@ -248,13 +248,13 @@ func BenchmarkClientFutureParallel(b *testing.B) {
 
 	conn, err := Connect(server, opts)
 	if err != nil {
-		b.Errorf("No connection available")
+		b.Error("No connection available")
 		return
 	}
 
 	_, err = conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
 	if err != nil {
-		b.Errorf("No connection available")
+		b.Error("No connection available")
 	}
 
 	b.RunParallel(func(pb *testing.PB) {
@@ -283,13 +283,13 @@ func BenchmarkClientFutureParallelTyped(b *testing.B) {
 
 	conn, err := Connect(server, opts)
 	if err != nil {
-		b.Errorf("No connection available")
+		b.Error("No connection available")
 		return
 	}
 
 	_, err = conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
 	if err != nil {
-		b.Errorf("No connection available")
+		b.Error("No connection available")
 	}
 
 	b.RunParallel(func(pb *testing.PB) {
@@ -309,7 +309,7 @@ func BenchmarkClientFutureParallelTyped(b *testing.B) {
 					b.Error(err)
 					break
 				}
-				if len(r) != 1 || r[0].Id != 1111 {
+				if len(r) != 1 || r[0].ID != 1111 {
 					b.Errorf("Doesn't match %v", r)
 					break
 				}
@@ -318,23 +318,23 @@ func BenchmarkClientFutureParallelTyped(b *testing.B) {
 	})
 }
 
-func BenchmarkClientParrallel(b *testing.B) {
+func BenchmarkClientParallel(b *testing.B) {
 	conn, err := Connect(server, opts)
 	if err != nil {
-		b.Errorf("No connection available")
+		b.Error("No connection available")
 		return
 	}
 
 	_, err = conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
 	if err != nil {
-		b.Errorf("No connection available")
+		b.Error("No connection available")
 	}
 
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
 			_, err = conn.Select(spaceNo, indexNo, 0, 1, IterEq, []interface{}{uint(1111)})
 			if err != nil {
-				b.Errorf("No connection available")
+				b.Error("No connection available")
 				break
 			}
 		}
@@ -354,7 +354,7 @@ func TestClient(t *testing.T) {
 		return
 	}
 	if conn == nil {
-		t.Errorf("conn is nil after Connect")
+		t.Error("conn is nil after Connect")
 		return
 	}
 
@@ -364,7 +364,7 @@ func TestClient(t *testing.T) {
 		t.Errorf("Failed to Ping: %s", err.Error())
 	}
 	if resp == nil {
-		t.Errorf("Response is nil after Ping")
+		t.Error("Response is nil after Ping")
 	}
 
 	// Insert
@@ -373,22 +373,22 @@ func TestClient(t *testing.T) {
 		t.Errorf("Failed to Insert: %s", err.Error())
 	}
 	if resp == nil {
-		t.Errorf("Response is nil after Insert")
+		t.Error("Response is nil after Insert")
 	}
 	if len(resp.Data) != 1 {
-		t.Errorf("Response Body len != 1")
+		t.Error("Response Body len != 1")
 	}
 	if tpl, ok := resp.Data[0].([]interface{}); !ok {
-		t.Errorf("Unexpected body of Insert")
+		t.Error("Unexpected body of Insert")
 	} else {
 		if len(tpl) != 3 {
-			t.Errorf("Unexpected body of Insert (tuple len)")
+			t.Error("Unexpected body of Insert (tuple len)")
 		}
 		if id, ok := tpl[0].(uint64); !ok || id != 1 {
-			t.Errorf("Unexpected body of Insert (0)")
+			t.Error("Unexpected body of Insert (0)")
 		}
 		if h, ok := tpl[1].(string); !ok || h != "hello" {
-			t.Errorf("Unexpected body of Insert (1)")
+			t.Error("Unexpected body of Insert (1)")
 		}
 	}
 	resp, err = conn.Insert(spaceNo, []interface{}{uint(1), "hello", "world"})
@@ -396,7 +396,7 @@ func TestClient(t *testing.T) {
 		t.Errorf("Expected ErrTupleFound but got: %v", err)
 	}
 	if len(resp.Data) != 0 {
-		t.Errorf("Response Body len != 1")
+		t.Error("Response Body len != 1")
 	}
 
 	// Delete
@@ -405,22 +405,22 @@ func TestClient(t *testing.T) {
 		t.Errorf("Failed to Delete: %s", err.Error())
 	}
 	if resp == nil {
-		t.Errorf("Response is nil after Delete")
+		t.Error("Response is nil after Delete")
 	}
 	if len(resp.Data) != 1 {
-		t.Errorf("Response Body len != 1")
+		t.Error("Response Body len != 1")
 	}
 	if tpl, ok := resp.Data[0].([]interface{}); !ok {
-		t.Errorf("Unexpected body of Delete")
+		t.Error("Unexpected body of Delete")
 	} else {
 		if len(tpl) != 3 {
-			t.Errorf("Unexpected body of Delete (tuple len)")
+			t.Error("Unexpected body of Delete (tuple len)")
 		}
 		if id, ok := tpl[0].(uint64); !ok || id != 1 {
-			t.Errorf("Unexpected body of Delete (0)")
+			t.Error("Unexpected body of Delete (0)")
 		}
 		if h, ok := tpl[1].(string); !ok || h != "hello" {
-			t.Errorf("Unexpected body of Delete (1)")
+			t.Error("Unexpected body of Delete (1)")
 		}
 	}
 	resp, err = conn.Delete(spaceNo, indexNo, []interface{}{uint(101)})
@@ -428,10 +428,10 @@ func TestClient(t *testing.T) {
 		t.Errorf("Failed to Delete: %s", err.Error())
 	}
 	if resp == nil {
-		t.Errorf("Response is nil after Delete")
+		t.Error("Response is nil after Delete")
 	}
 	if len(resp.Data) != 0 {
-		t.Errorf("Response Data len != 0")
+		t.Error("Response Data len != 0")
 	}
 
 	// Replace
@@ -440,29 +440,29 @@ func TestClient(t *testing.T) {
 		t.Errorf("Failed to Replace: %s", err.Error())
 	}
 	if resp == nil {
-		t.Errorf("Response is nil after Replace")
+		t.Error("Response is nil after Replace")
 	}
 	resp, err = conn.Replace(spaceNo, []interface{}{uint(2), "hi", "planet"})
 	if err != nil {
 		t.Errorf("Failed to Replace (duplicate): %s", err.Error())
 	}
 	if resp == nil {
-		t.Errorf("Response is nil after Replace (duplicate)")
+		t.Error("Response is nil after Replace (duplicate)")
 	}
 	if len(resp.Data) != 1 {
-		t.Errorf("Response Data len != 1")
+		t.Error("Response Data len != 1")
 	}
 	if tpl, ok := resp.Data[0].([]interface{}); !ok {
-		t.Errorf("Unexpected body of Replace")
+		t.Error("Unexpected body of Replace")
 	} else {
 		if len(tpl) != 3 {
-			t.Errorf("Unexpected body of Replace (tuple len)")
+			t.Error("Unexpected body of Replace (tuple len)")
 		}
 		if id, ok := tpl[0].(uint64); !ok || id != 2 {
-			t.Errorf("Unexpected body of Replace (0)")
+			t.Error("Unexpected body of Replace (0)")
 		}
 		if h, ok := tpl[1].(string); !ok || h != "hi" {
-			t.Errorf("Unexpected body of Replace (1)")
+			t.Error("Unexpected body of Replace (1)")
 		}
 	}
 
@@ -472,22 +472,22 @@ func TestClient(t *testing.T) {
 		t.Errorf("Failed to Update: %s", err.Error())
 	}
 	if resp == nil {
-		t.Errorf("Response is nil after Update")
+		t.Error("Response is nil after Update")
 	}
 	if len(resp.Data) != 1 {
-		t.Errorf("Response Data len != 1")
+		t.Error("Response Data len != 1")
 	}
 	if tpl, ok := resp.Data[0].([]interface{}); !ok {
-		t.Errorf("Unexpected body of Update")
+		t.Error("Unexpected body of Update")
 	} else {
 		if len(tpl) != 2 {
-			t.Errorf("Unexpected body of Update (tuple len)")
+			t.Error("Unexpected body of Update (tuple len)")
 		}
 		if id, ok := tpl[0].(uint64); !ok || id != 2 {
-			t.Errorf("Unexpected body of Update (0)")
+			t.Error("Unexpected body of Update (0)")
 		}
 		if h, ok := tpl[1].(string); !ok || h != "bye" {
-			t.Errorf("Unexpected body of Update (1)")
+			t.Error("Unexpected body of Update (1)")
 		}
 	}
 
@@ -498,14 +498,14 @@ func TestClient(t *testing.T) {
 			t.Errorf("Failed to Upsert (insert): %s", err.Error())
 		}
 		if resp == nil {
-			t.Errorf("Response is nil after Upsert (insert)")
+			t.Error("Response is nil after Upsert (insert)")
 		}
 		resp, err = conn.Upsert(spaceNo, []interface{}{uint(3), 1}, []interface{}{[]interface{}{"+", 1, 1}})
 		if err != nil {
 			t.Errorf("Failed to Upsert (update): %s", err.Error())
 		}
 		if resp == nil {
-			t.Errorf("Response is nil after Upsert (update)")
+			t.Error("Response is nil after Upsert (update)")
 		}
 	}
 
@@ -521,19 +521,19 @@ func TestClient(t *testing.T) {
 		t.Errorf("Failed to Select: %s", err.Error())
 	}
 	if resp == nil {
-		t.Errorf("Response is nil after Select")
+		t.Error("Response is nil after Select")
 	}
 	if len(resp.Data) != 1 {
-		t.Errorf("Response Data len != 1")
+		t.Error("Response Data len != 1")
 	}
 	if tpl, ok := resp.Data[0].([]interface{}); !ok {
-		t.Errorf("Unexpected body of Select")
+		t.Error("Unexpected body of Select")
 	} else {
 		if id, ok := tpl[0].(uint64); !ok || id != 10 {
-			t.Errorf("Unexpected body of Select (0)")
+			t.Error("Unexpected body of Select (0)")
 		}
 		if h, ok := tpl[1].(string); !ok || h != "val 10" {
-			t.Errorf("Unexpected body of Select (1)")
+			t.Error("Unexpected body of Select (1)")
 		}
 	}
 
@@ -543,10 +543,10 @@ func TestClient(t *testing.T) {
 		t.Errorf("Failed to Select: %s", err.Error())
 	}
 	if resp == nil {
-		t.Errorf("Response is nil after Select")
+		t.Error("Response is nil after Select")
 	}
 	if len(resp.Data) != 0 {
-		t.Errorf("Response Data len != 0")
+		t.Error("Response Data len != 0")
 	}
 
 	// Select Typed
@@ -556,10 +556,10 @@ func TestClient(t *testing.T) {
 		t.Errorf("Failed to SelectTyped: %s", err.Error())
 	}
 	if len(tpl) != 1 {
-		t.Errorf("Result len of SelectTyped != 1")
+		t.Error("Result len of SelectTyped != 1")
 	} else {
-		if tpl[0].Id != 10 {
-			t.Errorf("Bad value loaded from SelectTyped")
+		if tpl[0].ID != 10 {
+			t.Error("Bad value loaded from SelectTyped")
 		}
 	}
 
@@ -570,7 +570,7 @@ func TestClient(t *testing.T) {
 		t.Errorf("Failed to SelectTyped: %s", err.Error())
 	}
 	if len(tpl2) != 0 {
-		t.Errorf("Result len of SelectTyped != 1")
+		t.Error("Result len of SelectTyped != 1")
 	}
 
 	// Call
@@ -579,10 +579,10 @@ func TestClient(t *testing.T) {
 		t.Errorf("Failed to Call: %s", err.Error())
 	}
 	if resp == nil {
-		t.Errorf("Response is nil after Call")
+		t.Error("Response is nil after Call")
 	}
 	if len(resp.Data) < 1 {
-		t.Errorf("Response.Data is empty after Eval")
+		t.Error("Response.Data is empty after Eval")
 	}
 
 	// Eval
@@ -591,10 +591,10 @@ func TestClient(t *testing.T) {
 		t.Errorf("Failed to Eval: %s", err.Error())
 	}
 	if resp == nil {
-		t.Errorf("Response is nil after Eval")
+		t.Error("Response is nil after Eval")
 	}
 	if len(resp.Data) < 1 {
-		t.Errorf("Response.Data is empty after Eval")
+		t.Error("Response.Data is empty after Eval")
 	}
 	val := resp.Data[0].(uint64)
 	if val != 11 {
@@ -612,175 +612,175 @@ func TestSchema(t *testing.T) {
 		return
 	}
 	if conn == nil {
-		t.Errorf("conn is nil after Connect")
+		t.Error("conn is nil after Connect")
 		return
 	}
 
 	// Schema
 	schema := conn.Schema
-	if schema.SpacesById == nil {
-		t.Errorf("schema.SpacesById is nil")
+	if schema.SpacesByID == nil {
+		t.Error("schema.SpacesById is nil")
 	}
 	if schema.Spaces == nil {
-		t.Errorf("schema.Spaces is nil")
+		t.Error("schema.Spaces is nil")
 	}
 	var space, space2 *Space
 	var ok bool
-	if space, ok = schema.SpacesById[514]; !ok {
-		t.Errorf("space with id = 514 was not found in schema.SpacesById")
+	if space, ok = schema.SpacesByID[514]; !ok {
+		t.Error("space with id = 514 was not found in schema.SpacesById")
 	}
 	if space2, ok = schema.Spaces["schematest"]; !ok {
-		t.Errorf("space with name 'schematest' was not found in schema.SpacesById")
+		t.Error("space with name 'schematest' was not found in schema.SpacesById")
 	}
 	if space != space2 {
-		t.Errorf("space with id = 514 and space with name schematest are different")
+		t.Error("space with id = 514 and space with name schematest are different")
 	}
-	if space.Id != 514 {
-		t.Errorf("space 514 has incorrect Id")
+	if space.ID != 514 {
+		t.Error("space 514 has incorrect Id")
 	}
 	if space.Name != "schematest" {
-		t.Errorf("space 514 has incorrect Name")
+		t.Error("space 514 has incorrect Name")
 	}
 	if !space.Temporary {
-		t.Errorf("space 514 should be temporary")
+		t.Error("space 514 should be temporary")
 	}
 	if space.Engine != "memtx" {
-		t.Errorf("space 514 engine should be memtx")
+		t.Error("space 514 engine should be memtx")
 	}
 	if space.FieldsCount != 7 {
-		t.Errorf("space 514 has incorrect fields count")
+		t.Error("space 514 has incorrect fields count")
 	}
 
-	if space.FieldsById == nil {
-		t.Errorf("space.FieldsById is nill")
+	if space.FieldsByID == nil {
+		t.Error("space.FieldsById is nill")
 	}
 	if space.Fields == nil {
-		t.Errorf("space.Fields is nill")
+		t.Error("space.Fields is nill")
 	}
-	if len(space.FieldsById) != 3 {
-		t.Errorf("space.FieldsById len is incorrect")
+	if len(space.FieldsByID) != 3 {
+		t.Error("space.FieldsById len is incorrect")
 	}
 	if len(space.Fields) != 2 {
-		t.Errorf("space.Fields len is incorrect")
+		t.Error("space.Fields len is incorrect")
 	}
 
-	var field1, field2, field5, field1_, field5_ *Field
-	if field1, ok = space.FieldsById[1]; !ok {
-		t.Errorf("field id = 1 was not found")
+	var field1, field2, field5, field1Name, field5Name *Field
+	if field1, ok = space.FieldsByID[1]; !ok {
+		t.Error("field id = 1 was not found")
 	}
-	if field2, ok = space.FieldsById[2]; !ok {
-		t.Errorf("field id = 2 was not found")
+	if field2, ok = space.FieldsByID[2]; !ok {
+		t.Error("field id = 2 was not found")
 	}
-	if field5, ok = space.FieldsById[5]; !ok {
-		t.Errorf("field id = 5 was not found")
+	if field5, ok = space.FieldsByID[5]; !ok {
+		t.Error("field id = 5 was not found")
 	}
 
-	if field1_, ok = space.Fields["name1"]; !ok {
-		t.Errorf("field name = name1 was not found")
+	if field1Name, ok = space.Fields["name1"]; !ok {
+		t.Error("field name = name1 was not found")
 	}
-	if field5_, ok = space.Fields["name5"]; !ok {
-		t.Errorf("field name = name5 was not found")
+	if field5Name, ok = space.Fields["name5"]; !ok {
+		t.Error("field name = name5 was not found")
 	}
-	if field1 != field1_ || field5 != field5_ {
-		t.Errorf("field with id = 1 and field with name 'name1' are different")
+	if field1 != field1Name || field5 != field5Name {
+		t.Error("field with id = 1 and field with name 'name1' are different")
 	}
 	if field1.Name != "name1" {
-		t.Errorf("field 1 has incorrect Name")
+		t.Error("field 1 has incorrect Name")
 	}
 	if field1.Type != "" {
-		t.Errorf("field 1 has incorrect Type")
+		t.Error("field 1 has incorrect Type")
 	}
 	if field2.Name != "" {
-		t.Errorf("field 2 has incorrect Name")
+		t.Error("field 2 has incorrect Name")
 	}
 	if field2.Type != "type2" {
-		t.Errorf("field 2 has incorrect Type")
+		t.Error("field 2 has incorrect Type")
 	}
 
-	if space.IndexesById == nil {
-		t.Errorf("space.IndexesById is nill")
+	if space.IndexesByID == nil {
+		t.Error("space.IndexesById is nill")
 	}
 	if space.Indexes == nil {
-		t.Errorf("space.Indexes is nill")
+		t.Error("space.Indexes is nill")
 	}
-	if len(space.IndexesById) != 2 {
-		t.Errorf("space.IndexesById len is incorrect")
+	if len(space.IndexesByID) != 2 {
+		t.Error("space.IndexesById len is incorrect")
 	}
 	if len(space.Indexes) != 2 {
-		t.Errorf("space.Indexes len is incorrect")
+		t.Error("space.Indexes len is incorrect")
 	}
 
-	var index0, index3, index0_, index3_ *Index
-	if index0, ok = space.IndexesById[0]; !ok {
-		t.Errorf("index id = 0 was not found")
+	var index0, index3, index0Primary, index3Secondary *Index
+	if index0, ok = space.IndexesByID[0]; !ok {
+		t.Error("index id = 0 was not found")
 	}
-	if index3, ok = space.IndexesById[3]; !ok {
-		t.Errorf("index id = 3 was not found")
+	if index3, ok = space.IndexesByID[3]; !ok {
+		t.Error("index id = 3 was not found")
 	}
-	if index0_, ok = space.Indexes["primary"]; !ok {
-		t.Errorf("index name = primary was not found")
+	if index0Primary, ok = space.Indexes["primary"]; !ok {
+		t.Error("index name = primary was not found")
 	}
-	if index3_, ok = space.Indexes["secondary"]; !ok {
-		t.Errorf("index name = secondary was not found")
+	if index3Secondary, ok = space.Indexes["secondary"]; !ok {
+		t.Error("index name = secondary was not found")
 	}
-	if index0 != index0_ || index3 != index3_ {
-		t.Errorf("index with id = 3 and index with name 'secondary' are different")
+	if index0 != index0Primary || index3 != index3Secondary {
+		t.Error("index with id = 3 and index with name 'secondary' are different")
 	}
-	if index3.Id != 3 {
-		t.Errorf("index has incorrect Id")
+	if index3.ID != 3 {
+		t.Error("index has incorrect Id")
 	}
 	if index0.Name != "primary" {
-		t.Errorf("index has incorrect Name")
+		t.Error("index has incorrect Name")
 	}
 	if index0.Type != "hash" || index3.Type != "tree" {
-		t.Errorf("index has incorrect Type")
+		t.Error("index has incorrect Type")
 	}
 	if !index0.Unique || index3.Unique {
-		t.Errorf("index has incorrect Unique")
+		t.Error("index has incorrect Unique")
 	}
 	if index3.Fields == nil {
-		t.Errorf("index.Fields is nil")
+		t.Error("index.Fields is nil")
 	}
 	if len(index3.Fields) != 2 {
-		t.Errorf("index.Fields len is incorrect")
+		t.Error("index.Fields len is incorrect")
 	}
 
 	ifield1 := index3.Fields[0]
 	ifield2 := index3.Fields[1]
 	if ifield1 == nil || ifield2 == nil {
-		t.Errorf("index field is nil")
+		t.Error("index field is nil")
 	}
-	if ifield1.Id != 1 || ifield2.Id != 2 {
-		t.Errorf("index field has incorrect Id")
+	if ifield1.ID != 1 || ifield2.ID != 2 {
+		t.Error("index field has incorrect Id")
 	}
 	if ifield1.Type != "num" || ifield2.Type != "STR" {
-		t.Errorf("index field has incorrect Type[")
+		t.Error("index field has incorrect Type[")
 	}
 
 	var rSpaceNo, rIndexNo uint32
 	rSpaceNo, rIndexNo, err = schema.resolveSpaceIndex(514, 3)
 	if err != nil || rSpaceNo != 514 || rIndexNo != 3 {
-		t.Errorf("numeric space and index params not resolved as-is")
+		t.Error("numeric space and index params not resolved as-is")
 	}
 	rSpaceNo, rIndexNo, err = schema.resolveSpaceIndex(514, nil)
 	if err != nil || rSpaceNo != 514 {
-		t.Errorf("numeric space param not resolved as-is")
+		t.Error("numeric space param not resolved as-is")
 	}
 	rSpaceNo, rIndexNo, err = schema.resolveSpaceIndex("schematest", "secondary")
 	if err != nil || rSpaceNo != 514 || rIndexNo != 3 {
-		t.Errorf("symbolic space and index params not resolved")
+		t.Error("symbolic space and index params not resolved")
 	}
 	rSpaceNo, rIndexNo, err = schema.resolveSpaceIndex("schematest", nil)
 	if err != nil || rSpaceNo != 514 {
-		t.Errorf("symbolic space param not resolved")
+		t.Error("symbolic space param not resolved")
 	}
 	rSpaceNo, rIndexNo, err = schema.resolveSpaceIndex("schematest22", "secondary")
 	if err == nil {
-		t.Errorf("resolveSpaceIndex didn't returned error with not existing space name")
+		t.Error("resolveSpaceIndex didn't returned error with not existing space name")
 	}
 	rSpaceNo, rIndexNo, err = schema.resolveSpaceIndex("schematest", "secondary22")
 	if err == nil {
-		t.Errorf("resolveSpaceIndex didn't returned error with not existing index name")
+		t.Error("resolveSpaceIndex didn't returned error with not existing index name")
 	}
 }
 
@@ -795,7 +795,7 @@ func TestClientNamed(t *testing.T) {
 		return
 	}
 	if conn == nil {
-		t.Errorf("conn is nil after Connect")
+		t.Error("conn is nil after Connect")
 		return
 	}
 
@@ -811,7 +811,7 @@ func TestClientNamed(t *testing.T) {
 		t.Errorf("Failed to Delete: %s", err.Error())
 	}
 	if resp == nil {
-		t.Errorf("Response is nil after Delete")
+		t.Error("Response is nil after Delete")
 	}
 
 	// Replace
@@ -820,7 +820,7 @@ func TestClientNamed(t *testing.T) {
 		t.Errorf("Failed to Replace: %s", err.Error())
 	}
 	if resp == nil {
-		t.Errorf("Response is nil after Replace")
+		t.Error("Response is nil after Replace")
 	}
 
 	// Update
@@ -829,7 +829,7 @@ func TestClientNamed(t *testing.T) {
 		t.Errorf("Failed to Update: %s", err.Error())
 	}
 	if resp == nil {
-		t.Errorf("Response is nil after Update")
+		t.Error("Response is nil after Update")
 	}
 
 	// Upsert
@@ -839,14 +839,14 @@ func TestClientNamed(t *testing.T) {
 			t.Errorf("Failed to Upsert (insert): %s", err.Error())
 		}
 		if resp == nil {
-			t.Errorf("Response is nil after Upsert (insert)")
+			t.Error("Response is nil after Upsert (insert)")
 		}
 		resp, err = conn.Upsert(spaceName, []interface{}{uint(1003), 1}, []interface{}{[]interface{}{"+", 1, 1}})
 		if err != nil {
 			t.Errorf("Failed to Upsert (update): %s", err.Error())
 		}
 		if resp == nil {
-			t.Errorf("Response is nil after Upsert (update)")
+			t.Error("Response is nil after Upsert (update)")
 		}
 	}
 
@@ -862,7 +862,7 @@ func TestClientNamed(t *testing.T) {
 		t.Errorf("Failed to Select: %s", err.Error())
 	}
 	if resp == nil {
-		t.Errorf("Response is nil after Select")
+		t.Error("Response is nil after Select")
 	}
 
 	// Select Typed
@@ -872,7 +872,7 @@ func TestClientNamed(t *testing.T) {
 		t.Errorf("Failed to SelectTyped: %s", err.Error())
 	}
 	if len(tpl) != 1 {
-		t.Errorf("Result len of SelectTyped != 1")
+		t.Error("Result len of SelectTyped != 1")
 	}
 }
 
@@ -886,7 +886,7 @@ func TestComplexStructs(t *testing.T) {
 		return
 	}
 	if conn == nil {
-		t.Errorf("conn is nil after Connect")
+		t.Error("conn is nil after Connect")
 		return
 	}
 
@@ -910,7 +910,7 @@ func TestComplexStructs(t *testing.T) {
 	}
 
 	if tuple.Cid != tuples[0].Cid || len(tuple.Members) != len(tuples[0].Members) || tuple.Members[1].Name != tuples[0].Members[1].Name {
-		t.Errorf("Failed to selectTyped: incorrect data")
+		t.Error("Failed to selectTyped: incorrect data")
 		return
 	}
 }

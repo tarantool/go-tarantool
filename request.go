@@ -8,7 +8,7 @@ import (
 
 type Request struct {
 	conn        *Connection
-	requestId   uint32
+	requestID   uint32
 	requestCode int32
 	body        map[int]interface{}
 }
@@ -22,11 +22,13 @@ type Future struct {
 }
 
 func (conn *Connection) NewRequest(requestCode int32) (req *Request) {
-	req = &Request{}
-	req.conn = conn
-	req.requestId = conn.nextRequestId()
-	req.requestCode = requestCode
-	req.body = make(map[int]interface{})
+	req = &Request{
+		conn:        conn,
+		requestID:   conn.nextRequestID(),
+		requestCode: requestCode,
+		body:        make(map[int]interface{}),
+	}
+
 	return
 }
 
@@ -204,14 +206,14 @@ func (conn *Connection) UpsertTyped(space interface{}, tuple, ops []interface{},
 	return request.performTyped(result)
 }
 
-func (conn *Connection) CallTyped(functionName string, args []interface{}, result interface{}) (err error) {
+func (conn *Connection) CallTyped(functionName string, args []interface{}, result interface{}) error {
 	request := conn.NewRequest(CallRequest)
 	request.body[KeyFunctionName] = functionName
 	request.body[KeyTuple] = args
 	return request.performTyped(result)
 }
 
-func (conn *Connection) EvalTyped(expr string, args []interface{}, result interface{}) (err error) {
+func (conn *Connection) EvalTyped(expr string, args []interface{}, result interface{}) error {
 	request := conn.NewRequest(EvalRequest)
 	request.body[KeyExpression] = expr
 	request.body[KeyTuple] = args
@@ -223,7 +225,7 @@ func (conn *Connection) SelectAsync(space, index interface{}, offset, limit, ite
 	request := conn.NewRequest(SelectRequest)
 	spaceNo, indexNo, err := conn.Schema.resolveSpaceIndex(space, index)
 	if err != nil {
-		return badfuture(err)
+		return badFuture(err)
 	}
 	request.fillSearch(spaceNo, indexNo, key)
 	request.fillIterator(offset, limit, iterator)
@@ -234,7 +236,7 @@ func (conn *Connection) InsertAsync(space interface{}, tuple interface{}) *Futur
 	request := conn.NewRequest(InsertRequest)
 	spaceNo, _, err := conn.Schema.resolveSpaceIndex(space, nil)
 	if err != nil {
-		return badfuture(err)
+		return badFuture(err)
 	}
 	request.fillInsert(spaceNo, tuple)
 	return request.future()
@@ -244,7 +246,7 @@ func (conn *Connection) ReplaceAsync(space interface{}, tuple interface{}) *Futu
 	request := conn.NewRequest(ReplaceRequest)
 	spaceNo, _, err := conn.Schema.resolveSpaceIndex(space, nil)
 	if err != nil {
-		return badfuture(err)
+		return badFuture(err)
 	}
 	request.fillInsert(spaceNo, tuple)
 	return request.future()
@@ -254,7 +256,7 @@ func (conn *Connection) DeleteAsync(space, index interface{}, key []interface{})
 	request := conn.NewRequest(DeleteRequest)
 	spaceNo, indexNo, err := conn.Schema.resolveSpaceIndex(space, index)
 	if err != nil {
-		return badfuture(err)
+		return badFuture(err)
 	}
 	request.fillSearch(spaceNo, indexNo, key)
 	return request.future()
@@ -264,7 +266,7 @@ func (conn *Connection) UpdateAsync(space, index interface{}, key, ops []interfa
 	request := conn.NewRequest(UpdateRequest)
 	spaceNo, indexNo, err := conn.Schema.resolveSpaceIndex(space, index)
 	if err != nil {
-		return badfuture(err)
+		return badFuture(err)
 	}
 	request.fillSearch(spaceNo, indexNo, key)
 	request.body[KeyTuple] = ops
@@ -275,7 +277,7 @@ func (conn *Connection) UpsertAsync(space interface{}, tuple interface{}, ops []
 	request := conn.NewRequest(UpsertRequest)
 	spaceNo, _, err := conn.Schema.resolveSpaceIndex(space, nil)
 	if err != nil {
-		return badfuture(err)
+		return badFuture(err)
 	}
 	request.body[KeySpaceNo] = spaceNo
 	request.body[KeyTuple] = tuple
@@ -301,16 +303,16 @@ func (conn *Connection) EvalAsync(expr string, args []interface{}) *Future {
 // private
 //
 
-func (req *Request) perform() (resp *Response, err error) {
+func (req *Request) perform() (*Response, error) {
 	return req.future().Get()
 }
 
-func (req *Request) performTyped(res interface{}) (err error) {
+func (req *Request) performTyped(res interface{}) error {
 	return req.future().GetTyped(res)
 }
 
 func (req *Request) pack() (packet []byte, err error) {
-	rid := req.requestId
+	rid := req.requestID
 	h := smallWBuf{
 		0xce, 0, 0, 0, 0, // length
 		0x82,                           // 2 element map
@@ -375,7 +377,7 @@ func (req *Request) future() (fut *Future) {
 		fut.err = ClientError{ErrConnectionClosed, "using closed connection"}
 		return
 	}
-	req.conn.requests[req.requestId] = fut
+	req.conn.requests[req.requestID] = fut
 	req.conn.mutex.Unlock()
 
 	fut.ready = make(chan struct{})
@@ -388,7 +390,7 @@ func (req *Request) future() (fut *Future) {
 	return
 }
 
-func badfuture(err error) *Future {
+func badFuture(err error) *Future {
 	return &Future{err: err}
 }
 
@@ -397,7 +399,7 @@ func (fut *Future) wait() {
 		return
 	}
 	conn := fut.req.conn
-	requestId := fut.req.requestId
+	requestID := fut.req.requestID
 	select {
 	case <-fut.ready:
 	default:
@@ -406,10 +408,10 @@ func (fut *Future) wait() {
 			case <-fut.ready:
 			case <-timeout.C:
 				conn.mutex.Lock()
-				if _, ok := conn.requests[requestId]; ok {
-					delete(conn.requests, requestId)
+				if _, ok := conn.requests[requestID]; ok {
+					delete(conn.requests, requestID)
 					close(fut.ready)
-					fut.err = fmt.Errorf("client timeout for request %d", requestId)
+					fut.err = fmt.Errorf("client timeout for request %d", requestID)
 				}
 				conn.mutex.Unlock()
 			}

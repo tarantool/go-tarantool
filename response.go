@@ -6,7 +6,7 @@ import (
 )
 
 type Response struct {
-	RequestId uint32
+	RequestID uint32
 	Code      uint32
 	Error     string
 	Data      []interface{}
@@ -36,7 +36,7 @@ func (resp *Response) decodeHeader() (err error) {
 		}
 		switch cd {
 		case KeySync:
-			if resp.RequestId, err = d.DecodeUint32(); err != nil {
+			if resp.RequestID, err = d.DecodeUint32(); err != nil {
 				return
 			}
 		case KeyCode:
@@ -106,12 +106,12 @@ func (resp *Response) decodeBodyTyped(res interface{}) (err error) {
 	return
 }
 
-func (resp *Response) String() (str string) {
+func (resp *Response) String() string {
 	if resp.Code == OkCode {
-		return fmt.Sprintf("<%d OK %v>", resp.RequestId, resp.Data)
-	} else {
-		return fmt.Sprintf("<%d ERR 0x%x %s>", resp.RequestId, resp.Code, resp.Error)
+		return fmt.Sprintf("<%d OK %v>", resp.RequestID, resp.Data)
 	}
+
+	return fmt.Sprintf("<%d ERR 0x%x %s>", resp.RequestID, resp.Code, resp.Error)
 }
 
 func (resp *Response) Tuples() (res [][]interface{}) {
