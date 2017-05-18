@@ -1,8 +1,9 @@
 package tarantool
 
 import (
-	"gopkg.in/vmihailenco/msgpack.v2"
 	"time"
+
+	"gopkg.in/vmihailenco/msgpack.v2"
 )
 
 // Future is a handle for asynchronous request
