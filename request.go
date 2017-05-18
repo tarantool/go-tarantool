@@ -1,6 +1,8 @@
 package tarantool
 
 import (
+	"errors"
+	"reflect"
 	"time"
 
 	"gopkg.in/vmihailenco/msgpack.v2"
@@ -46,6 +48,10 @@ func (req *Future) fillInsert(enc *msgpack.Encoder, spaceNo uint32, tuple interf
 	enc.EncodeUint64(uint64(spaceNo))
 	enc.EncodeUint64(KeyTuple)
 	return enc.Encode(tuple)
+}
+
+func (conn *Connection) Get(space, index interface{}, key interface{}) (resp *Response, err error) {
+	return conn.GetAsync(space, index, key).Get()
 }
 
 // Select performs select to box space.
@@ -119,6 +125,30 @@ func (conn *Connection) Eval(expr string, args interface{}) (resp *Response, err
 	return conn.EvalAsync(expr, args).Get()
 }
 
+func (conn *Connection) GetTyped(space, index interface{}, key interface{}, result interface{}) (err error) {
+	resultValue := reflect.ValueOf(result)
+	if resultValue.Kind() != reflect.Interface && resultValue.Kind() != reflect.Ptr {
+		return errors.New("Result value not a pointer")
+	}
+	resultType := resultValue.Elem().Type()
+	sliceType := reflect.MakeSlice(reflect.SliceOf(resultType), 0, 0).Type()
+	slice := reflect.New(sliceType)
+	sliceElem := slice.Elem()
+	sliceIface := slice.Interface()
+
+	err = conn.GetAsync(space, index, key).GetTyped(sliceIface)
+	if err != nil {
+		return
+	}
+	l := sliceElem.Len()
+	if l != 1 {
+		return errors.New("Tuple not found")
+	}
+	resultValue.Elem().Set(sliceElem.Index(0))
+
+	return
+}
+
 // SelectTyped performs select to box space and fills typed result.
 //
 // It is equal to conn.SelectAsync(space, index, offset, limit, iterator, key).GetTyped(&result)
@@ -178,6 +208,10 @@ func (conn *Connection) Call17Typed(functionName string, args interface{}, resul
 // It is equal to conn.EvalAsync(space, tuple).GetTyped(&result).
 func (conn *Connection) EvalTyped(expr string, args interface{}, result interface{}) (err error) {
 	return conn.EvalAsync(expr, args).GetTyped(result)
+}
+
+func (conn *Connection) GetAsync(space, index interface{}, key interface{}) *Future {
+	return conn.SelectAsync(space, index, 0, 1, IterEq, key)
 }
 
 // SelectAsync sends select request to tarantool and returns Future.
