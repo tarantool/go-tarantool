@@ -2,7 +2,6 @@ package tarantool
 
 import (
 	"errors"
-	"reflect"
 	"time"
 
 	"gopkg.in/vmihailenco/msgpack.v2"
@@ -125,27 +124,30 @@ func (conn *Connection) Eval(expr string, args interface{}) (resp *Response, err
 	return conn.EvalAsync(expr, args).Get()
 }
 
+// single used for conn.GetTyped for decode one tuple
+type single struct {
+	res   interface{}
+	found bool
+}
+
+func (s *single) DecodeMsgpack(d *msgpack.Decoder) error {
+	var err error
+	var len int
+	if len, err = d.DecodeSliceLen(); err != nil {
+		return err
+	}
+	if s.found = len == 1; !s.found {
+		return nil
+	}
+	if len != 1 {
+		return errors.New("Tarantool returns unexpected value for Select(limit=1)")
+	}
+	return d.Decode(s.res)
+}
+
 func (conn *Connection) GetTyped(space, index interface{}, key interface{}, result interface{}) (err error) {
-	resultValue := reflect.ValueOf(result)
-	if resultValue.Kind() != reflect.Interface && resultValue.Kind() != reflect.Ptr {
-		return errors.New("Result value not a pointer")
-	}
-	resultType := resultValue.Elem().Type()
-	sliceType := reflect.MakeSlice(reflect.SliceOf(resultType), 0, 0).Type()
-	slice := reflect.New(sliceType)
-	sliceElem := slice.Elem()
-	sliceIface := slice.Interface()
-
-	err = conn.GetAsync(space, index, key).GetTyped(sliceIface)
-	if err != nil {
-		return
-	}
-	l := sliceElem.Len()
-	if l != 1 {
-		return errors.New("Tuple not found")
-	}
-	resultValue.Elem().Set(sliceElem.Index(0))
-
+	s := single{res: result}
+	err = conn.GetAsync(space, index, key).GetTyped(&s)
 	return
 }
 
