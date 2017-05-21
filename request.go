@@ -49,6 +49,10 @@ func (req *Future) fillInsert(enc *msgpack.Encoder, spaceNo uint32, tuple interf
 	return enc.Encode(tuple)
 }
 
+// Get performs select to box space with offset = 0 and limit = 1.
+//
+// It is equal to conn.SelectAsync(space, index, 0, 1, IterEq, key).Get()
+// Note: it will be return slice with one tuple.
 func (conn *Connection) Get(space, index interface{}, key interface{}) (resp *Response, err error) {
 	return conn.GetAsync(space, index, key).Get()
 }
@@ -145,6 +149,10 @@ func (s *single) DecodeMsgpack(d *msgpack.Decoder) error {
 	return d.Decode(s.res)
 }
 
+// GetTyped performs select (with limit = 1 and offset = 0)
+// to box space and fills typed result.
+//
+// It is equal to conn.GetAsync(space, index, key).GetTyped(&result)
 func (conn *Connection) GetTyped(space, index interface{}, key interface{}, result interface{}) (err error) {
 	s := single{res: result}
 	err = conn.GetAsync(space, index, key).GetTyped(&s)
@@ -212,6 +220,10 @@ func (conn *Connection) EvalTyped(expr string, args interface{}, result interfac
 	return conn.EvalAsync(expr, args).GetTyped(result)
 }
 
+// GetAsync sends select request (with limit = 1 and offest = 0) to tarantool
+// and returns Future.
+//
+// It is equal to conn.SelectAsync(space, index, 0, 1, IterEq, key)
 func (conn *Connection) GetAsync(space, index interface{}, key interface{}) *Future {
 	return conn.SelectAsync(space, index, 0, 1, IterEq, key)
 }
