@@ -605,6 +605,16 @@ func TestClient(t *testing.T) {
 		}
 	}
 
+	// Get Typed
+	var singleTpl = Tuple{}
+	err = conn.GetTyped(spaceNo, indexNo, []interface{}{uint(10)}, &singleTpl)
+	if err != nil {
+		t.Errorf("Failed to GetTyped: %s", err.Error())
+	}
+	if singleTpl.Id != 10 {
+		t.Errorf("Bad value loaded from GetTyped")
+	}
+
 	// Select Typed for one tuple
 	var tpl1 [1]Tuple
 	err = conn.SelectTyped(spaceNo, indexNo, 0, 1, IterEq, []interface{}{uint(10)}, &tpl1)
@@ -617,6 +627,16 @@ func TestClient(t *testing.T) {
 		if tpl[0].Id != 10 {
 			t.Errorf("Bad value loaded from SelectTyped")
 		}
+	}
+
+	// Get Typed Empty
+	var singleTpl2 Tuple
+	err = conn.GetTyped(spaceNo, indexNo, []interface{}{uint(30)}, &singleTpl2)
+	if err != nil {
+		t.Errorf("Failed to GetTyped: %s", err.Error())
+	}
+	if singleTpl2.Id != 0 {
+		t.Errorf("Bad value loaded from GetTyped")
 	}
 
 	// Select Typed Empty
