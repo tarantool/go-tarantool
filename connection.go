@@ -863,3 +863,12 @@ func (conn *Connection) nextRequestId() (requestId uint32) {
 func (conn *Connection) ConfiguredTimeout() time.Duration {
 	return conn.opts.Timeout
 }
+
+// OverrideSchema sets Schema for the connection
+func (conn *Connection) OverrideSchema(s *Schema) {
+	if s != nil {
+		conn.mutex.Lock()
+		defer conn.mutex.Unlock()
+		conn.Schema = s
+	}
+}
