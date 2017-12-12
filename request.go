@@ -56,6 +56,31 @@ func (conn *Connection) Select(space, index interface{}, offset, limit, iterator
 	return conn.SelectAsync(space, index, offset, limit, iterator, key).Get()
 }
 
+// SelectMany performs select according tho values of slice to box space
+// example: dbConn.SelectMany("test", "primary", 0, 200, tarantool.IterEq, []interface{}{uint(1), uint(2)})
+func (conn *Connection) SelectMany(space, index interface{}, offset, limit, iterator uint32, keys []interface{}) (*Response, error) {
+	var summaryData []interface{}
+	for _, key := range keys {
+		if len(summaryData) > int(limit) {
+			break
+		}
+
+		r, err := conn.SelectAsync(space, index, offset, limit, iterator, []interface{}{key}).Get()
+		if err != nil {
+			return nil, err
+		}
+		for _, d := range r.Data {
+			summaryData = append(summaryData, d)
+		}
+	}
+
+	if len(summaryData) > int(limit) {
+		summaryData = summaryData[:limit]
+	}
+
+	return &Response{Data: summaryData, RequestId: conn.nextRequestId()}, nil
+}
+
 // Insert performs insertion to box space.
 // Tarantool will reject Insert when tuple with same primary key exists.
 //
