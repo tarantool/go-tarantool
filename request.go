@@ -62,6 +62,7 @@ func (conn *Connection) Select(space, index interface{}, offset, limit, iterator
 func (conn *Connection) SelectMany(space, index interface{}, offset, limit, iterator uint32, keys interface{}) (*Response, error) {
 	var summaryData []interface{}
 	var futs []*Future
+
 	switch reflect.TypeOf(keys).Kind() {
 	case reflect.Slice:
 		s := reflect.ValueOf(keys)
@@ -75,16 +76,15 @@ func (conn *Connection) SelectMany(space, index interface{}, offset, limit, iter
 	}
 
 	for _, fut := range futs {
+		if len(summaryData) > int(limit) {
+			break
+		}
 		f, err := fut.Get()
 		if err != nil {
 			return f, err
 		}
 
 		for _, data := range f.Data {
-			if len(summaryData) > int(limit) {
-				break
-			}
-
 			summaryData = append(summaryData, data)
 		}
 	}
