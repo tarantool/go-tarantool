@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"gopkg.in/vmihailenco/msgpack.v2"
+	"reflect"
 )
 
 // Future is a handle for asynchronous request
@@ -57,20 +58,34 @@ func (conn *Connection) Select(space, index interface{}, offset, limit, iterator
 }
 
 // SelectMany performs select according tho values of slice to box space
-// example: dbConn.SelectMany("test", "primary", 0, 200, tarantool.IterEq, []interface{}{uint(1), uint(2)})
-func (conn *Connection) SelectMany(space, index interface{}, offset, limit, iterator uint32, keys []interface{}) (*Response, error) {
+// example: dbConn.SelectMany("test", "ind", 0, 200, tarantool.IterEq, []interface{}{uint(1), uint(2)})
+func (conn *Connection) SelectMany(space, index interface{}, offset, limit, iterator uint32, keys interface{}) (*Response, error) {
 	var summaryData []interface{}
-	for _, key := range keys {
-		if len(summaryData) > int(limit) {
-			break
+	var futs []*Future
+	switch reflect.TypeOf(keys).Kind() {
+	case reflect.Slice:
+		s := reflect.ValueOf(keys)
+
+		for i := 0; i < s.Len(); i++ {
+			fut := conn.SelectAsync(space, index, offset, limit, iterator, s.Index(i).Interface())
+			futs = append(futs, fut)
+		}
+	default:
+		panic("keys must be only a slice")
+	}
+
+	for _, fut := range futs {
+		f, err := fut.Get()
+		if err != nil {
+			return f, err
 		}
 
-		r, err := conn.SelectAsync(space, index, offset, limit, iterator, []interface{}{key}).Get()
-		if err != nil {
-			return nil, err
-		}
-		for _, d := range r.Data {
-			summaryData = append(summaryData, d)
+		for _, data := range f.Data {
+			if len(summaryData) > int(limit) {
+				break
+			}
+
+			summaryData = append(summaryData, data)
 		}
 	}
 
@@ -78,7 +93,7 @@ func (conn *Connection) SelectMany(space, index interface{}, offset, limit, iter
 		summaryData = summaryData[:limit]
 	}
 
-	return &Response{Data: summaryData, RequestId: conn.nextRequestId()}, nil
+	return &Response{Data: summaryData, RequestId: conn.nextRequestId(), Code: OkCode}, nil
 }
 
 // Insert performs insertion to box space.
