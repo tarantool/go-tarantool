@@ -58,8 +58,10 @@ func (conn *Connection) Select(space, index interface{}, offset, limit, iterator
 }
 
 // SelectMany performs select according tho values of slice to box space
-// example: dbConn.SelectMany("test", "ind", 0, 200, tarantool.IterEq, []interface{}{uint(1), uint(2)})
-func (conn *Connection) SelectMany(space, index interface{}, offset, limit, iterator uint32, keys interface{}) (*Response, error) {
+// Important! Offset and limit is apply to resulting tuples
+// example: dbConn.SelectMany("test", "index", 0, 200, tarantool.IterEq, []tarantool.UintKey{{1}, {2}})
+// example: dbConn.SelectMany("test", "index", 0, 200, tarantool.IterEq, []interface{[]interface{uint(1)}, []interface{uint(2)}})
+func (conn *Connection) SelectMany(space, index interface{}, offset, limit, iterator uint32, keys interface{}) ([]interface{}, error) {
 	var summaryData []interface{}
 	var futs []*Future
 
@@ -68,7 +70,7 @@ func (conn *Connection) SelectMany(space, index interface{}, offset, limit, iter
 		s := reflect.ValueOf(keys)
 
 		for i := 0; i < s.Len(); i++ {
-			fut := conn.SelectAsync(space, index, offset, limit, iterator, s.Index(i).Interface())
+			fut := conn.SelectAsync(space, index, 0, 4294967295, iterator, s.Index(i).Interface())
 			futs = append(futs, fut)
 		}
 	default:
@@ -81,7 +83,7 @@ func (conn *Connection) SelectMany(space, index interface{}, offset, limit, iter
 		}
 		f, err := fut.Get()
 		if err != nil {
-			return f, err
+			return nil, err
 		}
 
 		for _, data := range f.Data {
@@ -89,11 +91,15 @@ func (conn *Connection) SelectMany(space, index interface{}, offset, limit, iter
 		}
 	}
 
+	if offset != 0 {
+		summaryData = summaryData[offset:]
+	}
+
 	if len(summaryData) > int(limit) {
 		summaryData = summaryData[:limit]
 	}
 
-	return &Response{Data: summaryData, RequestId: conn.nextRequestId(), Code: OkCode}, nil
+	return summaryData, nil
 }
 
 // Insert performs insertion to box space.
