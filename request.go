@@ -70,7 +70,7 @@ func (conn *Connection) SelectMany(space, index interface{}, offset, limit, iter
 		s := reflect.ValueOf(keys)
 
 		for i := 0; i < s.Len(); i++ {
-			fut := conn.SelectAsync(space, index, 0, 4294967295, iterator, s.Index(i).Interface())
+			fut := conn.SelectAsync(space, index, 0, offset+limit, iterator, s.Index(i).Interface())
 			futs = append(futs, fut)
 		}
 	default:
