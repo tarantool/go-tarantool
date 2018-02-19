@@ -1,11 +1,44 @@
 package queue
 
+import (
+	"fmt"
+
+	msgpack "gopkg.in/vmihailenco/msgpack.v2"
+)
+
 // Task represents a task from tarantool queue's tube
 type Task struct {
 	id     uint64
 	status string
 	data   interface{}
 	q      *queue
+}
+
+func (t *Task) DecodeMsgpack(d *msgpack.Decoder) error {
+	var err error
+	var l int
+	if l, err = d.DecodeSliceLen(); err != nil {
+		return err
+	}
+	if l < 3 {
+		return fmt.Errorf("array len doesn't match: %d", l)
+	}
+	if t.id, err = d.DecodeUint64(); err != nil {
+		return err
+	}
+	if t.status, err = d.DecodeString(); err != nil {
+		return err
+	}
+	if t.data != nil {
+		if err = d.Decode(t.data); err != nil {
+			return fmt.Errorf("fffuuuu: %s", err)
+		}
+	} else {
+		if t.data, err = d.DecodeInterface(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Id is a getter for task id

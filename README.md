@@ -282,7 +282,7 @@ func main() {
 	log.Println("Code", resp.Code)
 	log.Println("Data", resp.Data)
 }
-``` 
+```
 
 ## Schema
 
@@ -423,7 +423,7 @@ func (c *Tuple) DecodeMsgpack(d *msgpack.Decoder) error {
 	return nil
 }
 
-func main() { 
+func main() {
 	// establish connection ...
 
 	tuple := Tuple{777, "orig", []Member{{"lol", "", 1}, {"wut", "", 3}}}
@@ -507,6 +507,17 @@ func decodeTuple(d *msgpack.Decoder, v reflect.Value) error {
 
 import "github.com/tarantool/go-tarantool/queue"
 
+
+type customData struct {}
+
+func (c *customData) DecodeMsgpack(d *msgpack.Decoder) error {
+	return nil
+}
+
+func (c *customData) EncodeMsgpack(e *msgpack.Encoder) error {
+	return nil
+}
+
 opts := tarantool.Opts{...}
 conn, err := tarantool.Connect("127.0.0.1:3301", opts)
 
@@ -524,10 +535,14 @@ cfg := queue.Cfg{
 
 que := queue.New(conn, "test_queue")
 err = que.Create(cfg)
-task, err := que.Put("test_data")
+putData := customData{}
+task, err := que.Put(&putData)
 fmt.Println("Task id is ", task.GetId())
 
-task, err = que.Take() //blocking operation
+takeData := customData{}
+task, err = que.Take(&takeData) //blocking operation
+fmt.Println("Data is ", takeData)
+// same data
 fmt.Println("Data is ", task.GetData())
 task.Ack()
 
