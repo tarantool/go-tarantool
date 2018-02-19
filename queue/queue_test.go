@@ -283,7 +283,7 @@ func TestFifoQueue_TakeTyped(t *testing.T) {
 
 	//Take
 	takeData := &customData{}
-	task, err = q.TakeTimeout(2*time.Second, takeData)
+	task, err = q.TakeTypedTimeout(2*time.Second, takeData)
 	if err != nil {
 		t.Errorf("Failed take from queue: %s", err.Error())
 	} else if task == nil {

@@ -29,14 +29,23 @@ type Queue interface {
 	// Take takes 'ready' task from a tube and marks it as 'in progress'
 	// Note: if connection has a request Timeout, then 0.9 * connection.Timeout is
 	// used as a timeout.
-	// Data will be unpacked to result if provided
-	Take(...interface{}) (*Task, error)
+	Take() (*Task, error)
 	// TakeWithTimout takes 'ready' task from a tube and marks it as "in progress",
 	// or it is timeouted after "timeout" period.
 	// Note: if connection has a request Timeout, and conn.Timeout * 0.9 < timeout
 	// then timeout = conn.Timeout*0.9
-	// data will be unpacked to result if provided
-	TakeTimeout(timeout time.Duration, result ...interface{}) (*Task, error)
+	TakeTimeout(timeout time.Duration) (*Task, error)
+	// Take takes 'ready' task from a tube and marks it as 'in progress'
+	// Note: if connection has a request Timeout, then 0.9 * connection.Timeout is
+	// used as a timeout.
+	// Data will be unpacked to result
+	TakeTyped(interface{}) (*Task, error)
+	// TakeWithTimout takes 'ready' task from a tube and marks it as "in progress",
+	// or it is timeouted after "timeout" period.
+	// Note: if connection has a request Timeout, and conn.Timeout * 0.9 < timeout
+	// then timeout = conn.Timeout*0.9
+	// data will be unpacked to result
+	TakeTypedTimeout(timeout time.Duration, result interface{}) (*Task, error)
 	// Peek returns task by its id.
 	Peek(taskId uint64) (*Task, error)
 	// Kick reverts effect of Task.Bury() for `count` tasks.
@@ -167,21 +176,39 @@ func (q *queue) put(params ...interface{}) (*Task, error) {
 }
 
 // The take request searches for a task in the queue.
-func (q *queue) Take(result ...interface{}) (*Task, error) {
+func (q *queue) Take() (*Task, error) {
 	var params interface{}
 	if q.conn.ConfiguredTimeout() > 0 {
 		params = (q.conn.ConfiguredTimeout() * 9 / 10).Seconds()
 	}
-	return q.take(params, result...)
+	return q.take(params)
 }
 
 // The take request searches for a task in the queue. Waits until a task becomes ready or the timeout expires.
-func (q *queue) TakeTimeout(timeout time.Duration, result ...interface{}) (*Task, error) {
+func (q *queue) TakeTimeout(timeout time.Duration) (*Task, error) {
 	t := q.conn.ConfiguredTimeout() * 9 / 10
 	if t > 0 && timeout > t {
 		timeout = t
 	}
-	return q.take(timeout.Seconds(), result...)
+	return q.take(timeout.Seconds())
+}
+
+// The take request searches for a task in the queue.
+func (q *queue) TakeTyped(result interface{}) (*Task, error) {
+	var params interface{}
+	if q.conn.ConfiguredTimeout() > 0 {
+		params = (q.conn.ConfiguredTimeout() * 9 / 10).Seconds()
+	}
+	return q.take(params, result)
+}
+
+// The take request searches for a task in the queue. Waits until a task becomes ready or the timeout expires.
+func (q *queue) TakeTypedTimeout(timeout time.Duration, result interface{}) (*Task, error) {
+	t := q.conn.ConfiguredTimeout() * 9 / 10
+	if t > 0 && timeout > t {
+		timeout = t
+	}
+	return q.take(timeout.Seconds(), result)
 }
 
 func (q *queue) take(params interface{}, result ...interface{}) (*Task, error) {

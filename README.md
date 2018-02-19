@@ -535,16 +535,30 @@ cfg := queue.Cfg{
 
 que := queue.New(conn, "test_queue")
 err = que.Create(cfg)
+
+// put data
+task, err := que.Put("test_data")
+fmt.Println("Task id is ", task.GetId())
+
+
+// take data
+task, err = que.Take() //blocking operation
+fmt.Println("Data is ", task.GetData())
+task.Ack()
+
+
+// take typed example
 putData := customData{}
-task, err := que.Put(&putData)
+// put data
+task, err = que.Put(&putData)
 fmt.Println("Task id is ", task.GetId())
 
 takeData := customData{}
-task, err = que.Take(&takeData) //blocking operation
+//take data
+task, err = que.TakeTyped(&takeData) //blocking operation
 fmt.Println("Data is ", takeData)
 // same data
 fmt.Println("Data is ", task.GetData())
-task.Ack()
 
 task, err = que.Put([]int{1, 2, 3})
 task.Bury()
