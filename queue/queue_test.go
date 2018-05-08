@@ -457,6 +457,8 @@ func TestFifoQueue_Bury_Kick(t *testing.T) {
 }
 
 func TestFifoQueue_Delete(t *testing.T) {
+	var err error
+
 	conn, err := Connect(server, opts)
 	if err != nil {
 		t.Errorf("Failed to connect: %s", err.Error())
@@ -484,35 +486,50 @@ func TestFifoQueue_Delete(t *testing.T) {
 	}()
 
 	//Put
-	putData := "put_data"
-	task, err := q.Put(putData)
-	if err != nil {
-		t.Errorf("Failed put to queue: %s", err.Error())
-		return
-	} else if err == nil && task == nil {
-		t.Errorf("Task is nil after put")
-		return
-	} else {
-		if task.Data() != putData {
-			t.Errorf("Task data after put not equal with example. %s != %s", task.Data(), putData)
+	var putData = "put_data"
+	var tasks = [2]*queue.Task{}
+
+	for i := 0; i < 2; i++ {
+		tasks[i], err = q.Put(putData)
+		if err != nil {
+			t.Errorf("Failed put to queue: %s", err.Error())
+			return
+		} else if err == nil && tasks[i] == nil {
+			t.Errorf("Task is nil after put")
+			return
+		} else {
+			if tasks[i].Data() != putData {
+				t.Errorf("Task data after put not equal with example. %s != %s", tasks[i].Data(), putData)
+			}
 		}
 	}
 
-	//Delete
-	err = task.Delete()
+	//Delete by task method
+	err = tasks[0].Delete()
 	if err != nil {
 		t.Errorf("Failed bury task %s", err.Error())
 		return
-	} else if !task.IsDone() {
-		t.Errorf("Task status after delete is not done. Status = ", task.Status())
+	} else if !tasks[0].IsDone() {
+		t.Errorf("Task status after delete is not done. Status = ", tasks[0].Status())
+	}
+
+	//Delete by task ID
+	err = q.Delete(tasks[1].Id())
+	if err != nil {
+		t.Errorf("Failed bury task %s", err.Error())
+		return
+	} else if !tasks[0].IsDone() {
+		t.Errorf("Task status after delete is not done. Status = ", tasks[0].Status())
 	}
 
 	//Take
-	task, err = q.TakeTimeout(2 * time.Second)
-	if err != nil {
-		t.Errorf("Failed take from queue: %s", err.Error())
-	} else if task != nil {
-		t.Errorf("Task is not nil after take. Task is %s", task)
+	for i := 0; i < 2; i++ {
+		tasks[i], err = q.TakeTimeout(2 * time.Second)
+		if err != nil {
+			t.Errorf("Failed take from queue: %s", err.Error())
+		} else if tasks[i] != nil {
+			t.Errorf("Task is not nil after take. Task is %s", tasks[i])
+		}
 	}
 }
 

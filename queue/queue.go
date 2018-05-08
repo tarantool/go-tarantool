@@ -50,6 +50,8 @@ type Queue interface {
 	Peek(taskId uint64) (*Task, error)
 	// Kick reverts effect of Task.Bury() for `count` tasks.
 	Kick(count uint64) (uint64, error)
+	// Delete the task identified by its id.
+	Delete(taskId uint64) error
 	// Statistic returns some statistic about queue.
 	Statistic() (interface{}, error)
 }
@@ -268,6 +270,12 @@ func (q *queue) Kick(count uint64) (uint64, error) {
 		id = resp.Data[0].([]interface{})[0].(uint64)
 	}
 	return id, err
+}
+
+// Delete the task identified by its id.
+func (q *queue) Delete(taskId uint64) error {
+    _, err := q._delete(taskId)
+    return err
 }
 
 // Return the number of tasks in a queue broken down by task_state, and the number of requests broken down by the type of request.
