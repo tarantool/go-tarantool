@@ -357,20 +357,21 @@ func (conn *Connection) dial() (err error) {
 		timeout = 5 * time.Second
 	}
 	// Unix socket connection
-	if address[0] == '.' || address[0] == '/' {
+	addrLen := len(address)
+	if addrLen > 0 && (address[0] == '.' || address[0] == '/') {
 		network = "unix"
-	} else if address[0:7] == "unix://" {
+	} else if addrLen >= 7 && address[0:7] == "unix://" {
 		network = "unix"
 		address = address[7:]
-	} else if address[0:5] == "unix:" {
+	} else if addrLen >= 5 && address[0:5] == "unix:" {
 		network = "unix"
 		address = address[5:]
-	} else if address[0:6] == "unix/:" {
+	} else if addrLen >= 6 && address[0:6] == "unix/:" {
 		network = "unix"
 		address = address[6:]
-	} else if address[0:6] == "tcp://" {
+	} else if addrLen >= 6 && address[0:6] == "tcp://" {
 		address = address[6:]
-	} else if address[0:4] == "tcp:" {
+	} else if addrLen >= 4 && address[0:4] == "tcp:" {
 		address = address[4:]
 	}
 	connection, err = net.DialTimeout(network, address, timeout)
