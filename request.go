@@ -1,8 +1,10 @@
 package tarantool
 
 import (
-	"gopkg.in/vmihailenco/msgpack.v2"
+	"errors"
 	"time"
+
+	"gopkg.in/vmihailenco/msgpack.v4"
 )
 
 // Future is a handle for asynchronous request
@@ -14,6 +16,7 @@ type Future struct {
 	err         error
 	ready       chan struct{}
 	next        *Future
+	decoderFactory DecoderFactory
 }
 
 // Ping sends empty request to Tarantool to check connection.
@@ -116,6 +119,37 @@ func (conn *Connection) Call17(functionName string, args interface{}) (resp *Res
 // It is equal to conn.EvalAsync(space, tuple).Get().
 func (conn *Connection) Eval(expr string, args interface{}) (resp *Response, err error) {
 	return conn.EvalAsync(expr, args).Get()
+}
+
+// single used for conn.GetTyped for decode one tuple
+type single struct {
+	res   interface{}
+	found bool
+}
+
+func (s *single) DecodeMsgpack(d *msgpack.Decoder) error {
+	var err error
+	var len int
+	if len, err = d.DecodeArrayLen(); err != nil {
+		return err
+	}
+	if s.found = len >= 1; !s.found {
+		return nil
+	}
+	if len != 1 {
+		return errors.New("Tarantool returns unexpected value for Select(limit=1)")
+	}
+	return d.Decode(s.res)
+}
+
+// GetTyped performs select (with limit = 1 and offset = 0)
+// to box space and fills typed result.
+//
+// It is equal to conn.SelectAsync(space, index, 0, 1, IterEq, key).GetTyped(&result)
+func (conn *Connection) GetTyped(space, index interface{}, key interface{}, result interface{}) (err error) {
+	s := single{res: result}
+	err = conn.SelectAsync(space, index, 0, 1, IterEq, key).GetTyped(&s)
+	return
 }
 
 // SelectTyped performs select to box space and fills typed result.
@@ -347,13 +381,6 @@ func (fut *Future) send(conn *Connection, body func(*msgpack.Encoder) error) *Fu
 		return fut
 	}
 	conn.putFuture(fut, body)
-	if fut.err != nil {
-		if f := conn.fetchFuture(fut.requestId); f == fut {
-			fut.markReady(conn)
-		}
-		return fut
-	}
-
 	return fut
 }
 
@@ -393,7 +420,7 @@ func (fut *Future) Get() (*Response, error) {
 	if fut.err != nil {
 		return fut.resp, fut.err
 	}
-	fut.err = fut.resp.decodeBody()
+	fut.err = fut.resp.decodeBodyWithDecoder(fut.decoderFactory)
 	return fut.resp, fut.err
 }
 
@@ -406,6 +433,11 @@ func (fut *Future) GetTyped(result interface{}) error {
 	if fut.err != nil {
 		return fut.err
 	}
-	fut.err = fut.resp.decodeBodyTyped(result)
+	fut.err = fut.resp.decodeBodyTypedWithDecoder(fut.decoderFactory, result)
 	return fut.err
+}
+
+func (fut *Future) WithDecoderFactory(factory DecoderFactory) *Future {
+	fut.decoderFactory = factory
+	return fut
 }

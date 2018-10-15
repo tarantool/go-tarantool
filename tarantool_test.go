@@ -2,12 +2,13 @@ package tarantool_test
 
 import (
 	"fmt"
-	. "github.com/tarantool/go-tarantool"
-	"gopkg.in/vmihailenco/msgpack.v2"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	. "github.com/tarantool/go-tarantool"
+	"gopkg.in/vmihailenco/msgpack.v4"
 )
 
 type Member struct {
@@ -23,16 +24,16 @@ type Tuple2 struct {
 }
 
 func (m *Member) EncodeMsgpack(e *msgpack.Encoder) error {
-	e.EncodeSliceLen(2)
+	e.EncodeArrayLen(2)
 	e.EncodeString(m.Name)
-	e.EncodeUint(m.Val)
+	e.EncodeUint(uint64(m.Val))
 	return nil
 }
 
 func (m *Member) DecodeMsgpack(d *msgpack.Decoder) error {
 	var err error
 	var l int
-	if l, err = d.DecodeSliceLen(); err != nil {
+	if l, err = d.DecodeArrayLen(); err != nil {
 		return err
 	}
 	if l != 2 {
@@ -48,8 +49,8 @@ func (m *Member) DecodeMsgpack(d *msgpack.Decoder) error {
 }
 
 func (c *Tuple2) EncodeMsgpack(e *msgpack.Encoder) error {
-	e.EncodeSliceLen(3)
-	e.EncodeUint(c.Cid)
+	e.EncodeArrayLen(3)
+	e.EncodeUint(uint64(c.Cid))
 	e.EncodeString(c.Orig)
 	e.Encode(c.Members)
 	return nil
@@ -58,7 +59,7 @@ func (c *Tuple2) EncodeMsgpack(e *msgpack.Encoder) error {
 func (c *Tuple2) DecodeMsgpack(d *msgpack.Decoder) error {
 	var err error
 	var l int
-	if l, err = d.DecodeSliceLen(); err != nil {
+	if l, err = d.DecodeArrayLen(); err != nil {
 		return err
 	}
 	if l != 3 {
@@ -70,7 +71,7 @@ func (c *Tuple2) DecodeMsgpack(d *msgpack.Decoder) error {
 	if c.Orig, err = d.DecodeString(); err != nil {
 		return err
 	}
-	if l, err = d.DecodeSliceLen(); err != nil {
+	if l, err = d.DecodeArrayLen(); err != nil {
 		return err
 	}
 	c.Members = make([]Member, l)
@@ -433,7 +434,7 @@ func TestClient(t *testing.T) {
 		}
 	}
 	//resp, err = conn.Insert(spaceNo, []interface{}{uint(1), "hello", "world"})
-	resp, err = conn.Insert(spaceNo, &Tuple{Id:1, Msg:"hello", Name:"world"})
+	resp, err = conn.Insert(spaceNo, &Tuple{Id: 1, Msg: "hello", Name: "world"})
 	if tntErr, ok := err.(Error); !ok || tntErr.Code != ErrTupleFound {
 		t.Errorf("Expected ErrTupleFound but got: %v", err)
 	}
@@ -605,6 +606,16 @@ func TestClient(t *testing.T) {
 		}
 	}
 
+	// Get Typed
+	var singleTpl = Tuple{}
+	err = conn.GetTyped(spaceNo, indexNo, []interface{}{uint(10)}, &singleTpl)
+	if err != nil {
+		t.Errorf("Failed to GetTyped: %s", err.Error())
+	}
+	if singleTpl.Id != 10 {
+		t.Errorf("Bad value loaded from GetTyped")
+	}
+
 	// Select Typed for one tuple
 	var tpl1 [1]Tuple
 	err = conn.SelectTyped(spaceNo, indexNo, 0, 1, IterEq, []interface{}{uint(10)}, &tpl1)
@@ -617,6 +628,16 @@ func TestClient(t *testing.T) {
 		if tpl[0].Id != 10 {
 			t.Errorf("Bad value loaded from SelectTyped")
 		}
+	}
+
+	// Get Typed Empty
+	var singleTpl2 Tuple
+	err = conn.GetTyped(spaceNo, indexNo, []interface{}{uint(30)}, &singleTpl2)
+	if err != nil {
+		t.Errorf("Failed to GetTyped: %s", err.Error())
+	}
+	if singleTpl2.Id != 0 {
+		t.Errorf("Bad value loaded from GetTyped")
 	}
 
 	// Select Typed Empty
@@ -725,10 +746,10 @@ func TestSchema(t *testing.T) {
 	if space.Fields == nil {
 		t.Errorf("space.Fields is nill")
 	}
-	if len(space.FieldsById) != 3 {
+	if len(space.FieldsById) != 6 {
 		t.Errorf("space.FieldsById len is incorrect")
 	}
-	if len(space.Fields) != 2 {
+	if len(space.Fields) != 6 {
 		t.Errorf("space.Fields len is incorrect")
 	}
 
@@ -755,13 +776,13 @@ func TestSchema(t *testing.T) {
 	if field1.Name != "name1" {
 		t.Errorf("field 1 has incorrect Name")
 	}
-	if field1.Type != "" {
+	if field1.Type != "unsigned" {
 		t.Errorf("field 1 has incorrect Type")
 	}
-	if field2.Name != "" {
+	if field2.Name != "name2" {
 		t.Errorf("field 2 has incorrect Name")
 	}
-	if field2.Type != "type2" {
+	if field2.Type != "string" {
 		t.Errorf("field 2 has incorrect Type")
 	}
 
@@ -960,7 +981,7 @@ func TestComplexStructs(t *testing.T) {
 	}
 	defer conn.Close()
 
-	tuple := Tuple2{Cid:777, Orig:"orig", Members:[]Member{{"lol", "", 1}, {"wut", "", 3}}}
+	tuple := Tuple2{Cid: 777, Orig: "orig", Members: []Member{{"lol", "", 1}, {"wut", "", 3}}}
 	_, err = conn.Replace(spaceNo, &tuple)
 	if err != nil {
 		t.Errorf("Failed to insert: %s", err.Error())

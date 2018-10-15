@@ -1,8 +1,11 @@
 package queue
 
 import (
-	"github.com/tarantool/go-tarantool"
+	"fmt"
 	"time"
+
+	"github.com/tarantool/go-tarantool"
+	msgpack "gopkg.in/vmihailenco/msgpack.v4"
 )
 
 // Queue is a handle to tarantool queue's tube
@@ -14,7 +17,7 @@ type Queue interface {
 	// Note: it uses Eval, so user needs 'execute universe' privilege
 	// Note: you'd better not use this function in your application, cause it is
 	// administrative task to create or delete queue.
-	Create(cfg Cfg) (error)
+	Create(cfg Cfg) error
 	// Drop destroys tube.
 	// Note: you'd better not use this function in your application, cause it is
 	// administrative task to create or delete queue.
@@ -32,10 +35,23 @@ type Queue interface {
 	// Note: if connection has a request Timeout, and conn.Timeout * 0.9 < timeout
 	// then timeout = conn.Timeout*0.9
 	TakeTimeout(timeout time.Duration) (*Task, error)
+	// Take takes 'ready' task from a tube and marks it as 'in progress'
+	// Note: if connection has a request Timeout, then 0.9 * connection.Timeout is
+	// used as a timeout.
+	// Data will be unpacked to result
+	TakeTyped(interface{}) (*Task, error)
+	// TakeWithTimout takes 'ready' task from a tube and marks it as "in progress",
+	// or it is timeouted after "timeout" period.
+	// Note: if connection has a request Timeout, and conn.Timeout * 0.9 < timeout
+	// then timeout = conn.Timeout*0.9
+	// data will be unpacked to result
+	TakeTypedTimeout(timeout time.Duration, result interface{}) (*Task, error)
 	// Peek returns task by its id.
 	Peek(taskId uint64) (*Task, error)
 	// Kick reverts effect of Task.Bury() for `count` tasks.
 	Kick(count uint64) (uint64, error)
+	// Delete the task identified by its id.
+	Delete(taskId uint64) error
 	// Statistic returns some statistic about queue.
 	Statistic() (interface{}, error)
 }
@@ -151,40 +167,61 @@ func (q *queue) PutWithOpts(data interface{}, cfg Opts) (*Task, error) {
 }
 
 func (q *queue) put(params ...interface{}) (*Task, error) {
-	var task *Task
-	resp, err := q.conn.Call(q.cmds.put, params)
-	if err == nil {
-		task, err = toTask(resp.Data, q)
+	qd := queueData{
+		result: params[0],
+		q:      q,
 	}
-
-	return task, err
+	if err := q.conn.CallTyped(q.cmds.put, params, &qd); err != nil {
+		return nil, err
+	}
+	return qd.task, nil
 }
 
 // The take request searches for a task in the queue.
 func (q *queue) Take() (*Task, error) {
 	var params interface{}
 	if q.conn.ConfiguredTimeout() > 0 {
-		params = q.conn.ConfiguredTimeout().Seconds()
+		params = (q.conn.ConfiguredTimeout() * 9 / 10).Seconds()
 	}
 	return q.take(params)
 }
 
 // The take request searches for a task in the queue. Waits until a task becomes ready or the timeout expires.
 func (q *queue) TakeTimeout(timeout time.Duration) (*Task, error) {
-	t := q.conn.ConfiguredTimeout()
+	t := q.conn.ConfiguredTimeout() * 9 / 10
 	if t > 0 && timeout > t {
 		timeout = t
 	}
 	return q.take(timeout.Seconds())
 }
 
-func (q *queue) take(params interface{}) (*Task, error) {
-	var t *Task
-	resp, err := q.conn.Call(q.cmds.take, []interface{}{params})
-	if err == nil {
-		t, err = toTask(resp.Data, q)
+// The take request searches for a task in the queue.
+func (q *queue) TakeTyped(result interface{}) (*Task, error) {
+	var params interface{}
+	if q.conn.ConfiguredTimeout() > 0 {
+		params = (q.conn.ConfiguredTimeout() * 9 / 10).Seconds()
 	}
-	return t, err
+	return q.take(params, result)
+}
+
+// The take request searches for a task in the queue. Waits until a task becomes ready or the timeout expires.
+func (q *queue) TakeTypedTimeout(timeout time.Duration, result interface{}) (*Task, error) {
+	t := q.conn.ConfiguredTimeout() * 9 / 10
+	if t > 0 && timeout > t {
+		timeout = t
+	}
+	return q.take(timeout.Seconds(), result)
+}
+
+func (q *queue) take(params interface{}, result ...interface{}) (*Task, error) {
+	qd := queueData{q: q}
+	if len(result) > 0 {
+		qd.result = result[0]
+	}
+	if err := q.conn.CallTyped(q.cmds.take, []interface{}{params}, &qd); err != nil {
+		return nil, err
+	}
+	return qd.task, nil
 }
 
 // Drop queue.
@@ -195,14 +232,11 @@ func (q *queue) Drop() error {
 
 // Look at a task without changing its state.
 func (q *queue) Peek(taskId uint64) (*Task, error) {
-	resp, err := q.conn.Call(q.cmds.peek, []interface{}{taskId})
-	if err != nil {
+	qd := queueData{q: q}
+	if err := q.conn.CallTyped(q.cmds.peek, []interface{}{taskId}, &qd); err != nil {
 		return nil, err
 	}
-
-	t, err := toTask(resp.Data, q)
-
-	return t, err
+	return qd.task, nil
 }
 
 func (q *queue) _ack(taskId uint64) (string, error) {
@@ -221,16 +255,11 @@ func (q *queue) _release(taskId uint64, cfg Opts) (string, error) {
 	return q.produce(q.cmds.release, taskId, cfg.toMap())
 }
 func (q *queue) produce(cmd string, params ...interface{}) (string, error) {
-	resp, err := q.conn.Call(cmd, params)
-	if err != nil {
+	qd := queueData{q: q}
+	if err := q.conn.CallTyped(cmd, params, &qd); err != nil || qd.task == nil {
 		return "", err
 	}
-
-	t, err := toTask(resp.Data, q)
-	if err != nil {
-		return "", err
-	}
-	return t.status, nil
+	return qd.task.status, nil
 }
 
 // Reverse the effect of a bury request on one or more tasks.
@@ -241,6 +270,12 @@ func (q *queue) Kick(count uint64) (uint64, error) {
 		id = resp.Data[0].([]interface{})[0].(uint64)
 	}
 	return id, err
+}
+
+// Delete the task identified by its id.
+func (q *queue) Delete(taskId uint64) error {
+    _, err := q._delete(taskId)
+    return err
 }
 
 // Return the number of tasks in a queue broken down by task_state, and the number of requests broken down by the type of request.
@@ -275,18 +310,26 @@ func makeCmd(q *queue) {
 	}
 }
 
-func toTask(responseData []interface{}, q *queue) (*Task, error) {
-	if len(responseData) != 0 {
-		data, ok := responseData[0].([]interface{})
-		if ok && len(data) >= 3 {
-			return &Task{
-				data[0].(uint64),
-				data[1].(string),
-				data[2],
-				q,
-			}, nil
-		}
+type queueData struct {
+	q      *queue
+	task   *Task
+	result interface{}
+}
+
+func (qd *queueData) DecodeMsgpack(d *msgpack.Decoder) error {
+	var err error
+	var l int
+	if l, err = d.DecodeSliceLen(); err != nil {
+		return err
+	}
+	if l > 1 {
+		return fmt.Errorf("array len doesn't match for queue data: %d", l)
+	}
+	if l == 0 {
+		return nil
 	}
 
-	return nil, nil
+	qd.task = &Task{data: qd.result, q: qd.q}
+	d.Decode(&qd.task)
+	return nil
 }

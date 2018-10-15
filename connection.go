@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"gopkg.in/vmihailenco/msgpack.v2"
 	"io"
 	"log"
 	"net"
@@ -13,6 +12,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"gopkg.in/vmihailenco/msgpack.v4"
 )
 
 const requestsMap = 128
@@ -23,6 +24,7 @@ const (
 )
 
 type ConnEventKind int
+type ConnLogKind int
 
 const (
 	// Connect signals that connection is established or reestablished
@@ -33,6 +35,15 @@ const (
 	ReconnectFailed
 	// Either reconnect attempts exhausted, or explicit Close is called
 	Closed
+
+	// LogReconnectFailed is logged when reconnect attempt failed
+	LogReconnectFailed ConnLogKind = iota + 1
+	// LogLastReconnectFailed is logged when last reconnect attempt failed,
+	// connection will be closed after that.
+	LogLastReconnectFailed
+	// LogUnexpectedResultId is logged when response with unknown id were received.
+	// Most probably it is due to request timeout.
+	LogUnexpectedResultId
 )
 
 // ConnEvent is sent throw Notify channel specified in Opts
@@ -43,6 +54,31 @@ type ConnEvent struct {
 }
 
 var epoch = time.Now()
+
+// Logger is logger type expected to be passed in options.
+type Logger interface {
+	Report(event ConnLogKind, conn *Connection, v ...interface{})
+}
+
+type defaultLogger struct{}
+
+func (d defaultLogger) Report(event ConnLogKind, conn *Connection, v ...interface{}) {
+	switch event {
+	case LogReconnectFailed:
+		reconnects := v[0].(uint)
+		err := v[1].(error)
+		log.Printf("tarantool: reconnect (%d/%d) to %s failed: %s\n", reconnects, conn.opts.MaxReconnects, conn.addr, err.Error())
+	case LogLastReconnectFailed:
+		err := v[0].(error)
+		log.Printf("tarantool: last reconnect to %s failed: %s, giving it up.\n", conn.addr, err.Error())
+	case LogUnexpectedResultId:
+		resp := v[0].(*Response)
+		log.Printf("tarantool: connection %s got unexpected resultId (%d) in response", conn.addr, resp.RequestId)
+	default:
+		args := append([]interface{}{"tarantool: unexpecting event ", event, conn}, v...)
+		log.Print(args...)
+	}
+}
 
 // Connection is a handle to Tarantool.
 //
@@ -159,6 +195,8 @@ type Opts struct {
 	Notify chan<- ConnEvent
 	// Handle is user specified value, that could be retrivied with Handle() method
 	Handle interface{}
+	// Logger is user specified logger used for error messages
+	Logger Logger
 }
 
 // Connect creates and configures new Connection
@@ -222,8 +260,17 @@ func Connect(addr string, opts Opts) (conn *Connection, err error) {
 		}
 	}
 
+	if conn.opts.Logger == nil {
+		conn.opts.Logger = defaultLogger{}
+	}
+
 	if err = conn.createConnection(false); err != nil {
+		ter, ok := err.(Error)
 		if conn.opts.Reconnect <= 0 {
+			return nil, err
+		} else if ok && (ter.Code == ErrNoSuchUser ||
+			ter.Code == ErrPasswordMismatch) {
+			/* reported auth errors immediatly */
 			return nil, err
 		} else {
 			// without SkipSchema it is useless
@@ -270,6 +317,11 @@ func (conn *Connection) Close() error {
 	return conn.closeConnection(err, true)
 }
 
+// Addr is configured address of Tarantool socket
+func (conn *Connection) Addr() string {
+	return conn.addr
+}
+
 // RemoteAddr is address of Tarantool socket
 func (conn *Connection) RemoteAddr() string {
 	conn.mutex.Lock()
@@ -306,20 +358,21 @@ func (conn *Connection) dial() (err error) {
 		timeout = 5 * time.Second
 	}
 	// Unix socket connection
-	if address[0] == '.' || address [0] == '/' {
+	addrLen := len(address)
+	if addrLen > 0 && (address[0] == '.' || address[0] == '/') {
 		network = "unix"
-	} else if address[0:7] == "unix://" {
+	} else if addrLen >= 7 && address[0:7] == "unix://" {
 		network = "unix"
 		address = address[7:]
-	} else if address[0:5] == "unix:" {
+	} else if addrLen >= 5 && address[0:5] == "unix:" {
 		network = "unix"
 		address = address[5:]
-	} else if address[0:6] == "unix/:" {
+	} else if addrLen >= 6 && address[0:6] == "unix/:" {
 		network = "unix"
 		address = address[6:]
-	} else if address[0:6] == "tcp://" {
+	} else if addrLen >= 6 && address[0:6] == "tcp://" {
 		address = address[6:]
-	} else if address[0:4] == "tcp:" {
+	} else if addrLen >= 4 && address[0:4] == "tcp:" {
 		address = address[4:]
 	}
 	connection, err = net.DialTimeout(network, address, timeout)
@@ -425,12 +478,12 @@ func (conn *Connection) createConnection(reconnect bool) (err error) {
 			return
 		}
 		if conn.opts.MaxReconnects > 0 && reconnects > conn.opts.MaxReconnects {
-			log.Printf("tarantool: last reconnect to %s failed: %s, giving it up.\n", conn.addr, err.Error())
+			conn.opts.Logger.Report(LogLastReconnectFailed, conn, err)
 			err = ClientError{ErrConnectionClosed, "last reconnect failed"}
 			// mark connection as closed to avoid reopening by another goroutine
 			return
 		}
-		log.Printf("tarantool: reconnect (%d/%d) to %s failed: %s\n", reconnects, conn.opts.MaxReconnects, conn.addr, err.Error())
+		conn.opts.Logger.Report(LogReconnectFailed, conn, reconnects, err)
 		conn.notify(ReconnectFailed)
 		reconnects++
 		conn.mutex.Unlock()
@@ -589,13 +642,15 @@ func (conn *Connection) reader(r *bufio.Reader, c net.Conn) {
 			fut.resp = resp
 			fut.markReady(conn)
 		} else {
-			log.Printf("tarantool: unexpected requestId (%d) in response", uint(resp.RequestId))
+			conn.opts.Logger.Report(LogUnexpectedResultId, conn, resp)
 		}
 	}
 }
 
 func (conn *Connection) newFuture(requestCode int32) (fut *Future) {
-	fut = &Future{}
+	fut = &Future{
+		decoderFactory: DefaultDecoder,
+	}
 	if conn.rlimit != nil && conn.opts.RLimitAction == RLimitDrop {
 		select {
 		case conn.rlimit <- struct{}{}:
@@ -665,8 +720,26 @@ func (conn *Connection) putFuture(fut *Future, body func(*msgpack.Encoder) error
 	blen := len(shard.buf)
 	if err := fut.pack(&shard.buf, shard.enc, body); err != nil {
 		shard.buf = shard.buf[:blen]
-		fut.err = err
 		shard.bufmut.Unlock()
+		if f := conn.fetchFuture(fut.requestId); f == fut {
+			fut.markReady(conn)
+			fut.err = err
+		} else if f != nil {
+			/* in theory, it is possible. In practice, you have
+			 * to have race condition that lasts hours */
+			panic("Unknown future")
+		} else {
+			fut.wait()
+			if fut.err == nil {
+				panic("Future removed from queue without error")
+			}
+			if _, ok := fut.err.(ClientError); ok {
+				// packing error is more important than connection
+				// error, because it is indication of programmer's
+				// mistake.
+				fut.err = err
+			}
+		}
 		return
 	}
 	shard.bufmut.Unlock()
@@ -798,4 +871,13 @@ func (conn *Connection) nextRequestId() (requestId uint32) {
 // ConfiguredTimeout returns timeout from connection config
 func (conn *Connection) ConfiguredTimeout() time.Duration {
 	return conn.opts.Timeout
+}
+
+// OverrideSchema sets Schema for the connection
+func (conn *Connection) OverrideSchema(s *Schema) {
+	if s != nil {
+		conn.mutex.Lock()
+		defer conn.mutex.Unlock()
+		conn.Schema = s
+	}
 }

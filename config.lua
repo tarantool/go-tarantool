@@ -9,7 +9,7 @@ local s = box.schema.space.create('test', {
     id = 512,
     if_not_exists = true,
 })
-s:create_index('primary', {type = 'tree', parts = {1, 'NUM'}, if_not_exists = true})
+s:create_index('primary', {type = 'tree', parts = {1, 'uint'}, if_not_exists = true})
 
 local st = box.schema.space.create('schematest', {
     id = 514,
@@ -17,14 +17,17 @@ local st = box.schema.space.create('schematest', {
     if_not_exists = true,
     field_count = 7,
     format = {
-        [2] = {name = "name1"},
-        [3] = {type = "type2"},
-        [6] = {name = "name5", type = "str", more = "extra"},
+        {name = "name0", type = "unsigned"},
+        {name = "name1", type = "unsigned"},
+        {name = "name2", type = "string"},
+        {name = "name3", type = "unsigned"},
+        {name = "name4", type = "unsigned"},
+        {name = "name5", type = "string"},
     },
 })
 st:create_index('primary', {
     type = 'hash', 
-    parts = {1, 'NUM'}, 
+    parts = {1, 'uint'}, 
     unique = true,
     if_not_exists = true,
 })
@@ -32,7 +35,7 @@ st:create_index('secondary', {
     id = 3,
     type = 'tree',
     unique = false,
-    parts = { 2, 'num', 3, 'STR' },
+    parts = { 2, 'uint', 3, 'string' },
     if_not_exists = true,
 })
 st:truncate()
