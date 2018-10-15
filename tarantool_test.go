@@ -2,12 +2,13 @@ package tarantool_test
 
 import (
 	"fmt"
-	. "github.com/tarantool/go-tarantool"
-	"gopkg.in/vmihailenco/msgpack.v2"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	. "github.com/tarantool/go-tarantool"
+	"gopkg.in/vmihailenco/msgpack.v4"
 )
 
 type Member struct {
