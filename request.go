@@ -16,6 +16,7 @@ type Future struct {
 	err         error
 	ready       chan struct{}
 	next        *Future
+	decoderFactory DecoderFactory
 }
 
 // Ping sends empty request to Tarantool to check connection.
@@ -129,7 +130,7 @@ type single struct {
 func (s *single) DecodeMsgpack(d *msgpack.Decoder) error {
 	var err error
 	var len int
-	if len, err = d.DecodeSliceLen(); err != nil {
+	if len, err = d.DecodeArrayLen(); err != nil {
 		return err
 	}
 	if s.found = len >= 1; !s.found {
@@ -419,7 +420,7 @@ func (fut *Future) Get() (*Response, error) {
 	if fut.err != nil {
 		return fut.resp, fut.err
 	}
-	fut.err = fut.resp.decodeBody()
+	fut.err = fut.resp.decodeBodyWithDecoder(fut.decoderFactory)
 	return fut.resp, fut.err
 }
 
@@ -432,6 +433,11 @@ func (fut *Future) GetTyped(result interface{}) error {
 	if fut.err != nil {
 		return fut.err
 	}
-	fut.err = fut.resp.decodeBodyTyped(result)
+	fut.err = fut.resp.decodeBodyTypedWithDecoder(fut.decoderFactory, result)
 	return fut.err
+}
+
+func (fut *Future) WithDecoderFactory(factory DecoderFactory) *Future {
+	fut.decoderFactory = factory
+	return fut
 }

@@ -24,16 +24,16 @@ type Tuple2 struct {
 }
 
 func (m *Member) EncodeMsgpack(e *msgpack.Encoder) error {
-	e.EncodeSliceLen(2)
+	e.EncodeArrayLen(2)
 	e.EncodeString(m.Name)
-	e.EncodeUint(m.Val)
+	e.EncodeUint(uint64(m.Val))
 	return nil
 }
 
 func (m *Member) DecodeMsgpack(d *msgpack.Decoder) error {
 	var err error
 	var l int
-	if l, err = d.DecodeSliceLen(); err != nil {
+	if l, err = d.DecodeArrayLen(); err != nil {
 		return err
 	}
 	if l != 2 {
@@ -49,8 +49,8 @@ func (m *Member) DecodeMsgpack(d *msgpack.Decoder) error {
 }
 
 func (c *Tuple2) EncodeMsgpack(e *msgpack.Encoder) error {
-	e.EncodeSliceLen(3)
-	e.EncodeUint(c.Cid)
+	e.EncodeArrayLen(3)
+	e.EncodeUint(uint64(c.Cid))
 	e.EncodeString(c.Orig)
 	e.Encode(c.Members)
 	return nil
@@ -59,7 +59,7 @@ func (c *Tuple2) EncodeMsgpack(e *msgpack.Encoder) error {
 func (c *Tuple2) DecodeMsgpack(d *msgpack.Decoder) error {
 	var err error
 	var l int
-	if l, err = d.DecodeSliceLen(); err != nil {
+	if l, err = d.DecodeArrayLen(); err != nil {
 		return err
 	}
 	if l != 3 {
@@ -71,7 +71,7 @@ func (c *Tuple2) DecodeMsgpack(d *msgpack.Decoder) error {
 	if c.Orig, err = d.DecodeString(); err != nil {
 		return err
 	}
-	if l, err = d.DecodeSliceLen(); err != nil {
+	if l, err = d.DecodeArrayLen(); err != nil {
 		return err
 	}
 	c.Members = make([]Member, l)

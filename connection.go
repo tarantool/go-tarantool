@@ -648,7 +648,9 @@ func (conn *Connection) reader(r *bufio.Reader, c net.Conn) {
 }
 
 func (conn *Connection) newFuture(requestCode int32) (fut *Future) {
-	fut = &Future{}
+	fut = &Future{
+		decoderFactory: DefaultDecoder,
+	}
 	if conn.rlimit != nil && conn.opts.RLimitAction == RLimitDrop {
 		select {
 		case conn.rlimit <- struct{}{}:
