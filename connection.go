@@ -171,7 +171,7 @@ type Opts struct {
 	User string
 	// Pass is password for authorization
 	Pass string
-	// RateLimit limits number of 'in-fly' request, ie aready putted into
+	// RateLimit limits number of 'in-fly' request, ie already put into
 	// requests queue, but not yet answered by server or timeouted.
 	// It is disabled by default.
 	// See RLimitAction for possible actions when RateLimit.reached.
