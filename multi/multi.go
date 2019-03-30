@@ -226,7 +226,7 @@ func (connMulti *ConnectionMulti) Update(space, index interface{}, key, ops inte
 }
 
 func (connMulti *ConnectionMulti) Upsert(space interface{}, tuple, ops interface{}) (resp *tarantool.Response, err error) {
-	return connMulti.Upsert(space, tuple, ops)
+	return connMulti.getCurrentConnection().Upsert(space, tuple, ops)
 }
 
 func (connMulti *ConnectionMulti) Call(functionName string, args interface{}) (resp *tarantool.Response, err error) {
