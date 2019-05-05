@@ -1,0 +1,11 @@
+version: "3.3"
+
+services:
+  tarantool_queue:
+    image: tarantool/tarantool:1.10.3
+    container_name: tarantool_queue
+    command: ["tarantool", "/opt/tarantool/entrypoint/config.lua"]
+    volumes:
+      - ./queue/config.lua:/opt/tarantool/entrypoint/config.lua
+    ports:
+      - "3013:3013"

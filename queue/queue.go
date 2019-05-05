@@ -103,6 +103,7 @@ type Opts struct {
 	Ttl   time.Duration // task time to live
 	Ttr   time.Duration // task time to execute
 	Delay time.Duration // delayed execution
+	Utube string
 }
 
 func (opts Opts) toMap() map[string]interface{} {
@@ -122,6 +123,10 @@ func (opts Opts) toMap() map[string]interface{} {
 
 	if opts.Pri != 0 {
 		ret["pri"] = opts.Pri
+	}
+	
+	if opts.Utube != "" {
+		ret["utube"] = opts.Utube
 	}
 
 	return ret
@@ -276,8 +281,8 @@ func (q *queue) Kick(count uint64) (uint64, error) {
 
 // Delete the task identified by its id.
 func (q *queue) Delete(taskId uint64) error {
-    _, err := q._delete(taskId)
-    return err
+	_, err := q._delete(taskId)
+	return err
 }
 
 // Return the number of tasks in a queue broken down by task_state, and the number of requests broken down by the type of request.

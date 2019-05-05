@@ -2,6 +2,7 @@ package queue_test
 
 import (
 	"fmt"
+	"math"
 	"testing"
 	"time"
 
@@ -11,10 +12,13 @@ import (
 )
 
 var server = "127.0.0.1:3013"
+
 var opts = Opts{
-	Timeout: 500 * time.Millisecond,
-	User:    "test",
-	Pass:    "test",
+	Timeout:       5 * time.Second,
+	User:          "test",
+	Pass:          "test",
+	MaxReconnects: 10,
+	Reconnect:     500 * time.Millisecond,
 	//Concurrency: 32,
 	//RateLimit: 4*1024,
 }
@@ -745,5 +749,75 @@ func TestTtlQueue_Put(t *testing.T) {
 		} else if !task.IsDone() {
 			t.Errorf("Task status after take is not done. Status = %s", task.Status())
 		}
+	}
+}
+
+func TestUtube_Put(t *testing.T) {
+	conn, err := Connect(server, opts)
+	if err != nil {
+		t.Errorf("Failed to connect: %s", err.Error())
+		return
+	}
+	if conn == nil {
+		t.Errorf("conn is nil after Connect")
+		return
+	}
+	defer conn.Close()
+
+	name := "test_utube"
+	cfg := queue.Cfg{
+		Temporary:   true,
+		Kind:        queue.UTUBE,
+		IfNotExists: true,
+	}
+	q := queue.New(conn, name)
+	if err = q.Create(cfg); err != nil {
+		t.Errorf("Failed to create queue: %s", err.Error())
+		return
+	}
+	defer func() {
+		//Drop
+		err := q.Drop()
+		if err != nil {
+			t.Errorf("Failed drop queue: %s", err.Error())
+		}
+	}()
+
+	data1 := &customData{"test-data-0"}
+	_, err = q.PutWithOpts(data1, queue.Opts{Utube: "test-utube-consumer-key"})
+	if err != nil {
+		t.Fatalf("Failed put task to queue: %s", err.Error())
+	}
+	data2 := &customData{"test-data-1"}
+	_, err = q.PutWithOpts(data2, queue.Opts{Utube: "test-utube-consumer-key"})
+	if err != nil {
+		t.Fatalf("Failed put task to queue: %s", err.Error())
+	}
+
+	go func() {
+		t1, err := q.TakeTimeout(2 * time.Second)
+		if err != nil {
+			t.Fatalf("Failed to take task from utube: %s", err.Error())
+		}
+
+		time.Sleep(2 * time.Second)
+		if err := t1.Ack(); err != nil {
+			t.Fatalf("Failed to ack task: %s", err.Error())
+		}
+	}()
+
+	time.Sleep(100 * time.Millisecond)
+	// the queue should be blocked for ~2 seconds
+	start := time.Now()
+	t2, err := q.TakeTimeout(2 * time.Second)
+	if err != nil {
+		t.Fatalf("Failed to take task from utube: %s", err.Error())
+	}
+	if err := t2.Ack(); err != nil {
+		t.Fatalf("Failed to ack task: %s", err.Error())
+	}
+	end := time.Now()
+	if math.Abs(float64(end.Sub(start)-2*time.Second)) > float64(200*time.Millisecond) {
+		t.Fatalf("Blocking time is less than expected: actual = %.2fs, expected = 1s", end.Sub(start).Seconds())
 	}
 }
