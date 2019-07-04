@@ -614,6 +614,21 @@ Features of the implementation:
 - If you use connection timeout and call `TakeWithTimeout` with parameter greater than the connection timeout then parameter reduced to it
 - If you use connection timeout and call `Take` then we return a error if we can not take task from queue in a time equal to the connection timeout
 
+## Multi connections
+
+You can use multiple connections config with tatantool/multi. 
+
+Main features:
+
+- Check active connection with configurable time interval and on connection fail switch to next in pool.
+- Get addresses list from server and reconfigure to use in MultiConnection.
+
+Additional options (configurable via `ConnectWithOpts`):
+
+* `CheckTimeout` - time interval to check for connection timeout and try to switch connection
+* `ClusterDiscoveryTime` - time interval to ask server for updated address list (works on with `NodesGetFunctionName` set)
+* `NodesGetFunctionName` - server lua function name to call for getting address list
+
 ## Alternative connectors
 
 - https://github.com/viciious/go-tarantool

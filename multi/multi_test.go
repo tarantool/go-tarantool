@@ -10,9 +10,15 @@ import (
 var server1 = "127.0.0.1:3013"
 var server2 = "127.0.0.1:3014"
 var connOpts = tarantool.Opts{
-	Timeout: 	500 * time.Millisecond,
-	User:    	"test",
-	Pass:    	"test",
+	Timeout: 500 * time.Millisecond,
+	User:    "test",
+	Pass:    "test",
+}
+
+var connOptsMulti = OptsMulti{
+	CheckTimeout:         1 * time.Second,
+	NodesGetFunctionName: "get_cluster_nodes",
+	ClusterDiscoveryTime: 3 * time.Second,
 }
 
 func TestConnError_IncorrectParams(t *testing.T) {
@@ -170,3 +176,30 @@ func TestClose(t *testing.T) {
 	}
 }
 
+func TestRefresh(t *testing.T) {
+
+	multiConn, _ := ConnectWithOpts([]string{server1, server2}, connOpts, connOptsMulti)
+	if multiConn == nil {
+		t.Errorf("conn is nil after Connect")
+		return
+	}
+	curAddr := multiConn.addrs[0]
+
+	time.Sleep(10 * time.Second)
+
+	// wait for refresh timer
+	newAddr := multiConn.addrs[0]
+
+	if curAddr == newAddr {
+		t.Errorf("Expect address refresh")
+	}
+
+	if !multiConn.ConnectedNow() {
+		t.Errorf("Expect connection to exist")
+	}
+
+	_, err := multiConn.Call(multiConn.opts.NodesGetFunctionName, []interface{}{})
+	if err != nil {
+		t.Error("Expect to get data after reconnect")
+	}
+}

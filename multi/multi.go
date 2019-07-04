@@ -2,22 +2,32 @@ package multi
 
 import (
 	"errors"
-	"github.com/tarantool/go-tarantool"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/tarantool/go-tarantool"
 )
 
 const (
-	connConnected  = iota
+	connConnected = iota
 	connClosed
 )
 
 var (
-	ErrEmptyAddrs = errors.New("addrs should not be empty")
+	ErrEmptyAddrs        = errors.New("addrs should not be empty")
 	ErrWrongCheckTimeout = errors.New("wrong check timeout, must be greater than 0")
-	ErrNoConnection = errors.New("no active connections")
+	ErrNoConnection      = errors.New("no active connections")
 )
+
+func indexOf(sstring string, data []string) int {
+	for i, v := range data {
+		if sstring == v {
+			return i
+		}
+	}
+	return -1
+}
 
 type ConnectionMulti struct {
 	addrs    []string
@@ -35,7 +45,9 @@ type ConnectionMulti struct {
 var _ = tarantool.Connector(&ConnectionMulti{}) // check compatibility with connector interface
 
 type OptsMulti struct {
-	CheckTimeout time.Duration
+	CheckTimeout         time.Duration
+	NodesGetFunctionName string
+	ClusterDiscoveryTime time.Duration
 }
 
 func ConnectWithOpts(addrs []string, connOpts tarantool.Opts, opts OptsMulti) (connMulti *ConnectionMulti, err error) {
@@ -45,16 +57,19 @@ func ConnectWithOpts(addrs []string, connOpts tarantool.Opts, opts OptsMulti) (c
 	if opts.CheckTimeout <= 0 {
 		return nil, ErrWrongCheckTimeout
 	}
+	if opts.ClusterDiscoveryTime <= 0 {
+		opts.ClusterDiscoveryTime = 60 * time.Second
+	}
 
-	notify := make(chan tarantool.ConnEvent, 10 * len(addrs)) // x10 to accept disconnected and closed event (with a margin)
+	notify := make(chan tarantool.ConnEvent, 10*len(addrs)) // x10 to accept disconnected and closed event (with a margin)
 	connOpts.Notify = notify
 	connMulti = &ConnectionMulti{
-		addrs:    	addrs,
-		connOpts: 	connOpts,
-		opts:     	opts,
-		notify:   	notify,
-		control:  	make(chan struct{}),
-		pool:		make(map[string]*tarantool.Connection),
+		addrs:    addrs,
+		connOpts: connOpts,
+		opts:     opts,
+		notify:   notify,
+		control:  make(chan struct{}),
+		pool:     make(map[string]*tarantool.Connection),
 	}
 	somebodyAlive, _ := connMulti.warmUp()
 	if !somebodyAlive {
@@ -117,7 +132,9 @@ func (connMulti *ConnectionMulti) deleteConnectionFromPool(addr string) {
 
 func (connMulti *ConnectionMulti) checker() {
 	for connMulti.getState() != connClosed {
+		refreshTimer := time.NewTimer(connMulti.opts.ClusterDiscoveryTime)
 		timer := time.NewTimer(connMulti.opts.CheckTimeout)
+
 		select {
 		case <-connMulti.control:
 			return
@@ -136,6 +153,39 @@ func (connMulti *ConnectionMulti) checker() {
 				} else {
 					connMulti.deleteConnectionFromPool(addr)
 				}
+			}
+		case <-refreshTimer.C:
+			if connMulti.getState() == connClosed || connMulti.opts.NodesGetFunctionName == "" {
+				continue
+			}
+			resp, err := connMulti.Call17(connMulti.opts.NodesGetFunctionName, []interface{}{})
+			if err != nil {
+				continue
+			}
+			if len(resp.Data) > 0 {
+				data := resp.Data[0].([]interface{})
+				addrs := make([]string, len(data))
+				for i, v := range data {
+					addrs[i] = v.(string)
+					// Fill pool with new connections
+					if indexOf(addrs[i], connMulti.addrs) < 0 {
+						conn, _ := tarantool.Connect(addrs[i], connMulti.connOpts)
+						if conn != nil {
+							connMulti.setConnectionToPool(addrs[i], conn)
+						}
+					}
+				}
+				// Clear pool from obsolete connections
+				for _, v := range connMulti.addrs {
+					if indexOf(v, addrs) < 0 {
+						con, ok := connMulti.getConnectionFromPool(v)
+						if con != nil && ok {
+							con.Close()
+						}
+						connMulti.deleteConnectionFromPool(v)
+					}
+				}
+				connMulti.addrs = addrs
 			}
 		case <-timer.C:
 			for _, addr := range connMulti.addrs {
