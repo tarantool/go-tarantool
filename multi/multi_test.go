@@ -16,7 +16,7 @@ var connOpts = tarantool.Opts{
 }
 
 var connOptsMulti = OptsMulti{
-	CheckTimeout:         1 * time.Second,
+	CheckTimeout:         5 * time.Second,
 	NodesGetFunctionName: "get_cluster_nodes",
 	ClusterDiscoveryTime: 3 * time.Second,
 }
@@ -185,9 +185,10 @@ func TestRefresh(t *testing.T) {
 	}
 	curAddr := multiConn.addrs[0]
 
-	time.Sleep(10 * time.Second)
-
 	// wait for refresh timer
+	// scenario 1 nodeload, 1 refresh, 1 nodeload
+	time.Sleep(7 * time.Second)
+
 	newAddr := multiConn.addrs[0]
 
 	if curAddr == newAddr {

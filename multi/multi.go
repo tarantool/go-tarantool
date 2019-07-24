@@ -158,20 +158,19 @@ func (connMulti *ConnectionMulti) checker() {
 			if connMulti.getState() == connClosed || connMulti.opts.NodesGetFunctionName == "" {
 				continue
 			}
-			resp, err := connMulti.Call17(connMulti.opts.NodesGetFunctionName, []interface{}{})
+			var resp [][]string
+			err := connMulti.Call17Typed(connMulti.opts.NodesGetFunctionName, []interface{}{}, &resp)
 			if err != nil {
 				continue
 			}
-			if len(resp.Data) > 0 {
-				data := resp.Data[0].([]interface{})
-				addrs := make([]string, len(data))
-				for i, v := range data {
-					addrs[i] = v.(string)
-					// Fill pool with new connections
-					if indexOf(addrs[i], connMulti.addrs) < 0 {
-						conn, _ := tarantool.Connect(addrs[i], connMulti.connOpts)
+			if len(resp) > 0 && len(resp[0]) > 0 {
+				addrs := resp[0]
+				// Fill pool with new connections
+				for _, v := range addrs {
+					if indexOf(v, connMulti.addrs) < 0 {
+						conn, _ := tarantool.Connect(v, connMulti.connOpts)
 						if conn != nil {
-							connMulti.setConnectionToPool(addrs[i], conn)
+							connMulti.setConnectionToPool(v, conn)
 						}
 					}
 				}
