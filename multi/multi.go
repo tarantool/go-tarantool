@@ -131,9 +131,13 @@ func (connMulti *ConnectionMulti) deleteConnectionFromPool(addr string) {
 }
 
 func (connMulti *ConnectionMulti) checker() {
+
+	refreshTimer := time.NewTicker(connMulti.opts.ClusterDiscoveryTime)
+	timer := time.NewTicker(connMulti.opts.CheckTimeout)
+	defer refreshTimer.Stop()
+	defer timer.Stop()
+
 	for connMulti.getState() != connClosed {
-		refreshTimer := time.NewTimer(connMulti.opts.ClusterDiscoveryTime)
-		timer := time.NewTimer(connMulti.opts.CheckTimeout)
 
 		select {
 		case <-connMulti.control:
