@@ -146,7 +146,7 @@ func (q *queue) Create(cfg Cfg) error {
 
 // Exists checks existance of a tube
 func (q *queue) Exists() (bool, error) {
-	cmd := "local name = ... ; return queue.tube[name] ~= null"
+	cmd := "local name = ... ; return queue.tube[name] ~= nil"
 	resp, err := q.conn.Eval(cmd, []string{q.name})
 	if err != nil {
 		return false, err
