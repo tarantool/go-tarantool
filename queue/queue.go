@@ -124,7 +124,7 @@ func (opts Opts) toMap() map[string]interface{} {
 	if opts.Pri != 0 {
 		ret["pri"] = opts.Pri
 	}
-	
+
 	if opts.Utube != "" {
 		ret["utube"] = opts.Utube
 	}

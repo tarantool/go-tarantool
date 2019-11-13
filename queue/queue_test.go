@@ -12,13 +12,10 @@ import (
 )
 
 var server = "127.0.0.1:3013"
-
 var opts = Opts{
-	Timeout:       5 * time.Second,
-	User:          "test",
-	Pass:          "test",
-	MaxReconnects: 10,
-	Reconnect:     500 * time.Millisecond,
+	Timeout: 500 * time.Millisecond,
+	User:    "test",
+	Pass:    "test",
 	//Concurrency: 32,
 	//RateLimit: 4*1024,
 }
