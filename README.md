@@ -323,8 +323,9 @@ a custom packer/unpacker, but it will work slower.
 
 ```go
 import (
+    "fmt"
 	"github.com/tarantool/go-tarantool"
-	"gopkg.in/vmihailenco/msgpack.v2"
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 type Member struct {
@@ -349,13 +350,13 @@ type Tuple2 struct {
 }
 
 func (m *Member) EncodeMsgpack(e *msgpack.Encoder) error {
-	if err := e.EncodeSliceLen(2); err != nil {
+	if err := e.EncodeArrayLen(2); err != nil {
 		return err
 	}
 	if err := e.EncodeString(m.Name); err != nil {
 		return err
 	}
-	if err := e.EncodeUint(m.Val); err != nil {
+	if err := e.EncodeUint(uint64(m.Val)); err != nil {
 		return err
 	}
 	return nil
@@ -364,7 +365,7 @@ func (m *Member) EncodeMsgpack(e *msgpack.Encoder) error {
 func (m *Member) DecodeMsgpack(d *msgpack.Decoder) error {
 	var err error
 	var l int
-	if l, err = d.DecodeSliceLen(); err != nil {
+	if l, err = d.DecodeArrayLen(); err != nil {
 		return err
 	}
 	if l != 2 {
@@ -380,7 +381,7 @@ func (m *Member) DecodeMsgpack(d *msgpack.Decoder) error {
 }
 
 func (c *Tuple) EncodeMsgpack(e *msgpack.Encoder) error {
-	if err := e.EncodeSliceLen(3); err != nil {
+	if err := e.EncodeArrayLen(3); err != nil {
 		return err
 	}
 	if err := e.EncodeUint(c.Cid); err != nil {
@@ -506,7 +507,7 @@ func decodeTuple(d *msgpack.Decoder, v reflect.Value) error {
 ```go
 package main
 import (
-	"gopkg.in/vmihailenco/msgpack.v2"
+	"github.com/vmihailenco/msgpack/v5"
 	"github.com/tarantool/go-tarantool"
 	"github.com/tarantool/go-tarantool/queue"
 	"time"

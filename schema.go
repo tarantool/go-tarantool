@@ -1,7 +1,10 @@
 package tarantool
 
 import (
+	"errors"
 	"fmt"
+	"github.com/vmihailenco/msgpack/v5"
+	"github.com/vmihailenco/msgpack/v5/codes"
 )
 
 // Schema contains information about spaces and indexes.
@@ -18,7 +21,7 @@ type Space struct {
 	Id        uint32
 	Name      string
 	Engine    string
-	Temporary bool // Is this space temporaray?
+	Temporary bool // Is this space temporary?
 	// Field configuration is not mandatory and not checked by tarantool.
 	FieldsCount uint32
 	Fields      map[string]*Field
@@ -29,24 +32,264 @@ type Space struct {
 	IndexesById map[uint32]*Index
 }
 
+func (space *Space) DecodeMsgpack(d *msgpack.Decoder) error {
+	arrayLen, err := d.DecodeArrayLen()
+	if err != nil {
+		return err
+	}
+	if space.Id, err = d.DecodeUint32(); err != nil {
+		return err
+	}
+	if err := d.Skip(); err != nil {
+		return err
+	}
+	if space.Name, err = d.DecodeString(); err != nil {
+		return err
+	}
+	if space.Engine, err = d.DecodeString(); err != nil {
+		return err
+	}
+	if space.FieldsCount, err = d.DecodeUint32(); err != nil {
+		return err
+	}
+	if arrayLen >= 6 {
+		code, err := d.PeekCode()
+		if err != nil {
+			return err
+		}
+		if codes.IsString(code) {
+			val, err := d.DecodeString()
+			if err != nil {
+				return err
+			}
+			space.Temporary = val == "temporary"
+		} else if code == codes.Map16 || code == codes.Map32 || codes.IsFixedMap(code) {
+			mapLen, err := d.DecodeMapLen()
+			if err != nil {
+				return err
+			}
+			for i := 0; i < mapLen; i++ {
+				key, err := d.DecodeString()
+				if err != nil {
+					return err
+				}
+				if key == "temporary" {
+					if space.Temporary, err = d.DecodeBool(); err != nil {
+						return err
+					}
+				} else {
+					if err = d.Skip(); err != nil {
+						return err
+					}
+				}
+			}
+		} else {
+			return errors.New("unexpected schema format (space flags)")
+		}
+	}
+	space.FieldsById = make(map[uint32]*Field)
+	space.Fields = make(map[string]*Field)
+	space.IndexesById = make(map[uint32]*Index)
+	space.Indexes = make(map[string]*Index)
+	if arrayLen >= 7 {
+		fieldCount, err := d.DecodeArrayLen()
+		if err != nil {
+			return err
+		}
+		for i := 0; i < fieldCount; i++ {
+			field := &Field{}
+			if err := field.DecodeMsgpack(d); err != nil {
+				return err
+			}
+			field.Id = uint32(i)
+			space.FieldsById[field.Id] = field
+			if field.Name != "" {
+				space.Fields[field.Name] = field
+			}
+		}
+	}
+	return nil
+}
+
 type Field struct {
 	Id   uint32
 	Name string
 	Type string
 }
 
+func (field *Field) DecodeMsgpack(d *msgpack.Decoder) error {
+	l, err := d.DecodeMapLen()
+	if err != nil {
+		return err
+	}
+	for i := 0; i < l; i++ {
+		key, err := d.DecodeString()
+		if err != nil {
+			return err
+		}
+		switch key {
+		case "name":
+			if field.Name, err = d.DecodeString(); err != nil {
+				return err
+			}
+		case "type":
+			if field.Type, err = d.DecodeString(); err != nil {
+				return err
+			}
+		default:
+			if err := d.Skip(); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 // Index contains information about index
 type Index struct {
-	Id     uint32
-	Name   string
-	Type   string
-	Unique bool
-	Fields []*IndexField
+	Id      uint32
+	SpaceId uint32
+	Name    string
+	Type    string
+	Unique  bool
+	Fields  []*IndexField
+}
+
+func (index *Index) DecodeMsgpack(d *msgpack.Decoder) error {
+	_, err := d.DecodeArrayLen()
+	if err != nil {
+		return err
+	}
+
+	if index.SpaceId, err = d.DecodeUint32(); err != nil {
+		return err
+	}
+	if index.Id, err = d.DecodeUint32(); err != nil {
+		return err
+	}
+	if index.Name, err = d.DecodeString(); err != nil {
+		return err
+	}
+	if index.Type, err = d.DecodeString(); err != nil {
+		return err
+	}
+
+	code, err := d.PeekCode()
+	if err != nil {
+		return err
+	}
+	if code == codes.Uint8 || code == codes.Uint16 ||
+		code == codes.Uint32 || code == codes.Uint64 ||
+		codes.IsFixedNum(code) {
+
+		optsUint64, err := d.DecodeUint64()
+		if err != nil {
+			return nil
+		}
+		index.Unique = optsUint64 > 0
+	} else {
+		var optsMap map[interface{}]interface{}
+		if err := d.Decode(&optsMap); err != nil {
+			return fmt.Errorf("unexpected schema format (index flags): %w", err)
+		}
+
+		var ok bool
+		if index.Unique, ok = optsMap["unique"].(bool); !ok {
+			/* see bug https://github.com/tarantool/tarantool/issues/2060 */
+			index.Unique = true
+		}
+	}
+
+	code, err = d.PeekCode()
+	if err != nil {
+		return err
+	}
+	if code == codes.Uint8 || code == codes.Uint16 ||
+		code == codes.Uint32 || code == codes.Uint64 ||
+		codes.IsFixedNum(code) {
+
+		fieldCount, err := d.DecodeUint64()
+		if err != nil {
+			return err
+		}
+		index.Fields = make([]*IndexField, fieldCount)
+		for i := 0; i < int(fieldCount); i++ {
+			index.Fields[i] = new(IndexField)
+			if index.Fields[i].Id, err = d.DecodeUint32(); err != nil {
+				return err
+			}
+			if index.Fields[i].Type, err = d.DecodeString(); err != nil {
+				return err
+			}
+		}
+	} else {
+		if err := d.Decode(&index.Fields); err != nil {
+			return fmt.Errorf("unexpected schema format (index flags): %w", err)
+		}
+	}
+
+	return nil
 }
 
 type IndexField struct {
 	Id   uint32
 	Type string
+}
+
+func (indexField *IndexField) DecodeMsgpack(d *msgpack.Decoder) error {
+	code, err := d.PeekCode()
+	if err != nil {
+		return err
+	}
+
+	if code == codes.Map16 || code == codes.Map32 || codes.IsFixedMap(code) {
+		mapLen, err := d.DecodeMapLen()
+		if err != nil {
+			return err
+		}
+		for i := 0; i < mapLen; i++ {
+			key, err := d.DecodeString()
+			if err != nil {
+				return err
+			}
+			switch key {
+			case "field":
+				if indexField.Id, err = d.DecodeUint32(); err != nil {
+					return err
+				}
+			case "type":
+				if indexField.Type, err = d.DecodeString(); err != nil {
+					return err
+				}
+			default:
+				if err := d.Skip(); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
+
+	if code == codes.Array16 || code == codes.Array32 || codes.IsFixedArray(code) {
+		arrayLen, err := d.DecodeArrayLen()
+		if err != nil {
+			return err
+		}
+		if indexField.Id, err = d.DecodeUint32(); err != nil {
+			return err
+		}
+		if indexField.Type, err = d.DecodeString(); err != nil {
+			return err
+		}
+		for i := 2; i < arrayLen; i++ {
+			if err := d.Skip(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	return errors.New("unexpected schema format (index fields)")
 }
 
 const (
@@ -58,117 +301,30 @@ const (
 )
 
 func (conn *Connection) loadSchema() (err error) {
-	var resp *Response
-
 	schema := new(Schema)
 	schema.SpacesById = make(map[uint32]*Space)
 	schema.Spaces = make(map[string]*Space)
 
 	// reload spaces
-	resp, err = conn.Select(vspaceSpId, 0, 0, maxSchemas, IterAll, []interface{}{})
+	var spaces []*Space
+	err = conn.SelectTyped(vspaceSpId, 0, 0, maxSchemas, IterAll, []interface{}{}, &spaces)
 	if err != nil {
 		return err
 	}
-	for _, row := range resp.Data {
-		row := row.([]interface{})
-		space := new(Space)
-		space.Id = uint32(row[0].(uint64))
-		space.Name = row[2].(string)
-		space.Engine = row[3].(string)
-		space.FieldsCount = uint32(row[4].(uint64))
-		if len(row) >= 6 {
-			switch row5 := row[5].(type) {
-			case string:
-				space.Temporary = row5 == "temporary"
-			case map[interface{}]interface{}:
-				if temp, ok := row5["temporary"]; ok {
-					space.Temporary = temp.(bool)
-				}
-			default:
-				panic("unexpected schema format (space flags)")
-			}
-		}
-		space.FieldsById = make(map[uint32]*Field)
-		space.Fields = make(map[string]*Field)
-		space.IndexesById = make(map[uint32]*Index)
-		space.Indexes = make(map[string]*Index)
-		if len(row) >= 7 {
-			for i, f := range row[6].([]interface{}) {
-				if f == nil {
-					continue
-				}
-				f := f.(map[interface{}]interface{})
-				field := new(Field)
-				field.Id = uint32(i)
-				if name, ok := f["name"]; ok && name != nil {
-					field.Name = name.(string)
-				}
-				if type1, ok := f["type"]; ok && type1 != nil {
-					field.Type = type1.(string)
-				}
-				space.FieldsById[field.Id] = field
-				if field.Name != "" {
-					space.Fields[field.Name] = field
-				}
-			}
-		}
-
+	for _, space := range spaces {
 		schema.SpacesById[space.Id] = space
 		schema.Spaces[space.Name] = space
 	}
 
 	// reload indexes
-	resp, err = conn.Select(vindexSpId, 0, 0, maxSchemas, IterAll, []interface{}{})
+	var indexes []*Index
+	err = conn.SelectTyped(vindexSpId, 0, 0, maxSchemas, IterAll, []interface{}{}, &indexes)
 	if err != nil {
 		return err
 	}
-	for _, row := range resp.Data {
-		row := row.([]interface{})
-		index := new(Index)
-		index.Id = uint32(row[1].(uint64))
-		index.Name = row[2].(string)
-		index.Type = row[3].(string)
-		switch row[4].(type) {
-		case uint64:
-			index.Unique = row[4].(uint64) > 0
-		case map[interface{}]interface{}:
-			opts := row[4].(map[interface{}]interface{})
-			var ok bool
-			if index.Unique, ok = opts["unique"].(bool); !ok {
-				/* see bug https://github.com/tarantool/tarantool/issues/2060 */
-				index.Unique = true
-			}
-		default:
-			panic("unexpected schema format (index flags)")
-		}
-		switch fields := row[5].(type) {
-		case uint64:
-			cnt := int(fields)
-			for i := 0; i < cnt; i++ {
-				field := new(IndexField)
-				field.Id = uint32(row[6+i*2].(uint64))
-				field.Type = row[7+i*2].(string)
-				index.Fields = append(index.Fields, field)
-			}
-		case []interface{}:
-			for _, f := range fields {
-				field := new(IndexField)
-				switch f := f.(type) {
-				case []interface{}:
-					field.Id = uint32(f[0].(uint64))
-					field.Type = f[1].(string)
-				case map[interface{}]interface{}:
-					field.Id = uint32(f["field"].(uint64))
-					field.Type = f["type"].(string)
-				}
-				index.Fields = append(index.Fields, field)
-			}
-		default:
-			panic("unexpected schema format (index fields)")
-		}
-		spaceId := uint32(row[0].(uint64))
-		schema.SpacesById[spaceId].IndexesById[index.Id] = index
-		schema.SpacesById[spaceId].Indexes[index.Name] = index
+	for _, index := range indexes {
+		schema.SpacesById[index.SpaceId].IndexesById[index.Id] = index
+		schema.SpacesById[index.SpaceId].Indexes[index.Name] = index
 	}
 	conn.Schema = schema
 	return nil

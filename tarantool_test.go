@@ -8,7 +8,7 @@ import (
 	"time"
 
 	. "github.com/tarantool/go-tarantool"
-	"gopkg.in/vmihailenco/msgpack.v2"
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 type Member struct {
@@ -24,16 +24,16 @@ type Tuple2 struct {
 }
 
 func (m *Member) EncodeMsgpack(e *msgpack.Encoder) error {
-	e.EncodeSliceLen(2)
+	e.EncodeArrayLen(2)
 	e.EncodeString(m.Name)
-	e.EncodeUint(m.Val)
+	e.EncodeUint(uint64(m.Val))
 	return nil
 }
 
 func (m *Member) DecodeMsgpack(d *msgpack.Decoder) error {
 	var err error
 	var l int
-	if l, err = d.DecodeSliceLen(); err != nil {
+	if l, err = d.DecodeArrayLen(); err != nil {
 		return err
 	}
 	if l != 2 {
@@ -49,8 +49,8 @@ func (m *Member) DecodeMsgpack(d *msgpack.Decoder) error {
 }
 
 func (c *Tuple2) EncodeMsgpack(e *msgpack.Encoder) error {
-	e.EncodeSliceLen(3)
-	e.EncodeUint(c.Cid)
+	e.EncodeArrayLen(3)
+	e.EncodeUint(uint64(c.Cid))
 	e.EncodeString(c.Orig)
 	e.Encode(c.Members)
 	return nil
@@ -59,7 +59,7 @@ func (c *Tuple2) EncodeMsgpack(e *msgpack.Encoder) error {
 func (c *Tuple2) DecodeMsgpack(d *msgpack.Decoder) error {
 	var err error
 	var l int
-	if l, err = d.DecodeSliceLen(); err != nil {
+	if l, err = d.DecodeArrayLen(); err != nil {
 		return err
 	}
 	if l != 3 {
@@ -71,7 +71,7 @@ func (c *Tuple2) DecodeMsgpack(d *msgpack.Decoder) error {
 	if c.Orig, err = d.DecodeString(); err != nil {
 		return err
 	}
-	if l, err = d.DecodeSliceLen(); err != nil {
+	if l, err = d.DecodeArrayLen(); err != nil {
 		return err
 	}
 	c.Members = make([]Member, l)
@@ -426,8 +426,8 @@ func TestClient(t *testing.T) {
 		if len(tpl) != 3 {
 			t.Errorf("Unexpected body of Insert (tuple len)")
 		}
-		if id, ok := tpl[0].(uint64); !ok || id != 1 {
-			t.Errorf("Unexpected body of Insert (0)")
+		if id, ok := tpl[0].(int8); !ok || id != 1 {
+			t.Errorf("Unexpected body of Insert (0): %T\n", tpl[0])
 		}
 		if h, ok := tpl[1].(string); !ok || h != "hello" {
 			t.Errorf("Unexpected body of Insert (1)")
@@ -459,7 +459,7 @@ func TestClient(t *testing.T) {
 		if len(tpl) != 3 {
 			t.Errorf("Unexpected body of Delete (tuple len)")
 		}
-		if id, ok := tpl[0].(uint64); !ok || id != 1 {
+		if id, ok := tpl[0].(int8); !ok || id != 1 {
 			t.Errorf("Unexpected body of Delete (0)")
 		}
 		if h, ok := tpl[1].(string); !ok || h != "hello" {
@@ -501,7 +501,7 @@ func TestClient(t *testing.T) {
 		if len(tpl) != 3 {
 			t.Errorf("Unexpected body of Replace (tuple len)")
 		}
-		if id, ok := tpl[0].(uint64); !ok || id != 2 {
+		if id, ok := tpl[0].(int8); !ok || id != 2 {
 			t.Errorf("Unexpected body of Replace (0)")
 		}
 		if h, ok := tpl[1].(string); !ok || h != "hi" {
@@ -526,7 +526,7 @@ func TestClient(t *testing.T) {
 		if len(tpl) != 2 {
 			t.Errorf("Unexpected body of Update (tuple len)")
 		}
-		if id, ok := tpl[0].(uint64); !ok || id != 2 {
+		if id, ok := tpl[0].(int8); !ok || id != 2 {
 			t.Errorf("Unexpected body of Update (0)")
 		}
 		if h, ok := tpl[1].(string); !ok || h != "bye" {
@@ -572,7 +572,7 @@ func TestClient(t *testing.T) {
 	if tpl, ok := resp.Data[0].([]interface{}); !ok {
 		t.Errorf("Unexpected body of Select")
 	} else {
-		if id, ok := tpl[0].(uint64); !ok || id != 10 {
+		if id, ok := tpl[0].(int8); !ok || id != 10 {
 			t.Errorf("Unexpected body of Select (0)")
 		}
 		if h, ok := tpl[1].(string); !ok || h != "val 10" {
@@ -664,12 +664,12 @@ func TestClient(t *testing.T) {
 
 	// Call vs Call17
 	resp, err = conn.Call("simple_incr", []interface{}{1})
-	if resp.Data[0].([]interface{})[0].(uint64) != 2 {
+	if resp.Data[0].([]interface{})[0].(int8) != 2 {
 		t.Errorf("result is not {{1}} : %v", resp.Data)
 	}
 
 	resp, err = conn.Call17("simple_incr", []interface{}{1})
-	if resp.Data[0].(uint64) != 2 {
+	if resp.Data[0].(int8) != 2 {
 		t.Errorf("result is not {{1}} : %v", resp.Data)
 	}
 
@@ -684,7 +684,7 @@ func TestClient(t *testing.T) {
 	if len(resp.Data) < 1 {
 		t.Errorf("Response.Data is empty after Eval")
 	}
-	val := resp.Data[0].(uint64)
+	val := resp.Data[0].(int8)
 	if val != 11 {
 		t.Errorf("5 + 6 == 11, but got %v", val)
 	}

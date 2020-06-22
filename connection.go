@@ -13,7 +13,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"gopkg.in/vmihailenco/msgpack.v2"
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 const requestsMap = 128
@@ -433,7 +433,9 @@ func (conn *Connection) writeAuthRequest(w *bufio.Writer, scramble []byte) (err 
 		requestCode: AuthRequest,
 	}
 	var packet smallWBuf
-	err = request.pack(&packet, msgpack.NewEncoder(&packet), func(enc *msgpack.Encoder) error {
+	enc := msgpack.NewEncoder(&packet)
+	enc.UseCompactInts(true)
+	err = request.pack(&packet, enc, func(enc *msgpack.Encoder) error {
 		return enc.Encode(map[uint32]interface{}{
 			KeyUserName: conn.opts.User,
 			KeyTuple:    []interface{}{string("chap-sha1"), string(scramble)},
@@ -721,6 +723,7 @@ func (conn *Connection) putFuture(fut *Future, body func(*msgpack.Encoder) error
 	if shard.buf.Cap() == 0 {
 		shard.buf.b = make([]byte, 0, 128)
 		shard.enc = msgpack.NewEncoder(&shard.buf)
+		shard.enc.UseCompactInts(true)
 	}
 	blen := shard.buf.Len()
 	if err := fut.pack(&shard.buf, shard.enc, body); err != nil {
