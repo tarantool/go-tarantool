@@ -24,27 +24,27 @@ func (conn *Connection) Ping() (resp *Response, err error) {
 	return future.send(conn, func(enc *msgpack.Encoder) error { enc.EncodeMapLen(0); return nil }).Get()
 }
 
-func (req *Future) fillSearch(enc *msgpack.Encoder, spaceNo, indexNo uint32, key interface{}) error {
+func (fut *Future) fillSearch(enc *msgpack.Encoder, spaceNo, indexNo uint32, key interface{}) error {
 	enc.EncodeUint(KeySpaceNo)
-	enc.EncodeUint64(uint64(spaceNo))
+	enc.EncodeUint32(spaceNo)
 	enc.EncodeUint(KeyIndexNo)
-	enc.EncodeUint64(uint64(indexNo))
+	enc.EncodeUint32(indexNo)
 	enc.EncodeUint(KeyKey)
 	return enc.Encode(key)
 }
 
-func (req *Future) fillIterator(enc *msgpack.Encoder, offset, limit, iterator uint32) {
+func (fut *Future) fillIterator(enc *msgpack.Encoder, offset, limit, iterator uint32) {
 	enc.EncodeUint(KeyIterator)
-	enc.EncodeUint64(uint64(iterator))
+	enc.EncodeUint32(iterator)
 	enc.EncodeUint(KeyOffset)
-	enc.EncodeUint64(uint64(offset))
+	enc.EncodeUint32(offset)
 	enc.EncodeUint(KeyLimit)
-	enc.EncodeUint64(uint64(limit))
+	enc.EncodeUint32(limit)
 }
 
-func (req *Future) fillInsert(enc *msgpack.Encoder, spaceNo uint32, tuple interface{}) error {
+func (fut *Future) fillInsert(enc *msgpack.Encoder, spaceNo uint32, tuple interface{}) error {
 	enc.EncodeUint(KeySpaceNo)
-	enc.EncodeUint64(uint64(spaceNo))
+	enc.EncodeUint32(spaceNo)
 	enc.EncodeUint(KeyTuple)
 	return enc.Encode(tuple)
 }

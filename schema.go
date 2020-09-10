@@ -301,14 +301,14 @@ const (
 )
 
 func (conn *Connection) loadSchema() (err error) {
-	schema := new(Schema)
-	schema.SpacesById = make(map[uint32]*Space)
-	schema.Spaces = make(map[string]*Space)
+	schema := &Schema{
+		SpacesById: make(map[uint32]*Space),
+		Spaces:     make(map[string]*Space),
+	}
 
 	// reload spaces
 	var spaces []*Space
-	err = conn.SelectTyped(vspaceSpId, 0, 0, maxSchemas, IterAll, []interface{}{}, &spaces)
-	if err != nil {
+	if err = conn.SelectTyped(vspaceSpId, 0, 0, maxSchemas, IterAll, []interface{}{}, &spaces); err != nil {
 		return err
 	}
 	for _, space := range spaces {
@@ -318,8 +318,7 @@ func (conn *Connection) loadSchema() (err error) {
 
 	// reload indexes
 	var indexes []*Index
-	err = conn.SelectTyped(vindexSpId, 0, 0, maxSchemas, IterAll, []interface{}{}, &indexes)
-	if err != nil {
+	if err = conn.SelectTyped(vindexSpId, 0, 0, maxSchemas, IterAll, []interface{}{}, &indexes); err != nil {
 		return err
 	}
 	for _, index := range indexes {
