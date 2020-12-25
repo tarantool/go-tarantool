@@ -64,10 +64,15 @@ func (resp *Response) decodeHeader(d *msgpack.Decoder) (err error) {
 	return nil
 }
 
+func decodeMap(dec *msgpack.Decoder) (interface{}, error) {
+	return dec.DecodeUntypedMap()
+}
+
 func (resp *Response) decodeBody() (err error) {
 	if resp.buf.Len() > 2 {
 		var l int
 		d := msgpack.NewDecoder(&resp.buf)
+		d.SetMapDecoder(decodeMap)
 		if l, err = d.DecodeMapLen(); err != nil {
 			return err
 		}
@@ -108,6 +113,7 @@ func (resp *Response) decodeBodyTyped(res interface{}) (err error) {
 	if resp.buf.Len() > 0 {
 		var l int
 		d := msgpack.NewDecoder(&resp.buf)
+		d.SetMapDecoder(decodeMap)
 		if l, err = d.DecodeMapLen(); err != nil {
 			return err
 		}
