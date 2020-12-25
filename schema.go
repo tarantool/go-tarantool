@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/vmihailenco/msgpack/v5"
-	"github.com/vmihailenco/msgpack/v5/codes"
+	"github.com/vmihailenco/msgpack/v5/msgpcode"
 )
 
 // Schema contains information about spaces and indexes.
@@ -57,13 +57,13 @@ func (space *Space) DecodeMsgpack(d *msgpack.Decoder) error {
 		if err != nil {
 			return err
 		}
-		if codes.IsString(code) {
+		if msgpcode.IsString(code) {
 			val, err := d.DecodeString()
 			if err != nil {
 				return err
 			}
 			space.Temporary = val == "temporary"
-		} else if code == codes.Map16 || code == codes.Map32 || codes.IsFixedMap(code) {
+		} else if code == msgpcode.Map16 || code == msgpcode.Map32 || msgpcode.IsFixedMap(code) {
 			mapLen, err := d.DecodeMapLen()
 			if err != nil {
 				return err
@@ -178,9 +178,9 @@ func (index *Index) DecodeMsgpack(d *msgpack.Decoder) error {
 	if err != nil {
 		return err
 	}
-	if code == codes.Uint8 || code == codes.Uint16 ||
-		code == codes.Uint32 || code == codes.Uint64 ||
-		codes.IsFixedNum(code) {
+	if code == msgpcode.Uint8 || code == msgpcode.Uint16 ||
+		code == msgpcode.Uint32 || code == msgpcode.Uint64 ||
+		msgpcode.IsFixedNum(code) {
 
 		optsUint64, err := d.DecodeUint64()
 		if err != nil {
@@ -204,9 +204,9 @@ func (index *Index) DecodeMsgpack(d *msgpack.Decoder) error {
 	if err != nil {
 		return err
 	}
-	if code == codes.Uint8 || code == codes.Uint16 ||
-		code == codes.Uint32 || code == codes.Uint64 ||
-		codes.IsFixedNum(code) {
+	if code == msgpcode.Uint8 || code == msgpcode.Uint16 ||
+		code == msgpcode.Uint32 || code == msgpcode.Uint64 ||
+		msgpcode.IsFixedNum(code) {
 
 		fieldCount, err := d.DecodeUint64()
 		if err != nil {
@@ -242,7 +242,7 @@ func (indexField *IndexField) DecodeMsgpack(d *msgpack.Decoder) error {
 		return err
 	}
 
-	if code == codes.Map16 || code == codes.Map32 || codes.IsFixedMap(code) {
+	if code == msgpcode.Map16 || code == msgpcode.Map32 || msgpcode.IsFixedMap(code) {
 		mapLen, err := d.DecodeMapLen()
 		if err != nil {
 			return err
@@ -270,7 +270,7 @@ func (indexField *IndexField) DecodeMsgpack(d *msgpack.Decoder) error {
 		return nil
 	}
 
-	if code == codes.Array16 || code == codes.Array32 || codes.IsFixedArray(code) {
+	if code == msgpcode.Array16 || code == msgpcode.Array32 || msgpcode.IsFixedArray(code) {
 		arrayLen, err := d.DecodeArrayLen()
 		if err != nil {
 			return err
