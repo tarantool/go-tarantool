@@ -73,6 +73,7 @@ func (resp *Response) decodeBody() (err error) {
 		var l int
 		d := msgpack.NewDecoder(&resp.buf)
 		d.SetMapDecoder(decodeMap)
+		d.UseLooseInterfaceDecoding(true)
 		if l, err = d.DecodeMapLen(); err != nil {
 			return err
 		}
@@ -114,6 +115,7 @@ func (resp *Response) decodeBodyTyped(res interface{}) (err error) {
 		var l int
 		d := msgpack.NewDecoder(&resp.buf)
 		d.SetMapDecoder(decodeMap)
+		d.UseLooseInterfaceDecoding(true)
 		if l, err = d.DecodeMapLen(); err != nil {
 			return err
 		}

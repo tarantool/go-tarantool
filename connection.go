@@ -228,13 +228,15 @@ type Opts struct {
 // - If opts.Reconnect is non-zero, then error will be returned only if authorization// fails. But if Tarantool is not reachable, then it will attempt to reconnect later
 // and will not end attempts on authorization failures.
 func Connect(addr string, opts Opts) (conn *Connection, err error) {
+	d := msgpack.NewDecoder(&smallBuf{})
+	d.UseLooseInterfaceDecoding(true)
 	conn = &Connection{
 		addr:      addr,
 		requestId: 0,
 		Greeting:  &Greeting{},
 		control:   make(chan struct{}),
 		opts:      opts,
-		dec:       msgpack.NewDecoder(&smallBuf{}),
+		dec:       d,
 	}
 	maxprocs := uint32(runtime.GOMAXPROCS(-1))
 	if conn.opts.Concurrency == 0 || conn.opts.Concurrency > maxprocs*128 {
