@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"gopkg.in/vmihailenco/msgpack.v2"
+	"reflect"
 )
 
 // Future is a handle for asynchronous request
@@ -54,6 +55,51 @@ func (req *Future) fillInsert(enc *msgpack.Encoder, spaceNo uint32, tuple interf
 // It is equal to conn.SelectAsync(...).Get()
 func (conn *Connection) Select(space, index interface{}, offset, limit, iterator uint32, key interface{}) (resp *Response, err error) {
 	return conn.SelectAsync(space, index, offset, limit, iterator, key).Get()
+}
+
+// SelectMany performs select according tho values of slice to box space
+// Important! Offset and limit is apply to resulting tuples
+// example: dbConn.SelectMany("test", "index", 0, 200, tarantool.IterEq, []tarantool.UintKey{{1}, {2}})
+// example: dbConn.SelectMany("test", "index", 0, 200, tarantool.IterEq, []interface{[]interface{uint(1)}, []interface{uint(2)}})
+func (conn *Connection) SelectMany(space, index interface{}, offset, limit, iterator uint32, keys interface{}) ([]interface{}, error) {
+	var summaryData []interface{}
+	var futs []*Future
+
+	switch reflect.TypeOf(keys).Kind() {
+	case reflect.Slice:
+		s := reflect.ValueOf(keys)
+
+		for i := 0; i < s.Len(); i++ {
+			fut := conn.SelectAsync(space, index, 0, offset+limit, iterator, s.Index(i).Interface())
+			futs = append(futs, fut)
+		}
+	default:
+		panic("keys must be only a slice")
+	}
+
+	for _, fut := range futs {
+		if len(summaryData) > int(limit) {
+			break
+		}
+		f, err := fut.Get()
+		if err != nil {
+			return nil, err
+		}
+
+		for _, data := range f.Data {
+			summaryData = append(summaryData, data)
+		}
+	}
+
+	if offset != 0 {
+		summaryData = summaryData[offset:]
+	}
+
+	if len(summaryData) > int(limit) {
+		summaryData = summaryData[:limit]
+	}
+
+	return summaryData, nil
 }
 
 // Insert performs insertion to box space.
