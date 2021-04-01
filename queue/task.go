@@ -3,7 +3,7 @@ package queue
 import (
 	"fmt"
 
-	msgpack "gopkg.in/vmihailenco/msgpack.v2"
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 // Task represents a task from tarantool queue's tube
@@ -17,7 +17,7 @@ type Task struct {
 func (t *Task) DecodeMsgpack(d *msgpack.Decoder) error {
 	var err error
 	var l int
-	if l, err = d.DecodeSliceLen(); err != nil {
+	if l, err = d.DecodeArrayLen(); err != nil {
 		return err
 	}
 	if l < 3 {
