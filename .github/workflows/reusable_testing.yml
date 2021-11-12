@@ -1,0 +1,74 @@
+name: reusable_testing
+
+on:
+  workflow_call:
+    inputs:
+      artifact_name:
+        description: The name of the tarantool build artifact
+        default: ubuntu-focal
+        required: false
+        type: string
+
+jobs:
+  run_tests:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Clone the go-tarantool connector
+        uses: actions/checkout@v2
+        with:
+          repository: ${{ github.repository_owner }}/go-tarantool
+
+      - name: Download the tarantool build artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: ${{ inputs.artifact_name }}
+
+      - name: Install tarantool
+        # Now we're lucky: all dependencies are already installed. Check package
+        # dependencies when migrating to other OS version.
+        run: sudo dpkg -i tarantool*.deb
+
+      - name: Get the tarantool version
+        run: |
+          TNT_VERSION=$(tarantool --version | grep -e '^Tarantool')
+          echo "TNT_VERSION=$TNT_VERSION" >> $GITHUB_ENV
+
+      - name: Setup golang for connector and tests
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.13
+
+      - name: Run base tests
+        run: |
+          mkdir snap xlog
+          TNT_PID=$(tarantool ./config.lua > tarantool.log 2>&1 & echo $!)
+          go clean -testcache && go test -v
+          kill $TNT_PID
+
+# TODO(ylobankov): Uncomment this when tarantool/go-tarantool#115 is resolved.
+#      - name: Run queue tests
+#        working-directory: ./queue
+#        run: |
+#          mkdir snap xlog
+#          tarantoolctl rocks install queue 1.1.0
+#          TNT_PID=$(tarantool ./config.lua > tarantool.log 2>&1 & echo $!)
+#          go clean -testcache && go test -v
+#          kill $TNT_PID
+
+      - name: Run uuid tests
+        working-directory: ./uuid
+        run: |
+          mkdir snap xlog
+          TNT_PID=$(tarantool ./config.lua > tarantool.log 2>&1 & echo $!)
+          go clean -testcache && go test -v
+          kill $TNT_PID
+        if: ${{ !startsWith(env.TNT_VERSION, 'Tarantool 1.10') }}
+
+      - name: Run multi tests
+        working-directory: ./multi
+        run: |
+          mkdir -p m1/{snap,xlog} m2/{snap,xlog}
+          TNT_PID_1=$(tarantool ./config_m1.lua > tarantool_m1.log 2>&1 & echo $!)
+          TNT_PID_2=$(tarantool ./config_m2.lua > tarantool_m2.log 2>&1 & echo $!)
+          go clean -testcache && go test -v
+          kill $TNT_PID_1 $TNT_PID_2
