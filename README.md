@@ -61,7 +61,7 @@ the `import {...}` section at the start of any Go program.
 
 <h2>Hello World</h2>
 
-In the "[Connectors](http://tarantool.org/doc/book/connectors/index.html#go)"
+In the "[Connectors](https://www.tarantool.io/en/doc/latest/getting_started/getting_started_go/)"
 chapter of the Tarantool manual, there is an explanation of a very short (18-line)
 program written in Go. Follow the instructions at the start of the "Connectors"
 chapter carefully. Then cut and paste the example into a file named `example.go`,
