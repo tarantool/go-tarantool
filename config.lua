@@ -60,25 +60,3 @@ local console = require 'console'
 console.listen '0.0.0.0:33015'
 
 --box.schema.user.revoke('guest', 'read,write,execute', 'universe')
-
--- Create space with UUID pk if supported
-local uuid = require('uuid')
-local msgpack = require('msgpack')
-
-local uuid_msgpack_supported = pcall(msgpack.encode, uuid.new())
-if uuid_msgpack_supported then
-    local suuid = box.schema.space.create('testUUID', {
-        id = 524,
-        if_not_exists = true,
-    })
-    suuid:create_index('primary', {
-        type = 'tree',
-        parts = {{ field = 1, type = 'uuid' }},
-        if_not_exists = true
-    })
-    suuid:truncate()
-
-    box.schema.user.grant('test', 'read,write', 'space', 'testUUID', { if_not_exists = true })
-
-    suuid:insert({ uuid.fromstr("c8f0fa1f-da29-438c-a040-393f1126ad39") })
-end
