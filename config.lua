@@ -1,7 +1,7 @@
+-- Do not set listen for now so connector won't be
+-- able to send requests until everything is configured.
 box.cfg{
-    listen = 3013,
-    wal_dir='xlog',
-    snap_dir='snap',
+    work_dir = os.getenv("TEST_TNT_WORK_DIR"),
 }
 
 box.once("init", function()
@@ -56,7 +56,10 @@ function simple_incr(a)
 end
 
 box.space.test:truncate()
-local console = require 'console'
-console.listen '0.0.0.0:33015'
 
 --box.schema.user.revoke('guest', 'read,write,execute', 'universe')
+
+-- Set listen only when every other thing is configured.
+box.cfg{
+    listen = os.getenv("TEST_TNT_LISTEN"),
+}

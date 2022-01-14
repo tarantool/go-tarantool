@@ -1,10 +1,10 @@
 local uuid = require('uuid')
 local msgpack = require('msgpack')
 
+-- Do not set listen for now so connector won't be
+-- able to send requests until everything is configured.
 box.cfg{
-    listen = 3013,
-    wal_dir = 'xlog',
-    snap_dir = 'snap',
+    work_dir = os.getenv("TEST_TNT_WORK_DIR"),
 }
 
 box.schema.user.create('test', { password = 'test' , if_not_exists = true })
@@ -29,3 +29,8 @@ s:truncate()
 box.schema.user.grant('test', 'read,write', 'space', 'testUUID', { if_not_exists = true })
 
 s:insert({ uuid.fromstr("c8f0fa1f-da29-438c-a040-393f1126ad39") })
+
+-- Set listen only when every other thing is configured.
+box.cfg{
+    listen = os.getenv("TEST_TNT_LISTEN"),
+}

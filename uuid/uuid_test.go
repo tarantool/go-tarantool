@@ -2,14 +2,22 @@ package uuid_test
 
 import (
 	"fmt"
+	"log"
+	"os"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 	. "github.com/tarantool/go-tarantool"
+	"github.com/tarantool/go-tarantool/test_helpers"
 	_ "github.com/tarantool/go-tarantool/uuid"
 	"gopkg.in/vmihailenco/msgpack.v2"
 )
+
+// There is no way to skip tests in testing.M,
+// so we use this variable to pass info
+// to each testing.T that it should skip.
+var isUUIDSupported = false
 
 var server = "127.0.0.1:3013"
 var opts = Opts{
@@ -53,23 +61,6 @@ func connectWithValidation(t *testing.T) *Connection {
 	return conn
 }
 
-func skipIfUUIDUnsupported(t *testing.T, conn *Connection) {
-	resp, err := conn.Eval("return pcall(require('msgpack').encode, require('uuid').new())", []interface{}{})
-	if err != nil {
-		t.Errorf("Failed to Eval: %s", err.Error())
-	}
-	if resp == nil {
-		t.Errorf("Response is nil after Eval")
-	}
-	if len(resp.Data) < 1 {
-		t.Errorf("Response.Data is empty after Eval")
-	}
-	val := resp.Data[0].(bool)
-	if val != true {
-		t.Skip("Skipping test for Tarantool without UUID support in msgpack")
-	}
-}
-
 func tupleValueIsId(t *testing.T, tuples []interface{}, id uuid.UUID) {
 	if len(tuples) != 1 {
 		t.Errorf("Response Data len != 1")
@@ -88,10 +79,12 @@ func tupleValueIsId(t *testing.T, tuples []interface{}, id uuid.UUID) {
 }
 
 func TestSelect(t *testing.T) {
+	if isUUIDSupported == false {
+		t.Skip("Skipping test for Tarantool without UUID support in msgpack")
+	}
+
 	conn := connectWithValidation(t)
 	defer conn.Close()
-
-	skipIfUUIDUnsupported(t, conn)
 
 	id, uuidErr := uuid.Parse("c8f0fa1f-da29-438c-a040-393f1126ad39")
 	if uuidErr != nil {
@@ -121,10 +114,12 @@ func TestSelect(t *testing.T) {
 }
 
 func TestReplace(t *testing.T) {
+	if isUUIDSupported == false {
+		t.Skip("Skipping test for Tarantool without UUID support in msgpack")
+	}
+
 	conn := connectWithValidation(t)
 	defer conn.Close()
-
-	skipIfUUIDUnsupported(t, conn)
 
 	id, uuidErr := uuid.Parse("64d22e4d-ac92-4a23-899a-e59f34af5479")
 	if uuidErr != nil {
@@ -148,4 +143,47 @@ func TestReplace(t *testing.T) {
 		t.Errorf("Response is nil after Select")
 	}
 	tupleValueIsId(t, respSel.Data, id)
+}
+
+// runTestMain is a body of TestMain function
+// (see https://pkg.go.dev/testing#hdr-Main).
+// Using defer + os.Exit is not works so TestMain body
+// is a separate function, see
+// https://stackoverflow.com/questions/27629380/how-to-exit-a-go-program-honoring-deferred-calls
+func runTestMain(m *testing.M) int {
+	isLess, err := test_helpers.IsTarantoolVersionLess(2, 4, 1)
+	if err != nil {
+		log.Fatalf("Failed to extract tarantool version: %s", err)
+	}
+
+	if isLess {
+		log.Println("Skipping UUID tests...")
+		isUUIDSupported = false
+		return m.Run()
+	} else {
+		isUUIDSupported = true
+	}
+
+	inst, err := test_helpers.StartTarantool(test_helpers.StartOpts{
+		InitScript:   "config.lua",
+		Listen:       server,
+		WorkDir:      "work_dir",
+		User:         opts.User,
+		Pass:         opts.Pass,
+		WaitStart:    100 * time.Millisecond,
+		ConnectRetry: 3,
+		RetryTimeout: 500 * time.Millisecond,
+	})
+	defer test_helpers.StopTarantoolWithCleanup(inst)
+
+	if err != nil {
+		log.Fatalf("Failed to prepare test tarantool: %s", err)
+	}
+
+	return m.Run()
+}
+
+func TestMain(m *testing.M) {
+	code := runTestMain(m)
+	os.Exit(code)
 }

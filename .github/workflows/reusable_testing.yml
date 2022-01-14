@@ -38,36 +38,8 @@ jobs:
         with:
           go-version: 1.13
 
-      - name: Run base tests
-        run: |
-          mkdir snap xlog
-          TNT_PID=$(tarantool ./config.lua > tarantool.log 2>&1 & echo $!)
-          go clean -testcache && go test -v
-          kill $TNT_PID
+      - name: Install test dependencies
+        run: make deps
 
-      - name: Run queue tests
-        working-directory: ./queue
-        run: |
-          mkdir snap xlog
-          tarantoolctl rocks install queue 1.1.0
-          TNT_PID=$(tarantool ./config.lua > tarantool.log 2>&1 & echo $!)
-          go clean -testcache && go test -v
-          kill $TNT_PID
-
-      - name: Run uuid tests
-        working-directory: ./uuid
-        run: |
-          mkdir snap xlog
-          TNT_PID=$(tarantool ./config.lua > tarantool.log 2>&1 & echo $!)
-          go clean -testcache && go test -v
-          kill $TNT_PID
-        if: ${{ !startsWith(env.TNT_VERSION, 'Tarantool 1.10') }}
-
-      - name: Run multi tests
-        working-directory: ./multi
-        run: |
-          mkdir -p m1/{snap,xlog} m2/{snap,xlog}
-          TNT_PID_1=$(tarantool ./config_m1.lua > tarantool_m1.log 2>&1 & echo $!)
-          TNT_PID_2=$(tarantool ./config_m2.lua > tarantool_m2.log 2>&1 & echo $!)
-          go clean -testcache && go test -v
-          kill $TNT_PID_1 $TNT_PID_2
+      - name: Run tests
+        run: make test

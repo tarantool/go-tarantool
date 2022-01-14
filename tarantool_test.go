@@ -2,12 +2,15 @@ package tarantool_test
 
 import (
 	"fmt"
+	"log"
+	"os"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	. "github.com/tarantool/go-tarantool"
+	"github.com/tarantool/go-tarantool/test_helpers"
 	"gopkg.in/vmihailenco/msgpack.v2"
 )
 
@@ -1004,4 +1007,34 @@ func TestComplexStructs(t *testing.T) {
 		t.Errorf("Failed to selectTyped: incorrect data")
 		return
 	}
+}
+
+// runTestMain is a body of TestMain function
+// (see https://pkg.go.dev/testing#hdr-Main).
+// Using defer + os.Exit is not works so TestMain body
+// is a separate function, see
+// https://stackoverflow.com/questions/27629380/how-to-exit-a-go-program-honoring-deferred-calls
+func runTestMain(m *testing.M) int {
+	inst, err := test_helpers.StartTarantool(test_helpers.StartOpts{
+		InitScript:   "config.lua",
+		Listen:       server,
+		WorkDir:      "work_dir",
+		User:         opts.User,
+		Pass:         opts.Pass,
+		WaitStart:    100 * time.Millisecond,
+		ConnectRetry: 3,
+		RetryTimeout: 500 * time.Millisecond,
+	})
+	defer test_helpers.StopTarantoolWithCleanup(inst)
+
+	if err != nil {
+		log.Fatalf("Failed to prepare test tarantool: %s", err)
+	}
+
+	return m.Run()
+}
+
+func TestMain(m *testing.M) {
+	code := runTestMain(m)
+	os.Exit(code)
 }

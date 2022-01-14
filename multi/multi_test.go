@@ -1,10 +1,13 @@
 package multi
 
 import (
+	"log"
+	"os"
 	"testing"
 	"time"
 
 	"github.com/tarantool/go-tarantool"
+	"github.com/tarantool/go-tarantool/test_helpers"
 )
 
 var server1 = "127.0.0.1:3013"
@@ -203,4 +206,55 @@ func TestRefresh(t *testing.T) {
 	if err != nil {
 		t.Error("Expect to get data after reconnect")
 	}
+}
+
+// runTestMain is a body of TestMain function
+// (see https://pkg.go.dev/testing#hdr-Main).
+// Using defer + os.Exit is not works so TestMain body
+// is a separate function, see
+// https://stackoverflow.com/questions/27629380/how-to-exit-a-go-program-honoring-deferred-calls
+func runTestMain(m *testing.M) int {
+	initScript := "config.lua"
+	waitStart := 100 * time.Millisecond
+	var connectRetry uint = 3
+	retryTimeout := 500 * time.Millisecond
+
+	inst1, err := test_helpers.StartTarantool(test_helpers.StartOpts{
+		InitScript:   initScript,
+		Listen:       server1,
+		WorkDir:      "work_dir1",
+		User:         connOpts.User,
+		Pass:         connOpts.Pass,
+		WaitStart:    waitStart,
+		ConnectRetry: connectRetry,
+		RetryTimeout: retryTimeout,
+	})
+	defer test_helpers.StopTarantoolWithCleanup(inst1)
+
+	if err != nil {
+		log.Fatalf("Failed to prepare test tarantool: %s", err)
+	}
+
+	inst2, err := test_helpers.StartTarantool(test_helpers.StartOpts{
+		InitScript:   initScript,
+		Listen:       server2,
+		WorkDir:      "work_dir2",
+		User:         connOpts.User,
+		Pass:         connOpts.Pass,
+		WaitStart:    waitStart,
+		ConnectRetry: connectRetry,
+		RetryTimeout: retryTimeout,
+	})
+	defer test_helpers.StopTarantoolWithCleanup(inst2)
+
+	if err != nil {
+		log.Fatalf("Failed to prepare test tarantool: %s", err)
+	}
+
+	return m.Run()
+}
+
+func TestMain(m *testing.M) {
+	code := runTestMain(m)
+	os.Exit(code)
 }
