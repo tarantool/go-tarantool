@@ -1,10 +1,15 @@
+local fio = require('fio')
 local uuid = require('uuid')
 local msgpack = require('msgpack')
 
+local work_dir = 'work_dir'
+
+fio.rmtree(work_dir)
+fio.mktree(work_dir)
+
 box.cfg{
     listen = 3013,
-    wal_dir = 'xlog',
-    snap_dir = 'snap',
+    work_dir = work_dir,
 }
 
 box.schema.user.create('test', { password = 'test' , if_not_exists = true })

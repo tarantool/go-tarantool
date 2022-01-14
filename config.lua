@@ -1,7 +1,13 @@
+local fio = require("fio")
+
+local work_dir = 'work_dir'
+
+fio.rmtree(work_dir)
+fio.mktree(work_dir)
+
 box.cfg{
     listen = 3013,
-    wal_dir='xlog',
-    snap_dir='snap',
+    work_dir = work_dir,
 }
 
 box.once("init", function()
