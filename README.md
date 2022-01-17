@@ -27,6 +27,7 @@ faster than other packages according to public benchmarks.
 * [Custom (un)packing and typed selects and function calls](#custom-unpacking-and-typed-selects-and-function-calls)
 * [Options](#options)
 * [Working with queue](#working-with-queue)
+* [Tests](#tests)
 * [Alternative connectors](#alternative-connectors)
 
 ## Installation
@@ -672,6 +673,34 @@ Additional options (configurable via `ConnectWithOpts`):
 * `CheckTimeout` - time interval to check for connection timeout and try to switch connection
 * `ClusterDiscoveryTime` - time interval to ask server for updated address list (works on with `NodesGetFunctionName` set)
 * `NodesGetFunctionName` - server lua function name to call for getting address list
+
+## Tests
+
+You need to [install Tarantool](https://www.tarantool.io/en/download/) to run tests.
+See [Installation](#installation) section for requirements.
+
+To install test dependencies (like [tarantool/queue](https://github.com/tarantool/queue) module), run
+```bash
+make deps
+```
+
+To run tests for the main package and each subpackage, call
+```bash
+make test
+```
+Tests set up all required `tarantool` processes before run and clean up after.
+
+If you want to run a specific package tests, go to a package folder
+```bash
+cd multi
+```
+and call
+```bash
+go clean -testcache && go test -v
+```
+Use the same for main `tarantool` package and `queue` and `uuid` subpackages.
+`uuid` tests require
+[Tarantool 2.4.1 or newer](https://github.com/tarantool/tarantool/commit/d68fc29246714eee505bc9bbcd84a02de17972c5).
 
 ## Alternative connectors
 
