@@ -675,5 +675,8 @@ Additional options (configurable via `ConnectWithOpts`):
 
 ## Alternative connectors
 
-- https://github.com/viciious/go-tarantool
-  Has tools to emulate tarantool, and to being replica for tarantool.
+There are two more connectors from the open-source community available:
+* [viciious/go-tarantool](https://github.com/viciious/go-tarantool),
+* [FZambia/tarantool](https://github.com/FZambia/tarantool).
+
+See feature comparison in [documentation](https://www.tarantool.io/en/doc/latest/book/connectors/#feature-comparison).
