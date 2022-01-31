@@ -13,7 +13,7 @@ import (
 
 var server = "127.0.0.1:3013"
 var opts = Opts{
-	Timeout: 500 * time.Millisecond,
+	Timeout: 2500 * time.Millisecond,
 	User:    "test",
 	Pass:    "test",
 	//Concurrency: 32,

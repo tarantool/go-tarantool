@@ -45,15 +45,14 @@ jobs:
           go clean -testcache && go test -v
           kill $TNT_PID
 
-# TODO(ylobankov): Uncomment this when tarantool/go-tarantool#115 is resolved.
-#      - name: Run queue tests
-#        working-directory: ./queue
-#        run: |
-#          mkdir snap xlog
-#          tarantoolctl rocks install queue 1.1.0
-#          TNT_PID=$(tarantool ./config.lua > tarantool.log 2>&1 & echo $!)
-#          go clean -testcache && go test -v
-#          kill $TNT_PID
+      - name: Run queue tests
+        working-directory: ./queue
+        run: |
+          mkdir snap xlog
+          tarantoolctl rocks install queue 1.1.0
+          TNT_PID=$(tarantool ./config.lua > tarantool.log 2>&1 & echo $!)
+          go clean -testcache && go test -v
+          kill $TNT_PID
 
       - name: Run uuid tests
         working-directory: ./uuid
