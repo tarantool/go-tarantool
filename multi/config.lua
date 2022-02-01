@@ -6,6 +6,7 @@ box.cfg{
     work_dir = os.getenv("TEST_TNT_WORK_DIR"),
 }
 
+-- Function to call for getting address list, part of tarantool/multi API.
 get_cluster_nodes = nodes_load.get_cluster_nodes
 
 box.once("init", function()
