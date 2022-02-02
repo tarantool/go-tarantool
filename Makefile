@@ -46,6 +46,12 @@ test-connection-pool:
 	go clean -testcache
 	go test -tags "$(TAGS)" ./connection_pool/ -v -p 1
 
+.PHONY: test-decimal
+test-decimal:
+	@echo "Running tests in decimal package"
+	go clean -testcache
+	go test -tags "$(TAGS)" ./decimal/ -v -p 1
+
 .PHONY: test-multi
 test-multi:
 	@echo "Running tests in multiconnection package"
@@ -75,7 +81,7 @@ test-main:
 coverage:
 	go clean -testcache
 	go get golang.org/x/tools/cmd/cover
-	go test -tags "$(TAGS)" ./... -v -p 1 -covermode=atomic -coverprofile=$(COVERAGE_FILE) -coverpkg=./...
+	go test -tags "$(TAGS)" ./... -v -p 1 -covermode=atomic -coverprofile=$(COVERAGE_FILE)
 	go tool cover -func=$(COVERAGE_FILE)
 
 .PHONY: coveralls
