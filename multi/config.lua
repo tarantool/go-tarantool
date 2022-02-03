@@ -7,7 +7,8 @@ box.cfg{
 }
 
 -- Function to call for getting address list, part of tarantool/multi API.
-get_cluster_nodes = nodes_load.get_cluster_nodes
+local get_cluster_nodes = nodes_load.get_cluster_nodes
+rawset(_G, 'get_cluster_nodes', get_cluster_nodes)
 
 box.once("init", function()
     box.schema.user.create('test', { password = 'test' })
