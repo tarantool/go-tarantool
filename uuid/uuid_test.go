@@ -5,10 +5,10 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/tarantool/go-tarantool"
-	_ "github.com/tarantool/go-tarantool/uuid" 
-	"gopkg.in/vmihailenco/msgpack.v2"
 	"github.com/google/uuid"
+	. "github.com/tarantool/go-tarantool"
+	_ "github.com/tarantool/go-tarantool/uuid"
+	"gopkg.in/vmihailenco/msgpack.v2"
 )
 
 var server = "127.0.0.1:3013"
@@ -98,7 +98,7 @@ func TestSelect(t *testing.T) {
 		t.Errorf("Failed to prepare test uuid: %s", uuidErr)
 	}
 
-	resp, errSel := conn.Select(space, index, 0, 1, IterEq, []interface{}{ id })
+	resp, errSel := conn.Select(space, index, 0, 1, IterEq, []interface{}{id})
 	if errSel != nil {
 		t.Errorf("UUID select failed: %s", errSel.Error())
 	}
@@ -108,7 +108,7 @@ func TestSelect(t *testing.T) {
 	tupleValueIsId(t, resp.Data, id)
 
 	var tuples []TupleUUID
-	errTyp := conn.SelectTyped(space, index, 0, 1, IterEq, []interface{}{ id }, &tuples)
+	errTyp := conn.SelectTyped(space, index, 0, 1, IterEq, []interface{}{id}, &tuples)
 	if errTyp != nil {
 		t.Errorf("Failed to SelectTyped: %s", errTyp.Error())
 	}
@@ -131,7 +131,7 @@ func TestReplace(t *testing.T) {
 		t.Errorf("Failed to prepare test uuid: %s", uuidErr)
 	}
 
-	respRep, errRep := conn.Replace(space, []interface{}{ id })
+	respRep, errRep := conn.Replace(space, []interface{}{id})
 	if errRep != nil {
 		t.Errorf("UUID replace failed: %s", errRep)
 	}
@@ -140,7 +140,7 @@ func TestReplace(t *testing.T) {
 	}
 	tupleValueIsId(t, respRep.Data, id)
 
-	respSel, errSel := conn.Select(space, index, 0, 1, IterEq, []interface{}{ id })
+	respSel, errSel := conn.Select(space, index, 0, 1, IterEq, []interface{}{id})
 	if errSel != nil {
 		t.Errorf("UUID select failed: %s", errSel)
 	}

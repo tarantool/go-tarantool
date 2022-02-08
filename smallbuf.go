@@ -52,9 +52,9 @@ func (s *smallBuf) Bytes() []byte {
 }
 
 type smallWBuf struct {
-	b []byte
+	b   []byte
 	sum uint
-	n uint
+	n   uint
 }
 
 func (s *smallWBuf) Write(b []byte) (int, error) {
@@ -85,11 +85,11 @@ func (s *smallWBuf) Trunc(n int) {
 }
 
 func (s *smallWBuf) Reset() {
-	s.sum = uint(uint64(s.sum) * 15 / 16) + uint(len(s.b))
+	s.sum = uint(uint64(s.sum)*15/16) + uint(len(s.b))
 	if s.n < 16 {
 		s.n++
 	}
-	if cap(s.b) > 1024 && s.sum / s.n < uint(cap(s.b))/4 {
+	if cap(s.b) > 1024 && s.sum/s.n < uint(cap(s.b))/4 {
 		s.b = make([]byte, 0, s.sum/s.n)
 	} else {
 		s.b = s.b[:0]

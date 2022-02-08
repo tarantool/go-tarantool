@@ -31,7 +31,7 @@ func encodeUUID(e *msgpack.Encoder, v reflect.Value) error {
 }
 
 func decodeUUID(d *msgpack.Decoder, v reflect.Value) error {
-	var bytesCount int = 16;
+	var bytesCount int = 16
 	bytes := make([]byte, bytesCount)
 
 	n, err := d.Buffered().Read(bytes)
