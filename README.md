@@ -708,4 +708,4 @@ There are two more connectors from the open-source community available:
 * [viciious/go-tarantool](https://github.com/viciious/go-tarantool),
 * [FZambia/tarantool](https://github.com/FZambia/tarantool).
 
-See feature comparison in [documentation](https://www.tarantool.io/en/doc/latest/book/connectors/#feature-comparison).
+See feature comparison in [documentation](https://www.tarantool.io/en/doc/latest/book/connectors/#go-feature-comparison).
