@@ -2,8 +2,10 @@ package tarantool_test
 
 import (
 	"fmt"
+	"github.com/stretchr/testify/assert"
 	"log"
 	"os"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -52,7 +54,7 @@ func (m *Member) DecodeMsgpack(d *msgpack.Decoder) error {
 }
 
 var server = "127.0.0.1:3013"
-var spaceNo = uint32(512)
+var spaceNo = uint32(517)
 var spaceName = "test"
 var indexNo = uint32(0)
 var indexName = "primary"
@@ -413,6 +415,74 @@ func BenchmarkClientLargeSelectParallel(b *testing.B) {
 	})
 }
 
+func BenchmarkSQLParallel(b *testing.B) {
+	// Tarantool supports SQL since version 2.0.0
+	isLess, err := test_helpers.IsTarantoolVersionLess(2, 0, 0)
+	if err != nil {
+		b.Fatal("Could not check the Tarantool version")
+	}
+	if isLess {
+		b.Skip()
+	}
+
+	conn, err := Connect(server, opts)
+	if err != nil {
+		b.Errorf("No connection available")
+		return
+	}
+	defer conn.Close()
+
+	spaceNo := 519
+	_, err = conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
+	if err != nil {
+		b.Errorf("No connection available")
+	}
+
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			_, err := conn.Execute("SELECT NAME0,NAME1,NAME2 FROM SQL_TEST WHERE NAME0=?", []interface{}{uint(1111)})
+			if err != nil {
+				b.Errorf("Select failed: %s", err.Error())
+				break
+			}
+		}
+	})
+}
+
+func BenchmarkSQLSerial(b *testing.B) {
+	// Tarantool supports SQL since version 2.0.0
+	isLess, err := test_helpers.IsTarantoolVersionLess(2, 0, 0)
+	if err != nil {
+		b.Fatal("Could not check the Tarantool version")
+	}
+	if isLess {
+		b.Skip()
+	}
+
+	conn, err := Connect(server, opts)
+	if err != nil {
+		b.Errorf("Failed to connect: %s", err)
+		return
+	}
+	defer conn.Close()
+
+	spaceNo := 519
+	_, err = conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
+	if err != nil {
+		b.Errorf("Failed to replace: %s", err)
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := conn.Execute("SELECT NAME0,NAME1,NAME2 FROM SQL_TEST WHERE NAME0=?", []interface{}{uint(1111)})
+		if err != nil {
+			b.Errorf("Select failed: %s", err.Error())
+			break
+		}
+	}
+}
+
 ///////////////////
 
 func TestClient(t *testing.T) {
@@ -728,6 +798,479 @@ func TestClient(t *testing.T) {
 	}
 }
 
+const (
+	createTableQuery         = "CREATE TABLE SQL_SPACE (id INTEGER PRIMARY KEY AUTOINCREMENT, name STRING COLLATE \"unicode\" DEFAULT NULL);"
+	insertQuery              = "INSERT INTO SQL_SPACE VALUES (?, ?);"
+	selectNamedQuery         = "SELECT id, name FROM SQL_SPACE WHERE id=:id AND name=:name;"
+	selectPosQuery           = "SELECT id, name FROM SQL_SPACE WHERE id=? AND name=?;"
+	updateQuery              = "UPDATE SQL_SPACE SET name=? WHERE id=?;"
+	enableFullMetaDataQuery  = "SET SESSION \"sql_full_metadata\" = true;"
+	selectSpanDifQuery       = "SELECT id*2, name, id FROM SQL_SPACE WHERE name=?;"
+	alterTableQuery          = "ALTER TABLE SQL_SPACE RENAME TO SQL_SPACE2;"
+	insertIncrQuery          = "INSERT INTO SQL_SPACE2 VALUES (?, ?);"
+	deleteQuery              = "DELETE FROM SQL_SPACE2 WHERE name=?;"
+	dropQuery                = "DROP TABLE SQL_SPACE2;"
+	dropQuery2               = "DROP TABLE SQL_SPACE;"
+	disableFullMetaDataQuery = "SET SESSION \"sql_full_metadata\" = false;"
+
+	selectTypedQuery  = "SELECT NAME1, NAME0 FROM SQL_TEST WHERE NAME0=?"
+	selectNamedQuery2 = "SELECT NAME0, NAME1 FROM SQL_TEST WHERE NAME0=:id AND NAME1=:name;"
+	selectPosQuery2   = "SELECT NAME0, NAME1 FROM SQL_TEST WHERE NAME0=? AND NAME1=?;"
+	mixedQuery        = "SELECT NAME0, NAME1 FROM SQL_TEST WHERE NAME0=:name0 AND NAME1=?;"
+)
+
+func TestSQL(t *testing.T) {
+	// Tarantool supports SQL since version 2.0.0
+	isLess, err := test_helpers.IsTarantoolVersionLess(2, 0, 0)
+	if err != nil {
+		t.Fatalf("Could not check the Tarantool version")
+	}
+	if isLess {
+		t.Skip()
+	}
+
+	type testCase struct {
+		Query string
+		Args  interface{}
+		Resp  Response
+	}
+
+	testCases := []testCase{
+		{
+			createTableQuery,
+			[]interface{}{},
+			Response{
+				SQLInfo:  SQLInfo{AffectedCount: 1},
+				Data:     []interface{}{},
+				MetaData: nil,
+			},
+		},
+		{
+			insertQuery,
+			[]interface{}{1, "test"},
+			Response{
+				SQLInfo:  SQLInfo{AffectedCount: 1},
+				Data:     []interface{}{},
+				MetaData: nil,
+			},
+		},
+		{
+			selectNamedQuery,
+			map[string]interface{}{
+				"id":   1,
+				"name": "test",
+			},
+			Response{
+				SQLInfo: SQLInfo{AffectedCount: 0},
+				Data:    []interface{}{[]interface{}{uint64(1), "test"}},
+				MetaData: []ColumnMetaData{
+					{FieldType: "integer", FieldName: "ID"},
+					{FieldType: "string", FieldName: "NAME"}},
+			},
+		},
+		{
+			selectPosQuery,
+			[]interface{}{1, "test"},
+			Response{
+				SQLInfo: SQLInfo{AffectedCount: 0},
+				Data:    []interface{}{[]interface{}{uint64(1), "test"}},
+				MetaData: []ColumnMetaData{
+					{FieldType: "integer", FieldName: "ID"},
+					{FieldType: "string", FieldName: "NAME"}},
+			},
+		},
+		{
+			updateQuery,
+			[]interface{}{"test_test", 1},
+			Response{
+				SQLInfo:  SQLInfo{AffectedCount: 1},
+				Data:     []interface{}{},
+				MetaData: nil,
+			},
+		},
+		{
+			enableFullMetaDataQuery,
+			[]interface{}{},
+			Response{
+				SQLInfo:  SQLInfo{AffectedCount: 1},
+				Data:     []interface{}{},
+				MetaData: nil,
+			},
+		},
+		{
+			selectSpanDifQuery,
+			[]interface{}{"test_test"},
+			Response{
+				SQLInfo: SQLInfo{AffectedCount: 0}, Data: []interface{}{[]interface{}{uint64(2), "test_test", uint64(1)}},
+				MetaData: []ColumnMetaData{
+					{
+						FieldType:            "integer",
+						FieldName:            "COLUMN_1",
+						FieldIsNullable:      false,
+						FieldIsAutoincrement: false,
+						FieldSpan:            "id*2",
+					},
+					{
+						FieldType:            "string",
+						FieldName:            "NAME",
+						FieldIsNullable:      true,
+						FieldIsAutoincrement: false,
+						FieldSpan:            "name",
+						FieldCollation:       "unicode",
+					},
+					{
+						FieldType:            "integer",
+						FieldName:            "ID",
+						FieldIsNullable:      false,
+						FieldIsAutoincrement: true,
+						FieldSpan:            "id",
+					},
+				}},
+		},
+		{
+			alterTableQuery,
+			[]interface{}{},
+			Response{
+				SQLInfo:  SQLInfo{AffectedCount: 0},
+				Data:     []interface{}{},
+				MetaData: nil,
+			},
+		},
+		{
+			insertIncrQuery,
+			[]interface{}{2, "test_2"},
+			Response{
+				SQLInfo:  SQLInfo{AffectedCount: 1, InfoAutoincrementIds: []uint64{1}},
+				Data:     []interface{}{},
+				MetaData: nil,
+			},
+		},
+		{
+			deleteQuery,
+			[]interface{}{"test_2"},
+			Response{
+				SQLInfo:  SQLInfo{AffectedCount: 1},
+				Data:     []interface{}{},
+				MetaData: nil,
+			},
+		},
+		{
+			dropQuery,
+			[]interface{}{},
+			Response{
+				SQLInfo:  SQLInfo{AffectedCount: 1},
+				Data:     []interface{}{},
+				MetaData: nil,
+			},
+		},
+		{
+			disableFullMetaDataQuery,
+			[]interface{}{},
+			Response{
+				SQLInfo:  SQLInfo{AffectedCount: 1},
+				Data:     []interface{}{},
+				MetaData: nil,
+			},
+		},
+	}
+
+	var conn *Connection
+	conn, err = Connect(server, opts)
+	assert.Nil(t, err, "Failed to Connect")
+	assert.NotNil(t, conn, "conn is nil after Connect")
+	defer conn.Close()
+
+	for i, test := range testCases {
+		resp, err := conn.Execute(test.Query, test.Args)
+		assert.NoError(t, err, "Failed to Execute, Query number: %d", i)
+		assert.NotNil(t, resp, "Response is nil after Execute\nQuery number: %d", i)
+		for j := range resp.Data {
+			assert.Equal(t, resp.Data[j], test.Resp.Data[j], "Response data is wrong")
+		}
+		assert.Equal(t, resp.SQLInfo.AffectedCount, test.Resp.SQLInfo.AffectedCount, "Affected count is wrong")
+
+		errorMsg := "Response Metadata is wrong"
+		for j := range resp.MetaData {
+			assert.Equal(t, resp.MetaData[j].FieldIsAutoincrement, test.Resp.MetaData[j].FieldIsAutoincrement, errorMsg)
+			assert.Equal(t, resp.MetaData[j].FieldIsNullable, test.Resp.MetaData[j].FieldIsNullable, errorMsg)
+			assert.Equal(t, resp.MetaData[j].FieldCollation, test.Resp.MetaData[j].FieldCollation, errorMsg)
+			assert.Equal(t, resp.MetaData[j].FieldName, test.Resp.MetaData[j].FieldName, errorMsg)
+			assert.Equal(t, resp.MetaData[j].FieldSpan, test.Resp.MetaData[j].FieldSpan, errorMsg)
+			assert.Equal(t, resp.MetaData[j].FieldType, test.Resp.MetaData[j].FieldType, errorMsg)
+		}
+	}
+}
+
+func TestSQLTyped(t *testing.T) {
+	// Tarantool supports SQL since version 2.0.0
+	isLess, err := test_helpers.IsTarantoolVersionLess(2, 0, 0)
+	if err != nil {
+		t.Fatal("Could not check the Tarantool version")
+	}
+	if isLess {
+		t.Skip()
+	}
+
+	var conn *Connection
+
+	conn, err = Connect(server, opts)
+	if err != nil {
+		t.Fatalf("Failed to connect: %s", err.Error())
+	}
+	if conn == nil {
+		t.Fatal("conn is nil after Connect")
+	}
+	defer conn.Close()
+
+	mem := []Member{}
+	info, meta, err := conn.ExecuteTyped(selectTypedQuery, []interface{}{1}, &mem)
+	if info.AffectedCount != 0 {
+		t.Errorf("Rows affected count must be 0")
+	}
+	if len(meta) != 2 {
+		t.Errorf("Meta data is not full")
+	}
+	if len(mem) != 1 {
+		t.Errorf("Wrong length of result")
+	}
+	if err != nil {
+		t.Error(err)
+	}
+}
+
+func TestSQLBindings(t *testing.T) {
+	// Data for test table
+	testData := map[int]string{
+		1: "test",
+	}
+
+	// Tarantool supports SQL since version 2.0.0
+	isLess, err := test_helpers.IsTarantoolVersionLess(2, 0, 0)
+	if err != nil {
+		t.Fatal("Could not check the Tarantool version")
+	}
+	if isLess {
+		t.Skip()
+	}
+
+	var resp *Response
+	var conn *Connection
+
+	conn, err = Connect(server, opts)
+	if err != nil {
+		t.Fatalf("Failed to connect: %s", err.Error())
+	}
+	if conn == nil {
+		t.Fatal("conn is nil after Connect")
+	}
+	defer conn.Close()
+
+	// test all types of supported bindings
+	// prepare named sql bind
+	sqlBind := map[string]interface{}{
+		"id":   1,
+		"name": "test",
+	}
+
+	sqlBind2 := struct {
+		Id   int
+		Name string
+	}{1, "test"}
+
+	sqlBind3 := []KeyValueBind{
+		{"id", 1},
+		{"name", "test"},
+	}
+
+	sqlBind4 := []interface{}{
+		KeyValueBind{Key: "id", Value: 1},
+		KeyValueBind{Key: "name", Value: "test"},
+	}
+
+	namedSQLBinds := []interface{}{
+		sqlBind,
+		sqlBind2,
+		sqlBind3,
+		sqlBind4,
+	}
+
+	//positioned sql bind
+	sqlBind5 := []interface{}{
+		1, "test",
+	}
+
+	// mixed sql bind
+	sqlBind6 := []interface{}{
+		KeyValueBind{Key: "name0", Value: 1},
+		"test",
+	}
+
+	for _, bind := range namedSQLBinds {
+		resp, err = conn.Execute(selectNamedQuery2, bind)
+		if err != nil {
+			t.Fatalf("Failed to Execute: %s", err.Error())
+		}
+		if resp == nil {
+			t.Fatal("Response is nil after Execute")
+		}
+		if reflect.DeepEqual(resp.Data[0], []interface{}{1, testData[1]}) {
+			t.Error("Select with named arguments failed")
+		}
+		if resp.MetaData[0].FieldType != "unsigned" ||
+			resp.MetaData[0].FieldName != "NAME0" ||
+			resp.MetaData[1].FieldType != "string" ||
+			resp.MetaData[1].FieldName != "NAME1" {
+			t.Error("Wrong metadata")
+		}
+	}
+
+	resp, err = conn.Execute(selectPosQuery2, sqlBind5)
+	if err != nil {
+		t.Fatalf("Failed to Execute: %s", err.Error())
+	}
+	if resp == nil {
+		t.Fatal("Response is nil after Execute")
+	}
+	if reflect.DeepEqual(resp.Data[0], []interface{}{1, testData[1]}) {
+		t.Error("Select with positioned arguments failed")
+	}
+	if resp.MetaData[0].FieldType != "unsigned" ||
+		resp.MetaData[0].FieldName != "NAME0" ||
+		resp.MetaData[1].FieldType != "string" ||
+		resp.MetaData[1].FieldName != "NAME1" {
+		t.Error("Wrong metadata")
+	}
+
+	resp, err = conn.Execute(mixedQuery, sqlBind6)
+	if err != nil {
+		t.Fatalf("Failed to Execute: %s", err.Error())
+	}
+	if resp == nil {
+		t.Fatal("Response is nil after Execute")
+	}
+	if reflect.DeepEqual(resp.Data[0], []interface{}{1, testData[1]}) {
+		t.Error("Select with positioned arguments failed")
+	}
+	if resp.MetaData[0].FieldType != "unsigned" ||
+		resp.MetaData[0].FieldName != "NAME0" ||
+		resp.MetaData[1].FieldType != "string" ||
+		resp.MetaData[1].FieldName != "NAME1" {
+		t.Error("Wrong metadata")
+	}
+}
+
+func TestStressSQL(t *testing.T) {
+	// Tarantool supports SQL since version 2.0.0
+	isLess, err := test_helpers.IsTarantoolVersionLess(2, 0, 0)
+	if err != nil {
+		t.Fatalf("Could not check the Tarantool version")
+	}
+	if isLess {
+		t.Skip()
+	}
+
+	var resp *Response
+	var conn *Connection
+
+	conn, err = Connect(server, opts)
+	if err != nil {
+		t.Fatalf("Failed to connect: %s", err.Error())
+	}
+	if conn == nil {
+		t.Fatalf("conn is nil after Connect")
+	}
+	defer conn.Close()
+
+	resp, err = conn.Execute(createTableQuery, []interface{}{})
+	if err != nil {
+		t.Fatalf("Failed to Execute: %s", err.Error())
+	}
+	if resp == nil {
+		t.Fatal("Response is nil after Execute")
+	}
+	if resp.Code != 0 {
+		t.Fatalf("Failed to Execute: %d", resp.Code)
+	}
+	if resp.SQLInfo.AffectedCount != 1 {
+		t.Errorf("Incorrect count of created spaces: %d", resp.SQLInfo.AffectedCount)
+	}
+
+	// create table with the same name
+	resp, err = conn.Execute(createTableQuery, []interface{}{})
+	if err == nil {
+		t.Fatal("Unexpected lack of error")
+	}
+	if resp == nil {
+		t.Fatal("Response is nil after Execute")
+	}
+	if resp.Code != ErSpaceExistsCode {
+		t.Fatalf("Unexpected response code: %d", resp.Code)
+	}
+	if resp.SQLInfo.AffectedCount != 0 {
+		t.Errorf("Incorrect count of created spaces: %d", resp.SQLInfo.AffectedCount)
+	}
+
+	// execute with nil argument
+	resp, err = conn.Execute(createTableQuery, nil)
+	if err == nil {
+		t.Fatal("Unexpected lack of error")
+	}
+	if resp == nil {
+		t.Fatal("Response is nil after Execute")
+	}
+	if resp.Code == 0 {
+		t.Fatalf("Unexpected response code: %d", resp.Code)
+	}
+	if resp.SQLInfo.AffectedCount != 0 {
+		t.Errorf("Incorrect count of created spaces: %d", resp.SQLInfo.AffectedCount)
+	}
+
+	// execute with zero string
+	resp, err = conn.Execute("", []interface{}{})
+	if err == nil {
+		t.Fatal("Unexpected lack of error")
+	}
+	if resp == nil {
+		t.Fatal("Response is nil after Execute")
+	}
+	if resp.Code == 0 {
+		t.Fatalf("Unexpected response code: %d", resp.Code)
+	}
+	if resp.SQLInfo.AffectedCount != 0 {
+		t.Errorf("Incorrect count of created spaces: %d", resp.SQLInfo.AffectedCount)
+	}
+
+	// drop table query
+	resp, err = conn.Execute(dropQuery2, []interface{}{})
+	if err != nil {
+		t.Fatalf("Failed to Execute: %s", err.Error())
+	}
+	if resp == nil {
+		t.Fatal("Response is nil after Execute")
+	}
+	if resp.Code != 0 {
+		t.Fatalf("Failed to Execute: %d", resp.Code)
+	}
+	if resp.SQLInfo.AffectedCount != 1 {
+		t.Errorf("Incorrect count of dropped spaces: %d", resp.SQLInfo.AffectedCount)
+	}
+
+	// drop the same table
+	resp, err = conn.Execute(dropQuery2, []interface{}{})
+	if err == nil {
+		t.Fatal("Unexpected lack of error")
+	}
+	if resp == nil {
+		t.Fatal("Response is nil after Execute")
+	}
+	if resp.Code == 0 {
+		t.Fatalf("Unexpected response code: %d", resp.Code)
+	}
+	if resp.SQLInfo.AffectedCount != 0 {
+		t.Errorf("Incorrect count of created spaces: %d", resp.SQLInfo.AffectedCount)
+	}
+}
+
 func TestSchema(t *testing.T) {
 	var err error
 	var conn *Connection
@@ -751,29 +1294,29 @@ func TestSchema(t *testing.T) {
 	}
 	var space, space2 *Space
 	var ok bool
-	if space, ok = schema.SpacesById[514]; !ok {
-		t.Errorf("space with id = 514 was not found in schema.SpacesById")
+	if space, ok = schema.SpacesById[516]; !ok {
+		t.Errorf("space with id = 516 was not found in schema.SpacesById")
 	}
 	if space2, ok = schema.Spaces["schematest"]; !ok {
 		t.Errorf("space with name 'schematest' was not found in schema.SpacesById")
 	}
 	if space != space2 {
-		t.Errorf("space with id = 514 and space with name schematest are different")
+		t.Errorf("space with id = 516 and space with name schematest are different")
 	}
-	if space.Id != 514 {
-		t.Errorf("space 514 has incorrect Id")
+	if space.Id != 516 {
+		t.Errorf("space 516 has incorrect Id")
 	}
 	if space.Name != "schematest" {
-		t.Errorf("space 514 has incorrect Name")
+		t.Errorf("space 516 has incorrect Name")
 	}
 	if !space.Temporary {
-		t.Errorf("space 514 should be temporary")
+		t.Errorf("space 516 should be temporary")
 	}
 	if space.Engine != "memtx" {
-		t.Errorf("space 514 engine should be memtx")
+		t.Errorf("space 516 engine should be memtx")
 	}
 	if space.FieldsCount != 7 {
-		t.Errorf("space 514 has incorrect fields count")
+		t.Errorf("space 516 has incorrect fields count")
 	}
 
 	if space.FieldsById == nil {
@@ -883,20 +1426,20 @@ func TestSchema(t *testing.T) {
 	}
 
 	var rSpaceNo, rIndexNo uint32
-	rSpaceNo, rIndexNo, err = schema.ResolveSpaceIndex(514, 3)
-	if err != nil || rSpaceNo != 514 || rIndexNo != 3 {
+	rSpaceNo, rIndexNo, err = schema.ResolveSpaceIndex(516, 3)
+	if err != nil || rSpaceNo != 516 || rIndexNo != 3 {
 		t.Errorf("numeric space and index params not resolved as-is")
 	}
-	rSpaceNo, _, err = schema.ResolveSpaceIndex(514, nil)
-	if err != nil || rSpaceNo != 514 {
+	rSpaceNo, _, err = schema.ResolveSpaceIndex(516, nil)
+	if err != nil || rSpaceNo != 516 {
 		t.Errorf("numeric space param not resolved as-is")
 	}
 	rSpaceNo, rIndexNo, err = schema.ResolveSpaceIndex("schematest", "secondary")
-	if err != nil || rSpaceNo != 514 || rIndexNo != 3 {
+	if err != nil || rSpaceNo != 516 || rIndexNo != 3 {
 		t.Errorf("symbolic space and index params not resolved")
 	}
 	rSpaceNo, _, err = schema.ResolveSpaceIndex("schematest", nil)
-	if err != nil || rSpaceNo != 514 {
+	if err != nil || rSpaceNo != 516 {
 		t.Errorf("symbolic space param not resolved")
 	}
 	_, _, err = schema.ResolveSpaceIndex("schematest22", "secondary")

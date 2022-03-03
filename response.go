@@ -9,10 +9,94 @@ import (
 type Response struct {
 	RequestId uint32
 	Code      uint32
-	Error     string // Error message.
-	// Data contains deserialized data for untyped requests.
-	Data []interface{}
-	buf  smallBuf
+	Error     string // error message
+	// Data contains deserialized data for untyped requests
+	Data     []interface{}
+	MetaData []ColumnMetaData
+	SQLInfo  SQLInfo
+	buf      smallBuf
+}
+
+type ColumnMetaData struct {
+	FieldName            string
+	FieldType            string
+	FieldCollation       string
+	FieldIsNullable      bool
+	FieldIsAutoincrement bool
+	FieldSpan            string
+}
+
+type SQLInfo struct {
+	AffectedCount        uint64
+	InfoAutoincrementIds []uint64
+}
+
+func (meta *ColumnMetaData) DecodeMsgpack(d *msgpack.Decoder) error {
+	var err error
+	var l int
+	if l, err = d.DecodeMapLen(); err != nil {
+		return err
+	}
+	if l == 0 {
+		return fmt.Errorf("map len doesn't match: %d", l)
+	}
+	for i := 0; i < l; i++ {
+		var mk uint64
+		var mv interface{}
+		if mk, err = d.DecodeUint64(); err != nil {
+			return fmt.Errorf("failed to decode meta data")
+		}
+		if mv, err = d.DecodeInterface(); err != nil {
+			return fmt.Errorf("failed to decode meta data")
+		}
+		switch mk {
+		case KeyFieldName:
+			meta.FieldName = mv.(string)
+		case KeyFieldType:
+			meta.FieldType = mv.(string)
+		case KeyFieldColl:
+			meta.FieldCollation = mv.(string)
+		case KeyFieldIsNullable:
+			meta.FieldIsNullable = mv.(bool)
+		case KeyIsAutoincrement:
+			meta.FieldIsAutoincrement = mv.(bool)
+		case KeyFieldSpan:
+			meta.FieldSpan = mv.(string)
+		default:
+			return fmt.Errorf("failed to decode meta data")
+		}
+	}
+	return nil
+}
+
+func (info *SQLInfo) DecodeMsgpack(d *msgpack.Decoder) error {
+	var err error
+	var l int
+	if l, err = d.DecodeMapLen(); err != nil {
+		return err
+	}
+	if l == 0 {
+		return fmt.Errorf("map len doesn't match")
+	}
+	for i := 0; i < l; i++ {
+		var mk uint64
+		if mk, err = d.DecodeUint64(); err != nil {
+			return fmt.Errorf("failed to decode meta data")
+		}
+		switch mk {
+		case KeySQLInfoRowCount:
+			if info.AffectedCount, err = d.DecodeUint64(); err != nil {
+				return fmt.Errorf("failed to decode meta data")
+			}
+		case KeySQLInfoAutoincrementIds:
+			if err = d.Decode(&info.InfoAutoincrementIds); err != nil {
+				return fmt.Errorf("failed to decode meta data")
+			}
+		default:
+			return fmt.Errorf("failed to decode meta data")
+		}
+	}
+	return nil
 }
 
 func (resp *Response) smallInt(d *msgpack.Decoder) (i int, err error) {
@@ -86,6 +170,14 @@ func (resp *Response) decodeBody() (err error) {
 				if resp.Error, err = d.DecodeString(); err != nil {
 					return err
 				}
+			case KeySQLInfo:
+				if err = d.Decode(&resp.SQLInfo); err != nil {
+					return err
+				}
+			case KeyMetaData:
+				if err = d.Decode(&resp.MetaData); err != nil {
+					return err
+				}
 			default:
 				if err = d.Skip(); err != nil {
 					return err
@@ -119,6 +211,14 @@ func (resp *Response) decodeBodyTyped(res interface{}) (err error) {
 				}
 			case KeyError:
 				if resp.Error, err = d.DecodeString(); err != nil {
+					return err
+				}
+			case KeySQLInfo:
+				if err = d.Decode(&resp.SQLInfo); err != nil {
+					return err
+				}
+			case KeyMetaData:
+				if err = d.Decode(&resp.MetaData); err != nil {
 					return err
 				}
 			default:

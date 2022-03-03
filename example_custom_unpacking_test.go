@@ -87,7 +87,7 @@ func Example_customUnpacking() {
 		log.Fatalf("Failed to connect: %s", err.Error())
 	}
 
-	spaceNo := uint32(512)
+	spaceNo := uint32(517)
 	indexNo := uint32(0)
 
 	tuple := Tuple2{Cid: 777, Orig: "orig", Members: []Member{{"lol", "", 1}, {"wut", "", 3}}}

@@ -17,6 +17,7 @@ type Connector interface {
 	Call(functionName string, args interface{}) (resp *Response, err error)
 	Call17(functionName string, args interface{}) (resp *Response, err error)
 	Eval(expr string, args interface{}) (resp *Response, err error)
+	Execute(expr string, args interface{}) (resp *Response, err error)
 
 	GetTyped(space, index interface{}, key interface{}, result interface{}) (err error)
 	SelectTyped(space, index interface{}, offset, limit, iterator uint32, key interface{}, result interface{}) (err error)

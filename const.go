@@ -11,6 +11,7 @@ const (
 	EvalRequest      = 8
 	UpsertRequest    = 9
 	Call17Request    = 10
+	ExecuteRequest   = 11
 	PingRequest      = 64
 	SubscribeRequest = 66
 
@@ -29,6 +30,19 @@ const (
 	KeyDefTuple     = 0x28
 	KeyData         = 0x30
 	KeyError        = 0x31
+	KeyMetaData     = 0x32
+	KeySQLText      = 0x40
+	KeySQLBind      = 0x41
+	KeySQLInfo      = 0x42
+
+	KeyFieldName               = 0x00
+	KeyFieldType               = 0x01
+	KeyFieldColl               = 0x02
+	KeyFieldIsNullable         = 0x03
+	KeyIsAutoincrement         = 0x04
+	KeyFieldSpan               = 0x05
+	KeySQLInfoRowCount         = 0x00
+	KeySQLInfoAutoincrementIds = 0x01
 
 	// https://github.com/fl00r/go-tarantool-1.6/issues/2
 
@@ -49,4 +63,6 @@ const (
 	OkCode            = uint32(0)
 	ErrorCodeBit      = 0x8000
 	PacketLengthBytes = 5
+	ErSpaceExistsCode = 0xa
+	IteratorCode      = 0x14
 )
