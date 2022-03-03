@@ -2,6 +2,9 @@ package tarantool
 
 import (
 	"errors"
+	"reflect"
+	"strings"
+	"sync"
 	"time"
 
 	"gopkg.in/vmihailenco/msgpack.v2"
@@ -120,6 +123,14 @@ func (conn *Connection) Eval(expr string, args interface{}) (resp *Response, err
 	return conn.EvalAsync(expr, args).Get()
 }
 
+// Execute passes sql expression to Tarantool for execution.
+//
+// It is equal to conn.ExecuteAsync(expr, args).Get().
+// Since 1.6.0
+func (conn *Connection) Execute(expr string, args interface{}) (resp *Response, err error) {
+	return conn.ExecuteAsync(expr, args).Get()
+}
+
 // single used for conn.GetTyped for decode one tuple.
 type single struct {
 	res   interface{}
@@ -210,6 +221,16 @@ func (conn *Connection) Call17Typed(functionName string, args interface{}, resul
 // It is equal to conn.EvalAsync(space, tuple).GetTyped(&result).
 func (conn *Connection) EvalTyped(expr string, args interface{}, result interface{}) (err error) {
 	return conn.EvalAsync(expr, args).GetTyped(result)
+}
+
+// ExecuteTyped passes sql expression to Tarantool for execution.
+//
+// In addition to error returns sql info and columns meta data
+// Since 1.6.0
+func (conn *Connection) ExecuteTyped(expr string, args interface{}, result interface{}) (SQLInfo, []ColumnMetaData, error) {
+	fut := conn.ExecuteAsync(expr, args)
+	err := fut.GetTyped(&result)
+	return fut.resp.SQLInfo, fut.resp.MetaData, err
 }
 
 // SelectAsync sends select request to Tarantool and returns Future.
@@ -346,9 +367,159 @@ func (conn *Connection) EvalAsync(expr string, args interface{}) *Future {
 	})
 }
 
+// ExecuteAsync sends a sql expression for execution and returns Future.
+// Since 1.6.0
+func (conn *Connection) ExecuteAsync(expr string, args interface{}) *Future {
+	future := conn.newFuture(ExecuteRequest)
+	return future.send(conn, func(enc *msgpack.Encoder) error {
+		enc.EncodeMapLen(2)
+		enc.EncodeUint64(KeySQLText)
+		enc.EncodeString(expr)
+		enc.EncodeUint64(KeySQLBind)
+		return encodeSQLBind(enc, args)
+	})
+}
+
+// KeyValueBind is a type for encoding named SQL parameters
+type KeyValueBind struct {
+	Key   string
+	Value interface{}
+}
+
 //
 // private
 //
+
+// this map is needed for caching names of struct fields in lower case
+// to avoid extra allocations in heap by calling strings.ToLower()
+var lowerCaseNames sync.Map
+
+func encodeSQLBind(enc *msgpack.Encoder, from interface{}) error {
+	// internal function for encoding single map in msgpack
+	encodeKeyInterface := func(key string, val interface{}) error {
+		if err := enc.EncodeMapLen(1); err != nil {
+			return err
+		}
+		if err := enc.EncodeString(":" + key); err != nil {
+			return err
+		}
+		if err := enc.Encode(val); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	encodeKeyValue := func(key string, val reflect.Value) error {
+		if err := enc.EncodeMapLen(1); err != nil {
+			return err
+		}
+		if err := enc.EncodeString(":" + key); err != nil {
+			return err
+		}
+		if err := enc.EncodeValue(val); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	encodeNamedFromMap := func(mp map[string]interface{}) error {
+		if err := enc.EncodeSliceLen(len(mp)); err != nil {
+			return err
+		}
+		for k, v := range mp {
+			if err := encodeKeyInterface(k, v); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	encodeNamedFromStruct := func(val reflect.Value) error {
+		if err := enc.EncodeSliceLen(val.NumField()); err != nil {
+			return err
+		}
+		cached, ok := lowerCaseNames.Load(val.Type())
+		if !ok {
+			fields := make([]string, val.NumField())
+			for i := 0; i < val.NumField(); i++ {
+				key := val.Type().Field(i).Name
+				fields[i] = strings.ToLower(key)
+				v := val.Field(i)
+				if err := encodeKeyValue(fields[i], v); err != nil {
+					return err
+				}
+			}
+			lowerCaseNames.Store(val.Type(), fields)
+			return nil
+		}
+
+		fields := cached.([]string)
+		for i := 0; i < val.NumField(); i++ {
+			k := fields[i]
+			v := val.Field(i)
+			if err := encodeKeyValue(k, v); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	encodeSlice := func(from interface{}) error {
+		castedSlice, ok := from.([]interface{})
+		if !ok {
+			castedKVSlice := from.([]KeyValueBind)
+			t := len(castedKVSlice)
+			if err := enc.EncodeSliceLen(t); err != nil {
+				return err
+			}
+			for _, v := range castedKVSlice {
+				if err := encodeKeyInterface(v.Key, v.Value); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+
+		if err := enc.EncodeSliceLen(len(castedSlice)); err != nil {
+			return err
+		}
+		for i := 0; i < len(castedSlice); i++ {
+			if kvb, ok := castedSlice[i].(KeyValueBind); ok {
+				k := kvb.Key
+				v := kvb.Value
+				if err := encodeKeyInterface(k, v); err != nil {
+					return err
+				}
+			} else {
+				if err := enc.Encode(castedSlice[i]); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
+
+	val := reflect.ValueOf(from)
+	switch val.Kind() {
+	case reflect.Map:
+		mp, ok := from.(map[string]interface{})
+		if !ok {
+			return errors.New("failed to encode map: wrong format")
+		}
+		if err := encodeNamedFromMap(mp); err != nil {
+			return err
+		}
+	case reflect.Struct:
+		if err := encodeNamedFromStruct(val); err != nil {
+			return err
+		}
+	case reflect.Slice, reflect.Array:
+		if err := encodeSlice(from); err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
 func (fut *Future) pack(h *smallWBuf, enc *msgpack.Encoder, body func(*msgpack.Encoder) error) (err error) {
 	rid := fut.requestId

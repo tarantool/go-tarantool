@@ -2,6 +2,7 @@ package tarantool_test
 
 import (
 	"fmt"
+	"github.com/tarantool/go-tarantool/test_helpers"
 	"time"
 
 	"github.com/tarantool/go-tarantool"
@@ -31,7 +32,8 @@ func ExampleConnection_Select() {
 	conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
 	conn.Replace(spaceNo, []interface{}{uint(1112), "hallo", "werld"})
 
-	resp, err := conn.Select(512, 0, 0, 100, tarantool.IterEq, []interface{}{uint(1111)})
+	resp, err := conn.Select(517, 0, 0, 100, tarantool.IterEq, []interface{}{uint(1111)})
+
 	if err != nil {
 		fmt.Printf("error in select is %v", err)
 		return
@@ -53,7 +55,9 @@ func ExampleConnection_SelectTyped() {
 	conn := example_connect()
 	defer conn.Close()
 	var res []Tuple
-	err := conn.SelectTyped(512, 0, 0, 100, tarantool.IterEq, tarantool.IntKey{1111}, &res)
+
+	err := conn.SelectTyped(517, 0, 0, 100, tarantool.IterEq, tarantool.IntKey{1111}, &res)
+
 	if err != nil {
 		fmt.Printf("error in select is %v", err)
 		return
@@ -73,6 +77,7 @@ func ExampleConnection_SelectTyped() {
 func ExampleConnection_SelectAsync() {
 	conn := example_connect()
 	defer conn.Close()
+	spaceNo := uint32(517)
 
 	conn.Insert(spaceNo, []interface{}{uint(16), "test", "one"})
 	conn.Insert(spaceNo, []interface{}{uint(17), "test", "one"})
@@ -320,12 +325,12 @@ func ExampleSchema() {
 	}
 
 	space1 := schema.Spaces["test"]
-	space2 := schema.SpacesById[514]
+	space2 := schema.SpacesById[516]
 	fmt.Printf("Space 1 ID %d %s\n", space1.Id, space1.Name)
 	fmt.Printf("Space 2 ID %d %s\n", space2.Id, space2.Name)
 	// Output:
-	// Space 1 ID 512 test
-	// Space 2 ID 514 schematest
+	// Space 1 ID 517 test
+	// Space 2 ID 516 schematest
 }
 
 // Example demonstrates how to retrieve information with space schema.
@@ -344,7 +349,7 @@ func ExampleSpace() {
 
 	// Access Space objects by name or ID.
 	space1 := schema.Spaces["test"]
-	space2 := schema.SpacesById[514] // It's a map.
+	space2 := schema.SpacesById[516] // It's a map.
 	fmt.Printf("Space 1 ID %d %s %s\n", space1.Id, space1.Name, space1.Engine)
 	fmt.Printf("Space 1 ID %d %t\n", space1.FieldsCount, space1.Temporary)
 
@@ -365,10 +370,132 @@ func ExampleSpace() {
 	fmt.Printf("SpaceField 2 %s %s\n", spaceField2.Name, spaceField2.Type)
 
 	// Output:
-	// Space 1 ID 512 test memtx
+	// Space 1 ID 517 test memtx
 	// Space 1 ID 0 false
 	// Index 0 primary
 	// &{0 unsigned} &{2 string}
 	// SpaceField 1 name0 unsigned
 	// SpaceField 2 name3 unsigned
+}
+
+// To use SQL to query a tarantool instance, call Execute.
+//
+// Pay attention that with different types of queries (DDL, DQL, DML etc.)
+// some fields of the response structure (MetaData and InfoAutoincrementIds in SQLInfo) may be nil.
+func ExampleConnection_Execute() {
+	// Tarantool supports SQL since version 2.0.0
+	isLess, _ := test_helpers.IsTarantoolVersionLess(2, 0, 0)
+	if isLess {
+		return
+	}
+	server := "127.0.0.1:3013"
+	opts := tarantool.Opts{
+		Timeout:       500 * time.Millisecond,
+		Reconnect:     1 * time.Second,
+		MaxReconnects: 3,
+		User:          "test",
+		Pass:          "test",
+	}
+	client, err := tarantool.Connect(server, opts)
+	if err != nil {
+		fmt.Printf("Failed to connect: %s", err.Error())
+	}
+
+	resp, err := client.Execute("CREATE TABLE SQL_TEST (id INTEGER PRIMARY KEY, name STRING)", []interface{}{})
+	fmt.Println("Execute")
+	fmt.Println("Error", err)
+	fmt.Println("Code", resp.Code)
+	fmt.Println("Data", resp.Data)
+	fmt.Println("MetaData", resp.MetaData)
+	fmt.Println("SQL Info", resp.SQLInfo)
+
+	// there are 4 options to pass named parameters to an SQL query
+	// the simple map:
+	sqlBind1 := map[string]interface{}{
+		"id":   1,
+		"name": "test",
+	}
+
+	// any type of structure
+	sqlBind2 := struct {
+		Id   int
+		Name string
+	}{1, "test"}
+
+	// it is possible to use []tarantool.KeyValueBind
+	sqlBind3 := []interface{}{
+		tarantool.KeyValueBind{Key: "id", Value: 1},
+		tarantool.KeyValueBind{Key: "name", Value: "test"},
+	}
+
+	// or []interface{} slice with tarantool.KeyValueBind items inside
+	sqlBind4 := []tarantool.KeyValueBind{
+		{"id", 1},
+		{"name", "test"},
+	}
+
+	// the next usage
+	resp, err = client.Execute("SELECT id FROM SQL_TEST WHERE id=:id AND name=:name", sqlBind1)
+	fmt.Println("Execute")
+	fmt.Println("Error", err)
+	fmt.Println("Code", resp.Code)
+	fmt.Println("Data", resp.Data)
+	fmt.Println("MetaData", resp.MetaData)
+	fmt.Println("SQL Info", resp.SQLInfo)
+
+	// the same as
+	resp, err = client.Execute("SELECT id FROM SQL_TEST WHERE id=:id AND name=:name", sqlBind2)
+	fmt.Println("Execute")
+	fmt.Println("Error", err)
+	fmt.Println("Code", resp.Code)
+	fmt.Println("Data", resp.Data)
+	fmt.Println("MetaData", resp.MetaData)
+	fmt.Println("SQL Info", resp.SQLInfo)
+
+	// the same as
+	resp, err = client.Execute("SELECT id FROM SQL_TEST WHERE id=:id AND name=:name", sqlBind3)
+	fmt.Println("Execute")
+	fmt.Println("Error", err)
+	fmt.Println("Code", resp.Code)
+	fmt.Println("Data", resp.Data)
+	fmt.Println("MetaData", resp.MetaData)
+	fmt.Println("SQL Info", resp.SQLInfo)
+
+	// the same as
+	resp, err = client.Execute("SELECT id FROM SQL_TEST WHERE id=:id AND name=:name", sqlBind4)
+	fmt.Println("Execute")
+	fmt.Println("Error", err)
+	fmt.Println("Code", resp.Code)
+	fmt.Println("Data", resp.Data)
+	fmt.Println("MetaData", resp.MetaData)
+	fmt.Println("SQL Info", resp.SQLInfo)
+
+	// the way to pass positional arguments to an SQL query
+	resp, err = client.Execute("SELECT id FROM SQL_TEST WHERE id=? AND name=?", []interface{}{2, "test"})
+	fmt.Println("Execute")
+	fmt.Println("Error", err)
+	fmt.Println("Code", resp.Code)
+	fmt.Println("Data", resp.Data)
+	fmt.Println("MetaData", resp.MetaData)
+	fmt.Println("SQL Info", resp.SQLInfo)
+
+	// the way to pass SQL expression with using custom packing/unpacking for a type
+	var res []Tuple
+	sqlInfo, metaData, err := client.ExecuteTyped("SELECT id, name, name FROM SQL_TEST WHERE id=?", []interface{}{2}, &res)
+	fmt.Println("ExecuteTyped")
+	fmt.Println("Error", err)
+	fmt.Println("Data", res)
+	fmt.Println("MetaData", metaData)
+	fmt.Println("SQL Info", sqlInfo)
+
+	// for using different types of parameters (positioned/named), collect all items in []interface{}
+	// all "named" items must be passed with tarantool.KeyValueBind{}
+	resp, err = client.Execute("SELECT id FROM SQL_TEST WHERE id=:id AND name=?",
+		[]interface{}{tarantool.KeyValueBind{"id", 1}, "test"})
+	fmt.Println("Execute")
+	fmt.Println("Error", err)
+	fmt.Println("Code", resp.Code)
+	fmt.Println("Data", resp.Data)
+	fmt.Println("MetaData", resp.MetaData)
+	fmt.Println("SQL Info", resp.SQLInfo)
 }

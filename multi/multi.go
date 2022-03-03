@@ -340,6 +340,13 @@ func (connMulti *ConnectionMulti) Eval(expr string, args interface{}) (resp *tar
 	return connMulti.getCurrentConnection().Eval(expr, args)
 }
 
+// Execute passes sql expression to Tarantool for execution.
+//
+// Since 1.6.0
+func (connMulti *ConnectionMulti) Execute(expr string, args interface{}) (resp *tarantool.Response, err error) {
+	return connMulti.getCurrentConnection().Execute(expr, args)
+}
+
 // GetTyped performs select (with limit = 1 and offset = 0) to box space and
 // fills typed result.
 func (connMulti *ConnectionMulti) GetTyped(space, index interface{}, key interface{}, result interface{}) (err error) {

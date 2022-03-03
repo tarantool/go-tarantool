@@ -6,13 +6,25 @@ box.cfg{
 
 box.once("init", function()
     local s = box.schema.space.create('test', {
-        id = 512,
+        id = 517,
         if_not_exists = true,
     })
     s:create_index('primary', {type = 'tree', parts = {1, 'uint'}, if_not_exists = true})
 
+    local sp = box.schema.space.create('SQL_TEST', {
+        id = 519,
+        if_not_exists = true,
+        format = {
+            {name = "NAME0", type = "unsigned"},
+            {name = "NAME1", type = "string"},
+            {name = "NAME2", type = "string"},
+        }
+    })
+    sp:create_index('primary', {type = 'tree', parts = {1, 'uint'}, if_not_exists = true})
+    sp:insert{1, "test", "test"}
+
     local st = box.schema.space.create('schematest', {
-        id = 514,
+        id = 516,
         temporary = true,
         if_not_exists = true,
         field_count = 7,
@@ -75,6 +87,10 @@ box.once("init", function()
     box.schema.user.grant('test', 'read,write', 'space', 'test')
     box.schema.user.grant('test', 'read,write', 'space', 'schematest')
     box.schema.user.grant('test', 'read,write', 'space', 'test_perf')
+
+    -- grants for sql tests
+    box.schema.user.grant('test', 'create,read,write,drop,alter', 'space')
+    box.schema.user.grant('test', 'create', 'sequence')
 end)
 
 local function func_name()
