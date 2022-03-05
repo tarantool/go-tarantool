@@ -29,7 +29,7 @@ func skipIfDecimalUnsupported(t *testing.T) {
 	t.Helper()
 
 	if isDecimalSupported == false {
-		t.Skip("Skipping test for Tarantool without datetime support in msgpack")
+		t.Skip("Skipping test for Tarantool without decimal support in msgpack")
 	}
 }
 

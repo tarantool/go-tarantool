@@ -46,6 +46,12 @@ test-connection-pool:
 	go clean -testcache
 	go test -tags "$(TAGS)" ./connection_pool/ -v -p 1
 
+.PHONY: test-datetime
+test-datetime:
+	@echo "Running tests in datetime package"
+	go clean -testcache
+	go test -tags "$(TAGS)" ./datetime/ -v -p 1
+
 .PHONY: test-decimal
 test-decimal:
 	@echo "Running tests in decimal package"
