@@ -14,6 +14,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 - IPROTO_PUSH messages support (#67)
 - Public API with request object types (#126)
 - Support decimal type in msgpack (#96)
+- Support datetime type in msgpack (#118)
 
 ### Changed
 
