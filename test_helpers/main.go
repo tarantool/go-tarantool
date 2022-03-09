@@ -60,8 +60,8 @@ type TarantoolInstance struct {
 	// Cmd is a Tarantool command. Used to kill Tarantool process.
 	Cmd *exec.Cmd
 
-	// WorkDir is a directory with tarantool data. Cleaned up after run.
-	WorkDir string
+	// Options for restarting a tarantool instance.
+	Opts StartOpts
 }
 
 func isReady(server string, opts *tarantool.Opts) error {
@@ -148,6 +148,19 @@ func IsTarantoolVersionLess(majorMin uint64, minorMin uint64, patchMin uint64) (
 	return false, nil
 }
 
+// RestartTarantool restarts a tarantool instance for tests
+// with specifies parameters (refer to StartOpts)
+// which were specified in inst parameter.
+// inst is a tarantool instance that was started by
+// StartTarantool. Rewrites inst.Cmd.Process to stop
+// instance with StopTarantool.
+// Process must be stopped with StopTarantool.
+func RestartTarantool(inst *TarantoolInstance) error {
+	startedInst, err := StartTarantool(inst.Opts)
+	inst.Cmd.Process = startedInst.Cmd.Process
+	return err
+}
+
 // StartTarantool starts a tarantool instance for tests
 // with specifies parameters (refer to StartOpts).
 // Process must be stopped with StopTarantool.
@@ -174,7 +187,8 @@ func StartTarantool(startOpts StartOpts) (TarantoolInstance, error) {
 		return inst, err
 	}
 
-	inst.WorkDir = startOpts.WorkDir
+	// Options for restarting tarantool instance.
+	inst.Opts = startOpts
 
 	// Start tarantool.
 	err = inst.Cmd.Start()
@@ -236,8 +250,8 @@ func StopTarantool(inst TarantoolInstance) {
 func StopTarantoolWithCleanup(inst TarantoolInstance) {
 	StopTarantool(inst)
 
-	if inst.WorkDir != "" {
-		if err := os.RemoveAll(inst.WorkDir); err != nil {
+	if inst.Opts.WorkDir != "" {
+		if err := os.RemoveAll(inst.Opts.WorkDir); err != nil {
 			log.Fatalf("Failed to clean work directory, got %s", err)
 		}
 	}

@@ -14,6 +14,12 @@ deps: clean
 test:
 	go test ./... -v -p 1
 
+.PHONY: test-connection-pool
+test-connection-pool:
+	@echo "Running tests in connection_pool package"
+	go clean -testcache
+	go test ./connection_pool/ -v -p 1
+
 .PHONY: test-multi
 test-multi:
 	@echo "Running tests in multiconnection package"
