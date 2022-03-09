@@ -457,3 +457,8 @@ func (fut *Future) Err() error {
 	fut.wait()
 	return fut.err
 }
+
+// NewErrorFuture returns new set empty Future with filled error field.
+func NewErrorFuture(err error) *Future {
+	return &Future{err: err}
+}

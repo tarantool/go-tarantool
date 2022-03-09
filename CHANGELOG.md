@@ -16,6 +16,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 - Support UUID type in msgpack (#90)
 - Go modules support (#91)
 - queue-utube handling (#85)
+- Master discovery (#113)
 
 ### Fixed
 
