@@ -5,6 +5,8 @@
 	<img src="https://travis-ci.org/tarantool/go-tarantool.png?branch=master" align="right">
 </a-->
 
+[![Coverage Status](https://coveralls.io/repos/github/tarantool/go-tarantool/badge.svg?branch=master)](https://coveralls.io/github/tarantool/go-tarantool?branch=master)
+
 # Client in Go for Tarantool 1.6+
 
 The `go-tarantool` package has everything necessary for interfacing with

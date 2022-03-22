@@ -25,12 +25,16 @@ jobs:
           - '2.8'
           - '2.9'
           - '2.x-latest'
+        coveralls: [false]
+        include:
+          - tarantool: '2.x-latest'
+            coveralls: true
 
     steps:
       - name: Clone the connector
         uses: actions/checkout@v2
 
-      - name: Setup Tarantool (version is not equal to latest 2.x)
+      - name: Setup Tarantool ${{ matrix.tarantool }}
         if: matrix.tarantool != '2.x-latest'
         uses: tarantool/setup-tarantool@v1
         with:
@@ -52,3 +56,10 @@ jobs:
 
       - name: Run tests
         run: make test
+
+      - name: Run tests, collect code coverage data and send to Coveralls
+        if: ${{ matrix.coveralls }}
+        env:
+          COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          make coveralls
