@@ -30,7 +30,6 @@ faster than other packages according to public benchmarks.
 * [Schema](#schema)
 * [Custom (un)packing and typed selects and function calls](#custom-unpacking-and-typed-selects-and-function-calls)
 * [Options](#options)
-* [Working with queue](#working-with-queue)
 * [Tests](#tests)
 * [Alternative connectors](#alternative-connectors)
 
@@ -550,118 +549,6 @@ func decodeTuple(d *msgpack.Decoder, v reflect.Value) error {
   up. If `MaxReconnects` is zero, the client will try to reconnect endlessly.
 * `User` - user name to log into Tarantool.
 * `Pass` - user password to log into Tarantool.
-
-## Working with queue
-```go
-package main
-import (
-	"gopkg.in/vmihailenco/msgpack.v2"
-	"github.com/tarantool/go-tarantool"
-	"github.com/tarantool/go-tarantool/queue"
-	"time"
-	"fmt"
-	"log"
-)
-
-type customData struct{
-	Dummy bool
-}
-
-func (c *customData) DecodeMsgpack(d *msgpack.Decoder) error {
-	var err error
-	if c.Dummy, err = d.DecodeBool(); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (c *customData) EncodeMsgpack(e *msgpack.Encoder) error {
-	return e.EncodeBool(c.Dummy)
-}
-
-func main() {
-	opts := tarantool.Opts{
-		Timeout: time.Second,
-		Reconnect: time.Second,
-		MaxReconnects: 5,
-		User: "user",
-		Pass: "pass",
-		// ...
-	}
-	conn, err := tarantool.Connect("127.0.0.1:3301", opts)
-
-	if err != nil {
-		log.Fatalf("connection: %s", err)
-		return
-	}
-
-	cfg := queue.Cfg{
-		Temporary:  true,
-		IfNotExists: true,
-		Kind:       queue.FIFO,
-		Opts: queue.Opts{
-			Ttl:   10 * time.Second,
-			Ttr:   5 * time.Second,
-			Delay: 3 * time.Second,
-			Pri:   1,
-		},
-	}
-
-	que := queue.New(conn, "test_queue")
-	if err = que.Create(cfg); err != nil {
-		log.Fatalf("queue create: %s", err)
-		return
-	}
-
-	// put data
-	task, err := que.Put("test_data")
-	if err != nil {
-		log.Fatalf("put task: %s", err)
-	}
-	fmt.Println("Task id is", task.Id())
-
-	// take data
-	task, err = que.Take() //blocking operation
-	if err != nil {
-		log.Fatalf("take task: %s", err)
-	}
-	fmt.Println("Data is", task.Data())
-	task.Ack()
-
-	// take typed example
-	putData := customData{}
-	// put data
-	task, err = que.Put(&putData)
-	if err != nil {
-		log.Fatalf("put typed task: %s", err)
-	}
-	fmt.Println("Task id is ", task.Id())
-
-	takeData := customData{}
-	//take data
-	task, err = que.TakeTyped(&takeData) //blocking operation
-	if err != nil {
-		log.Fatalf("take take typed: %s", err)
-	}
-	fmt.Println("Data is ", takeData)
-	// same data
-	fmt.Println("Data is ", task.Data())
-
-	task, err = que.Put([]int{1, 2, 3})
-	task.Bury()
-
-	task, err = que.TakeTimeout(2 * time.Second)
-	if task == nil {
-		fmt.Println("Task is nil")
-	}
-
-	que.Drop()
-}
-```
-Features of the implementation:
-
-- If you use connection timeout and call `TakeWithTimeout` with parameter greater than the connection timeout then parameter reduced to it
-- If you use connection timeout and call `Take` then we return a error if we can not take task from queue in a time equal to the connection timeout
 
 ## Multi connections
 
