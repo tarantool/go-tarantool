@@ -54,6 +54,7 @@ func ExampleConnection_Select() {
 		return
 	}
 	fmt.Printf("response is %#v\n", resp.Data)
+
 	// Output:
 	// response is []interface {}{[]interface {}{0x457, "hello", "world"}}
 	// response is []interface {}{[]interface {}{0x457, "hello", "world"}}
@@ -85,140 +86,278 @@ func ExampleConnection_SelectTyped() {
 	// response is [{{} 1111 hello world}]
 }
 
-func Example() {
-	spaceNo := uint32(512)
-	indexNo := uint32(0)
-
-	server := "127.0.0.1:3013"
-	opts := tarantool.Opts{
-		Timeout:       50 * time.Millisecond,
-		Reconnect:     100 * time.Millisecond,
-		MaxReconnects: 3,
-		User:          "test",
-		Pass:          "test",
-	}
-	client, err := tarantool.Connect(server, opts)
+func ExampleConnection_SelectAsync() {
+	var conn *tarantool.Connection
+	conn, err := example_connect()
 	if err != nil {
-		fmt.Errorf("Failed to connect: %s", err.Error())
+		fmt.Printf("error in prepare is %v", err)
 		return
 	}
+	defer conn.Close()
 
-	resp, err := client.Ping()
+	conn.Insert(spaceNo, []interface{}{uint(16), "test", "one"})
+	conn.Insert(spaceNo, []interface{}{uint(17), "test", "one"})
+	conn.Insert(spaceNo, []interface{}{uint(18), "test", "one"})
+
+	var futs [3]*tarantool.Future
+	futs[0] = conn.SelectAsync("test", "primary", 0, 2, tarantool.IterLe, tarantool.UintKey{16})
+	futs[1] = conn.SelectAsync("test", "primary", 0, 1, tarantool.IterEq, tarantool.UintKey{17})
+	futs[2] = conn.SelectAsync("test", "primary", 0, 1, tarantool.IterEq, tarantool.UintKey{18})
+	var t []Tuple
+	err = futs[0].GetTyped(&t)
+	fmt.Println("Future", 0, "Error", err)
+	fmt.Println("Future", 0, "Data", t)
+
+	resp, err := futs[1].Get()
+	fmt.Println("Future", 1, "Error", err)
+	fmt.Println("Future", 1, "Data", resp.Data)
+
+	resp, err = futs[2].Get()
+	fmt.Println("Future", 2, "Error", err)
+	fmt.Println("Future", 2, "Data", resp.Data)
+	// Output:
+	// Future 0 Error <nil>
+	// Future 0 Data [{{} 16 val 16 bla} {{} 15 val 15 bla}]
+	// Future 1 Error <nil>
+	// Future 1 Data [[17 val 17 bla]]
+	// Future 2 Error <nil>
+	// Future 2 Data [[18 val 18 bla]]
+}
+
+func ExampleConnection_Ping() {
+	var conn *tarantool.Connection
+	conn, err := example_connect()
+	if err != nil {
+		fmt.Printf("error in prepare is %v", err)
+		return
+	}
+	defer conn.Close()
+
+	// Ping a Tarantool instance to check connection.
+	resp, err := conn.Ping()
 	fmt.Println("Ping Code", resp.Code)
 	fmt.Println("Ping Data", resp.Data)
 	fmt.Println("Ping Error", err)
-
-	// Delete tuple for cleaning.
-	client.Delete(spaceNo, indexNo, []interface{}{uint(10)})
-	client.Delete(spaceNo, indexNo, []interface{}{uint(11)})
-
-	// Insert new tuple { 10, 1 }.
-	resp, err = client.Insert(spaceNo, []interface{}{uint(10), "test", "one"})
-	fmt.Println("Insert Error", err)
-	fmt.Println("Insert Code", resp.Code)
-	fmt.Println("Insert Data", resp.Data)
-
-	// Insert new tuple { 11, 1 }.
-	resp, err = client.Insert("test", &Tuple{Id: 11, Msg: "test", Name: "one"})
-	fmt.Println("Insert Error", err)
-	fmt.Println("Insert Code", resp.Code)
-	fmt.Println("Insert Data", resp.Data)
-
-	// Delete tuple with primary key { 10 }.
-	resp, err = client.Delete(spaceNo, indexNo, []interface{}{uint(10)})
-	// or
-	// resp, err = client.Delete("test", "primary", UintKey{10}})
-	fmt.Println("Delete Error", err)
-	fmt.Println("Delete Code", resp.Code)
-	fmt.Println("Delete Data", resp.Data)
-
-	// Replace tuple with primary key 13.
-	// Note, Tuple is defined within tests, and has EncdodeMsgpack and DecodeMsgpack
-	// methods.
-	resp, err = client.Replace(spaceNo, []interface{}{uint(13), 1})
-	fmt.Println("Replace Error", err)
-	fmt.Println("Replace Code", resp.Code)
-	fmt.Println("Replace Data", resp.Data)
-
-	// Update tuple with primary key { 13 }, incrementing second field by 3.
-	resp, err = client.Update("test", "primary", tarantool.UintKey{13}, []tarantool.Op{{"+", 1, 3}})
-	// or
-	// resp, err = client.Update(spaceNo, indexNo, []interface{}{uint(13)}, []interface{}{[]interface{}{"+", 1, 3}})
-	fmt.Println("Update Error", err)
-	fmt.Println("Update Code", resp.Code)
-	fmt.Println("Update Data", resp.Data)
-
-	// Select just one tuple with primay key { 15 }.
-	resp, err = client.Select(spaceNo, indexNo, 0, 1, tarantool.IterEq, []interface{}{uint(15)})
-	// or
-	// resp, err = client.Select("test", "primary", 0, 1, tarantool.IterEq, tarantool.UintKey{15})
-	fmt.Println("Select Error", err)
-	fmt.Println("Select Code", resp.Code)
-	fmt.Println("Select Data", resp.Data)
-
-	// Call function 'func_name' with arguments.
-	resp, err = client.Call17("simple_incr", []interface{}{1})
-	fmt.Println("Call17 Error", err)
-	fmt.Println("Call17 Code", resp.Code)
-	fmt.Println("Call17 Data", resp.Data)
-
-	// Run raw Lua code.
-	resp, err = client.Eval("return 1 + 2", []interface{}{})
-	fmt.Println("Eval Error", err)
-	fmt.Println("Eval Code", resp.Code)
-	fmt.Println("Eval Data", resp.Data)
-
-	resp, err = client.Replace("test", &Tuple{Id: 11, Msg: "test", Name: "eleven"})
-	resp, err = client.Replace("test", &Tuple{Id: 12, Msg: "test", Name: "twelve"})
-
-	var futs [3]*tarantool.Future
-	futs[0] = client.SelectAsync("test", "primary", 0, 2, tarantool.IterLe, tarantool.UintKey{12})
-	futs[1] = client.SelectAsync("test", "primary", 0, 1, tarantool.IterEq, tarantool.UintKey{13})
-	futs[2] = client.SelectAsync("test", "primary", 0, 1, tarantool.IterEq, tarantool.UintKey{15})
-	var t []Tuple
-	err = futs[0].GetTyped(&t)
-	fmt.Println("Fut", 0, "Error", err)
-	fmt.Println("Fut", 0, "Data", t)
-
-	resp, err = futs[1].Get()
-	fmt.Println("Fut", 1, "Error", err)
-	fmt.Println("Fut", 1, "Data", resp.Data)
-
-	resp, err = futs[2].Get()
-	fmt.Println("Fut", 2, "Error", err)
-	fmt.Println("Fut", 2, "Data", resp.Data)
 	// Output:
 	// Ping Code 0
 	// Ping Data []
 	// Ping Error <nil>
-	// Insert Error <nil>
-	// Insert Code 0
-	// Insert Data [[10 test one]]
-	// Insert Error <nil>
-	// Insert Code 0
-	// Insert Data [[11 test one]]
-	// Delete Error <nil>
-	// Delete Code 0
-	// Delete Data [[10 test one]]
-	// Replace Error <nil>
-	// Replace Code 0
-	// Replace Data [[13 1]]
-	// Update Error <nil>
-	// Update Code 0
-	// Update Data [[13 4]]
-	// Select Error <nil>
-	// Select Code 0
-	// Select Data [[15 val 15 bla]]
-	// Call17 Error <nil>
-	// Call17 Code 0
-	// Call17 Data [2]
-	// Eval Error <nil>
-	// Eval Code 0
-	// Eval Data [3]
-	// Fut 0 Error <nil>
-	// Fut 0 Data [{{} 12 test twelve} {{} 11 test eleven}]
-	// Fut 1 Error <nil>
-	// Fut 1 Data [[13 4]]
-	// Fut 2 Error <nil>
-	// Fut 2 Data [[15 val 15 bla]]
+}
+
+func ExampleConnection_Insert() {
+	var conn *tarantool.Connection
+	conn, err := example_connect()
+	if err != nil {
+		fmt.Printf("error in prepare is %v", err)
+		return
+	}
+	defer conn.Close()
+
+	// Insert a new tuple { 31, 1 }.
+	resp, err := conn.Insert(spaceNo, []interface{}{uint(31), "test", "one"})
+	fmt.Println("Insert 31")
+	fmt.Println("Error", err)
+	fmt.Println("Code", resp.Code)
+	fmt.Println("Data", resp.Data)
+	// Insert a new tuple { 32, 1 }.
+	resp, err = conn.Insert("test", &Tuple{Id: 32, Msg: "test", Name: "one"})
+	fmt.Println("Insert 32")
+	fmt.Println("Error", err)
+	fmt.Println("Code", resp.Code)
+	fmt.Println("Data", resp.Data)
+
+	// Delete tuple with primary key { 31 }.
+	conn.Delete("test", "primary", []interface{}{uint(31)})
+	// Delete tuple with primary key { 32 }.
+	conn.Delete(spaceNo, indexNo, []interface{}{uint(32)})
+	// Output:
+	// Insert 31
+	// Error <nil>
+	// Code 0
+	// Data [[31 test one]]
+	// Insert 32
+	// Error <nil>
+	// Code 0
+	// Data [[32 test one]]
+
+}
+
+func ExampleConnection_Delete() {
+	var conn *tarantool.Connection
+	conn, err := example_connect()
+	if err != nil {
+		fmt.Printf("error in prepare is %v", err)
+		return
+	}
+	defer conn.Close()
+
+	// Insert a new tuple { 35, 1 }.
+	conn.Insert(spaceNo, []interface{}{uint(35), "test", "one"})
+	// Insert a new tuple { 36, 1 }.
+	conn.Insert("test", &Tuple{Id: 36, Msg: "test", Name: "one"})
+
+	// Delete tuple with primary key { 35 }.
+	resp, err := conn.Delete(spaceNo, indexNo, []interface{}{uint(35)})
+	fmt.Println("Delete 35")
+	fmt.Println("Error", err)
+	fmt.Println("Code", resp.Code)
+	fmt.Println("Data", resp.Data)
+
+	// Delete tuple with primary key { 36 }.
+	resp, err = conn.Delete("test", "primary", []interface{}{uint(36)})
+	fmt.Println("Delete 36")
+	fmt.Println("Error", err)
+	fmt.Println("Code", resp.Code)
+	fmt.Println("Data", resp.Data)
+	// Output:
+	// Delete 35
+	// Error <nil>
+	// Code 0
+	// Data [[35 test one]]
+	// Delete 36
+	// Error <nil>
+	// Code 0
+	// Data [[36 test one]]
+}
+
+func ExampleConnection_Replace() {
+	var conn *tarantool.Connection
+	conn, err := example_connect()
+	if err != nil {
+		fmt.Printf("error in prepare is %v", err)
+		return
+	}
+	defer conn.Close()
+
+	// Insert a new tuple { 13, 1 }.
+	conn.Insert(spaceNo, []interface{}{uint(13), "test", "one"})
+
+	// Replace a tuple with primary key 13.
+	// Note, Tuple is defined within tests, and has EncdodeMsgpack and
+	// DecodeMsgpack methods.
+	resp, err := conn.Replace(spaceNo, []interface{}{uint(13), 1})
+	fmt.Println("Replace 13")
+	fmt.Println("Error", err)
+	fmt.Println("Code", resp.Code)
+	fmt.Println("Data", resp.Data)
+	resp, err = conn.Replace("test", []interface{}{uint(13), 1})
+	fmt.Println("Replace 13")
+	fmt.Println("Error", err)
+	fmt.Println("Code", resp.Code)
+	fmt.Println("Data", resp.Data)
+	resp, err = conn.Replace("test", &Tuple{Id: 13, Msg: "test", Name: "eleven"})
+	fmt.Println("Replace 13")
+	fmt.Println("Error", err)
+	fmt.Println("Code", resp.Code)
+	fmt.Println("Data", resp.Data)
+	resp, err = conn.Replace("test", &Tuple{Id: 13, Msg: "test", Name: "twelve"})
+	fmt.Println("Replace 13")
+	fmt.Println("Error", err)
+	fmt.Println("Code", resp.Code)
+	fmt.Println("Data", resp.Data)
+	// Output:
+	// Replace 13
+	// Error <nil>
+	// Code 0
+	// Data [[13 1]]
+	// Replace 13
+	// Error <nil>
+	// Code 0
+	// Data [[13 1]]
+	// Replace 13
+	// Error <nil>
+	// Code 0
+	// Data [[13 test eleven]]
+	// Replace 13
+	// Error <nil>
+	// Code 0
+	// Data [[13 test twelve]]
+}
+
+func ExampleConnection_Update() {
+	var conn *tarantool.Connection
+	conn, err := example_connect()
+	if err != nil {
+		fmt.Printf("error in prepare is %v", err)
+		return
+	}
+	defer conn.Close()
+
+	// Insert a new tuple { 14, 1 }.
+	conn.Insert(spaceNo, []interface{}{uint(14), "test", "one"})
+
+	// Update tuple with primary key { 14 }.
+	resp, err := conn.Update(spaceName, indexName, []interface{}{uint(14)}, []interface{}{[]interface{}{"=", 1, "bye"}})
+	fmt.Println("Update 14")
+	fmt.Println("Error", err)
+	fmt.Println("Code", resp.Code)
+	fmt.Println("Data", resp.Data)
+	// Output:
+	// Update 14
+	// Error <nil>
+	// Code 0
+	// Data [[14 bye bla]]
+}
+
+func ExampleConnection_Call17() {
+	var conn *tarantool.Connection
+	conn, err := example_connect()
+	if err != nil {
+		fmt.Printf("error in prepare is %v", err)
+		return
+	}
+	defer conn.Close()
+
+	// Call a function 'simple_incr' with arguments.
+	resp, err := conn.Call17("simple_incr", []interface{}{1})
+	fmt.Println("Call simple_incr()")
+	fmt.Println("Error", err)
+	fmt.Println("Code", resp.Code)
+	fmt.Println("Data", resp.Data)
+	// Output:
+	// Call simple_incr()
+	// Error <nil>
+	// Code 0
+	// Data [2]
+}
+
+func ExampleConnection_Eval() {
+	var conn *tarantool.Connection
+	conn, err := example_connect()
+	if err != nil {
+		fmt.Printf("error in prepare is %v", err)
+		return
+	}
+	defer conn.Close()
+
+	// Run raw Lua code.
+	resp, err := conn.Eval("return 1 + 2", []interface{}{})
+	fmt.Println("Eval 'return 1 + 2'")
+	fmt.Println("Error", err)
+	fmt.Println("Code", resp.Code)
+	fmt.Println("Data", resp.Data)
+	// Output:
+	// Eval 'return 1 + 2'
+	// Error <nil>
+	// Code 0
+	// Data [3]
+}
+
+func ExampleConnect() {
+	conn, err := tarantool.Connect("127.0.0.1:3013", tarantool.Opts{
+		Timeout:     500 * time.Millisecond,
+		User:        "test",
+		Pass:        "test",
+		Concurrency: 32,
+	})
+	if err != nil {
+		fmt.Println("No connection available")
+		return
+	}
+	defer conn.Close()
+	if conn != nil {
+		fmt.Println("Connection is ready")
+	}
+	// Output:
+	// Connection is ready
 }
