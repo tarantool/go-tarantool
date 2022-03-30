@@ -1,3 +1,11 @@
+// Package with implementation of methods for work with a Tarantool's queue
+// implementations.
+//
+// Since: 1.5.
+//
+// See also
+//
+// * Tarantool queue module https://github.com/tarantool/queue
 package queue
 
 import (
@@ -8,12 +16,12 @@ import (
 	msgpack "gopkg.in/vmihailenco/msgpack.v2"
 )
 
-// Queue is a handle to tarantool queue's tube
+// Queue is a handle to Tarantool queue's tube.
 type Queue interface {
-	// Exists checks tube for existence
-	// Note: it uses Eval, so user needs 'execute universe' privilege
+	// Exists checks tube for existence.
+	// Note: it uses Eval, so user needs 'execute universe' privilege.
 	Exists() (bool, error)
-	// Create creates new tube with configuration
+	// Create creates new tube with configuration.
 	// Note: it uses Eval, so user needs 'execute universe' privilege
 	// Note: you'd better not use this function in your application, cause it is
 	// administrative task to create or delete queue.
@@ -22,33 +30,35 @@ type Queue interface {
 	// Note: you'd better not use this function in your application, cause it is
 	// administrative task to create or delete queue.
 	Drop() error
-	// Put creates new task in a tube
+	// Put creates new task in a tube.
 	Put(data interface{}) (*Task, error)
-	// PutWithOpts creates new task with options different from tube's defaults
+	// PutWithOpts creates new task with options different from tube's defaults.
 	PutWithOpts(data interface{}, cfg Opts) (*Task, error)
-	// Take takes 'ready' task from a tube and marks it as 'in progress'
+	// Take takes 'ready' task from a tube and marks it as 'in progress'.
 	// Note: if connection has a request Timeout, then 0.9 * connection.Timeout is
 	// used as a timeout.
 	Take() (*Task, error)
 	// TakeWithTimout takes 'ready' task from a tube and marks it as "in progress",
 	// or it is timeouted after "timeout" period.
 	// Note: if connection has a request Timeout, and conn.Timeout * 0.9 < timeout
-	// then timeout = conn.Timeout*0.9
+	// then timeout = conn.Timeout*0.9.
+	// If you use connection timeout and call `TakeTimeout` with parameter
+	// greater than the connection timeout then parameter reduced to it.
 	TakeTimeout(timeout time.Duration) (*Task, error)
 	// Take takes 'ready' task from a tube and marks it as 'in progress'
 	// Note: if connection has a request Timeout, then 0.9 * connection.Timeout is
 	// used as a timeout.
-	// Data will be unpacked to result
+	// Data will be unpacked to result.
 	TakeTyped(interface{}) (*Task, error)
 	// TakeWithTimout takes 'ready' task from a tube and marks it as "in progress",
 	// or it is timeouted after "timeout" period.
 	// Note: if connection has a request Timeout, and conn.Timeout * 0.9 < timeout
-	// then timeout = conn.Timeout*0.9
-	// data will be unpacked to result
+	// then timeout = conn.Timeout*0.9.
+	// Data will be unpacked to result.
 	TakeTypedTimeout(timeout time.Duration, result interface{}) (*Task, error)
 	// Peek returns task by its id.
 	Peek(taskId uint64) (*Task, error)
-	// Kick reverts effect of Task.Bury() for `count` tasks.
+	// Kick reverts effect of Task.Bury() for count tasks.
 	Kick(count uint64) (uint64, error)
 	// Delete the task identified by its id.
 	Delete(taskId uint64) error
@@ -76,8 +86,8 @@ type cmd struct {
 }
 
 type Cfg struct {
-	Temporary   bool // if true, the contents do not persist on disk
-	IfNotExists bool // if true, no error will be returned if the tube already exists
+	Temporary   bool // If true, the contents do not persist on disk.
+	IfNotExists bool // If true, no error will be returned if the tube already exists.
 	Kind        queueType
 	Opts
 }
@@ -99,10 +109,10 @@ func (cfg Cfg) getType() string {
 }
 
 type Opts struct {
-	Pri   int           // task priorities
-	Ttl   time.Duration // task time to live
-	Ttr   time.Duration // task time to execute
-	Delay time.Duration // delayed execution
+	Pri   int           // Task priorities.
+	Ttl   time.Duration // Task time to live.
+	Ttr   time.Duration // Task time to execute.
+	Delay time.Duration // Delayed execution.
 	Utube string
 }
 
@@ -132,7 +142,7 @@ func (opts Opts) toMap() map[string]interface{} {
 	return ret
 }
 
-// New creates a queue handle
+// New creates a queue handle.
 func New(conn tarantool.Connector, name string) Queue {
 	q := &queue{
 		name: name,
@@ -142,14 +152,14 @@ func New(conn tarantool.Connector, name string) Queue {
 	return q
 }
 
-// Create creates a new queue with config
+// Create creates a new queue with config.
 func (q *queue) Create(cfg Cfg) error {
 	cmd := "local name, type, cfg = ... ; queue.create_tube(name, type, cfg)"
 	_, err := q.conn.Eval(cmd, []interface{}{q.name, cfg.getType(), cfg.toMap()})
 	return err
 }
 
-// Exists checks existance of a tube
+// Exists checks existance of a tube.
 func (q *queue) Exists() (bool, error) {
 	cmd := "local name = ... ; return queue.tube[name] ~= nil"
 	resp, err := q.conn.Eval(cmd, []string{q.name})
@@ -192,7 +202,8 @@ func (q *queue) Take() (*Task, error) {
 	return q.take(params)
 }
 
-// The take request searches for a task in the queue. Waits until a task becomes ready or the timeout expires.
+// The take request searches for a task in the queue. Waits until a task
+// becomes ready or the timeout expires.
 func (q *queue) TakeTimeout(timeout time.Duration) (*Task, error) {
 	t := q.conn.ConfiguredTimeout() * 9 / 10
 	if t > 0 && timeout > t {
@@ -211,7 +222,8 @@ func (q *queue) TakeTyped(result interface{}) (*Task, error) {
 	return q.take(params, result)
 }
 
-// The take request searches for a task in the queue. Waits until a task becomes ready or the timeout expires.
+// The take request searches for a task in the queue. Waits until a task
+// becomes ready or the timeout expires.
 func (q *queue) TakeTypedTimeout(timeout time.Duration, result interface{}) (*Task, error) {
 	t := q.conn.ConfiguredTimeout() * 9 / 10
 	if t > 0 && timeout > t {
@@ -285,7 +297,8 @@ func (q *queue) Delete(taskId uint64) error {
 	return err
 }
 
-// Return the number of tasks in a queue broken down by task_state, and the number of requests broken down by the type of request.
+// Return the number of tasks in a queue broken down by task_state, and the
+// number of requests broken down by the type of request.
 func (q *queue) Statistic() (interface{}, error) {
 	resp, err := q.conn.Call(q.cmds.statistics, []interface{}{q.name})
 	if err != nil {

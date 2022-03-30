@@ -7,7 +7,7 @@ import (
 	"gopkg.in/vmihailenco/msgpack.v2"
 )
 
-// Future is a handle for asynchronous request
+// Future is a handle for asynchronous request.
 type Future struct {
 	requestId   uint32
 	requestCode int32
@@ -51,7 +51,7 @@ func (req *Future) fillInsert(enc *msgpack.Encoder, spaceNo uint32, tuple interf
 
 // Select performs select to box space.
 //
-// It is equal to conn.SelectAsync(...).Get()
+// It is equal to conn.SelectAsync(...).Get().
 func (conn *Connection) Select(space, index interface{}, offset, limit, iterator uint32, key interface{}) (resp *Response, err error) {
 	return conn.SelectAsync(space, index, offset, limit, iterator, key).Get()
 }
@@ -96,16 +96,16 @@ func (conn *Connection) Upsert(space interface{}, tuple, ops interface{}) (resp 
 	return conn.UpsertAsync(space, tuple, ops).Get()
 }
 
-// Call calls registered tarantool function.
-// It uses request code for tarantool 1.6, so result is converted to array of arrays
+// Call calls registered Tarantool function.
+// It uses request code for Tarantool 1.6, so result is converted to array of arrays
 //
 // It is equal to conn.CallAsync(functionName, args).Get().
 func (conn *Connection) Call(functionName string, args interface{}) (resp *Response, err error) {
 	return conn.CallAsync(functionName, args).Get()
 }
 
-// Call17 calls registered tarantool function.
-// It uses request code for tarantool 1.7, so result is not converted
+// Call17 calls registered Tarantool function.
+// It uses request code for Tarantool 1.7, so result is not converted
 // (though, keep in mind, result is always array)
 //
 // It is equal to conn.Call17Async(functionName, args).Get().
@@ -113,14 +113,14 @@ func (conn *Connection) Call17(functionName string, args interface{}) (resp *Res
 	return conn.Call17Async(functionName, args).Get()
 }
 
-// Eval passes lua expression for evaluation.
+// Eval passes Lua expression for evaluation.
 //
 // It is equal to conn.EvalAsync(space, tuple).Get().
 func (conn *Connection) Eval(expr string, args interface{}) (resp *Response, err error) {
 	return conn.EvalAsync(expr, args).Get()
 }
 
-// single used for conn.GetTyped for decode one tuple
+// single used for conn.GetTyped for decode one tuple.
 type single struct {
 	res   interface{}
 	found bool
@@ -189,7 +189,7 @@ func (conn *Connection) UpdateTyped(space, index interface{}, key, ops interface
 }
 
 // CallTyped calls registered function.
-// It uses request code for tarantool 1.6, so result is converted to array of arrays
+// It uses request code for Tarantool 1.6, so result is converted to array of arrays
 //
 // It is equal to conn.CallAsync(functionName, args).GetTyped(&result).
 func (conn *Connection) CallTyped(functionName string, args interface{}, result interface{}) (err error) {
@@ -197,7 +197,7 @@ func (conn *Connection) CallTyped(functionName string, args interface{}, result 
 }
 
 // Call17Typed calls registered function.
-// It uses request code for tarantool 1.7, so result is not converted
+// It uses request code for Tarantool 1.7, so result is not converted
 // (though, keep in mind, result is always array)
 //
 // It is equal to conn.Call17Async(functionName, args).GetTyped(&result).
@@ -205,14 +205,14 @@ func (conn *Connection) Call17Typed(functionName string, args interface{}, resul
 	return conn.Call17Async(functionName, args).GetTyped(result)
 }
 
-// EvalTyped passes lua expression for evaluation.
+// EvalTyped passes Lua expression for evaluation.
 //
 // It is equal to conn.EvalAsync(space, tuple).GetTyped(&result).
 func (conn *Connection) EvalTyped(expr string, args interface{}, result interface{}) (err error) {
 	return conn.EvalAsync(expr, args).GetTyped(result)
 }
 
-// SelectAsync sends select request to tarantool and returns Future.
+// SelectAsync sends select request to Tarantool and returns Future.
 func (conn *Connection) SelectAsync(space, index interface{}, offset, limit, iterator uint32, key interface{}) *Future {
 	future := conn.newFuture(SelectRequest)
 	spaceNo, indexNo, err := conn.Schema.resolveSpaceIndex(space, index)
@@ -226,7 +226,7 @@ func (conn *Connection) SelectAsync(space, index interface{}, offset, limit, ite
 	})
 }
 
-// InsertAsync sends insert action to tarantool and returns Future.
+// InsertAsync sends insert action to Tarantool and returns Future.
 // Tarantool will reject Insert when tuple with same primary key exists.
 func (conn *Connection) InsertAsync(space interface{}, tuple interface{}) *Future {
 	future := conn.newFuture(InsertRequest)
@@ -240,7 +240,7 @@ func (conn *Connection) InsertAsync(space interface{}, tuple interface{}) *Futur
 	})
 }
 
-// ReplaceAsync sends "insert or replace" action to tarantool and returns Future.
+// ReplaceAsync sends "insert or replace" action to Tarantool and returns Future.
 // If tuple with same primary key exists, it will be replaced.
 func (conn *Connection) ReplaceAsync(space interface{}, tuple interface{}) *Future {
 	future := conn.newFuture(ReplaceRequest)
@@ -254,7 +254,7 @@ func (conn *Connection) ReplaceAsync(space interface{}, tuple interface{}) *Futu
 	})
 }
 
-// DeleteAsync sends deletion action to tarantool and returns Future.
+// DeleteAsync sends deletion action to Tarantool and returns Future.
 // Future's result will contain array with deleted tuple.
 func (conn *Connection) DeleteAsync(space, index interface{}, key interface{}) *Future {
 	future := conn.newFuture(DeleteRequest)
@@ -286,7 +286,7 @@ func (conn *Connection) UpdateAsync(space, index interface{}, key, ops interface
 	})
 }
 
-// UpsertAsync sends "update or insert" action to tarantool and returns Future.
+// UpsertAsync sends "update or insert" action to Tarantool and returns Future.
 // Future's sesult will not contain any tuple.
 func (conn *Connection) UpsertAsync(space interface{}, tuple interface{}, ops interface{}) *Future {
 	future := conn.newFuture(UpsertRequest)
@@ -307,8 +307,8 @@ func (conn *Connection) UpsertAsync(space interface{}, tuple interface{}, ops in
 	})
 }
 
-// CallAsync sends a call to registered tarantool function and returns Future.
-// It uses request code for tarantool 1.6, so future's result is always array of arrays
+// CallAsync sends a call to registered Tarantool function and returns Future.
+// It uses request code for Tarantool 1.6, so future's result is always array of arrays
 func (conn *Connection) CallAsync(functionName string, args interface{}) *Future {
 	future := conn.newFuture(CallRequest)
 	return future.send(conn, func(enc *msgpack.Encoder) error {
@@ -320,8 +320,8 @@ func (conn *Connection) CallAsync(functionName string, args interface{}) *Future
 	})
 }
 
-// Call17Async sends a call to registered tarantool function and returns Future.
-// It uses request code for tarantool 1.7, so future's result will not be converted
+// Call17Async sends a call to registered Tarantool function and returns Future.
+// It uses request code for Tarantool 1.7, so future's result will not be converted
 // (though, keep in mind, result is always array)
 func (conn *Connection) Call17Async(functionName string, args interface{}) *Future {
 	future := conn.newFuture(Call17Request)
@@ -334,7 +334,7 @@ func (conn *Connection) Call17Async(functionName string, args interface{}) *Futu
 	})
 }
 
-// EvalAsync sends a lua expression for evaluation and returns Future.
+// EvalAsync sends a Lua expression for evaluation and returns Future.
 func (conn *Connection) EvalAsync(expr string, args interface{}) *Future {
 	future := conn.newFuture(EvalRequest)
 	return future.send(conn, func(enc *msgpack.Encoder) error {
@@ -405,7 +405,7 @@ func (fut *Future) wait() {
 	<-fut.ready
 }
 
-// Get waits for Future to be filled and returns Response and error
+// Get waits for Future to be filled and returns Response and error.
 //
 // Response will contain deserialized result in Data field.
 // It will be []interface{}, so if you want more performace, use GetTyped method.
@@ -442,7 +442,7 @@ func init() {
 	close(closedChan)
 }
 
-// WaitChan returns channel which becomes closed when response arrived or error occured
+// WaitChan returns channel which becomes closed when response arrived or error occured.
 func (fut *Future) WaitChan() <-chan struct{} {
 	if fut.ready == nil {
 		return closedChan

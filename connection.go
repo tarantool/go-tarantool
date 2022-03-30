@@ -1,3 +1,5 @@
+// Package with implementation of methods and structures for work with
+// Tarantool instance.
 package tarantool
 
 import (
@@ -27,26 +29,26 @@ type ConnEventKind int
 type ConnLogKind int
 
 const (
-	// Connect signals that connection is established or reestablished
+	// Connected signals that connection is established or reestablished.
 	Connected ConnEventKind = iota + 1
-	// Disconnect signals that connection is broken
+	// Disconnected signals that connection is broken.
 	Disconnected
-	// ReconnectFailed signals that attempt to reconnect has failed
+	// ReconnectFailed signals that attempt to reconnect has failed.
 	ReconnectFailed
-	// Either reconnect attempts exhausted, or explicit Close is called
+	// Either reconnect attempts exhausted, or explicit Close is called.
 	Closed
 
-	// LogReconnectFailed is logged when reconnect attempt failed
+	// LogReconnectFailed is logged when reconnect attempt failed.
 	LogReconnectFailed ConnLogKind = iota + 1
 	// LogLastReconnectFailed is logged when last reconnect attempt failed,
 	// connection will be closed after that.
 	LogLastReconnectFailed
-	// LogUnexpectedResultId is logged when response with unknown id were received.
+	// LogUnexpectedResultId is logged when response with unknown id was received.
 	// Most probably it is due to request timeout.
 	LogUnexpectedResultId
 )
 
-// ConnEvent is sent throw Notify channel specified in Opts
+// ConnEvent is sent throw Notify channel specified in Opts.
 type ConnEvent struct {
 	Conn *Connection
 	Kind ConnEventKind
@@ -80,39 +82,39 @@ func (d defaultLogger) Report(event ConnLogKind, conn *Connection, v ...interfac
 	}
 }
 
-// Connection is a handle to Tarantool.
+// Connection is a handle with a single connection to a Tarantool instance.
 //
 // It is created and configured with Connect function, and could not be
 // reconfigured later.
 //
-// It is could be "Connected", "Disconnected", and "Closed".
+// Connection could be in three possible states:
 //
-// When "Connected" it sends queries to Tarantool.
+// - In "Connected" state it sends queries to Tarantool.
 //
-// When "Disconnected" it rejects queries with ClientError{Code: ErrConnectionNotReady}
+// - In "Disconnected" state it rejects queries with ClientError{Code:
+// ErrConnectionNotReady}
 //
-// When "Closed" it rejects queries with ClientError{Code: ErrConnectionClosed}
-//
-// Connection could become "Closed" when Connection.Close() method called,
-// or when Tarantool disconnected and Reconnect pause is not specified or
-// MaxReconnects is specified and MaxReconnect reconnect attempts already performed.
+// - In "Closed" state it rejects queries with ClientError{Code:
+// ErrConnectionClosed}. Connection could become "Closed" when
+// Connection.Close() method called, or when Tarantool disconnected and
+// Reconnect pause is not specified or MaxReconnects is specified and
+// MaxReconnect reconnect attempts already performed.
 //
 // You may perform data manipulation operation by calling its methods:
 // Call*, Insert*, Replace*, Update*, Upsert*, Call*, Eval*.
 //
-// In any method that accepts `space` you my pass either space number or
-// space name (in this case it will be looked up in schema). Same is true for `index`.
+// In any method that accepts space you my pass either space number or space
+// name (in this case it will be looked up in schema). Same is true for index.
 //
-// ATTENTION: `tuple`, `key`, `ops` and `args` arguments for any method should be
+// ATTENTION: tuple, key, ops and args arguments for any method should be
 // and array or should serialize to msgpack array.
 //
-// ATTENTION: `result` argument for *Typed methods should deserialize from
+// ATTENTION: result argument for *Typed methods should deserialize from
 // msgpack array, cause Tarantool always returns result as an array.
 // For all space related methods and Call* (but not Call17*) methods Tarantool
 // always returns array of array (array of tuples for space related methods).
-// For Eval* and Call17* tarantool always returns array, but does not forces
+// For Eval* and Call17* Tarantool always returns array, but does not forces
 // array of arrays.
-
 type Connection struct {
 	addr  string
 	c     net.Conn
@@ -120,7 +122,7 @@ type Connection struct {
 	// Schema contains schema loaded on connection.
 	Schema    *Schema
 	requestId uint32
-	// Greeting contains first message sent by tarantool
+	// Greeting contains first message sent by Tarantool.
 	Greeting *Greeting
 
 	shard      []connShard
@@ -134,7 +136,7 @@ type Connection struct {
 	lenbuf  [PacketLengthBytes]byte
 }
 
-var _ = Connector(&Connection{}) // check compatibility with connector interface
+var _ = Connector(&Connection{}) // Check compatibility with connector interface.
 
 type connShard struct {
 	rmut     sync.Mutex
@@ -148,7 +150,7 @@ type connShard struct {
 	_pad   [16]uint64
 }
 
-// Greeting is a message sent by tarantool on connect.
+// Greeting is a message sent by Tarantool on connect.
 type Greeting struct {
 	Version string
 	auth    string
@@ -157,10 +159,10 @@ type Greeting struct {
 // Opts is a way to configure Connection
 type Opts struct {
 	// Timeout is requests timeout.
-	// Also used to setup net.TCPConn.Set(Read|Write)Deadline
+	// Also used to setup net.TCPConn.Set(Read|Write)Deadline.
 	Timeout time.Duration
 	// Reconnect is a pause between reconnection attempts.
-	// If specified, then when tarantool is not reachable or disconnected,
+	// If specified, then when Tarantool is not reachable or disconnected,
 	// new connect attempt is performed after pause.
 	// By default, no reconnection attempts are performed,
 	// so once disconnected, connection becomes Closed.
@@ -168,11 +170,11 @@ type Opts struct {
 	// MaxReconnects is a maximum reconnect attempts.
 	// After MaxReconnects attempts Connection becomes closed.
 	MaxReconnects uint
-	// User name for authorization
+	// User name for authorization.
 	User string
-	// Pass is password for authorization
+	// Pass is password for authorization.
 	Pass string
-	// RateLimit limits number of 'in-fly' request, ie already put into
+	// RateLimit limits number of 'in-fly' request, i.e. already put into
 	// requests queue, but not yet answered by server or timeouted.
 	// It is disabled by default.
 	// See RLimitAction for possible actions when RateLimit.reached.
@@ -191,42 +193,37 @@ type Opts struct {
 	// By default it is runtime.GOMAXPROCS(-1) * 4
 	Concurrency uint32
 	// SkipSchema disables schema loading. Without disabling schema loading,
-	// there is no way to create Connection for currently not accessible tarantool.
+	// there is no way to create Connection for currently not accessible Tarantool.
 	SkipSchema bool
 	// Notify is a channel which receives notifications about Connection status
 	// changes.
 	Notify chan<- ConnEvent
-	// Handle is user specified value, that could be retrivied with Handle() method
+	// Handle is user specified value, that could be retrivied with
+	// Handle() method.
 	Handle interface{}
-	// Logger is user specified logger used for error messages
+	// Logger is user specified logger used for error messages.
 	Logger Logger
 }
 
-// Connect creates and configures new Connection
+// Connect creates and configures a new Connection.
 //
 // Address could be specified in following ways:
 //
-// TCP connections:
-// - tcp://192.168.1.1:3013
-// - tcp://my.host:3013
-// - tcp:192.168.1.1:3013
-// - tcp:my.host:3013
-// - 192.168.1.1:3013
-// - my.host:3013
-// Unix socket:
-// - unix:///abs/path/tnt.sock
-// - unix:path/tnt.sock
-// - /abs/path/tnt.sock  - first '/' indicates unix socket
-// - ./rel/path/tnt.sock - first '.' indicates unix socket
-// - unix/:path/tnt.sock  - 'unix/' acts as a "host" and "/path..." as a port
+// - TCP connections (tcp://192.168.1.1:3013, tcp://my.host:3013,
+// tcp:192.168.1.1:3013, tcp:my.host:3013, 192.168.1.1:3013, my.host:3013)
 //
-// Note:
+// - Unix socket, first '/' or '.' indicates Unix socket
+// (unix:///abs/path/tnt.sock, unix:path/tnt.sock, /abs/path/tnt.sock,
+// ./rel/path/tnt.sock, unix/:path/tnt.sock)
+//
+// Notes:
 //
 // - If opts.Reconnect is zero (default), then connection either already connected
 // or error is returned.
 //
-// - If opts.Reconnect is non-zero, then error will be returned only if authorization// fails. But if Tarantool is not reachable, then it will attempt to reconnect later
-// and will not end attempts on authorization failures.
+// - If opts.Reconnect is non-zero, then error will be returned only if authorization
+// fails. But if Tarantool is not reachable, then it will make an attempt to reconnect later
+// and will not finish to make attempts on authorization failures.
 func Connect(addr string, opts Opts) (conn *Connection, err error) {
 	conn = &Connection{
 		addr:      addr,
@@ -272,10 +269,10 @@ func Connect(addr string, opts Opts) (conn *Connection, err error) {
 			return nil, err
 		} else if ok && (ter.Code == ErrNoSuchUser ||
 			ter.Code == ErrPasswordMismatch) {
-			/* reported auth errors immediatly */
+			// Reported auth errors immediately.
 			return nil, err
 		} else {
-			// without SkipSchema it is useless
+			// Without SkipSchema it is useless.
 			go func(conn *Connection) {
 				conn.mutex.Lock()
 				defer conn.mutex.Unlock()
@@ -292,7 +289,7 @@ func Connect(addr string, opts Opts) (conn *Connection, err error) {
 		go conn.timeouts()
 	}
 
-	// TODO: reload schema after reconnect
+	// TODO: reload schema after reconnect.
 	if !conn.opts.SkipSchema {
 		if err = conn.loadSchema(); err != nil {
 			conn.mutex.Lock()
@@ -324,12 +321,12 @@ func (conn *Connection) Close() error {
 	return conn.closeConnection(err, true)
 }
 
-// Addr is configured address of Tarantool socket
+// Addr returns a configured address of Tarantool socket.
 func (conn *Connection) Addr() string {
 	return conn.addr
 }
 
-// RemoteAddr is address of Tarantool socket
+// RemoteAddr returns an address of Tarantool socket.
 func (conn *Connection) RemoteAddr() string {
 	conn.mutex.Lock()
 	defer conn.mutex.Unlock()
@@ -339,7 +336,7 @@ func (conn *Connection) RemoteAddr() string {
 	return conn.c.RemoteAddr().String()
 }
 
-// LocalAddr is address of outgoing socket
+// LocalAddr returns an address of outgoing socket.
 func (conn *Connection) LocalAddr() string {
 	conn.mutex.Lock()
 	defer conn.mutex.Unlock()
@@ -349,7 +346,7 @@ func (conn *Connection) LocalAddr() string {
 	return conn.c.LocalAddr().String()
 }
 
-// Handle returns user specified handle from Opts
+// Handle returns a user-specified handle from Opts.
 func (conn *Connection) Handle() interface{} {
 	return conn.opts.Handle
 }
@@ -416,7 +413,7 @@ func (conn *Connection) dial() (err error) {
 		}
 	}
 
-	// Only if connected and authenticated
+	// Only if connected and authenticated.
 	conn.lockShards()
 	conn.c = connection
 	atomic.StoreUint32(&conn.state, connConnected)
@@ -873,12 +870,12 @@ func (conn *Connection) nextRequestId() (requestId uint32) {
 	return atomic.AddUint32(&conn.requestId, 1)
 }
 
-// ConfiguredTimeout returns timeout from connection config
+// ConfiguredTimeout returns a timeout from connection config.
 func (conn *Connection) ConfiguredTimeout() time.Duration {
 	return conn.opts.Timeout
 }
 
-// OverrideSchema sets Schema for the connection
+// OverrideSchema sets Schema for the connection.
 func (conn *Connection) OverrideSchema(s *Schema) {
 	if s != nil {
 		conn.mutex.Lock()

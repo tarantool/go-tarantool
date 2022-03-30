@@ -8,8 +8,8 @@ import (
 )
 
 type Tuple struct {
-	/* instruct msgpack to pack this struct as array,
-	 * so no custom packer is needed */
+	// Instruct msgpack to pack this struct as array, so no custom packer
+	// is needed.
 	_msgpack struct{} `msgpack:",asArray"`
 	Id       uint
 	Msg      string
@@ -108,23 +108,23 @@ func Example() {
 	fmt.Println("Ping Data", resp.Data)
 	fmt.Println("Ping Error", err)
 
-	// delete tuple for cleaning
+	// Delete tuple for cleaning.
 	client.Delete(spaceNo, indexNo, []interface{}{uint(10)})
 	client.Delete(spaceNo, indexNo, []interface{}{uint(11)})
 
-	// insert new tuple { 10, 1 }
+	// Insert new tuple { 10, 1 }.
 	resp, err = client.Insert(spaceNo, []interface{}{uint(10), "test", "one"})
 	fmt.Println("Insert Error", err)
 	fmt.Println("Insert Code", resp.Code)
 	fmt.Println("Insert Data", resp.Data)
 
-	// insert new tuple { 11, 1 }
+	// Insert new tuple { 11, 1 }.
 	resp, err = client.Insert("test", &Tuple{Id: 11, Msg: "test", Name: "one"})
 	fmt.Println("Insert Error", err)
 	fmt.Println("Insert Code", resp.Code)
 	fmt.Println("Insert Data", resp.Data)
 
-	// delete tuple with primary key { 10 }
+	// Delete tuple with primary key { 10 }.
 	resp, err = client.Delete(spaceNo, indexNo, []interface{}{uint(10)})
 	// or
 	// resp, err = client.Delete("test", "primary", UintKey{10}})
@@ -132,15 +132,15 @@ func Example() {
 	fmt.Println("Delete Code", resp.Code)
 	fmt.Println("Delete Data", resp.Data)
 
-	// replace tuple with primary key 13
-	// note, Tuple is defined within tests, and has EncdodeMsgpack and DecodeMsgpack
-	// methods
+	// Replace tuple with primary key 13.
+	// Note, Tuple is defined within tests, and has EncdodeMsgpack and DecodeMsgpack
+	// methods.
 	resp, err = client.Replace(spaceNo, []interface{}{uint(13), 1})
 	fmt.Println("Replace Error", err)
 	fmt.Println("Replace Code", resp.Code)
 	fmt.Println("Replace Data", resp.Data)
 
-	// update tuple with primary key { 13 }, incrementing second field by 3
+	// Update tuple with primary key { 13 }, incrementing second field by 3.
 	resp, err = client.Update("test", "primary", tarantool.UintKey{13}, []tarantool.Op{{"+", 1, 3}})
 	// or
 	// resp, err = client.Update(spaceNo, indexNo, []interface{}{uint(13)}, []interface{}{[]interface{}{"+", 1, 3}})
@@ -148,7 +148,7 @@ func Example() {
 	fmt.Println("Update Code", resp.Code)
 	fmt.Println("Update Data", resp.Data)
 
-	// select just one tuple with primay key { 15 }
+	// Select just one tuple with primay key { 15 }.
 	resp, err = client.Select(spaceNo, indexNo, 0, 1, tarantool.IterEq, []interface{}{uint(15)})
 	// or
 	// resp, err = client.Select("test", "primary", 0, 1, tarantool.IterEq, tarantool.UintKey{15})
@@ -156,13 +156,13 @@ func Example() {
 	fmt.Println("Select Code", resp.Code)
 	fmt.Println("Select Data", resp.Data)
 
-	// call function 'func_name' with arguments
+	// Call function 'func_name' with arguments.
 	resp, err = client.Call17("simple_incr", []interface{}{1})
 	fmt.Println("Call17 Error", err)
 	fmt.Println("Call17 Code", resp.Code)
 	fmt.Println("Call17 Data", resp.Data)
 
-	// run raw lua code
+	// Run raw Lua code.
 	resp, err = client.Eval("return 1 + 2", []interface{}{})
 	fmt.Println("Eval Error", err)
 	fmt.Println("Eval Code", resp.Code)

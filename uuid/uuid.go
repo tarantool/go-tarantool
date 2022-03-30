@@ -1,3 +1,16 @@
+// Package with support of Tarantool's UUID data type.
+//
+// UUID data type supported in Tarantool since 2.4.1.
+//
+// Since: 1.6.0.
+//
+// See also
+//
+// * Tarantool's commit wht UUID support https://github.com/tarantool/tarantool/commit/d68fc29246714eee505bc9bbcd84a02de17972c5
+//
+// * Tarantool data model https://www.tarantool.io/en/doc/latest/book/box/data_model/
+//
+// * Module UUID https://www.tarantool.io/en/doc/latest/reference/reference_lua/uuid/
 package uuid
 
 import (
@@ -8,10 +21,7 @@ import (
 	"gopkg.in/vmihailenco/msgpack.v2"
 )
 
-// UUID external type
-// Supported since Tarantool 2.4.1. See more in commit messages.
-// https://github.com/tarantool/tarantool/commit/d68fc29246714eee505bc9bbcd84a02de17972c5
-
+// UUID external type.
 const UUID_extId = 2
 
 func encodeUUID(e *msgpack.Encoder, v reflect.Value) error {

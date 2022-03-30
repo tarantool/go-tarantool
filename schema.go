@@ -7,25 +7,26 @@ import (
 // Schema contains information about spaces and indexes.
 type Schema struct {
 	Version uint
-	// Spaces is map from space names to spaces
+	// Spaces is map from space names to spaces.
 	Spaces map[string]*Space
-	// SpacesById is map from space numbers to spaces
+	// SpacesById is map from space numbers to spaces.
 	SpacesById map[uint32]*Space
 }
 
-// Space contains information about tarantool space
+// Space contains information about Tarantool's space.
 type Space struct {
-	Id        uint32
-	Name      string
+	Id   uint32
+	Name string
+	// Could be "memtx" or "vinyl".
 	Engine    string
-	Temporary bool // Is this space temporaray?
-	// Field configuration is not mandatory and not checked by tarantool.
+	Temporary bool // Is this space temporary?
+	// Field configuration is not mandatory and not checked by Tarantool.
 	FieldsCount uint32
 	Fields      map[string]*Field
 	FieldsById  map[uint32]*Field
-	// Indexes is map from index names to indexes
+	// Indexes is map from index names to indexes.
 	Indexes map[string]*Index
-	// IndexesById is map from index numbers to indexes
+	// IndexesById is map from index numbers to indexes.
 	IndexesById map[uint32]*Index
 }
 
@@ -35,7 +36,7 @@ type Field struct {
 	Type string
 }
 
-// Index contains information about index
+// Index contains information about index.
 type Index struct {
 	Id     uint32
 	Name   string
@@ -64,7 +65,7 @@ func (conn *Connection) loadSchema() (err error) {
 	schema.SpacesById = make(map[uint32]*Space)
 	schema.Spaces = make(map[string]*Space)
 
-	// reload spaces
+	// Reload spaces.
 	resp, err = conn.Select(vspaceSpId, 0, 0, maxSchemas, IterAll, []interface{}{})
 	if err != nil {
 		return err
@@ -117,7 +118,7 @@ func (conn *Connection) loadSchema() (err error) {
 		schema.Spaces[space.Name] = space
 	}
 
-	// reload indexes
+	// Reload indexes.
 	resp, err = conn.Select(vindexSpId, 0, 0, maxSchemas, IterAll, []interface{}{})
 	if err != nil {
 		return err
@@ -135,7 +136,7 @@ func (conn *Connection) loadSchema() (err error) {
 			opts := row[4].(map[interface{}]interface{})
 			var ok bool
 			if index.Unique, ok = opts["unique"].(bool); !ok {
-				/* see bug https://github.com/tarantool/tarantool/issues/2060 */
+				/* See bug https://github.com/tarantool/tarantool/issues/2060. */
 				index.Unique = true
 			}
 		default:

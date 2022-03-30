@@ -188,8 +188,8 @@ func TestRefresh(t *testing.T) {
 	}
 	curAddr := multiConn.addrs[0]
 
-	// wait for refresh timer
-	// scenario 1 nodeload, 1 refresh, 1 nodeload
+	// Wait for refresh timer.
+	// Scenario 1 nodeload, 1 refresh, 1 nodeload.
 	time.Sleep(10 * time.Second)
 
 	newAddr := multiConn.addrs[0]

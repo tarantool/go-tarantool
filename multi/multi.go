@@ -42,7 +42,7 @@ type ConnectionMulti struct {
 	fallback *tarantool.Connection
 }
 
-var _ = tarantool.Connector(&ConnectionMulti{}) // check compatibility with connector interface
+var _ = tarantool.Connector(&ConnectionMulti{}) // Check compatibility with connector interface.
 
 type OptsMulti struct {
 	CheckTimeout         time.Duration
@@ -61,7 +61,7 @@ func ConnectWithOpts(addrs []string, connOpts tarantool.Opts, opts OptsMulti) (c
 		opts.ClusterDiscoveryTime = 60 * time.Second
 	}
 
-	notify := make(chan tarantool.ConnEvent, 10*len(addrs)) // x10 to accept disconnected and closed event (with a margin)
+	notify := make(chan tarantool.ConnEvent, 10*len(addrs)) // x10 to accept disconnected and closed event (with a margin).
 	connOpts.Notify = notify
 	connMulti = &ConnectionMulti{
 		addrs:    addrs,
@@ -169,7 +169,7 @@ func (connMulti *ConnectionMulti) checker() {
 			}
 			if len(resp) > 0 && len(resp[0]) > 0 {
 				addrs := resp[0]
-				// Fill pool with new connections
+				// Fill pool with new connections.
 				for _, v := range addrs {
 					if indexOf(v, connMulti.addrs) < 0 {
 						conn, _ := tarantool.Connect(v, connMulti.connOpts)
@@ -178,7 +178,7 @@ func (connMulti *ConnectionMulti) checker() {
 						}
 					}
 				}
-				// Clear pool from obsolete connections
+				// Clear pool from obsolete connections.
 				for _, v := range connMulti.addrs {
 					if indexOf(v, addrs) < 0 {
 						con, ok := connMulti.getConnectionFromPool(v)

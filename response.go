@@ -9,8 +9,8 @@ import (
 type Response struct {
 	RequestId uint32
 	Code      uint32
-	Error     string // error message
-	// Data contains deserialized data for untyped requests
+	Error     string // Error message.
+	// Data contains deserialized data for untyped requests.
 	Data []interface{}
 	buf  smallBuf
 }
@@ -139,7 +139,7 @@ func (resp *Response) decodeBodyTyped(res interface{}) (err error) {
 	return
 }
 
-// String implements Stringer interface
+// String implements Stringer interface.
 func (resp *Response) String() (str string) {
 	if resp.Code == OkCode {
 		return fmt.Sprintf("<%d OK %v>", resp.RequestId, resp.Data)
@@ -148,7 +148,7 @@ func (resp *Response) String() (str string) {
 }
 
 // Tuples converts result of Eval and Call17 to same format
-// as other actions returns (ie array of arrays).
+// as other actions returns (i.e. array of arrays).
 func (resp *Response) Tuples() (res [][]interface{}) {
 	res = make([][]interface{}, len(resp.Data))
 	for i, t := range resp.Data {
