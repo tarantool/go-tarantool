@@ -26,7 +26,6 @@ faster than other packages according to public benchmarks.
 * [API reference](#api-reference)
 * [Walking\-through example in Go](#walking-through-example-in-go)
 * [Help](#help)
-* [Options](#options)
 * [Tests](#tests)
 * [Alternative connectors](#alternative-connectors)
 
@@ -171,17 +170,6 @@ To contact `go-tarantool` developers on any problems, create an issue at
 
 The developers of the [Tarantool server](http://github.com/tarantool/tarantool)
 will also be happy to provide advice or receive feedback.
-
-## Options
-
-* `Timeout` - timeout for any particular request. If `Timeout` is zero request,
-  any request may block infinitely.
-* `Reconnect` - timeout between reconnect attempts. If `Reconnect` is zero, no
-  reconnects will be performed.
-* `MaxReconnects` - maximal number of reconnect failures; after that we give it
-  up. If `MaxReconnects` is zero, the client will try to reconnect endlessly.
-* `User` - user name to log into Tarantool.
-* `Pass` - user password to log into Tarantool.
 
 ## Multi connections
 

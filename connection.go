@@ -158,21 +158,25 @@ type Greeting struct {
 
 // Opts is a way to configure Connection
 type Opts struct {
-	// Timeout is requests timeout.
+	// Timeout for any particular request. If Timeout is zero request, any
+	// request can be blocked infinitely.
 	// Also used to setup net.TCPConn.Set(Read|Write)Deadline.
 	Timeout time.Duration
-	// Reconnect is a pause between reconnection attempts.
+	// Timeout between reconnect attempts. If Reconnect is zero, no
+	// reconnect attempts will be made.
 	// If specified, then when Tarantool is not reachable or disconnected,
 	// new connect attempt is performed after pause.
 	// By default, no reconnection attempts are performed,
 	// so once disconnected, connection becomes Closed.
 	Reconnect time.Duration
-	// MaxReconnects is a maximum reconnect attempts.
+	// Maximum number of reconnect failures; after that we give it up to
+	// on. If MaxReconnects is zero, the client will try to reconnect
+	// endlessly.
 	// After MaxReconnects attempts Connection becomes closed.
 	MaxReconnects uint
-	// User name for authorization.
+	// Username for logging in to Tarantool.
 	User string
-	// Pass is password for authorization.
+	// User password for logging in to Tarantool.
 	Pass string
 	// RateLimit limits number of 'in-fly' request, i.e. already put into
 	// requests queue, but not yet answered by server or timeouted.
