@@ -51,6 +51,18 @@ box.once("init", function()
     box.schema.user.grant('test', 'read,write', 'space', 'schematest')
 end)
 
+local function func_name()
+    return {
+        {221, "", {
+                {"Moscow", 34},
+                {"Minsk", 23},
+                {"Kiev", 31},
+            }
+        }
+    }
+end
+rawset(_G, 'func_name', func_name)
+
 local function simple_incr(a)
     return a + 1
 end
