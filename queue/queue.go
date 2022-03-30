@@ -37,20 +37,23 @@ type Queue interface {
 	// Take takes 'ready' task from a tube and marks it as 'in progress'.
 	// Note: if connection has a request Timeout, then 0.9 * connection.Timeout is
 	// used as a timeout.
+	// If you use a connection timeout and we can not take task from queue in
+	// a time equal to the connection timeout after calling `Take` then we
+	// return an error.
 	Take() (*Task, error)
-	// TakeWithTimout takes 'ready' task from a tube and marks it as "in progress",
+	// TakeTimeout takes 'ready' task from a tube and marks it as "in progress",
 	// or it is timeouted after "timeout" period.
 	// Note: if connection has a request Timeout, and conn.Timeout * 0.9 < timeout
 	// then timeout = conn.Timeout*0.9.
 	// If you use connection timeout and call `TakeTimeout` with parameter
 	// greater than the connection timeout then parameter reduced to it.
 	TakeTimeout(timeout time.Duration) (*Task, error)
-	// Take takes 'ready' task from a tube and marks it as 'in progress'
+	// TakeTyped takes 'ready' task from a tube and marks it as 'in progress'
 	// Note: if connection has a request Timeout, then 0.9 * connection.Timeout is
 	// used as a timeout.
 	// Data will be unpacked to result.
 	TakeTyped(interface{}) (*Task, error)
-	// TakeWithTimout takes 'ready' task from a tube and marks it as "in progress",
+	// TakeTypedTimeout takes 'ready' task from a tube and marks it as "in progress",
 	// or it is timeouted after "timeout" period.
 	// Note: if connection has a request Timeout, and conn.Timeout * 0.9 < timeout
 	// then timeout = conn.Timeout*0.9.
