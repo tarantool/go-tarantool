@@ -26,7 +26,6 @@ faster than other packages according to public benchmarks.
 * [API reference](#api-reference)
 * [Walking\-through example in Go](#walking-through-example-in-go)
 * [Help](#help)
-* [Schema](#schema)
 * [Custom (un)packing and typed selects and function calls](#custom-unpacking-and-typed-selects-and-function-calls)
 * [Options](#options)
 * [Tests](#tests)
@@ -173,34 +172,6 @@ To contact `go-tarantool` developers on any problems, create an issue at
 
 The developers of the [Tarantool server](http://github.com/tarantool/tarantool)
 will also be happy to provide advice or receive feedback.
-
-## Schema
-
-```go
-    // save Schema to local variable to avoid races
-    schema := client.Schema
-
-    // access Space objects by name or id
-    space1 := schema.Spaces["some_space"]
-    space2 := schema.SpacesById[20] // it's a map
-    fmt.Printf("Space %d %s %s\n", space1.Id, space1.Name, space1.Engine)
-    fmt.Printf("Space %d %d\n", space1.FieldsCount, space1.Temporary)
-
-    // access index information by name or id
-    index1 := space1.Indexes["some_index"]
-    index2 := space1.IndexesById[2] // it's a map
-    fmt.Printf("Index %d %s\n", index1.Id, index1.Name)
-
-    // access index fields information by index
-    indexField1 := index1.Fields[0] // it's a slice
-    indexField2 := index1.Fields[1] // it's a slice
-    fmt.Printf("IndexFields %s %s\n", indexField1.Name, indexField1.Type)
-
-    // access space fields information by name or id (index)
-    spaceField1 := space.Fields["some_field"]
-    spaceField2 := space.FieldsById[3]
-    fmt.Printf("SpaceField %s %s\n", spaceField1.Name, spaceField1.Type)
-```
 
 ## Custom (un)packing and typed selects and function calls
 

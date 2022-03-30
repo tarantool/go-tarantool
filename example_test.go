@@ -305,3 +305,70 @@ func ExampleConnect() {
 	// Output:
 	// Connection is ready
 }
+
+// Example demonstrates how to retrieve information with space schema.
+func ExampleSchema() {
+	conn := example_connect()
+	defer conn.Close()
+
+	schema := conn.Schema
+	if schema.SpacesById == nil {
+		fmt.Println("schema.SpacesById is nil")
+	}
+	if schema.Spaces == nil {
+		fmt.Println("schema.Spaces is nil")
+	}
+
+	space1 := schema.Spaces["test"]
+	space2 := schema.SpacesById[514]
+	fmt.Printf("Space 1 ID %d %s\n", space1.Id, space1.Name)
+	fmt.Printf("Space 2 ID %d %s\n", space2.Id, space2.Name)
+	// Output:
+	// Space 1 ID 512 test
+	// Space 2 ID 514 schematest
+}
+
+// Example demonstrates how to retrieve information with space schema.
+func ExampleSpace() {
+	conn := example_connect()
+	defer conn.Close()
+
+	// Save Schema to a local variable to avoid races
+	schema := conn.Schema
+	if schema.SpacesById == nil {
+		fmt.Println("schema.SpacesById is nil")
+	}
+	if schema.Spaces == nil {
+		fmt.Println("schema.Spaces is nil")
+	}
+
+	// Access Space objects by name or ID.
+	space1 := schema.Spaces["test"]
+	space2 := schema.SpacesById[514] // It's a map.
+	fmt.Printf("Space 1 ID %d %s %s\n", space1.Id, space1.Name, space1.Engine)
+	fmt.Printf("Space 1 ID %d %t\n", space1.FieldsCount, space1.Temporary)
+
+	// Access index information by name or ID.
+	index1 := space1.Indexes["primary"]
+	index2 := space2.IndexesById[3] // It's a map.
+	fmt.Printf("Index %d %s\n", index1.Id, index1.Name)
+
+	// Access index fields information by index.
+	indexField1 := index1.Fields[0] // It's a slice.
+	indexField2 := index2.Fields[1] // It's a slice.
+	fmt.Println(indexField1, indexField2)
+
+	// Access space fields information by name or id (index).
+	spaceField1 := space2.Fields["name0"]
+	spaceField2 := space2.FieldsById[3]
+	fmt.Printf("SpaceField 1 %s %s\n", spaceField1.Name, spaceField1.Type)
+	fmt.Printf("SpaceField 2 %s %s\n", spaceField2.Name, spaceField2.Type)
+
+	// Output:
+	// Space 1 ID 512 test memtx
+	// Space 1 ID 0 false
+	// Index 0 primary
+	// &{0 unsigned} &{2 string}
+	// SpaceField 1 name0 unsigned
+	// SpaceField 2 name3 unsigned
+}
