@@ -26,7 +26,6 @@ faster than other packages according to public benchmarks.
 * [API reference](#api-reference)
 * [Walking\-through example in Go](#walking-through-example-in-go)
 * [Help](#help)
-* [Usage](#usage)
 * [Schema](#schema)
 * [Custom (un)packing and typed selects and function calls](#custom-unpacking-and-typed-selects-and-function-calls)
 * [Options](#options)
@@ -174,52 +173,6 @@ To contact `go-tarantool` developers on any problems, create an issue at
 
 The developers of the [Tarantool server](http://github.com/tarantool/tarantool)
 will also be happy to provide advice or receive feedback.
-
-## Usage
-
-To enable support of UUID in msgpack with [google/uuid](https://github.com/google/uuid),
-import tarantool/uuid submodule.
-```go
-package main
-
-import (
-	"log"
-	"time"
-
-	"github.com/tarantool/go-tarantool"
-	_ "github.com/tarantool/go-tarantool/uuid"
-	"github.com/google/uuid"
-)
-
-func main() {
-	server := "127.0.0.1:3013"
-	opts := tarantool.Opts{
-		Timeout:       500 * time.Millisecond,
-		Reconnect:     1 * time.Second,
-		MaxReconnects: 3,
-		User:          "test",
-		Pass:          "test",
-	}
-	client, err := tarantool.Connect(server, opts)
-	if err != nil {
-		log.Fatalf("Failed to connect: %s", err.Error())
-	}
-
-	spaceNo := uint32(524)
-
-	id, uuidErr := uuid.Parse("c8f0fa1f-da29-438c-a040-393f1126ad39")
-	if uuidErr != nil {
-		log.Fatalf("Failed to prepare uuid: %s", uuidErr)
-	}
-
-	resp, err := client.Replace(spaceNo, []interface{}{ id })
-
-	log.Println("UUID tuple replace")
-	log.Println("Error", err)
-	log.Println("Code", resp.Code)
-	log.Println("Data", resp.Data)
-}
-```
 
 ## Schema
 

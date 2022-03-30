@@ -6,7 +6,7 @@
 //
 // See also
 //
-// * Tarantool's commit wht UUID support https://github.com/tarantool/tarantool/commit/d68fc29246714eee505bc9bbcd84a02de17972c5
+// * Tarantool commit with UUID support https://github.com/tarantool/tarantool/commit/d68fc29246714eee505bc9bbcd84a02de17972c5
 //
 // * Tarantool data model https://www.tarantool.io/en/doc/latest/book/box/data_model/
 //
