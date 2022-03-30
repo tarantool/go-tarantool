@@ -1,3 +1,11 @@
+// Setup queue module and start Tarantool instance before execution:
+// Terminal 1:
+// $ make deps
+// $ TEST_TNT_LISTEN=3013 tarantool queue/config.lua
+//
+// Terminal 2:
+// $ cd queue
+// $ go test -v example_test.go
 package queue_test
 
 import (
@@ -8,7 +16,8 @@ import (
 	"github.com/tarantool/go-tarantool/queue"
 )
 
-func ExampleConnection_Queue() {
+// Example demonstrates an operations like Put and Take with queue.
+func Example_simpleQueue() {
 	cfg := queue.Cfg{
 		Temporary: false,
 		Kind:      queue.FIFO,
@@ -16,8 +25,13 @@ func ExampleConnection_Queue() {
 			Ttl: 10 * time.Second,
 		},
 	}
+	opts := tarantool.Opts{
+		Timeout: 2500 * time.Millisecond,
+		User:    "test",
+		Pass:    "test",
+	}
 
-	conn, err := tarantool.Connect(server, opts)
+	conn, err := tarantool.Connect("127.0.0.1:3013", opts)
 	if err != nil {
 		fmt.Printf("error in prepare is %v", err)
 		return
@@ -64,4 +78,6 @@ func ExampleConnection_Queue() {
 		fmt.Printf("Task should be nil, but %d", task.Id())
 		return
 	}
+
+	// Output: data_1:  test_data_1
 }
