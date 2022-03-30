@@ -6,7 +6,7 @@ import (
 	msgpack "gopkg.in/vmihailenco/msgpack.v2"
 )
 
-// Task represents a task from tarantool queue's tube
+// Task represents a task from Tarantool queue's tube.
 type Task struct {
 	id     uint64
 	status string
@@ -41,27 +41,27 @@ func (t *Task) DecodeMsgpack(d *msgpack.Decoder) error {
 	return nil
 }
 
-// Id is a getter for task id
+// Id is a getter for task id.
 func (t *Task) Id() uint64 {
 	return t.id
 }
 
-// Data is a getter for task data
+// Data is a getter for task data.
 func (t *Task) Data() interface{} {
 	return t.data
 }
 
-// Status is a getter for task status
+// Status is a getter for task status.
 func (t *Task) Status() string {
 	return t.status
 }
 
-// Ack signals about task completion
+// Ack signals about task completion.
 func (t *Task) Ack() error {
 	return t.accept(t.q._ack(t.id))
 }
 
-// Delete task from queue
+// Delete task from queue.
 func (t *Task) Delete() error {
 	return t.accept(t.q._delete(t.id))
 }
@@ -93,27 +93,27 @@ func (t *Task) accept(newStatus string, err error) error {
 	return err
 }
 
-// IsReady returns if task is ready
+// IsReady returns if task is ready.
 func (t *Task) IsReady() bool {
 	return t.status == READY
 }
 
-// IsTaken returns if task is taken
+// IsTaken returns if task is taken.
 func (t *Task) IsTaken() bool {
 	return t.status == TAKEN
 }
 
-// IsDone returns if task is done
+// IsDone returns if task is done.
 func (t *Task) IsDone() bool {
 	return t.status == DONE
 }
 
-// IsBurred returns if task is buried
+// IsBurred returns if task is buried.
 func (t *Task) IsBuried() bool {
 	return t.status == BURIED
 }
 
-// IsDelayed returns if task is delayed
+// IsDelayed returns if task is delayed.
 func (t *Task) IsDelayed() bool {
 	return t.status == DELAYED
 }

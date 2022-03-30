@@ -4,32 +4,38 @@ import (
 	"fmt"
 )
 
-// Error is wrapper around error returned by Tarantool
+// Error is wrapper around error returned by Tarantool.
 type Error struct {
 	Code uint32
 	Msg  string
 }
 
+// Error converts an Error to a string.
 func (tnterr Error) Error() string {
 	return fmt.Sprintf("%s (0x%x)", tnterr.Msg, tnterr.Code)
 }
 
-// ClientError is connection produced by this client,
-// ie connection failures or timeouts.
+// ClientError is connection error produced by this client,
+// i.e. connection failures or timeouts.
 type ClientError struct {
 	Code uint32
 	Msg  string
 }
 
+// Error converts a ClientError to a string.
 func (clierr ClientError) Error() string {
 	return fmt.Sprintf("%s (0x%x)", clierr.Msg, clierr.Code)
 }
 
 // Temporary returns true if next attempt to perform request may succeeed.
+//
 // Currently it returns true when:
-// - Connection is not connected at the moment,
-// - or request is timeouted,
-// - or request is aborted due to rate limit.
+//
+// - Connection is not connected at the moment
+//
+// - request is timeouted
+//
+// - request is aborted due to rate limit
 func (clierr ClientError) Temporary() bool {
 	switch clierr.Code {
 	case ErrConnectionNotReady, ErrTimeouted, ErrRateLimited:
@@ -39,7 +45,7 @@ func (clierr ClientError) Temporary() bool {
 	}
 }
 
-// Tarantool client error codes
+// Tarantool client error codes.
 const (
 	ErrConnectionNotReady = 0x4000 + iota
 	ErrConnectionClosed   = 0x4000 + iota
@@ -48,7 +54,7 @@ const (
 	ErrRateLimited        = 0x4000 + iota
 )
 
-// Tarantool server error codes
+// Tarantool server error codes.
 const (
 	ErrUnknown                       = 0   // Unknown error
 	ErrIllegalParams                 = 1   // Illegal parameters, %s

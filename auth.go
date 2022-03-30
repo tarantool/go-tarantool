@@ -25,7 +25,7 @@ func scramble(encodedSalt, pass string) (scramble []byte, err error) {
 	}
 	step1 := sha1.Sum([]byte(pass))
 	step2 := sha1.Sum(step1[0:])
-	hash := sha1.New() // may be create it once per connection ?
+	hash := sha1.New() // May be create it once per connection?
 	hash.Write(salt[0:scrambleSize])
 	hash.Write(step2[0:])
 	step3 := hash.Sum(nil)
