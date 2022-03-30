@@ -2,7 +2,12 @@
 	<img src="https://avatars2.githubusercontent.com/u/2344919?v=2&s=250" align="right">
 </a>
 
-[![Coverage Status](https://coveralls.io/repos/github/tarantool/go-tarantool/badge.svg?branch=master)](https://coveralls.io/github/tarantool/go-tarantool?branch=master)
+[![Go Reference][godoc-badge]][godoc-url]
+[![Actions Status][actions-badge]][actions-url]
+[![Code Coverage][coverage-badge]][coverage-url]
+[![Telegram][telegram-badge]][telegram-url]
+[![GitHub Discussions][discussions-badge]][discussions-url]
+[![Stack Overflow][stackoverflow-badge]][stackoverflow-url]
 
 # Client in Go for Tarantool 1.6+
 
@@ -708,3 +713,16 @@ There are two more connectors from the open-source community available:
 * [FZambia/tarantool](https://github.com/FZambia/tarantool).
 
 See feature comparison in [documentation](https://www.tarantool.io/en/doc/latest/book/connectors/#go-feature-comparison).
+
+[godoc-badge]: https://pkg.go.dev/badge/github.com/tarantool/go-tarantool.svg
+[godoc-url]: https://pkg.go.dev/github.com/tarantool/go-tarantool
+[actions-badge]: https://github.com/tarantool/go-tarantool/actions/workflows/testing.yml/badge.svg
+[actions-url]: https://github.com/tarantool/go-tarantool/actions/workflows/testing.yml
+[coverage-badge]: https://coveralls.io/repos/github/tarantool/go-tarantool/badge.svg?branch=master
+[coverage-url]: https://coveralls.io/github/tarantool/go-tarantool?branch=master
+[telegram-badge]: https://img.shields.io/badge/Telegram-join%20chat-blue.svg
+[telegram-url]: http://telegram.me/tarantool
+[discussions-badge]: https://img.shields.io/github/discussions/tarantool/tarantool
+[discussions-url]: https://github.com/tarantool/tarantool/discussions
+[stackoverflow-badge]: https://img.shields.io/badge/stackoverflow-tarantool-orange.svg
+[stackoverflow-url]: https://stackoverflow.com/questions/tagged/tarantool
