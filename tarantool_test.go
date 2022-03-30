@@ -20,16 +20,16 @@ type Member struct {
 	Val   uint
 }
 
-type Tuple2 struct {
-	Cid     uint
-	Orig    string
-	Members []Member
-}
-
 func (m *Member) EncodeMsgpack(e *msgpack.Encoder) error {
-	e.EncodeSliceLen(2)
-	e.EncodeString(m.Name)
-	e.EncodeUint(m.Val)
+	if err := e.EncodeSliceLen(2); err != nil {
+		return err
+	}
+	if err := e.EncodeString(m.Name); err != nil {
+		return err
+	}
+	if err := e.EncodeUint(m.Val); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -47,39 +47,6 @@ func (m *Member) DecodeMsgpack(d *msgpack.Decoder) error {
 	}
 	if m.Val, err = d.DecodeUint(); err != nil {
 		return err
-	}
-	return nil
-}
-
-func (c *Tuple2) EncodeMsgpack(e *msgpack.Encoder) error {
-	e.EncodeSliceLen(3)
-	e.EncodeUint(c.Cid)
-	e.EncodeString(c.Orig)
-	e.Encode(c.Members)
-	return nil
-}
-
-func (c *Tuple2) DecodeMsgpack(d *msgpack.Decoder) error {
-	var err error
-	var l int
-	if l, err = d.DecodeSliceLen(); err != nil {
-		return err
-	}
-	if l != 3 {
-		return fmt.Errorf("array len doesn't match: %d", l)
-	}
-	if c.Cid, err = d.DecodeUint(); err != nil {
-		return err
-	}
-	if c.Orig, err = d.DecodeString(); err != nil {
-		return err
-	}
-	if l, err = d.DecodeSliceLen(); err != nil {
-		return err
-	}
-	c.Members = make([]Member, l)
-	for i := 0; i < l; i++ {
-		d.Decode(&c.Members[i])
 	}
 	return nil
 }
