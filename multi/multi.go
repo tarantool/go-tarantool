@@ -40,6 +40,10 @@ func indexOf(sstring string, data []string) int {
 	return -1
 }
 
+// ConnectionMulti is a handle with connections to a number of Tarantool instances.
+//
+// It is created and configured with Connect function, and could not be
+// reconfigured later.
 type ConnectionMulti struct {
 	addrs    []string
 	connOpts tarantool.Opts
@@ -55,12 +59,19 @@ type ConnectionMulti struct {
 
 var _ = tarantool.Connector(&ConnectionMulti{}) // Check compatibility with connector interface.
 
+// OptsMulti is a way to configure Connection with multiconnect-specific options.
 type OptsMulti struct {
-	CheckTimeout         time.Duration
+	// CheckTimeout is a time interval to check for connection timeout and try to
+	// switch connection.
+	CheckTimeout time.Duration
+	// Lua function name of the server called to retrieve the address list.
 	NodesGetFunctionName string
+	// Time interval to ask the server for an updated address list (works
+	// if NodesGetFunctionName is set).
 	ClusterDiscoveryTime time.Duration
 }
 
+// Connect creates and configures new ConnectionMulti with multiconnection options.
 func ConnectWithOpts(addrs []string, connOpts tarantool.Opts, opts OptsMulti) (connMulti *ConnectionMulti, err error) {
 	if len(addrs) == 0 {
 		return nil, ErrEmptyAddrs
@@ -92,6 +103,7 @@ func ConnectWithOpts(addrs []string, connOpts tarantool.Opts, opts OptsMulti) (c
 	return connMulti, nil
 }
 
+// Connect creates and configures new ConnectionMulti.
 func Connect(addrs []string, connOpts tarantool.Opts) (connMulti *ConnectionMulti, err error) {
 	opts := OptsMulti{
 		CheckTimeout: 1 * time.Second,
@@ -236,10 +248,13 @@ func (connMulti *ConnectionMulti) getCurrentConnection() *tarantool.Connection {
 	return connMulti.fallback
 }
 
+// ConnectedNow reports if connection is established at the moment.
 func (connMulti *ConnectionMulti) ConnectedNow() bool {
 	return connMulti.getState() == connConnected && connMulti.getCurrentConnection().ConnectedNow()
 }
 
+// Close closes Connection.
+// After this method called, there is no way to reopen this Connection.
 func (connMulti *ConnectionMulti) Close() (err error) {
 	connMulti.mutex.Lock()
 	defer connMulti.mutex.Unlock()
@@ -261,118 +276,174 @@ func (connMulti *ConnectionMulti) Close() (err error) {
 	return
 }
 
+// Ping sends empty request to Tarantool to check connection.
 func (connMulti *ConnectionMulti) Ping() (resp *tarantool.Response, err error) {
 	return connMulti.getCurrentConnection().Ping()
 }
 
+// ConfiguredTimeout returns a timeout from connection config.
 func (connMulti *ConnectionMulti) ConfiguredTimeout() time.Duration {
 	return connMulti.getCurrentConnection().ConfiguredTimeout()
 }
 
+// Select performs select to box space.
 func (connMulti *ConnectionMulti) Select(space, index interface{}, offset, limit, iterator uint32, key interface{}) (resp *tarantool.Response, err error) {
 	return connMulti.getCurrentConnection().Select(space, index, offset, limit, iterator, key)
 }
 
+// Insert performs insertion to box space.
+// Tarantool will reject Insert when tuple with same primary key exists.
 func (connMulti *ConnectionMulti) Insert(space interface{}, tuple interface{}) (resp *tarantool.Response, err error) {
 	return connMulti.getCurrentConnection().Insert(space, tuple)
 }
 
+// Replace performs "insert or replace" action to box space.
+// If tuple with same primary key exists, it will be replaced.
 func (connMulti *ConnectionMulti) Replace(space interface{}, tuple interface{}) (resp *tarantool.Response, err error) {
 	return connMulti.getCurrentConnection().Replace(space, tuple)
 }
 
+// Delete performs deletion of a tuple by key.
+// Result will contain array with deleted tuple.
 func (connMulti *ConnectionMulti) Delete(space, index interface{}, key interface{}) (resp *tarantool.Response, err error) {
 	return connMulti.getCurrentConnection().Delete(space, index, key)
 }
 
+// Update performs update of a tuple by key.
+// Result will contain array with updated tuple.
 func (connMulti *ConnectionMulti) Update(space, index interface{}, key, ops interface{}) (resp *tarantool.Response, err error) {
 	return connMulti.getCurrentConnection().Update(space, index, key, ops)
 }
 
+// Upsert performs "update or insert" action of a tuple by key.
+// Result will not contain any tuple.
 func (connMulti *ConnectionMulti) Upsert(space interface{}, tuple, ops interface{}) (resp *tarantool.Response, err error) {
 	return connMulti.getCurrentConnection().Upsert(space, tuple, ops)
 }
 
+// Call calls registered Tarantool function.
+// It uses request code for Tarantool 1.6, so result is converted to array of
+// arrays.
 func (connMulti *ConnectionMulti) Call(functionName string, args interface{}) (resp *tarantool.Response, err error) {
 	return connMulti.getCurrentConnection().Call(functionName, args)
 }
 
+// Call17 calls registered Tarantool function.
+// It uses request code for Tarantool 1.7, so result is not converted
+// (though, keep in mind, result is always array).
 func (connMulti *ConnectionMulti) Call17(functionName string, args interface{}) (resp *tarantool.Response, err error) {
 	return connMulti.getCurrentConnection().Call17(functionName, args)
 }
 
+// Eval passes Lua expression for evaluation.
 func (connMulti *ConnectionMulti) Eval(expr string, args interface{}) (resp *tarantool.Response, err error) {
 	return connMulti.getCurrentConnection().Eval(expr, args)
 }
 
+// GetTyped performs select (with limit = 1 and offset = 0) to box space and
+// fills typed result.
 func (connMulti *ConnectionMulti) GetTyped(space, index interface{}, key interface{}, result interface{}) (err error) {
 	return connMulti.getCurrentConnection().GetTyped(space, index, key, result)
 }
 
+// SelectTyped performs select to box space and fills typed result.
 func (connMulti *ConnectionMulti) SelectTyped(space, index interface{}, offset, limit, iterator uint32, key interface{}, result interface{}) (err error) {
 	return connMulti.getCurrentConnection().SelectTyped(space, index, offset, limit, iterator, key, result)
 }
 
+// InsertTyped performs insertion to box space.
+// Tarantool will reject Insert when tuple with same primary key exists.
 func (connMulti *ConnectionMulti) InsertTyped(space interface{}, tuple interface{}, result interface{}) (err error) {
 	return connMulti.getCurrentConnection().InsertTyped(space, tuple, result)
 }
 
+// ReplaceTyped performs "insert or replace" action to box space.
+// If tuple with same primary key exists, it will be replaced.
 func (connMulti *ConnectionMulti) ReplaceTyped(space interface{}, tuple interface{}, result interface{}) (err error) {
 	return connMulti.getCurrentConnection().ReplaceTyped(space, tuple, result)
 }
 
+// DeleteTyped performs deletion of a tuple by key and fills result with
+// deleted tuple.
 func (connMulti *ConnectionMulti) DeleteTyped(space, index interface{}, key interface{}, result interface{}) (err error) {
 	return connMulti.getCurrentConnection().DeleteTyped(space, index, key, result)
 }
 
+// UpdateTyped performs update of a tuple by key and fills result with updated
+// tuple.
 func (connMulti *ConnectionMulti) UpdateTyped(space, index interface{}, key, ops interface{}, result interface{}) (err error) {
 	return connMulti.getCurrentConnection().UpdateTyped(space, index, key, ops, result)
 }
 
+// CallTyped calls registered function.
+// It uses request code for Tarantool 1.6, so result is converted to array of
+// arrays.
 func (connMulti *ConnectionMulti) CallTyped(functionName string, args interface{}, result interface{}) (err error) {
 	return connMulti.getCurrentConnection().CallTyped(functionName, args, result)
 }
 
+// Call17Typed calls registered function.
+// It uses request code for Tarantool 1.7, so result is not converted (though,
+// keep in mind, result is always array)
 func (connMulti *ConnectionMulti) Call17Typed(functionName string, args interface{}, result interface{}) (err error) {
 	return connMulti.getCurrentConnection().Call17Typed(functionName, args, result)
 }
 
+// EvalTyped passes Lua expression for evaluation.
 func (connMulti *ConnectionMulti) EvalTyped(expr string, args interface{}, result interface{}) (err error) {
 	return connMulti.getCurrentConnection().EvalTyped(expr, args, result)
 }
 
+// SelectAsync sends select request to Tarantool and returns Future.
 func (connMulti *ConnectionMulti) SelectAsync(space, index interface{}, offset, limit, iterator uint32, key interface{}) *tarantool.Future {
 	return connMulti.getCurrentConnection().SelectAsync(space, index, offset, limit, iterator, key)
 }
 
+// InsertAsync sends insert action to Tarantool and returns Future.
+// Tarantool will reject Insert when tuple with same primary key exists.
 func (connMulti *ConnectionMulti) InsertAsync(space interface{}, tuple interface{}) *tarantool.Future {
 	return connMulti.getCurrentConnection().InsertAsync(space, tuple)
 }
 
+// ReplaceAsync sends "insert or replace" action to Tarantool and returns Future.
+// If tuple with same primary key exists, it will be replaced.
 func (connMulti *ConnectionMulti) ReplaceAsync(space interface{}, tuple interface{}) *tarantool.Future {
 	return connMulti.getCurrentConnection().ReplaceAsync(space, tuple)
 }
 
+// DeleteAsync sends deletion action to Tarantool and returns Future.
+// Future's result will contain array with deleted tuple.
 func (connMulti *ConnectionMulti) DeleteAsync(space, index interface{}, key interface{}) *tarantool.Future {
 	return connMulti.getCurrentConnection().DeleteAsync(space, index, key)
 }
 
+// Update sends deletion of a tuple by key and returns Future.
+// Future's result will contain array with updated tuple.
 func (connMulti *ConnectionMulti) UpdateAsync(space, index interface{}, key, ops interface{}) *tarantool.Future {
 	return connMulti.getCurrentConnection().UpdateAsync(space, index, key, ops)
 }
 
+// UpsertAsync sends "update or insert" action to Tarantool and returns Future.
+// Future's sesult will not contain any tuple.
 func (connMulti *ConnectionMulti) UpsertAsync(space interface{}, tuple interface{}, ops interface{}) *tarantool.Future {
 	return connMulti.getCurrentConnection().UpsertAsync(space, tuple, ops)
 }
 
+// CallAsync sends a call to registered Tarantool function and returns Future.
+// It uses request code for Tarantool 1.6, so future's result is always array
+// of arrays.
 func (connMulti *ConnectionMulti) CallAsync(functionName string, args interface{}) *tarantool.Future {
 	return connMulti.getCurrentConnection().CallAsync(functionName, args)
 }
 
+// Call17Async sends a call to registered Tarantool function and returns Future.
+// It uses request code for Tarantool 1.7, so future's result will not be converted
+// (though, keep in mind, result is always array).
 func (connMulti *ConnectionMulti) Call17Async(functionName string, args interface{}) *tarantool.Future {
 	return connMulti.getCurrentConnection().Call17Async(functionName, args)
 }
 
+// EvalAsync passes Lua expression for evaluation.
 func (connMulti *ConnectionMulti) EvalAsync(expr string, args interface{}) *tarantool.Future {
 	return connMulti.getCurrentConnection().EvalAsync(expr, args)
 }
