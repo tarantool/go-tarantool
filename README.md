@@ -1,9 +1,6 @@
 <a href="http://tarantool.org">
 	<img src="https://avatars2.githubusercontent.com/u/2344919?v=2&s=250" align="right">
 </a>
-<!--a href="https://travis-ci.org/tarantool/go-tarantool">
-	<img src="https://travis-ci.org/tarantool/go-tarantool.png?branch=master" align="right">
-</a-->
 
 [![Coverage Status](https://coveralls.io/repos/github/tarantool/go-tarantool/badge.svg?branch=master)](https://coveralls.io/github/tarantool/go-tarantool?branch=master)
 
