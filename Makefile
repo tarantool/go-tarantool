@@ -12,8 +12,32 @@ deps: clean
 
 .PHONY: test
 test:
+	go test ./... -v -p 1
+
+.PHONY: test-multi
+test-multi:
+	@echo "Running tests in multiconnection package"
 	go clean -testcache
-	go test ./... -v -p 1	
+	go test ./multi/ -v -p 1
+
+.PHONY: test-queue
+test-queue:
+	@echo "Running tests in queue package"
+	cd ./queue/ && tarantool -e "require('queue')"
+	go clean -testcache
+	go test ./queue/ -v -p 1
+
+.PHONY: test-uuid
+test-uuid:
+	@echo "Running tests in UUID package"
+	go clean -testcache
+	go test ./uuid/ -v -p 1
+
+.PHONY: test-main
+test-main:
+	@echo "Running tests in main package"
+	go clean -testcache
+	go test . -v -p 1
 
 .PHONY: coverage
 coverage:

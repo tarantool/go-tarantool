@@ -187,17 +187,14 @@ make test
 ```
 Tests set up all required `tarantool` processes before run and clean up after.
 
-If you want to run a specific package tests, go to a package folder
+If you want to run a specific package tests, call
 ```bash
-cd multi
+make test-<SUBDIR>
 ```
-and call
+For example, for running tests in `multi`, `uuid` and `main` packages, call
 ```bash
-go clean -testcache && go test -v
+make test-multi test-uuid test-main
 ```
-Use the same for main `tarantool` package and `queue` and `uuid` subpackages.
-`uuid` tests require
-[Tarantool 2.4.1 or newer](https://github.com/tarantool/tarantool/commit/d68fc29246714eee505bc9bbcd84a02de17972c5).
 
 ## Alternative connectors
 
