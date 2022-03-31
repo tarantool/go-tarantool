@@ -31,33 +31,26 @@ faster than other packages according to public benchmarks.
 
 ## Installation
 
-We assume that you have Tarantool version 1.6 and a modern Linux or BSD
+We assume that you have Tarantool version 1.6+ and a modern Linux or BSD
 operating system.
 
-You will need a current version of `go`, version 1.3 or later (use
-`go version` to check the version number). Do not use `gccgo-go`.
+You need a current version of `go`, version 1.13 or later (use `go version` to
+check the version number). Do not use `gccgo-go`.
 
-**Note:** If your `go` version is younger than 1.3, or if `go` is not installed,
-download the latest tarball from [golang.org](https://golang.org/dl/) and say:
+**Note:** If your `go` version is older than 1.3 or if `go` is not installed,
+download and run the latest tarball from [golang.org][golang-dl].
 
-```bash
-$ sudo tar -C /usr/local -xzf go1.7.5.linux-amd64.tar.gz
-$ export PATH=$PATH:/usr/local/go/bin
-$ export GOPATH="/usr/local/go/go-tarantool"
-$ sudo chmod -R a+rwx /usr/local/go </pre>
-```
-
-The `go-tarantool` package is in
-[tarantool/go-tarantool](github.com/tarantool/go-tarantool) repository.
-To download and install, say:
+The package `go-tarantool` is located in [tarantool/go-tarantool][go-tarantool]
+repository. To download and install, say:
 
 ```
 $ go get github.com/tarantool/go-tarantool
 ```
 
-This should bring source and binary files into subdirectories of `/usr/local/go`,
-making it possible to access by adding `github.com/tarantool/go-tarantool` in
-the `import {...}` section at the start of any Go program.
+This should put the source and binary files in subdirectories of
+`/usr/local/go`, so that you can access them by adding
+`github.com/tarantool/go-tarantool` to the `import {...}` section at the start
+of any Go program.
 
 <h2>Hello World</h2>
 
@@ -217,3 +210,5 @@ See feature comparison in [documentation](https://www.tarantool.io/en/doc/latest
 [discussions-url]: https://github.com/tarantool/tarantool/discussions
 [stackoverflow-badge]: https://img.shields.io/badge/stackoverflow-tarantool-orange.svg
 [stackoverflow-url]: https://stackoverflow.com/questions/tagged/tarantool
+[golang-dl]: https://go.dev/dl/
+[go-tarantool]: https://github.com/tarantool/go-tarantool
