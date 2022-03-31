@@ -66,39 +66,18 @@ database.
 
 <h2>API reference</h2>
 
-Read the [Tarantool manual](http://tarantool.org/doc.html) to find descriptions
-of terms like "connect", "space", "index", and the requests for creating and
-manipulating database objects or Lua functions.
+Read the [Tarantool documentation](tarantool-doc-data-model-url)
+to find descriptions of terms such as "connect", "space", "index", and the
+requests to create and manipulate database objects or Lua functions.
 
-The source files for the requests library are:
-* [connection.go](https://github.com/tarantool/go-tarantool/blob/master/connection.go)
-  for the `Connect()` function plus functions related to connecting, and
-* [request.go](https://github.com/tarantool/go-tarantool/blob/master/request.go)
-  for data-manipulation functions and Lua invocations.
+In general, connector methods can be divided into two main parts:
 
-See comments in those files for syntax details:
-```
-Ping
-closeConnection
-Select
-Insert
-Replace
-Delete
-Update
-Upsert
-Call
-Call17
-Eval
-```
+* `Connect()` function and functions related to connecting, and
+* Data manipulation functions and Lua invocations such as `Insert()` or `Call()`.
 
-The supported requests have parameters and results equivalent to requests in the
-Tarantool manual. There are also Typed and Async versions of each data-manipulation
-function.
-
-The source file for error-handling tools is
-[errors.go](https://github.com/tarantool/go-tarantool/blob/master/errors.go),
-which has structure definitions and constants whose names are equivalent to names
-of errors that the Tarantool server returns.
+The supported requests have parameters and results equivalent to requests in
+the [Tarantool CRUD operations](tarantool-doc-box-space-url).
+There are also Typed and Async versions of each data-manipulation function.
 
 ## Walking-through example in Go
 
@@ -192,3 +171,5 @@ See feature comparison in [documentation](https://www.tarantool.io/en/doc/latest
 [stackoverflow-url]: https://stackoverflow.com/questions/tagged/tarantool
 [golang-dl]: https://go.dev/dl/
 [go-tarantool]: https://github.com/tarantool/go-tarantool
+[tarantool-doc-data-model-url]: https://www.tarantool.io/en/doc/latest/book/box/data_model/
+[tarantool-doc-box-space-url]: https://www.tarantool.io/en/doc/latest/reference/reference_lua/box_space/
