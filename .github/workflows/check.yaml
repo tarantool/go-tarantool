@@ -1,0 +1,21 @@
+name: Run checks
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check-format:
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'push' ||
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name != github.repository
+
+    steps:
+    - uses: actions/checkout@master
+
+    - name: Check format
+      run: |
+        gofmt -d -e -s .
+        if [ "$(gofmt -l -s . | wc -l)" -gt 0 ]; then exit 1; fi
