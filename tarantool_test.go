@@ -22,6 +22,19 @@ type Member struct {
 	Val   uint
 }
 
+func connect(t testing.TB, server string, opts Opts) (conn *Connection) {
+	t.Helper()
+
+	conn, err := Connect(server, opts)
+	if err != nil {
+		t.Fatalf("Failed to connect: %s", err.Error())
+	}
+	if conn == nil {
+		t.Fatalf("conn is nil after Connect")
+	}
+	return conn
+}
+
 func (m *Member) EncodeMsgpack(e *msgpack.Encoder) error {
 	if err := e.EncodeSliceLen(2); err != nil {
 		return err
@@ -71,11 +84,7 @@ const N = 500
 func BenchmarkClientSerial(b *testing.B) {
 	var err error
 
-	conn, err := Connect(server, opts)
-	if err != nil {
-		b.Errorf("No connection available")
-		return
-	}
+	conn := connect(b, server, opts)
 	defer conn.Close()
 
 	_, err = conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
@@ -95,11 +104,7 @@ func BenchmarkClientSerial(b *testing.B) {
 func BenchmarkClientSerialTyped(b *testing.B) {
 	var err error
 
-	conn, err := Connect(server, opts)
-	if err != nil {
-		b.Errorf("No connection available")
-		return
-	}
+	conn := connect(b, server, opts)
 	defer conn.Close()
 
 	_, err = conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
@@ -120,11 +125,7 @@ func BenchmarkClientSerialTyped(b *testing.B) {
 func BenchmarkClientFuture(b *testing.B) {
 	var err error
 
-	conn, err := Connect(server, opts)
-	if err != nil {
-		b.Error(err)
-		return
-	}
+	conn := connect(b, server, opts)
 	defer conn.Close()
 
 	_, err = conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
@@ -151,11 +152,7 @@ func BenchmarkClientFuture(b *testing.B) {
 func BenchmarkClientFutureTyped(b *testing.B) {
 	var err error
 
-	conn, err := Connect(server, opts)
-	if err != nil {
-		b.Errorf("No connection available")
-		return
-	}
+	conn := connect(b, server, opts)
 	defer conn.Close()
 
 	_, err = conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
@@ -185,11 +182,7 @@ func BenchmarkClientFutureTyped(b *testing.B) {
 func BenchmarkClientFutureParallel(b *testing.B) {
 	var err error
 
-	conn, err := Connect(server, opts)
-	if err != nil {
-		b.Errorf("No connection available")
-		return
-	}
+	conn := connect(b, server, opts)
 	defer conn.Close()
 
 	_, err = conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
@@ -222,11 +215,7 @@ func BenchmarkClientFutureParallel(b *testing.B) {
 func BenchmarkClientFutureParallelTyped(b *testing.B) {
 	var err error
 
-	conn, err := Connect(server, opts)
-	if err != nil {
-		b.Errorf("No connection available")
-		return
-	}
+	conn := connect(b, server, opts)
 	defer conn.Close()
 
 	_, err = conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
@@ -262,14 +251,10 @@ func BenchmarkClientFutureParallelTyped(b *testing.B) {
 }
 
 func BenchmarkClientParallel(b *testing.B) {
-	conn, err := Connect(server, opts)
-	if err != nil {
-		b.Errorf("No connection available")
-		return
-	}
+	conn := connect(b, server, opts)
 	defer conn.Close()
 
-	_, err = conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
+	_, err := conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
 	if err != nil {
 		b.Fatal("No connection available")
 	}
@@ -287,14 +272,10 @@ func BenchmarkClientParallel(b *testing.B) {
 }
 
 func BenchmarkClientParallelMassive(b *testing.B) {
-	conn, err := Connect(server, opts)
-	if err != nil {
-		b.Errorf("No connection available")
-		return
-	}
+	conn := connect(b, server, opts)
 	defer conn.Close()
 
-	_, err = conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
+	_, err := conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
 	if err != nil {
 		b.Fatal("No connection available")
 	}
@@ -326,14 +307,10 @@ func BenchmarkClientParallelMassive(b *testing.B) {
 }
 
 func BenchmarkClientParallelMassiveUntyped(b *testing.B) {
-	conn, err := Connect(server, opts)
-	if err != nil {
-		b.Errorf("No connection available")
-		return
-	}
+	conn := connect(b, server, opts)
 	defer conn.Close()
 
-	_, err = conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
+	_, err := conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
 	if err != nil {
 		b.Errorf("No connection available")
 	}
@@ -488,15 +465,8 @@ func BenchmarkSQLSerial(b *testing.B) {
 func TestClient(t *testing.T) {
 	var resp *Response
 	var err error
-	var conn *Connection
 
-	conn, err = Connect(server, opts)
-	if err != nil {
-		t.Fatalf("Failed to connect: %s", err.Error())
-	}
-	if conn == nil {
-		t.Fatalf("conn is nil after Connect")
-	}
+	conn := connect(t, server, opts)
 	defer conn.Close()
 
 	// Ping
@@ -798,6 +768,100 @@ func TestClient(t *testing.T) {
 	}
 }
 
+func TestClientSessionPush(t *testing.T) {
+	conn := connect(t, server, opts)
+	defer conn.Close()
+
+	var it ResponseIterator
+	const pushMax = 3
+	// It will be iterated immediately.
+	fut0 := conn.Call17Async("push_func", []interface{}{pushMax})
+	respCnt := 0
+	for it = fut0.GetIterator(); it.Next(); {
+		err := it.Err()
+		resp := it.Value()
+		if err != nil {
+			t.Errorf("Unexpected error after it.Next() == true: %q", err.Error())
+			break
+		}
+		if resp == nil {
+			t.Errorf("Response is empty after it.Next() == true")
+			break
+		}
+		respCnt += 1
+	}
+	if err := it.Err(); err != nil {
+		t.Errorf("An unexpected iteration error: %s", err.Error())
+	}
+	if respCnt > pushMax+1 {
+		t.Errorf("Unexpected respCnt = %d, expected 0 <= respCnt <= %d", respCnt, pushMax+1)
+	}
+	_, _ = fut0.Get()
+
+	// It will wait a response before iteration.
+	fut1 := conn.Call17Async("push_func", []interface{}{pushMax})
+	// Future.Get ignores push messages.
+	resp, err := fut1.Get()
+	if err != nil {
+		t.Errorf("Failed to Call: %s", err.Error())
+	} else if resp == nil {
+		t.Errorf("Response is nil after CallAsync")
+	} else if len(resp.Data) < 1 {
+		t.Errorf("Response.Data is empty after CallAsync")
+	} else if resp.Data[0].(uint64) != pushMax {
+		t.Errorf("result is not {{1}} : %v", resp.Data)
+	}
+
+	// It will will be iterated with a timeout.
+	fut2 := conn.Call17Async("push_func", []interface{}{pushMax})
+
+	var its = []ResponseIterator{
+		fut1.GetIterator(),
+		fut2.GetIterator().WithTimeout(5 * time.Second),
+	}
+
+	for i := 0; i < len(its); i++ {
+		pushCnt := uint64(0)
+		respCnt := uint64(0)
+
+		it = its[i]
+		for it.Next() {
+			resp = it.Value()
+			if resp == nil {
+				t.Errorf("Response is empty after it.Next() == true")
+				break
+			}
+			if len(resp.Data) < 1 {
+				t.Errorf("Response.Data is empty after CallAsync")
+				break
+			}
+			if resp.Code == PushCode {
+				pushCnt += 1
+				if resp.Data[0].(uint64) != pushCnt {
+					t.Errorf("Unexpected push data = %v", resp.Data)
+				}
+			} else {
+				respCnt += 1
+				if resp.Data[0].(uint64) != pushMax {
+					t.Errorf("result is not {{1}} : %v", resp.Data)
+				}
+			}
+		}
+
+		if err = it.Err(); err != nil {
+			t.Errorf("An unexpected iteration error: %s", err.Error())
+		}
+
+		if pushCnt != pushMax {
+			t.Errorf("Expect %d pushes but got %d", pushMax, pushCnt)
+		}
+
+		if respCnt != 1 {
+			t.Errorf("Expect %d responses but got %d", 1, respCnt)
+		}
+	}
+}
+
 const (
 	createTableQuery         = "CREATE TABLE SQL_SPACE (id INTEGER PRIMARY KEY AUTOINCREMENT, name STRING COLLATE \"unicode\" DEFAULT NULL);"
 	insertQuery              = "INSERT INTO SQL_SPACE VALUES (?, ?);"
@@ -974,10 +1038,7 @@ func TestSQL(t *testing.T) {
 		},
 	}
 
-	var conn *Connection
-	conn, err = Connect(server, opts)
-	assert.Nil(t, err, "Failed to Connect")
-	assert.NotNil(t, conn, "conn is nil after Connect")
+	conn := connect(t, server, opts)
 	defer conn.Close()
 
 	for i, test := range testCases {
@@ -1011,15 +1072,7 @@ func TestSQLTyped(t *testing.T) {
 		t.Skip()
 	}
 
-	var conn *Connection
-
-	conn, err = Connect(server, opts)
-	if err != nil {
-		t.Fatalf("Failed to connect: %s", err.Error())
-	}
-	if conn == nil {
-		t.Fatal("conn is nil after Connect")
-	}
+	conn := connect(t, server, opts)
 	defer conn.Close()
 
 	mem := []Member{}
@@ -1054,15 +1107,8 @@ func TestSQLBindings(t *testing.T) {
 	}
 
 	var resp *Response
-	var conn *Connection
 
-	conn, err = Connect(server, opts)
-	if err != nil {
-		t.Fatalf("Failed to connect: %s", err.Error())
-	}
-	if conn == nil {
-		t.Fatal("conn is nil after Connect")
-	}
+	conn := connect(t, server, opts)
 	defer conn.Close()
 
 	// test all types of supported bindings
@@ -1170,15 +1216,8 @@ func TestStressSQL(t *testing.T) {
 	}
 
 	var resp *Response
-	var conn *Connection
 
-	conn, err = Connect(server, opts)
-	if err != nil {
-		t.Fatalf("Failed to connect: %s", err.Error())
-	}
-	if conn == nil {
-		t.Fatalf("conn is nil after Connect")
-	}
+	conn := connect(t, server, opts)
 	defer conn.Close()
 
 	resp, err = conn.Execute(createTableQuery, []interface{}{})
@@ -1273,15 +1312,8 @@ func TestStressSQL(t *testing.T) {
 
 func TestSchema(t *testing.T) {
 	var err error
-	var conn *Connection
 
-	conn, err = Connect(server, opts)
-	if err != nil {
-		t.Fatalf("Failed to connect: %s", err.Error())
-	}
-	if conn == nil {
-		t.Fatalf("conn is nil after Connect")
-	}
+	conn := connect(t, server, opts)
 	defer conn.Close()
 
 	// Schema
@@ -1455,15 +1487,8 @@ func TestSchema(t *testing.T) {
 func TestClientNamed(t *testing.T) {
 	var resp *Response
 	var err error
-	var conn *Connection
 
-	conn, err = Connect(server, opts)
-	if err != nil {
-		t.Fatalf("Failed to connect: %s", err.Error())
-	}
-	if conn == nil {
-		t.Fatalf("conn is nil after Connect")
-	}
+	conn := connect(t, server, opts)
 	defer conn.Close()
 
 	// Insert
@@ -1551,15 +1576,8 @@ func TestClientNamed(t *testing.T) {
 
 func TestComplexStructs(t *testing.T) {
 	var err error
-	var conn *Connection
 
-	conn, err = Connect(server, opts)
-	if err != nil {
-		t.Fatalf("Failed to connect: %s", err.Error())
-	}
-	if conn == nil {
-		t.Fatalf("conn is nil after Connect")
-	}
+	conn := connect(t, server, opts)
 	defer conn.Close()
 
 	tuple := Tuple2{Cid: 777, Orig: "orig", Members: []Member{{"lol", "", 1}, {"wut", "", 3}}}

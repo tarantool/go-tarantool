@@ -126,6 +126,39 @@ func ExampleConnection_SelectAsync() {
 	// Future 2 Data [[18 val 18 bla]]
 }
 
+func ExampleFuture_GetIterator() {
+	conn := example_connect()
+	defer conn.Close()
+
+	const timeout = 3 * time.Second
+	// Or any other Connection.*Async() call.
+	fut := conn.Call17Async("push_func", []interface{}{4})
+
+	var it tarantool.ResponseIterator
+	for it = fut.GetIterator().WithTimeout(timeout); it.Next(); {
+		resp := it.Value()
+		if resp.Code == tarantool.PushCode {
+			// It is a push message.
+			fmt.Printf("push message: %d\n", resp.Data[0].(uint64))
+		} else if resp.Code == tarantool.OkCode {
+			// It is a regular response.
+			fmt.Printf("response: %d", resp.Data[0].(uint64))
+		} else {
+			fmt.Printf("an unexpected response code %d", resp.Code)
+		}
+	}
+	if err := it.Err(); err != nil {
+		fmt.Printf("error in call of push_func is %v", err)
+		return
+	}
+	// Output:
+	// push message: 1
+	// push message: 2
+	// push message: 3
+	// push message: 4
+	// response: 4
+}
+
 func ExampleConnection_Ping() {
 	conn := example_connect()
 	defer conn.Close()

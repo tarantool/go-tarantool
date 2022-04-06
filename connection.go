@@ -163,8 +163,9 @@ type Greeting struct {
 
 // Opts is a way to configure Connection
 type Opts struct {
-	// Timeout for any particular request. If Timeout is zero request, any
-	// request can be blocked infinitely.
+	// Timeout for response to a particular request. The timeout is reset when
+	// push messages are received. If Timeout is zero, any request can be
+	// blocked infinitely.
 	// Also used to setup net.TCPConn.Set(Read|Write)Deadline.
 	Timeout time.Duration
 	// Timeout between reconnect attempts. If Reconnect is zero, no
@@ -568,8 +569,8 @@ func (conn *Connection) closeConnection(neterr error, forever bool) (err error) 
 			requests[pos].first = nil
 			requests[pos].last = &requests[pos].first
 			for fut != nil {
-				fut.err = neterr
-				fut.markReady(conn)
+				fut.SetError(neterr)
+				conn.markDone(fut)
 				fut, fut.next = fut.next, nil
 			}
 		}
@@ -685,26 +686,39 @@ func (conn *Connection) reader(r *bufio.Reader, c net.Conn) {
 			conn.reconnect(err, c)
 			return
 		}
-		if fut := conn.fetchFuture(resp.RequestId); fut != nil {
-			fut.resp = resp
-			fut.markReady(conn)
+
+		var fut *Future = nil
+		if resp.Code == PushCode {
+			if fut = conn.peekFuture(resp.RequestId); fut != nil {
+				fut.AppendPush(resp)
+			}
 		} else {
+			if fut = conn.fetchFuture(resp.RequestId); fut != nil {
+				fut.SetResponse(resp)
+				conn.markDone(fut)
+			}
+		}
+		if fut == nil {
 			conn.opts.Logger.Report(LogUnexpectedResultId, conn, resp)
 		}
 	}
 }
 
 func (conn *Connection) newFuture(requestCode int32) (fut *Future) {
-	fut = &Future{}
+	fut = NewFuture()
 	if conn.rlimit != nil && conn.opts.RLimitAction == RLimitDrop {
 		select {
 		case conn.rlimit <- struct{}{}:
 		default:
-			fut.err = ClientError{ErrRateLimited, "Request is rate limited on client"}
+			fut.err = ClientError{
+				ErrRateLimited,
+				"Request is rate limited on client",
+			}
+			fut.ready = nil
+			fut.done = nil
 			return
 		}
 	}
-	fut.ready = make(chan struct{})
 	fut.requestId = conn.nextRequestId()
 	fut.requestCode = requestCode
 	shardn := fut.requestId & (conn.opts.Concurrency - 1)
@@ -712,13 +726,21 @@ func (conn *Connection) newFuture(requestCode int32) (fut *Future) {
 	shard.rmut.Lock()
 	switch conn.state {
 	case connClosed:
-		fut.err = ClientError{ErrConnectionClosed, "using closed connection"}
+		fut.err = ClientError{
+			ErrConnectionClosed,
+			"using closed connection",
+		}
 		fut.ready = nil
+		fut.done = nil
 		shard.rmut.Unlock()
 		return
 	case connDisconnected:
-		fut.err = ClientError{ErrConnectionNotReady, "client connection is not ready"}
+		fut.err = ClientError{
+			ErrConnectionNotReady,
+			"client connection is not ready",
+		}
 		fut.ready = nil
+		fut.done = nil
 		shard.rmut.Unlock()
 		return
 	}
@@ -737,9 +759,9 @@ func (conn *Connection) newFuture(requestCode int32) (fut *Future) {
 			runtime.Gosched()
 			select {
 			case conn.rlimit <- struct{}{}:
-			case <-fut.ready:
+			case <-fut.done:
 				if fut.err == nil {
-					panic("fut.ready is closed, but err is nil")
+					panic("fut.done is closed, but err is nil")
 				}
 			}
 		}
@@ -747,12 +769,28 @@ func (conn *Connection) newFuture(requestCode int32) (fut *Future) {
 	return
 }
 
+func (conn *Connection) sendFuture(fut *Future, body func(*msgpack.Encoder) error) *Future {
+	if fut.ready == nil {
+		return fut
+	}
+	conn.putFuture(fut, body)
+	return fut
+}
+
+func (conn *Connection) failFuture(fut *Future, err error) *Future {
+	if f := conn.fetchFuture(fut.requestId); f == fut {
+		fut.SetError(err)
+		conn.markDone(fut)
+	}
+	return fut
+}
+
 func (conn *Connection) putFuture(fut *Future, body func(*msgpack.Encoder) error) {
 	shardn := fut.requestId & (conn.opts.Concurrency - 1)
 	shard := &conn.shard[shardn]
 	shard.bufmut.Lock()
 	select {
-	case <-fut.ready:
+	case <-fut.done:
 		shard.bufmut.Unlock()
 		return
 	default:
@@ -767,8 +805,8 @@ func (conn *Connection) putFuture(fut *Future, body func(*msgpack.Encoder) error
 		shard.buf.Trunc(blen)
 		shard.bufmut.Unlock()
 		if f := conn.fetchFuture(fut.requestId); f == fut {
-			fut.markReady(conn)
-			fut.err = err
+			fut.SetError(err)
+			conn.markDone(fut)
 		} else if f != nil {
 			/* in theory, it is possible. In practice, you have
 			 * to have race condition that lasts hours */
@@ -782,7 +820,7 @@ func (conn *Connection) putFuture(fut *Future, body func(*msgpack.Encoder) error
 				// packing error is more important than connection
 				// error, because it is indication of programmer's
 				// mistake.
-				fut.err = err
+				fut.SetError(err)
 			}
 		}
 		return
@@ -793,15 +831,40 @@ func (conn *Connection) putFuture(fut *Future, body func(*msgpack.Encoder) error
 	}
 }
 
+func (conn *Connection) markDone(fut *Future) {
+	if conn.rlimit != nil {
+		<-conn.rlimit
+	}
+}
+
+func (conn *Connection) peekFuture(reqid uint32) (fut *Future) {
+	shard := &conn.shard[reqid&(conn.opts.Concurrency-1)]
+	pos := (reqid / conn.opts.Concurrency) & (requestsMap - 1)
+	shard.rmut.Lock()
+	defer shard.rmut.Unlock()
+
+	if conn.opts.Timeout > 0 {
+		fut = conn.getFutureImp(reqid, true)
+		pair := &shard.requests[pos]
+		*pair.last = fut
+		pair.last = &fut.next
+		fut.timeout = time.Since(epoch) + conn.opts.Timeout
+	} else {
+		fut = conn.getFutureImp(reqid, false)
+	}
+
+	return fut
+}
+
 func (conn *Connection) fetchFuture(reqid uint32) (fut *Future) {
 	shard := &conn.shard[reqid&(conn.opts.Concurrency-1)]
 	shard.rmut.Lock()
-	fut = conn.fetchFutureImp(reqid)
+	fut = conn.getFutureImp(reqid, true)
 	shard.rmut.Unlock()
 	return fut
 }
 
-func (conn *Connection) fetchFutureImp(reqid uint32) *Future {
+func (conn *Connection) getFutureImp(reqid uint32, fetch bool) *Future {
 	shard := &conn.shard[reqid&(conn.opts.Concurrency-1)]
 	pos := (reqid / conn.opts.Concurrency) & (requestsMap - 1)
 	pair := &shard.requests[pos]
@@ -812,11 +875,13 @@ func (conn *Connection) fetchFutureImp(reqid uint32) *Future {
 			return nil
 		}
 		if fut.requestId == reqid {
-			*root = fut.next
-			if fut.next == nil {
-				pair.last = root
-			} else {
-				fut.next = nil
+			if fetch {
+				*root = fut.next
+				if fut.next == nil {
+					pair.last = root
+				} else {
+					fut.next = nil
+				}
 			}
 			return fut
 		}
@@ -851,11 +916,11 @@ func (conn *Connection) timeouts() {
 					} else {
 						fut.next = nil
 					}
-					fut.err = ClientError{
+					fut.SetError(ClientError{
 						Code: ErrTimeouted,
 						Msg:  fmt.Sprintf("client timeout for request %d", fut.requestId),
-					}
-					fut.markReady(conn)
+					})
+					conn.markDone(fut)
 					shard.bufmut.Unlock()
 				}
 				if pair.first != nil && pair.first.timeout < minNext {

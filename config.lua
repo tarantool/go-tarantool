@@ -110,6 +110,14 @@ local function simple_incr(a)
 end
 rawset(_G, 'simple_incr', simple_incr)
 
+local function push_func(cnt)
+    for i = 1, cnt do
+        box.session.push(i)
+    end
+    return cnt
+end
+rawset(_G, 'push_func', push_func)
+
 box.space.test:truncate()
 
 --box.schema.user.revoke('guest', 'read,write,execute', 'universe')

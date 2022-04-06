@@ -11,6 +11,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 ### Added
 
 - SSL support (#155)
+- IPROTO_PUSH messages support (#67)
 
 ### Changed
 
