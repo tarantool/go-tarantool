@@ -26,7 +26,7 @@ faster than other packages according to public benchmarks.
 * [API reference](#api-reference)
 * [Walking\-through example in Go](#walking-through-example-in-go)
 * [Help](#help)
-* [Tests](#tests)
+* [Contributing](#contributing)
 * [Alternative connectors](#alternative-connectors)
 
 ## Installation
@@ -164,30 +164,10 @@ To contact `go-tarantool` developers on any problems, create an issue at
 The developers of the [Tarantool server](http://github.com/tarantool/tarantool)
 will also be happy to provide advice or receive feedback.
 
-## Tests
+## Contributing
 
-You need to [install Tarantool](https://www.tarantool.io/en/download/) to run tests.
-See [Installation](#installation) section for requirements.
-
-To install test dependencies (like [tarantool/queue](https://github.com/tarantool/queue) module), run
-```bash
-make deps
-```
-
-To run tests for the main package and each subpackage, call
-```bash
-make test
-```
-Tests set up all required `tarantool` processes before run and clean up after.
-
-If you want to run a specific package tests, call
-```bash
-make test-<SUBDIR>
-```
-For example, for running tests in `multi`, `uuid` and `main` packages, call
-```bash
-make test-multi test-uuid test-main
-```
+See [the contributing guide](CONTRIBUTING.md) for detailed instructions on how
+to get started with our project.
 
 ## Alternative connectors
 
