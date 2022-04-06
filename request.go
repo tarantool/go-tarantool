@@ -12,7 +12,7 @@ import (
 // Ping sends empty request to Tarantool to check connection.
 func (conn *Connection) Ping() (resp *Response, err error) {
 	future := conn.newFuture(PingRequest)
-	return future.send(conn, func(enc *msgpack.Encoder) error { enc.EncodeMapLen(0); return nil }).Get()
+	return conn.sendFuture(future, func(enc *msgpack.Encoder) error { enc.EncodeMapLen(0); return nil }).Get()
 }
 
 func fillSearch(enc *msgpack.Encoder, spaceNo, indexNo uint32, key interface{}) error {
@@ -226,9 +226,9 @@ func (conn *Connection) SelectAsync(space, index interface{}, offset, limit, ite
 	future := conn.newFuture(SelectRequest)
 	spaceNo, indexNo, err := conn.Schema.resolveSpaceIndex(space, index)
 	if err != nil {
-		return future.fail(conn, err)
+		return conn.failFuture(future, err)
 	}
-	return future.send(conn, func(enc *msgpack.Encoder) error {
+	return conn.sendFuture(future, func(enc *msgpack.Encoder) error {
 		enc.EncodeMapLen(6)
 		fillIterator(enc, offset, limit, iterator)
 		return fillSearch(enc, spaceNo, indexNo, key)
@@ -241,9 +241,9 @@ func (conn *Connection) InsertAsync(space interface{}, tuple interface{}) *Futur
 	future := conn.newFuture(InsertRequest)
 	spaceNo, _, err := conn.Schema.resolveSpaceIndex(space, nil)
 	if err != nil {
-		return future.fail(conn, err)
+		return conn.failFuture(future, err)
 	}
-	return future.send(conn, func(enc *msgpack.Encoder) error {
+	return conn.sendFuture(future, func(enc *msgpack.Encoder) error {
 		enc.EncodeMapLen(2)
 		return fillInsert(enc, spaceNo, tuple)
 	})
@@ -255,9 +255,9 @@ func (conn *Connection) ReplaceAsync(space interface{}, tuple interface{}) *Futu
 	future := conn.newFuture(ReplaceRequest)
 	spaceNo, _, err := conn.Schema.resolveSpaceIndex(space, nil)
 	if err != nil {
-		return future.fail(conn, err)
+		return conn.failFuture(future, err)
 	}
-	return future.send(conn, func(enc *msgpack.Encoder) error {
+	return conn.sendFuture(future, func(enc *msgpack.Encoder) error {
 		enc.EncodeMapLen(2)
 		return fillInsert(enc, spaceNo, tuple)
 	})
@@ -269,9 +269,9 @@ func (conn *Connection) DeleteAsync(space, index interface{}, key interface{}) *
 	future := conn.newFuture(DeleteRequest)
 	spaceNo, indexNo, err := conn.Schema.resolveSpaceIndex(space, index)
 	if err != nil {
-		return future.fail(conn, err)
+		return conn.failFuture(future, err)
 	}
-	return future.send(conn, func(enc *msgpack.Encoder) error {
+	return conn.sendFuture(future, func(enc *msgpack.Encoder) error {
 		enc.EncodeMapLen(3)
 		return fillSearch(enc, spaceNo, indexNo, key)
 	})
@@ -283,9 +283,9 @@ func (conn *Connection) UpdateAsync(space, index interface{}, key, ops interface
 	future := conn.newFuture(UpdateRequest)
 	spaceNo, indexNo, err := conn.Schema.resolveSpaceIndex(space, index)
 	if err != nil {
-		return future.fail(conn, err)
+		return conn.failFuture(future, err)
 	}
-	return future.send(conn, func(enc *msgpack.Encoder) error {
+	return conn.sendFuture(future, func(enc *msgpack.Encoder) error {
 		enc.EncodeMapLen(4)
 		if err := fillSearch(enc, spaceNo, indexNo, key); err != nil {
 			return err
@@ -301,9 +301,9 @@ func (conn *Connection) UpsertAsync(space interface{}, tuple interface{}, ops in
 	future := conn.newFuture(UpsertRequest)
 	spaceNo, _, err := conn.Schema.resolveSpaceIndex(space, nil)
 	if err != nil {
-		return future.fail(conn, err)
+		return conn.failFuture(future, err)
 	}
-	return future.send(conn, func(enc *msgpack.Encoder) error {
+	return conn.sendFuture(future, func(enc *msgpack.Encoder) error {
 		enc.EncodeMapLen(3)
 		enc.EncodeUint64(KeySpaceNo)
 		enc.EncodeUint64(uint64(spaceNo))
@@ -320,7 +320,7 @@ func (conn *Connection) UpsertAsync(space interface{}, tuple interface{}, ops in
 // It uses request code for Tarantool 1.6, so future's result is always array of arrays
 func (conn *Connection) CallAsync(functionName string, args interface{}) *Future {
 	future := conn.newFuture(CallRequest)
-	return future.send(conn, func(enc *msgpack.Encoder) error {
+	return conn.sendFuture(future, func(enc *msgpack.Encoder) error {
 		enc.EncodeMapLen(2)
 		enc.EncodeUint64(KeyFunctionName)
 		enc.EncodeString(functionName)
@@ -334,7 +334,7 @@ func (conn *Connection) CallAsync(functionName string, args interface{}) *Future
 // (though, keep in mind, result is always array)
 func (conn *Connection) Call17Async(functionName string, args interface{}) *Future {
 	future := conn.newFuture(Call17Request)
-	return future.send(conn, func(enc *msgpack.Encoder) error {
+	return conn.sendFuture(future, func(enc *msgpack.Encoder) error {
 		enc.EncodeMapLen(2)
 		enc.EncodeUint64(KeyFunctionName)
 		enc.EncodeString(functionName)
@@ -346,7 +346,7 @@ func (conn *Connection) Call17Async(functionName string, args interface{}) *Futu
 // EvalAsync sends a Lua expression for evaluation and returns Future.
 func (conn *Connection) EvalAsync(expr string, args interface{}) *Future {
 	future := conn.newFuture(EvalRequest)
-	return future.send(conn, func(enc *msgpack.Encoder) error {
+	return conn.sendFuture(future, func(enc *msgpack.Encoder) error {
 		enc.EncodeMapLen(2)
 		enc.EncodeUint64(KeyExpression)
 		enc.EncodeString(expr)
@@ -359,7 +359,7 @@ func (conn *Connection) EvalAsync(expr string, args interface{}) *Future {
 // Since 1.6.0
 func (conn *Connection) ExecuteAsync(expr string, args interface{}) *Future {
 	future := conn.newFuture(ExecuteRequest)
-	return future.send(conn, func(enc *msgpack.Encoder) error {
+	return conn.sendFuture(future, func(enc *msgpack.Encoder) error {
 		enc.EncodeMapLen(2)
 		enc.EncodeUint64(KeySQLText)
 		enc.EncodeString(expr)

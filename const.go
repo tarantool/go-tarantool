@@ -61,6 +61,7 @@ const (
 	RLimitWait = 2
 
 	OkCode            = uint32(0)
+	PushCode          = uint32(0x80)
 	ErrorCodeBit      = 0x8000
 	PacketLengthBytes = 5
 	ErSpaceExistsCode = 0xa
