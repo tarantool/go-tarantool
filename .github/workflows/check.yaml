@@ -24,3 +24,19 @@ jobs:
 
     - name: Run luacheck
       run: ./.rocks/bin/luacheck .
+
+  golangci-lint:
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'push' ||
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name != github.repository
+    steps:
+      - uses: actions/setup-go@v2
+
+      - uses: actions/checkout@v2
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v2
+        with:
+          args: --issues-exit-code=0 -E gofmt
