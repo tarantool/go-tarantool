@@ -19,3 +19,23 @@ jobs:
       run: |
         gofmt -d -e -s .
         if [ "$(gofmt -l -s . | wc -l)" -gt 0 ]; then exit 1; fi
+
+  luacheck:
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'push' ||
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name != github.repository
+    steps:
+    - uses: actions/checkout@master
+
+    - name: Setup Tarantool
+      uses: tarantool/setup-tarantool@v1
+      with:
+        tarantool-version: '2.8'
+
+    - name: Setup luacheck
+      run: tarantoolctl rocks install luacheck 0.25.0
+
+    - name: Run luacheck
+      run: ./.rocks/bin/luacheck .
