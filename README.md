@@ -22,8 +22,9 @@ faster than other packages according to public benchmarks.
 ## Table of contents
 
 * [Installation](#installation)
-* [API reference](#api-reference)
-* [Walking\-through example in Go](#walking-through-example-in-go)
+* [Documentation](#documentation)
+  * [API reference](#api-reference)
+  * [Walking\-through example](#walking-through-example)
 * [Contributing](#contributing)
 * [Alternative connectors](#alternative-connectors)
 
@@ -50,7 +51,7 @@ This should put the source and binary files in subdirectories of
 `github.com/tarantool/go-tarantool` to the `import {...}` section at the start
 of any Go program.
 
-<h2>API reference</h2>
+## Documentation
 
 Read the [Tarantool documentation](tarantool-doc-data-model-url)
 to find descriptions of terms such as "connect", "space", "index", and the
@@ -65,56 +66,56 @@ The supported requests have parameters and results equivalent to requests in
 the [Tarantool CRUD operations](tarantool-doc-box-space-url).
 There are also Typed and Async versions of each data-manipulation function.
 
-## Walking-through example in Go
+### API Reference
 
-We can now have a closer look at the `example.go` program and make some observations
+Learn API documentation and examples at
+[pkg.go.dev](https://pkg.go.dev/github.com/tarantool/go-tarantool).
+
+### Walking-through example
+
+We can now have a closer look at the example and make some observations
 about what it does.
 
 ```go
-package main
+package tarantool
 
 import (
-     "fmt"
-     "github.com/tarantool/go-tarantool"
+	"fmt"
+	"github.com/tarantool/go-tarantool"
 )
 
 func main() {
-   opts := tarantool.Opts{User: "guest"}
-   conn, err := tarantool.Connect("127.0.0.1:3301", opts)
-   // conn, err := tarantool.Connect("/path/to/tarantool.socket", opts)
-   if err != nil {
-       fmt.Println("Connection refused:", err)
-   }
-   resp, err := conn.Insert(999, []interface{}{99999, "BB"})
-   if err != nil {
-     fmt.Println("Error", err)
-     fmt.Println("Code", resp.Code)
-   }
+	opts := tarantool.Opts{User: "guest"}
+	conn, err := tarantool.Connect("127.0.0.1:3301", opts)
+	if err != nil {
+		fmt.Println("Connection refused:", err)
+	}
+	resp, err := conn.Insert(999, []interface{}{99999, "BB"})
+	if err != nil {
+		fmt.Println("Error", err)
+		fmt.Println("Code", resp.Code)
+	}
 }
 ```
 
-**Observation 1:** the line "`github.com/tarantool/go-tarantool`" in the
+**Observation 1:** The line "`github.com/tarantool/go-tarantool`" in the
 `import(...)` section brings in all Tarantool-related functions and structures.
 
-**Observation 2:** the line beginning with "`Opts :=`" sets up the options for
-`Connect()`. In this example, there is only one thing in the structure, a user
-name. The structure can also contain:
+**Observation 2:** The line starting with "`Opts :=`" sets up the options for
+`Connect()`. In this example, the structure contains only a single value, the
+username. The structure may also contain other settings, see more in
+[documentation][godoc-opts-url] for the "`Opts`" structure.
 
-* `Pass` (password),
-* `Timeout` (maximum number of milliseconds to wait before giving up),
-* `Reconnect` (number of seconds to wait before retrying if a connection fails),
-* `MaxReconnect` (maximum number of times to retry).
-
-**Observation 3:** the line containing "`tarantool.Connect`" is essential for
-beginning any session. There are two parameters:
+**Observation 3:** The line containing "`tarantool.Connect`" is essential for
+starting a session. There are two parameters:
 
 * a string with `host:port` format, and
 * the option structure that was set up earlier.
 
-**Observation 4:** the `err` structure will be `nil` if there is no error,
+**Observation 4:** The `err` structure will be `nil` if there is no error,
 otherwise it will have a description which can be retrieved with `err.Error()`.
 
-**Observation 5:** the `Insert` request, like almost all requests, is preceded by
+**Observation 5:** The `Insert` request, like almost all requests, is preceded by
 "`conn.`" which is the name of the object that was returned by `Connect()`.
 There are two parameters:
 
@@ -151,3 +152,4 @@ See feature comparison in [documentation](https://www.tarantool.io/en/doc/latest
 [go-tarantool]: https://github.com/tarantool/go-tarantool
 [tarantool-doc-data-model-url]: https://www.tarantool.io/en/doc/latest/book/box/data_model/
 [tarantool-doc-box-space-url]: https://www.tarantool.io/en/doc/latest/reference/reference_lua/box_space/
+[godoc-opts-url]: https://pkg.go.dev/github.com/tarantool/go-tarantool#Opts
