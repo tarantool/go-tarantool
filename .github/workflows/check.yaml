@@ -39,3 +39,18 @@ jobs:
 
     - name: Run luacheck
       run: ./.rocks/bin/luacheck .
+
+  golangci:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-go@v2
+
+      - uses: actions/checkout@v2
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v2
+        with:
+          # Show only new issues if it's a pull request.
+          only-new-issues: true
+          args: --issues-exit-code=0
