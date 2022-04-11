@@ -1,3 +1,14 @@
+// Package with methods to work with a Tarantool cluster.
+//
+// Main features:
+//
+// - Check the active connection with a configurable time interval and switch
+// to the next connection in the pool if there is a connection failure.
+//
+// - Get the address list from the server and reconfigure it for use in
+// MultiConnection.
+//
+// Since: 1.5
 package multi
 
 import (

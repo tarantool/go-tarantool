@@ -171,21 +171,6 @@ To contact `go-tarantool` developers on any problems, create an issue at
 The developers of the [Tarantool server](http://github.com/tarantool/tarantool)
 will also be happy to provide advice or receive feedback.
 
-## Multi connections
-
-You can use multiple connections config with tarantool/multi. 
-
-Main features:
-
-- Check active connection with configurable time interval and on connection fail switch to next in pool.
-- Get addresses list from server and reconfigure to use in MultiConnection.
-
-Additional options (configurable via `ConnectWithOpts`):
-
-* `CheckTimeout` - time interval to check for connection timeout and try to switch connection
-* `ClusterDiscoveryTime` - time interval to ask server for updated address list (works on with `NodesGetFunctionName` set)
-* `NodesGetFunctionName` - server lua function name to call for getting address list
-
 ## Tests
 
 You need to [install Tarantool](https://www.tarantool.io/en/download/) to run tests.
