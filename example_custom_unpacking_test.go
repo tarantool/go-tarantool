@@ -16,7 +16,7 @@ type Tuple2 struct {
 
 // Same effect in a "magic" way, but slower.
 type Tuple3 struct {
-	_msgpack struct{} `msgpack:",asArray"`
+	_msgpack struct{} `msgpack:",asArray"` //nolint: structcheck,unused
 
 	Cid     uint
 	Orig    string

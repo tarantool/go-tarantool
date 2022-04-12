@@ -74,6 +74,9 @@ func Example_simpleQueue() {
 	}
 
 	task, err = q.TakeTimeout(2 * time.Second)
+	if err != nil {
+		fmt.Printf("error in take with timeout")
+	}
 	if task != nil {
 		fmt.Printf("Task should be nil, but %d", task.Id())
 		return

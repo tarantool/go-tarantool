@@ -27,10 +27,10 @@ var connOptsMulti = OptsMulti{
 func TestConnError_IncorrectParams(t *testing.T) {
 	multiConn, err := Connect([]string{}, tarantool.Opts{})
 	if err == nil {
-		t.Errorf("err is nil with incorrect params")
+		t.Fatalf("err is nil with incorrect params")
 	}
 	if multiConn != nil {
-		t.Errorf("conn is not nill with incorrect params")
+		t.Fatalf("conn is not nill with incorrect params")
 	}
 	if err.Error() != "addrs should not be empty" {
 		t.Errorf("incorrect error: %s", err.Error())
@@ -38,10 +38,10 @@ func TestConnError_IncorrectParams(t *testing.T) {
 
 	multiConn, err = ConnectWithOpts([]string{server1}, tarantool.Opts{}, OptsMulti{})
 	if err == nil {
-		t.Errorf("err is nil with incorrect params")
+		t.Fatal("err is nil with incorrect params")
 	}
 	if multiConn != nil {
-		t.Errorf("conn is not nill with incorrect params")
+		t.Fatal("conn is not nill with incorrect params")
 	}
 	if err.Error() != "wrong check timeout, must be greater than 0" {
 		t.Errorf("incorrect error: %s", err.Error())

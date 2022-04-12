@@ -15,10 +15,6 @@ type Response struct {
 	buf  smallBuf
 }
 
-func (resp *Response) fill(b []byte) {
-	resp.buf.b = b
-}
-
 func (resp *Response) smallInt(d *msgpack.Decoder) (i int, err error) {
 	b, err := resp.buf.ReadByte()
 	if err != nil {

@@ -65,9 +65,9 @@ func TestConnSuccessfully(t *testing.T) {
 	defer connPool.Close()
 
 	args := test_helpers.CheckStatusesArgs{
-		ConnPool: connPool,
-		Mode: connection_pool.ANY,
-		Servers: []string{server},
+		ConnPool:           connPool,
+		Mode:               connection_pool.ANY,
+		Servers:            []string{server},
 		ExpectedPoolStatus: true,
 		ExpectedStatuses: map[string]bool{
 			server: true,
@@ -90,9 +90,9 @@ func TestReconnect(t *testing.T) {
 	test_helpers.StopTarantoolWithCleanup(instances[0])
 
 	args := test_helpers.CheckStatusesArgs{
-		ConnPool: connPool,
-		Mode: connection_pool.ANY,
-		Servers: []string{server},
+		ConnPool:           connPool,
+		Mode:               connection_pool.ANY,
+		Servers:            []string{server},
 		ExpectedPoolStatus: true,
 		ExpectedStatuses: map[string]bool{
 			server: false,
@@ -106,9 +106,9 @@ func TestReconnect(t *testing.T) {
 	require.Nilf(t, err, "failed to restart tarantool")
 
 	args = test_helpers.CheckStatusesArgs{
-		ConnPool: connPool,
-		Mode: connection_pool.ANY,
-		Servers: []string{server},
+		ConnPool:           connPool,
+		Mode:               connection_pool.ANY,
+		Servers:            []string{server},
 		ExpectedPoolStatus: true,
 		ExpectedStatuses: map[string]bool{
 			server: true,
@@ -133,9 +133,9 @@ func TestDisconnectAll(t *testing.T) {
 	test_helpers.StopTarantoolWithCleanup(instances[1])
 
 	args := test_helpers.CheckStatusesArgs{
-		ConnPool: connPool,
-		Mode: connection_pool.ANY,
-		Servers: []string{server1, server2},
+		ConnPool:           connPool,
+		Mode:               connection_pool.ANY,
+		Servers:            []string{server1, server2},
 		ExpectedPoolStatus: false,
 		ExpectedStatuses: map[string]bool{
 			server1: false,
@@ -153,9 +153,9 @@ func TestDisconnectAll(t *testing.T) {
 	require.Nilf(t, err, "failed to restart tarantool")
 
 	args = test_helpers.CheckStatusesArgs{
-		ConnPool: connPool,
-		Mode: connection_pool.ANY,
-		Servers: []string{server1, server2},
+		ConnPool:           connPool,
+		Mode:               connection_pool.ANY,
+		Servers:            []string{server1, server2},
 		ExpectedPoolStatus: true,
 		ExpectedStatuses: map[string]bool{
 			server1: true,
@@ -176,9 +176,9 @@ func TestClose(t *testing.T) {
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
 	args := test_helpers.CheckStatusesArgs{
-		ConnPool: connPool,
-		Mode: connection_pool.ANY,
-		Servers: []string{server1, server2},
+		ConnPool:           connPool,
+		Mode:               connection_pool.ANY,
+		Servers:            []string{server1, server2},
 		ExpectedPoolStatus: true,
 		ExpectedStatuses: map[string]bool{
 			server1: true,
@@ -192,9 +192,9 @@ func TestClose(t *testing.T) {
 	connPool.Close()
 
 	args = test_helpers.CheckStatusesArgs{
-		ConnPool: connPool,
-		Mode: connection_pool.ANY,
-		Servers: []string{server1, server2},
+		ConnPool:           connPool,
+		Mode:               connection_pool.ANY,
+		Servers:            []string{server1, server2},
 		ExpectedPoolStatus: false,
 		ExpectedStatuses: map[string]bool{
 			server1: false,
@@ -353,8 +353,8 @@ func TestRoundRobinStrategy(t *testing.T) {
 	args := test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: allPorts,
-		ConnPool: connPool,
-		Mode: connection_pool.ANY,
+		ConnPool:      connPool,
+		Mode:          connection_pool.ANY,
 	}
 
 	err = test_helpers.ProcessListenOnInstance(args)
@@ -364,8 +364,8 @@ func TestRoundRobinStrategy(t *testing.T) {
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: masterPorts,
-		ConnPool: connPool,
-		Mode: connection_pool.RW,
+		ConnPool:      connPool,
+		Mode:          connection_pool.RW,
 	}
 
 	err = test_helpers.ProcessListenOnInstance(args)
@@ -375,8 +375,8 @@ func TestRoundRobinStrategy(t *testing.T) {
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: replicaPorts,
-		ConnPool: connPool,
-		Mode: connection_pool.RO,
+		ConnPool:      connPool,
+		Mode:          connection_pool.RO,
 	}
 
 	err = test_helpers.ProcessListenOnInstance(args)
@@ -386,8 +386,8 @@ func TestRoundRobinStrategy(t *testing.T) {
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: masterPorts,
-		ConnPool: connPool,
-		Mode: connection_pool.PreferRW,
+		ConnPool:      connPool,
+		Mode:          connection_pool.PreferRW,
 	}
 
 	err = test_helpers.ProcessListenOnInstance(args)
@@ -397,8 +397,8 @@ func TestRoundRobinStrategy(t *testing.T) {
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: replicaPorts,
-		ConnPool: connPool,
-		Mode: connection_pool.PreferRO,
+		ConnPool:      connPool,
+		Mode:          connection_pool.PreferRO,
 	}
 
 	err = test_helpers.ProcessListenOnInstance(args)
@@ -435,8 +435,8 @@ func TestRoundRobinStrategy_NoReplica(t *testing.T) {
 	args := test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: allPorts,
-		ConnPool: connPool,
-		Mode: connection_pool.ANY,
+		ConnPool:      connPool,
+		Mode:          connection_pool.ANY,
 	}
 
 	err = test_helpers.ProcessListenOnInstance(args)
@@ -446,8 +446,8 @@ func TestRoundRobinStrategy_NoReplica(t *testing.T) {
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: allPorts,
-		ConnPool: connPool,
-		Mode: connection_pool.RW,
+		ConnPool:      connPool,
+		Mode:          connection_pool.RW,
 	}
 
 	err = test_helpers.ProcessListenOnInstance(args)
@@ -457,8 +457,8 @@ func TestRoundRobinStrategy_NoReplica(t *testing.T) {
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: allPorts,
-		ConnPool: connPool,
-		Mode: connection_pool.PreferRW,
+		ConnPool:      connPool,
+		Mode:          connection_pool.PreferRW,
 	}
 
 	err = test_helpers.ProcessListenOnInstance(args)
@@ -468,8 +468,8 @@ func TestRoundRobinStrategy_NoReplica(t *testing.T) {
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: allPorts,
-		ConnPool: connPool,
-		Mode: connection_pool.PreferRO,
+		ConnPool:      connPool,
+		Mode:          connection_pool.PreferRO,
 	}
 
 	err = test_helpers.ProcessListenOnInstance(args)
@@ -506,8 +506,8 @@ func TestRoundRobinStrategy_NoMaster(t *testing.T) {
 	args := test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: allPorts,
-		ConnPool: connPool,
-		Mode: connection_pool.ANY,
+		ConnPool:      connPool,
+		Mode:          connection_pool.ANY,
 	}
 
 	err = test_helpers.ProcessListenOnInstance(args)
@@ -517,8 +517,8 @@ func TestRoundRobinStrategy_NoMaster(t *testing.T) {
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: allPorts,
-		ConnPool: connPool,
-		Mode: connection_pool.RO,
+		ConnPool:      connPool,
+		Mode:          connection_pool.RO,
 	}
 
 	err = test_helpers.ProcessListenOnInstance(args)
@@ -528,8 +528,8 @@ func TestRoundRobinStrategy_NoMaster(t *testing.T) {
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: allPorts,
-		ConnPool: connPool,
-		Mode: connection_pool.PreferRW,
+		ConnPool:      connPool,
+		Mode:          connection_pool.PreferRW,
 	}
 
 	err = test_helpers.ProcessListenOnInstance(args)
@@ -539,8 +539,8 @@ func TestRoundRobinStrategy_NoMaster(t *testing.T) {
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: allPorts,
-		ConnPool: connPool,
-		Mode: connection_pool.PreferRO,
+		ConnPool:      connPool,
+		Mode:          connection_pool.PreferRO,
 	}
 
 	err = test_helpers.ProcessListenOnInstance(args)
@@ -584,8 +584,8 @@ func TestUpdateInstancesRoles(t *testing.T) {
 	args := test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: allPorts,
-		ConnPool: connPool,
-		Mode: connection_pool.ANY,
+		ConnPool:      connPool,
+		Mode:          connection_pool.ANY,
 	}
 
 	err = test_helpers.ProcessListenOnInstance(args)
@@ -595,8 +595,8 @@ func TestUpdateInstancesRoles(t *testing.T) {
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: masterPorts,
-		ConnPool: connPool,
-		Mode: connection_pool.RW,
+		ConnPool:      connPool,
+		Mode:          connection_pool.RW,
 	}
 
 	err = test_helpers.ProcessListenOnInstance(args)
@@ -606,8 +606,8 @@ func TestUpdateInstancesRoles(t *testing.T) {
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: replicaPorts,
-		ConnPool: connPool,
-		Mode: connection_pool.RO,
+		ConnPool:      connPool,
+		Mode:          connection_pool.RO,
 	}
 
 	err = test_helpers.ProcessListenOnInstance(args)
@@ -617,8 +617,8 @@ func TestUpdateInstancesRoles(t *testing.T) {
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: masterPorts,
-		ConnPool: connPool,
-		Mode: connection_pool.PreferRW,
+		ConnPool:      connPool,
+		Mode:          connection_pool.PreferRW,
 	}
 
 	err = test_helpers.ProcessListenOnInstance(args)
@@ -628,8 +628,8 @@ func TestUpdateInstancesRoles(t *testing.T) {
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: replicaPorts,
-		ConnPool: connPool,
-		Mode: connection_pool.PreferRO,
+		ConnPool:      connPool,
+		Mode:          connection_pool.PreferRO,
 	}
 
 	err = test_helpers.ProcessListenOnInstance(args)
@@ -655,8 +655,8 @@ func TestUpdateInstancesRoles(t *testing.T) {
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: allPorts,
-		ConnPool: connPool,
-		Mode: connection_pool.ANY,
+		ConnPool:      connPool,
+		Mode:          connection_pool.ANY,
 	}
 
 	err = test_helpers.Retry(test_helpers.ProcessListenOnInstance, args, defaultCountRetry, defaultTimeoutRetry)
@@ -666,8 +666,8 @@ func TestUpdateInstancesRoles(t *testing.T) {
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: masterPorts,
-		ConnPool: connPool,
-		Mode: connection_pool.RW,
+		ConnPool:      connPool,
+		Mode:          connection_pool.RW,
 	}
 
 	err = test_helpers.Retry(test_helpers.ProcessListenOnInstance, args, defaultCountRetry, defaultTimeoutRetry)
@@ -677,8 +677,8 @@ func TestUpdateInstancesRoles(t *testing.T) {
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: replicaPorts,
-		ConnPool: connPool,
-		Mode: connection_pool.RO,
+		ConnPool:      connPool,
+		Mode:          connection_pool.RO,
 	}
 
 	err = test_helpers.Retry(test_helpers.ProcessListenOnInstance, args, defaultCountRetry, defaultTimeoutRetry)
@@ -688,8 +688,8 @@ func TestUpdateInstancesRoles(t *testing.T) {
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: masterPorts,
-		ConnPool: connPool,
-		Mode: connection_pool.PreferRW,
+		ConnPool:      connPool,
+		Mode:          connection_pool.PreferRW,
 	}
 
 	err = test_helpers.Retry(test_helpers.ProcessListenOnInstance, args, defaultCountRetry, defaultTimeoutRetry)
@@ -699,8 +699,8 @@ func TestUpdateInstancesRoles(t *testing.T) {
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: replicaPorts,
-		ConnPool: connPool,
-		Mode: connection_pool.PreferRO,
+		ConnPool:      connPool,
+		Mode:          connection_pool.PreferRO,
 	}
 
 	err = test_helpers.Retry(test_helpers.ProcessListenOnInstance, args, defaultCountRetry, defaultTimeoutRetry)

@@ -53,7 +53,7 @@ func (t *TupleUUID) DecodeMsgpack(d *msgpack.Decoder) error {
 func connectWithValidation(t *testing.T) *Connection {
 	conn, err := Connect(server, opts)
 	if err != nil {
-		t.Errorf("Failed to connect: %s", err.Error())
+		t.Fatalf("Failed to connect: %s", err.Error())
 	}
 	if conn == nil {
 		t.Errorf("conn is nil after Connect")
@@ -63,7 +63,7 @@ func connectWithValidation(t *testing.T) *Connection {
 
 func tupleValueIsId(t *testing.T, tuples []interface{}, id uuid.UUID) {
 	if len(tuples) != 1 {
-		t.Errorf("Response Data len != 1")
+		t.Fatalf("Response Data len != 1")
 	}
 
 	if tpl, ok := tuples[0].([]interface{}); !ok {
@@ -88,22 +88,22 @@ func TestSelect(t *testing.T) {
 
 	id, uuidErr := uuid.Parse("c8f0fa1f-da29-438c-a040-393f1126ad39")
 	if uuidErr != nil {
-		t.Errorf("Failed to prepare test uuid: %s", uuidErr)
+		t.Fatalf("Failed to prepare test uuid: %s", uuidErr)
 	}
 
 	resp, errSel := conn.Select(space, index, 0, 1, IterEq, []interface{}{id})
 	if errSel != nil {
-		t.Errorf("UUID select failed: %s", errSel.Error())
+		t.Fatalf("UUID select failed: %s", errSel.Error())
 	}
 	if resp == nil {
-		t.Errorf("Response is nil after Select")
+		t.Fatalf("Response is nil after Select")
 	}
 	tupleValueIsId(t, resp.Data, id)
 
 	var tuples []TupleUUID
 	errTyp := conn.SelectTyped(space, index, 0, 1, IterEq, []interface{}{id}, &tuples)
 	if errTyp != nil {
-		t.Errorf("Failed to SelectTyped: %s", errTyp.Error())
+		t.Fatalf("Failed to SelectTyped: %s", errTyp.Error())
 	}
 	if len(tuples) != 1 {
 		t.Errorf("Result len of SelectTyped != 1")
@@ -131,7 +131,7 @@ func TestReplace(t *testing.T) {
 		t.Errorf("UUID replace failed: %s", errRep)
 	}
 	if respRep == nil {
-		t.Errorf("Response is nil after Replace")
+		t.Fatalf("Response is nil after Replace")
 	}
 	tupleValueIsId(t, respRep.Data, id)
 
@@ -140,7 +140,7 @@ func TestReplace(t *testing.T) {
 		t.Errorf("UUID select failed: %s", errSel)
 	}
 	if respSel == nil {
-		t.Errorf("Response is nil after Select")
+		t.Fatalf("Response is nil after Select")
 	}
 	tupleValueIsId(t, respSel.Data, id)
 }
