@@ -101,7 +101,7 @@ func BenchmarkClientSerialTyped(b *testing.B) {
 
 	_, err = conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
 	if err != nil {
-		b.Errorf("No connection available")
+		b.Fatal("No connection available")
 	}
 
 	var r []Tuple
@@ -224,7 +224,7 @@ func BenchmarkClientFutureParallelTyped(b *testing.B) {
 
 	_, err = conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
 	if err != nil {
-		b.Errorf("No connection available")
+		b.Fatal("No connection available")
 	}
 
 	b.RunParallel(func(pb *testing.PB) {
@@ -263,7 +263,7 @@ func BenchmarkClientParallel(b *testing.B) {
 
 	_, err = conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
 	if err != nil {
-		b.Errorf("No connection available")
+		b.Fatal("No connection available")
 	}
 
 	b.RunParallel(func(pb *testing.PB) {
@@ -287,7 +287,7 @@ func BenchmarkClientParallelMassive(b *testing.B) {
 
 	_, err = conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
 	if err != nil {
-		b.Errorf("No connection available")
+		b.Fatal("No connection available")
 	}
 
 	var wg sync.WaitGroup
@@ -361,31 +361,29 @@ func TestClient(t *testing.T) {
 
 	conn, err = Connect(server, opts)
 	if err != nil {
-		t.Errorf("Failed to connect: %s", err.Error())
-		return
+		t.Fatalf("Failed to connect: %s", err.Error())
 	}
 	if conn == nil {
-		t.Errorf("conn is nil after Connect")
-		return
+		t.Fatalf("conn is nil after Connect")
 	}
 	defer conn.Close()
 
 	// Ping
 	resp, err = conn.Ping()
 	if err != nil {
-		t.Errorf("Failed to Ping: %s", err.Error())
+		t.Fatalf("Failed to Ping: %s", err.Error())
 	}
 	if resp == nil {
-		t.Errorf("Response is nil after Ping")
+		t.Fatalf("Response is nil after Ping")
 	}
 
 	// Insert
 	resp, err = conn.Insert(spaceNo, []interface{}{uint(1), "hello", "world"})
 	if err != nil {
-		t.Errorf("Failed to Insert: %s", err.Error())
+		t.Fatalf("Failed to Insert: %s", err.Error())
 	}
 	if resp == nil {
-		t.Errorf("Response is nil after Insert")
+		t.Fatalf("Response is nil after Insert")
 	}
 	if len(resp.Data) != 1 {
 		t.Errorf("Response Body len != 1")
@@ -415,10 +413,10 @@ func TestClient(t *testing.T) {
 	// Delete
 	resp, err = conn.Delete(spaceNo, indexNo, []interface{}{uint(1)})
 	if err != nil {
-		t.Errorf("Failed to Delete: %s", err.Error())
+		t.Fatalf("Failed to Delete: %s", err.Error())
 	}
 	if resp == nil {
-		t.Errorf("Response is nil after Delete")
+		t.Fatalf("Response is nil after Delete")
 	}
 	if len(resp.Data) != 1 {
 		t.Errorf("Response Body len != 1")
@@ -438,10 +436,10 @@ func TestClient(t *testing.T) {
 	}
 	resp, err = conn.Delete(spaceNo, indexNo, []interface{}{uint(101)})
 	if err != nil {
-		t.Errorf("Failed to Delete: %s", err.Error())
+		t.Fatalf("Failed to Delete: %s", err.Error())
 	}
 	if resp == nil {
-		t.Errorf("Response is nil after Delete")
+		t.Fatalf("Response is nil after Delete")
 	}
 	if len(resp.Data) != 0 {
 		t.Errorf("Response Data len != 0")
@@ -450,17 +448,17 @@ func TestClient(t *testing.T) {
 	// Replace
 	resp, err = conn.Replace(spaceNo, []interface{}{uint(2), "hello", "world"})
 	if err != nil {
-		t.Errorf("Failed to Replace: %s", err.Error())
+		t.Fatalf("Failed to Replace: %s", err.Error())
 	}
 	if resp == nil {
 		t.Errorf("Response is nil after Replace")
 	}
 	resp, err = conn.Replace(spaceNo, []interface{}{uint(2), "hi", "planet"})
 	if err != nil {
-		t.Errorf("Failed to Replace (duplicate): %s", err.Error())
+		t.Fatalf("Failed to Replace (duplicate): %s", err.Error())
 	}
 	if resp == nil {
-		t.Errorf("Response is nil after Replace (duplicate)")
+		t.Fatalf("Response is nil after Replace (duplicate)")
 	}
 	if len(resp.Data) != 1 {
 		t.Errorf("Response Data len != 1")
@@ -482,10 +480,10 @@ func TestClient(t *testing.T) {
 	// Update
 	resp, err = conn.Update(spaceNo, indexNo, []interface{}{uint(2)}, []interface{}{[]interface{}{"=", 1, "bye"}, []interface{}{"#", 2, 1}})
 	if err != nil {
-		t.Errorf("Failed to Update: %s", err.Error())
+		t.Fatalf("Failed to Update: %s", err.Error())
 	}
 	if resp == nil {
-		t.Errorf("Response is nil after Update")
+		t.Fatalf("Response is nil after Update")
 	}
 	if len(resp.Data) != 1 {
 		t.Errorf("Response Data len != 1")
@@ -508,14 +506,14 @@ func TestClient(t *testing.T) {
 	if strings.Compare(conn.Greeting.Version, "Tarantool 1.6.7") >= 0 {
 		resp, err = conn.Upsert(spaceNo, []interface{}{uint(3), 1}, []interface{}{[]interface{}{"+", 1, 1}})
 		if err != nil {
-			t.Errorf("Failed to Upsert (insert): %s", err.Error())
+			t.Fatalf("Failed to Upsert (insert): %s", err.Error())
 		}
 		if resp == nil {
 			t.Errorf("Response is nil after Upsert (insert)")
 		}
 		resp, err = conn.Upsert(spaceNo, []interface{}{uint(3), 1}, []interface{}{[]interface{}{"+", 1, 1}})
 		if err != nil {
-			t.Errorf("Failed to Upsert (update): %s", err.Error())
+			t.Fatalf("Failed to Upsert (update): %s", err.Error())
 		}
 		if resp == nil {
 			t.Errorf("Response is nil after Upsert (update)")
@@ -526,15 +524,18 @@ func TestClient(t *testing.T) {
 	for i := 10; i < 20; i++ {
 		resp, err = conn.Replace(spaceNo, []interface{}{uint(i), fmt.Sprintf("val %d", i), "bla"})
 		if err != nil {
-			t.Errorf("Failed to Replace: %s", err.Error())
+			t.Fatalf("Failed to Replace: %s", err.Error())
+		}
+		if resp.Code != 0 {
+			t.Errorf("Failed to replace")
 		}
 	}
 	resp, err = conn.Select(spaceNo, indexNo, 0, 1, IterEq, []interface{}{uint(10)})
 	if err != nil {
-		t.Errorf("Failed to Select: %s", err.Error())
+		t.Fatalf("Failed to Select: %s", err.Error())
 	}
 	if resp == nil {
-		t.Errorf("Response is nil after Select")
+		t.Fatalf("Response is nil after Select")
 	}
 	if len(resp.Data) != 1 {
 		t.Errorf("Response Data len != 1")
@@ -553,10 +554,10 @@ func TestClient(t *testing.T) {
 	// Select empty
 	resp, err = conn.Select(spaceNo, indexNo, 0, 1, IterEq, []interface{}{uint(30)})
 	if err != nil {
-		t.Errorf("Failed to Select: %s", err.Error())
+		t.Fatalf("Failed to Select: %s", err.Error())
 	}
 	if resp == nil {
-		t.Errorf("Response is nil after Select")
+		t.Fatalf("Response is nil after Select")
 	}
 	if len(resp.Data) != 0 {
 		t.Errorf("Response Data len != 0")
@@ -566,7 +567,7 @@ func TestClient(t *testing.T) {
 	var tpl []Tuple
 	err = conn.SelectTyped(spaceNo, indexNo, 0, 1, IterEq, []interface{}{uint(10)}, &tpl)
 	if err != nil {
-		t.Errorf("Failed to SelectTyped: %s", err.Error())
+		t.Fatalf("Failed to SelectTyped: %s", err.Error())
 	}
 	if len(tpl) != 1 {
 		t.Errorf("Result len of SelectTyped != 1")
@@ -580,7 +581,7 @@ func TestClient(t *testing.T) {
 	var singleTpl = Tuple{}
 	err = conn.GetTyped(spaceNo, indexNo, []interface{}{uint(10)}, &singleTpl)
 	if err != nil {
-		t.Errorf("Failed to GetTyped: %s", err.Error())
+		t.Fatalf("Failed to GetTyped: %s", err.Error())
 	}
 	if singleTpl.Id != 10 {
 		t.Errorf("Bad value loaded from GetTyped")
@@ -590,7 +591,7 @@ func TestClient(t *testing.T) {
 	var tpl1 [1]Tuple
 	err = conn.SelectTyped(spaceNo, indexNo, 0, 1, IterEq, []interface{}{uint(10)}, &tpl1)
 	if err != nil {
-		t.Errorf("Failed to SelectTyped: %s", err.Error())
+		t.Fatalf("Failed to SelectTyped: %s", err.Error())
 	}
 	if len(tpl) != 1 {
 		t.Errorf("Result len of SelectTyped != 1")
@@ -604,7 +605,7 @@ func TestClient(t *testing.T) {
 	var singleTpl2 Tuple
 	err = conn.GetTyped(spaceNo, indexNo, []interface{}{uint(30)}, &singleTpl2)
 	if err != nil {
-		t.Errorf("Failed to GetTyped: %s", err.Error())
+		t.Fatalf("Failed to GetTyped: %s", err.Error())
 	}
 	if singleTpl2.Id != 0 {
 		t.Errorf("Bad value loaded from GetTyped")
@@ -614,7 +615,7 @@ func TestClient(t *testing.T) {
 	var tpl2 []Tuple
 	err = conn.SelectTyped(spaceNo, indexNo, 0, 1, IterEq, []interface{}{uint(30)}, &tpl2)
 	if err != nil {
-		t.Errorf("Failed to SelectTyped: %s", err.Error())
+		t.Fatalf("Failed to SelectTyped: %s", err.Error())
 	}
 	if len(tpl2) != 0 {
 		t.Errorf("Result len of SelectTyped != 1")
@@ -623,10 +624,10 @@ func TestClient(t *testing.T) {
 	// Call
 	resp, err = conn.Call("box.info", []interface{}{"box.schema.SPACE_ID"})
 	if err != nil {
-		t.Errorf("Failed to Call: %s", err.Error())
+		t.Fatalf("Failed to Call: %s", err.Error())
 	}
 	if resp == nil {
-		t.Errorf("Response is nil after Call")
+		t.Fatalf("Response is nil after Call")
 	}
 	if len(resp.Data) < 1 {
 		t.Errorf("Response.Data is empty after Eval")
@@ -634,11 +635,17 @@ func TestClient(t *testing.T) {
 
 	// Call vs Call17
 	resp, err = conn.Call("simple_incr", []interface{}{1})
+	if err != nil {
+		t.Errorf("Failed to use Call")
+	}
 	if resp.Data[0].([]interface{})[0].(uint64) != 2 {
 		t.Errorf("result is not {{1}} : %v", resp.Data)
 	}
 
 	resp, err = conn.Call17("simple_incr", []interface{}{1})
+	if err != nil {
+		t.Errorf("Failed to use Call17")
+	}
 	if resp.Data[0].(uint64) != 2 {
 		t.Errorf("result is not {{1}} : %v", resp.Data)
 	}
@@ -646,10 +653,10 @@ func TestClient(t *testing.T) {
 	// Eval
 	resp, err = conn.Eval("return 5 + 6", []interface{}{})
 	if err != nil {
-		t.Errorf("Failed to Eval: %s", err.Error())
+		t.Fatalf("Failed to Eval: %s", err.Error())
 	}
 	if resp == nil {
-		t.Errorf("Response is nil after Eval")
+		t.Fatalf("Response is nil after Eval")
 	}
 	if len(resp.Data) < 1 {
 		t.Errorf("Response.Data is empty after Eval")
@@ -666,12 +673,10 @@ func TestSchema(t *testing.T) {
 
 	conn, err = Connect(server, opts)
 	if err != nil {
-		t.Errorf("Failed to connect: %s", err.Error())
-		return
+		t.Fatalf("Failed to connect: %s", err.Error())
 	}
 	if conn == nil {
-		t.Errorf("conn is nil after Connect")
-		return
+		t.Fatalf("conn is nil after Connect")
 	}
 	defer conn.Close()
 
@@ -807,7 +812,7 @@ func TestSchema(t *testing.T) {
 	ifield1 := index3.Fields[0]
 	ifield2 := index3.Fields[1]
 	if ifield1 == nil || ifield2 == nil {
-		t.Errorf("index field is nil")
+		t.Fatalf("index field is nil")
 	}
 	if ifield1.Id != 1 || ifield2.Id != 2 {
 		t.Errorf("index field has incorrect Id")
@@ -821,7 +826,7 @@ func TestSchema(t *testing.T) {
 	if err != nil || rSpaceNo != 514 || rIndexNo != 3 {
 		t.Errorf("numeric space and index params not resolved as-is")
 	}
-	rSpaceNo, rIndexNo, err = schema.ResolveSpaceIndex(514, nil)
+	rSpaceNo, _, err = schema.ResolveSpaceIndex(514, nil)
 	if err != nil || rSpaceNo != 514 {
 		t.Errorf("numeric space param not resolved as-is")
 	}
@@ -829,15 +834,15 @@ func TestSchema(t *testing.T) {
 	if err != nil || rSpaceNo != 514 || rIndexNo != 3 {
 		t.Errorf("symbolic space and index params not resolved")
 	}
-	rSpaceNo, rIndexNo, err = schema.ResolveSpaceIndex("schematest", nil)
+	rSpaceNo, _, err = schema.ResolveSpaceIndex("schematest", nil)
 	if err != nil || rSpaceNo != 514 {
 		t.Errorf("symbolic space param not resolved")
 	}
-	rSpaceNo, rIndexNo, err = schema.ResolveSpaceIndex("schematest22", "secondary")
+	_, _, err = schema.ResolveSpaceIndex("schematest22", "secondary")
 	if err == nil {
 		t.Errorf("resolveSpaceIndex didn't returned error with not existing space name")
 	}
-	rSpaceNo, rIndexNo, err = schema.ResolveSpaceIndex("schematest", "secondary22")
+	_, _, err = schema.ResolveSpaceIndex("schematest", "secondary22")
 	if err == nil {
 		t.Errorf("resolveSpaceIndex didn't returned error with not existing index name")
 	}
@@ -850,25 +855,26 @@ func TestClientNamed(t *testing.T) {
 
 	conn, err = Connect(server, opts)
 	if err != nil {
-		t.Errorf("Failed to connect: %s", err.Error())
-		return
+		t.Fatalf("Failed to connect: %s", err.Error())
 	}
 	if conn == nil {
-		t.Errorf("conn is nil after Connect")
-		return
+		t.Fatalf("conn is nil after Connect")
 	}
 	defer conn.Close()
 
 	// Insert
 	resp, err = conn.Insert(spaceName, []interface{}{uint(1001), "hello2", "world2"})
 	if err != nil {
-		t.Errorf("Failed to Insert: %s", err.Error())
+		t.Fatalf("Failed to Insert: %s", err.Error())
+	}
+	if resp.Code != 0 {
+		t.Errorf("Failed to Insert: wrong code returned %d", resp.Code)
 	}
 
 	// Delete
 	resp, err = conn.Delete(spaceName, indexName, []interface{}{uint(1001)})
 	if err != nil {
-		t.Errorf("Failed to Delete: %s", err.Error())
+		t.Fatalf("Failed to Delete: %s", err.Error())
 	}
 	if resp == nil {
 		t.Errorf("Response is nil after Delete")
@@ -877,7 +883,7 @@ func TestClientNamed(t *testing.T) {
 	// Replace
 	resp, err = conn.Replace(spaceName, []interface{}{uint(1002), "hello", "world"})
 	if err != nil {
-		t.Errorf("Failed to Replace: %s", err.Error())
+		t.Fatalf("Failed to Replace: %s", err.Error())
 	}
 	if resp == nil {
 		t.Errorf("Response is nil after Replace")
@@ -886,7 +892,7 @@ func TestClientNamed(t *testing.T) {
 	// Update
 	resp, err = conn.Update(spaceName, indexName, []interface{}{uint(1002)}, []interface{}{[]interface{}{"=", 1, "bye"}, []interface{}{"#", 2, 1}})
 	if err != nil {
-		t.Errorf("Failed to Update: %s", err.Error())
+		t.Fatalf("Failed to Update: %s", err.Error())
 	}
 	if resp == nil {
 		t.Errorf("Response is nil after Update")
@@ -896,14 +902,14 @@ func TestClientNamed(t *testing.T) {
 	if strings.Compare(conn.Greeting.Version, "Tarantool 1.6.7") >= 0 {
 		resp, err = conn.Upsert(spaceName, []interface{}{uint(1003), 1}, []interface{}{[]interface{}{"+", 1, 1}})
 		if err != nil {
-			t.Errorf("Failed to Upsert (insert): %s", err.Error())
+			t.Fatalf("Failed to Upsert (insert): %s", err.Error())
 		}
 		if resp == nil {
 			t.Errorf("Response is nil after Upsert (insert)")
 		}
 		resp, err = conn.Upsert(spaceName, []interface{}{uint(1003), 1}, []interface{}{[]interface{}{"+", 1, 1}})
 		if err != nil {
-			t.Errorf("Failed to Upsert (update): %s", err.Error())
+			t.Fatalf("Failed to Upsert (update): %s", err.Error())
 		}
 		if resp == nil {
 			t.Errorf("Response is nil after Upsert (update)")
@@ -914,12 +920,15 @@ func TestClientNamed(t *testing.T) {
 	for i := 1010; i < 1020; i++ {
 		resp, err = conn.Replace(spaceName, []interface{}{uint(i), fmt.Sprintf("val %d", i), "bla"})
 		if err != nil {
-			t.Errorf("Failed to Replace: %s", err.Error())
+			t.Fatalf("Failed to Replace: %s", err.Error())
+		}
+		if resp.Code != 0 {
+			t.Errorf("Failed to Replace: wrong code returned %d", resp.Code)
 		}
 	}
 	resp, err = conn.Select(spaceName, indexName, 0, 1, IterEq, []interface{}{uint(1010)})
 	if err != nil {
-		t.Errorf("Failed to Select: %s", err.Error())
+		t.Fatalf("Failed to Select: %s", err.Error())
 	}
 	if resp == nil {
 		t.Errorf("Response is nil after Select")
@@ -929,7 +938,7 @@ func TestClientNamed(t *testing.T) {
 	var tpl []Tuple
 	err = conn.SelectTyped(spaceName, indexName, 0, 1, IterEq, []interface{}{uint(1010)}, &tpl)
 	if err != nil {
-		t.Errorf("Failed to SelectTyped: %s", err.Error())
+		t.Fatalf("Failed to SelectTyped: %s", err.Error())
 	}
 	if len(tpl) != 1 {
 		t.Errorf("Result len of SelectTyped != 1")
@@ -942,27 +951,23 @@ func TestComplexStructs(t *testing.T) {
 
 	conn, err = Connect(server, opts)
 	if err != nil {
-		t.Errorf("Failed to connect: %s", err.Error())
-		return
+		t.Fatalf("Failed to connect: %s", err.Error())
 	}
 	if conn == nil {
-		t.Errorf("conn is nil after Connect")
-		return
+		t.Fatalf("conn is nil after Connect")
 	}
 	defer conn.Close()
 
 	tuple := Tuple2{Cid: 777, Orig: "orig", Members: []Member{{"lol", "", 1}, {"wut", "", 3}}}
 	_, err = conn.Replace(spaceNo, &tuple)
 	if err != nil {
-		t.Errorf("Failed to insert: %s", err.Error())
-		return
+		t.Fatalf("Failed to insert: %s", err.Error())
 	}
 
 	var tuples [1]Tuple2
 	err = conn.SelectTyped(spaceNo, indexNo, 0, 1, IterEq, []interface{}{777}, &tuples)
 	if err != nil {
-		t.Errorf("Failed to selectTyped: %s", err.Error())
-		return
+		t.Fatalf("Failed to selectTyped: %s", err.Error())
 	}
 
 	if len(tuples) != 1 {

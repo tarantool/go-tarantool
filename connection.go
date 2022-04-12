@@ -147,7 +147,7 @@ type connShard struct {
 	bufmut sync.Mutex
 	buf    smallWBuf
 	enc    *msgpack.Encoder
-	_pad   [16]uint64
+	_pad   [16]uint64 //nolint: unused,structcheck
 }
 
 // Greeting is a message sent by Tarantool on connect.
@@ -495,7 +495,7 @@ func (conn *Connection) createConnection(reconnect bool) (err error) {
 		conn.notify(ReconnectFailed)
 		reconnects++
 		conn.mutex.Unlock()
-		time.Sleep(now.Add(conn.opts.Reconnect).Sub(time.Now()))
+		time.Sleep(time.Until(now.Add(conn.opts.Reconnect)))
 		conn.mutex.Lock()
 	}
 	if conn.state == connClosed {
@@ -688,7 +688,7 @@ func (conn *Connection) newFuture(requestCode int32) (fut *Future) {
 	*pair.last = fut
 	pair.last = &fut.next
 	if conn.opts.Timeout > 0 {
-		fut.timeout = time.Now().Sub(epoch) + conn.opts.Timeout
+		fut.timeout = time.Since(epoch) + conn.opts.Timeout
 	}
 	shard.rmut.Unlock()
 	if conn.rlimit != nil && conn.opts.RLimitAction == RLimitWait {
@@ -796,9 +796,9 @@ func (conn *Connection) timeouts() {
 			return
 		case <-t.C:
 		}
-		minNext := time.Now().Sub(epoch) + timeout
+		minNext := time.Since(epoch) + timeout
 		for i := range conn.shard {
-			nowepoch = time.Now().Sub(epoch)
+			nowepoch = time.Since(epoch)
 			shard := &conn.shard[i]
 			for pos := range shard.requests {
 				shard.rmut.Lock()
@@ -825,7 +825,7 @@ func (conn *Connection) timeouts() {
 				shard.rmut.Unlock()
 			}
 		}
-		nowepoch = time.Now().Sub(epoch)
+		nowepoch = time.Since(epoch)
 		if nowepoch+time.Microsecond < minNext {
 			t.Reset(minNext - nowepoch)
 		} else {

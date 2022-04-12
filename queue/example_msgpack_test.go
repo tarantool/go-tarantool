@@ -114,9 +114,15 @@ func Example_simpleQueueCustomMsgPack() {
 	fmt.Println("Data is ", task.Data())
 
 	task, err = que.Put([]int{1, 2, 3})
+	if err != nil {
+		log.Fatalf("Put failed: %s", err)
+	}
 	task.Bury()
 
 	task, err = que.TakeTimeout(2 * time.Second)
+	if err != nil {
+		log.Fatalf("Take with timeout failed: %s", err)
+	}
 	if task == nil {
 		fmt.Println("Task is nil")
 	}

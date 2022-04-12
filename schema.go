@@ -50,6 +50,7 @@ type IndexField struct {
 	Type string
 }
 
+//nolint: varcheck,deadcode
 const (
 	maxSchemas = 10000
 	spaceSpId  = 280

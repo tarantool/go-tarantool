@@ -53,7 +53,7 @@ func ExampleConnectionPool_Select() {
 		return
 	}
 	// Insert a new tuple {"key2", "value2"}.
-	_, err = conn.Insert(spaceName,  &Tuple{Key: "key2", Value: "value2"})
+	_, err = conn.Insert(spaceName, &Tuple{Key: "key2", Value: "value2"})
 	if err != nil {
 		fmt.Printf("Failed to insert: %s", err.Error())
 		return
@@ -114,7 +114,7 @@ func ExampleConnectionPool_SelectTyped() {
 		return
 	}
 	// Insert a new tuple {"key2", "value2"}.
-	_, err = conn.Insert(spaceName,  &Tuple{Key: "key2", Value: "value2"})
+	_, err = conn.Insert(spaceName, &Tuple{Key: "key2", Value: "value2"})
 	if err != nil {
 		fmt.Printf("Failed to insert: %s", err.Error())
 		return
@@ -176,7 +176,7 @@ func ExampleConnectionPool_SelectAsync() {
 		return
 	}
 	// Insert a new tuple {"key2", "value2"}.
-	_, err = conn.Insert(spaceName,  &Tuple{Key: "key2", Value: "value2"})
+	_, err = conn.Insert(spaceName, &Tuple{Key: "key2", Value: "value2"})
 	if err != nil {
 		fmt.Printf("Failed to insert: %s", err.Error())
 		return
@@ -196,7 +196,7 @@ func ExampleConnectionPool_SelectAsync() {
 		spaceName, indexName, 0, 1, tarantool.IterEq,
 		[]interface{}{"key2"}, connection_pool.RW)
 	futs[2] = pool.SelectAsync(
-		spaceName, indexName, 0, 1,tarantool.IterEq,
+		spaceName, indexName, 0, 1, tarantool.IterEq,
 		[]interface{}{"key3"}, connection_pool.RW)
 	var t []Tuple
 	err = futs[0].GetTyped(&t)

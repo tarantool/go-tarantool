@@ -630,8 +630,7 @@ func TestFifoQueue_Release(t *testing.T) {
 func TestTtlQueue(t *testing.T) {
 	conn, err := Connect(server, opts)
 	if err != nil {
-		t.Errorf("Failed to connect: %s", err.Error())
-		return
+		t.Fatalf("Failed to connect: %s", err.Error())
 	}
 	defer conn.Close()
 
@@ -683,12 +682,10 @@ func TestTtlQueue(t *testing.T) {
 func TestTtlQueue_Put(t *testing.T) {
 	conn, err := Connect(server, opts)
 	if err != nil {
-		t.Errorf("Failed to connect: %s", err.Error())
-		return
+		t.Fatalf("Failed to connect: %s", err.Error())
 	}
 	if conn == nil {
-		t.Errorf("conn is nil after Connect")
-		return
+		t.Fatalf("conn is nil after Connect")
 	}
 	defer conn.Close()
 
@@ -755,12 +752,10 @@ func TestTtlQueue_Put(t *testing.T) {
 func TestUtube_Put(t *testing.T) {
 	conn, err := Connect(server, opts)
 	if err != nil {
-		t.Errorf("Failed to connect: %s", err.Error())
-		return
+		t.Fatalf("Failed to connect: %s", err.Error())
 	}
 	if conn == nil {
-		t.Errorf("conn is nil after Connect")
-		return
+		t.Fatalf("conn is nil after Connect")
 	}
 	defer conn.Close()
 
@@ -794,16 +789,22 @@ func TestUtube_Put(t *testing.T) {
 		t.Fatalf("Failed put task to queue: %s", err.Error())
 	}
 
+	errChan := make(chan struct{})
 	go func() {
 		t1, err := q.TakeTimeout(2 * time.Second)
 		if err != nil {
-			t.Fatalf("Failed to take task from utube: %s", err.Error())
+			t.Errorf("Failed to take task from utube: %s", err.Error())
+			errChan <- struct{}{}
+			return
 		}
 
 		time.Sleep(2 * time.Second)
 		if err := t1.Ack(); err != nil {
-			t.Fatalf("Failed to ack task: %s", err.Error())
+			t.Errorf("Failed to ack task: %s", err.Error())
+			errChan <- struct{}{}
+			return
 		}
+		close(errChan)
 	}()
 
 	time.Sleep(100 * time.Millisecond)
@@ -817,6 +818,9 @@ func TestUtube_Put(t *testing.T) {
 		t.Fatalf("Failed to ack task: %s", err.Error())
 	}
 	end := time.Now()
+	if _, ok := <-errChan; ok {
+		t.Fatalf("One of tasks failed")
+	}
 	if math.Abs(float64(end.Sub(start)-2*time.Second)) > float64(200*time.Millisecond) {
 		t.Fatalf("Blocking time is less than expected: actual = %.2fs, expected = 1s", end.Sub(start).Seconds())
 	}

@@ -29,7 +29,7 @@ Mode parameter:
  | upsert  | RW          |
  | select  | ANY         |
  | get     | ANY         |
- */
+*/
 const (
 	ANY = iota
 	RW

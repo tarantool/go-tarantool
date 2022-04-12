@@ -10,18 +10,18 @@ import (
 )
 
 type ListenOnInstanceArgs struct {
-	ConnPool *connection_pool.ConnectionPool
-	Mode connection_pool.Mode
+	ConnPool      *connection_pool.ConnectionPool
+	Mode          connection_pool.Mode
 	ServersNumber int
 	ExpectedPorts map[string]bool
 }
 
 type CheckStatusesArgs struct {
-	ConnPool *connection_pool.ConnectionPool
-	Servers []string
-	Mode connection_pool.Mode
+	ConnPool           *connection_pool.ConnectionPool
+	Servers            []string
+	Mode               connection_pool.Mode
 	ExpectedPoolStatus bool
-	ExpectedStatuses map[string]bool
+	ExpectedStatuses   map[string]bool
 }
 
 func compareTuples(expectedTpl []interface{}, actualTpl []interface{}) error {
@@ -168,7 +168,7 @@ func InsertOnInstance(server string, connOpts tarantool.Opts, space interface{},
 func InsertOnInstances(servers []string, connOpts tarantool.Opts, space interface{}, tuple interface{}) error {
 	serversNumber := len(servers)
 	roles := make([]bool, serversNumber)
-	for i:= 0; i < serversNumber; i++{
+	for i := 0; i < serversNumber; i++ {
 		roles[i] = false
 	}
 

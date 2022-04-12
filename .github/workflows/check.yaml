@@ -39,4 +39,12 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v2
         with:
-          args: --issues-exit-code=0 -E gofmt
+          # The suppression of the rule `errcheck` may be removed after adding
+          # errors check in all methods calling EncodeXxx inside.
+          # For now those methods are not even able to return any error
+          # cause of internal implementation of writer interface (see smallbuf.go).
+          #
+          # The `//nolint` workaround was not the acceptable way of warnings suppression,
+          # cause those comments get rendered in documentation by godoc.
+          # See https://github.com/tarantool/go-tarantool/pull/160#discussion_r858608221
+          args: -E gofmt -D errcheck

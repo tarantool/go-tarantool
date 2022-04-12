@@ -144,8 +144,6 @@ func IsTarantoolVersionLess(majorMin uint64, minorMin uint64, patchMin uint64) (
 	} else {
 		return patch < patchMin, nil
 	}
-
-	return false, nil
 }
 
 // RestartTarantool restarts a tarantool instance for tests
