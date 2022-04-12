@@ -16,32 +16,21 @@ type Tuple struct {
 	Name     string
 }
 
-func example_connect() (*tarantool.Connection, error) {
+func example_connect() *tarantool.Connection {
 	conn, err := tarantool.Connect(server, opts)
 	if err != nil {
-		return nil, err
+		panic("Connection is not established")
 	}
-	_, err = conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
-	if err != nil {
-		conn.Close()
-		return nil, err
-	}
-	_, err = conn.Replace(spaceNo, []interface{}{uint(1112), "hallo", "werld"})
-	if err != nil {
-		conn.Close()
-		return nil, err
-	}
-	return conn, nil
+	return conn
 }
 
 func ExampleConnection_Select() {
-	var conn *tarantool.Connection
-	conn, err := example_connect()
-	if err != nil {
-		fmt.Printf("error in prepare is %v", err)
-		return
-	}
+	conn := example_connect()
 	defer conn.Close()
+
+	conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
+	conn.Replace(spaceNo, []interface{}{uint(1112), "hallo", "werld"})
+
 	resp, err := conn.Select(512, 0, 0, 100, tarantool.IterEq, []interface{}{uint(1111)})
 	if err != nil {
 		fmt.Printf("error in select is %v", err)
@@ -61,15 +50,10 @@ func ExampleConnection_Select() {
 }
 
 func ExampleConnection_SelectTyped() {
-	var conn *tarantool.Connection
-	conn, err := example_connect()
-	if err != nil {
-		fmt.Printf("error in prepare is %v", err)
-		return
-	}
+	conn := example_connect()
 	defer conn.Close()
 	var res []Tuple
-	err = conn.SelectTyped(512, 0, 0, 100, tarantool.IterEq, tarantool.IntKey{1111}, &res)
+	err := conn.SelectTyped(512, 0, 0, 100, tarantool.IterEq, tarantool.IntKey{1111}, &res)
 	if err != nil {
 		fmt.Printf("error in select is %v", err)
 		return
@@ -87,12 +71,7 @@ func ExampleConnection_SelectTyped() {
 }
 
 func ExampleConnection_SelectAsync() {
-	var conn *tarantool.Connection
-	conn, err := example_connect()
-	if err != nil {
-		fmt.Printf("error in prepare is %v", err)
-		return
-	}
+	conn := example_connect()
 	defer conn.Close()
 
 	conn.Insert(spaceNo, []interface{}{uint(16), "test", "one"})
@@ -104,7 +83,7 @@ func ExampleConnection_SelectAsync() {
 	futs[1] = conn.SelectAsync("test", "primary", 0, 1, tarantool.IterEq, tarantool.UintKey{17})
 	futs[2] = conn.SelectAsync("test", "primary", 0, 1, tarantool.IterEq, tarantool.UintKey{18})
 	var t []Tuple
-	err = futs[0].GetTyped(&t)
+	err := futs[0].GetTyped(&t)
 	fmt.Println("Future", 0, "Error", err)
 	fmt.Println("Future", 0, "Data", t)
 
@@ -125,12 +104,7 @@ func ExampleConnection_SelectAsync() {
 }
 
 func ExampleConnection_Ping() {
-	var conn *tarantool.Connection
-	conn, err := example_connect()
-	if err != nil {
-		fmt.Printf("error in prepare is %v", err)
-		return
-	}
+	conn := example_connect()
 	defer conn.Close()
 
 	// Ping a Tarantool instance to check connection.
@@ -145,12 +119,7 @@ func ExampleConnection_Ping() {
 }
 
 func ExampleConnection_Insert() {
-	var conn *tarantool.Connection
-	conn, err := example_connect()
-	if err != nil {
-		fmt.Printf("error in prepare is %v", err)
-		return
-	}
+	conn := example_connect()
 	defer conn.Close()
 
 	// Insert a new tuple { 31, 1 }.
@@ -183,12 +152,7 @@ func ExampleConnection_Insert() {
 }
 
 func ExampleConnection_Delete() {
-	var conn *tarantool.Connection
-	conn, err := example_connect()
-	if err != nil {
-		fmt.Printf("error in prepare is %v", err)
-		return
-	}
+	conn := example_connect()
 	defer conn.Close()
 
 	// Insert a new tuple { 35, 1 }.
@@ -221,12 +185,7 @@ func ExampleConnection_Delete() {
 }
 
 func ExampleConnection_Replace() {
-	var conn *tarantool.Connection
-	conn, err := example_connect()
-	if err != nil {
-		fmt.Printf("error in prepare is %v", err)
-		return
-	}
+	conn := example_connect()
 	defer conn.Close()
 
 	// Insert a new tuple { 13, 1 }.
@@ -275,12 +234,7 @@ func ExampleConnection_Replace() {
 }
 
 func ExampleConnection_Update() {
-	var conn *tarantool.Connection
-	conn, err := example_connect()
-	if err != nil {
-		fmt.Printf("error in prepare is %v", err)
-		return
-	}
+	conn := example_connect()
 	defer conn.Close()
 
 	// Insert a new tuple { 14, 1 }.
@@ -300,12 +254,7 @@ func ExampleConnection_Update() {
 }
 
 func ExampleConnection_Call17() {
-	var conn *tarantool.Connection
-	conn, err := example_connect()
-	if err != nil {
-		fmt.Printf("error in prepare is %v", err)
-		return
-	}
+	conn := example_connect()
 	defer conn.Close()
 
 	// Call a function 'simple_incr' with arguments.
@@ -322,12 +271,7 @@ func ExampleConnection_Call17() {
 }
 
 func ExampleConnection_Eval() {
-	var conn *tarantool.Connection
-	conn, err := example_connect()
-	if err != nil {
-		fmt.Printf("error in prepare is %v", err)
-		return
-	}
+	conn := example_connect()
 	defer conn.Close()
 
 	// Run raw Lua code.
