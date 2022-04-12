@@ -27,6 +27,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 - Handle everything with `go test` (#115)
 - Use plain package instead of module for UUID submodule (#134)
 - Reset buffer if its average use size smaller than quater of capacity (#95)
+- Update API documentation: comments and examples (#123).
 
 ## [1.5] - 2019-12-29
 
