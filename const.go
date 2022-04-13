@@ -1,19 +1,19 @@
 package tarantool
 
 const (
-	SelectRequest    = 1
-	InsertRequest    = 2
-	ReplaceRequest   = 3
-	UpdateRequest    = 4
-	DeleteRequest    = 5
-	Call16Request    = 6 /* call in 1.6 format */
-	AuthRequest      = 7
-	EvalRequest      = 8
-	UpsertRequest    = 9
-	Call17Request    = 10 /* call in >= 1.7 format */
-	ExecuteRequest   = 11
-	PingRequest      = 64
-	SubscribeRequest = 66
+	SelectRequestCode    = 1
+	InsertRequestCode    = 2
+	ReplaceRequestCode   = 3
+	UpdateRequestCode    = 4
+	DeleteRequestCode    = 5
+	Call16RequestCode    = 6 /* call in 1.6 format */
+	AuthRequestCode      = 7
+	EvalRequestCode      = 8
+	UpsertRequestCode    = 9
+	Call17RequestCode    = 10 /* call in >= 1.7 format */
+	ExecuteRequestCode   = 11
+	PingRequestCode      = 64
+	SubscribeRequestCode = 66
 
 	KeyCode         = 0x00
 	KeySync         = 0x01

@@ -12,11 +12,14 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 - SSL support (#155)
 - IPROTO_PUSH messages support (#67)
+- Public API with request object types (#126)
 
 ### Changed
 
 - Add `Call16` method, support build tag `go_tarantool_call_17`
   to choose behavior for `Call` method (#125)
+- `IPROTO_*` constants that identify requests renamed from `<Name>Request` to
+  `<Name>RequestCode` (#126)
 
 ### Fixed
 

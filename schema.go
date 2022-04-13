@@ -4,6 +4,13 @@ import (
 	"fmt"
 )
 
+// SchemaResolver is an interface for resolving schema details.
+type SchemaResolver interface {
+	// ResolveSpaceIndex returns resolved space and index numbers or an
+	// error if it cannot be resolved.
+	ResolveSpaceIndex(s interface{}, i interface{}) (spaceNo, indexNo uint32, err error)
+}
+
 // Schema contains information about spaces and indexes.
 type Schema struct {
 	Version uint
@@ -176,7 +183,10 @@ func (conn *Connection) loadSchema() (err error) {
 	return nil
 }
 
-func (schema *Schema) resolveSpaceIndex(s interface{}, i interface{}) (spaceNo, indexNo uint32, err error) {
+// ResolveSpaceIndex tries to resolve space and index numbers.
+// Note: s can be a number, string, or an object of Space type.
+// Note: i can be a number, string, or an object of Index type.
+func (schema *Schema) ResolveSpaceIndex(s interface{}, i interface{}) (spaceNo, indexNo uint32, err error) {
 	var space *Space
 	var index *Index
 	var ok bool

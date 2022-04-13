@@ -126,6 +126,116 @@ func ExampleConnection_SelectAsync() {
 	// Future 2 Data [[18 val 18 bla]]
 }
 
+func ExampleSelectRequest() {
+	conn := example_connect()
+	defer conn.Close()
+
+	req := tarantool.NewSelectRequest(517).
+		Limit(100).
+		Key(tarantool.IntKey{1111})
+	resp, err := conn.Do(req)
+	if err != nil {
+		fmt.Printf("error in do select request is %v", err)
+		return
+	}
+	fmt.Printf("response is %#v\n", resp.Data)
+
+	req = tarantool.NewSelectRequest("test").
+		Index("primary").
+		Limit(100).
+		Key(tarantool.IntKey{1111})
+	fut, err := conn.DoAsync(req)
+	if err != nil {
+		fmt.Printf("error in do async select request is %v", err)
+	}
+	resp, err = fut.Get()
+	if err != nil {
+		fmt.Printf("error in do async select request is %v", err)
+		return
+	}
+	fmt.Printf("response is %#v\n", resp.Data)
+	// Output:
+	// response is []interface {}{[]interface {}{0x457, "hello", "world"}}
+	// response is []interface {}{[]interface {}{0x457, "hello", "world"}}
+}
+
+func ExampleUpdateRequest() {
+	conn := example_connect()
+	defer conn.Close()
+
+	req := tarantool.NewUpdateRequest(517).
+		Key(tarantool.IntKey{1111}).
+		Operations(tarantool.NewOperations().Assign(1, "bye"))
+	resp, err := conn.Do(req)
+	if err != nil {
+		fmt.Printf("error in do update request is %v", err)
+		return
+	}
+	fmt.Printf("response is %#v\n", resp.Data)
+
+	req = tarantool.NewUpdateRequest("test").
+		Index("primary").
+		Key(tarantool.IntKey{1111}).
+		Operations(tarantool.NewOperations().Assign(1, "hello"))
+	fut, err := conn.DoAsync(req)
+	if err != nil {
+		fmt.Printf("error in do async update request is %v", err)
+	}
+	resp, err = fut.Get()
+	if err != nil {
+		fmt.Printf("error in do async update request is %v", err)
+		return
+	}
+	fmt.Printf("response is %#v\n", resp.Data)
+	// Output:
+	// response is []interface {}{[]interface {}{0x457, "bye", "world"}}
+	// response is []interface {}{[]interface {}{0x457, "hello", "world"}}
+}
+
+func ExampleUpsertRequest() {
+	conn := example_connect()
+	defer conn.Close()
+
+	var req tarantool.Request
+	req = tarantool.NewUpsertRequest(517).
+		Tuple([]interface{}{uint(1113), "first", "first"}).
+		Operations(tarantool.NewOperations().Assign(1, "updated"))
+	resp, err := conn.Do(req)
+	if err != nil {
+		fmt.Printf("error in do select upsert is %v", err)
+		return
+	}
+	fmt.Printf("response is %#v\n", resp.Data)
+
+	req = tarantool.NewUpsertRequest("test").
+		Tuple([]interface{}{uint(1113), "second", "second"}).
+		Operations(tarantool.NewOperations().Assign(2, "updated"))
+	fut, err := conn.DoAsync(req)
+	if err != nil {
+		fmt.Printf("error in do async upsert request is %v", err)
+	}
+	resp, err = fut.Get()
+	if err != nil {
+		fmt.Printf("error in do async upsert request is %v", err)
+		return
+	}
+	fmt.Printf("response is %#v\n", resp.Data)
+
+	req = tarantool.NewSelectRequest(517).
+		Limit(100).
+		Key(tarantool.IntKey{1113})
+	resp, err = conn.Do(req)
+	if err != nil {
+		fmt.Printf("error in do select request is %v", err)
+		return
+	}
+	fmt.Printf("response is %#v\n", resp.Data)
+	// Output:
+	// response is []interface {}{}
+	// response is []interface {}{}
+	// response is []interface {}{[]interface {}{0x459, "first", "updated"}}
+}
+
 func ExampleFuture_GetIterator() {
 	conn := example_connect()
 	defer conn.Close()
