@@ -101,6 +101,33 @@ func BenchmarkClientSerial(b *testing.B) {
 	}
 }
 
+func BenchmarkClientSerialRequestObject(b *testing.B) {
+	var err error
+
+	conn := connect(b, server, opts)
+	defer conn.Close()
+
+	_, err = conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
+	if err != nil {
+		b.Error(err)
+	}
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		req := NewSelectRequest(spaceNo).
+			Index(indexNo).
+			Offset(0).
+			Limit(1).
+			Iterator(IterEq).
+			Key([]interface{}{uint(1111)})
+		_, err := conn.Do(req)
+		if err != nil {
+			b.Error(err)
+		}
+	}
+}
+
 func BenchmarkClientSerialTyped(b *testing.B) {
 	var err error
 
@@ -1476,11 +1503,11 @@ func TestSchema(t *testing.T) {
 	}
 	_, _, err = schema.ResolveSpaceIndex("schematest22", "secondary")
 	if err == nil {
-		t.Errorf("resolveSpaceIndex didn't returned error with not existing space name")
+		t.Errorf("ResolveSpaceIndex didn't returned error with not existing space name")
 	}
 	_, _, err = schema.ResolveSpaceIndex("schematest", "secondary22")
 	if err == nil {
-		t.Errorf("resolveSpaceIndex didn't returned error with not existing index name")
+		t.Errorf("ResolveSpaceIndex didn't returned error with not existing index name")
 	}
 }
 
@@ -1571,6 +1598,349 @@ func TestClientNamed(t *testing.T) {
 	}
 	if len(tpl) != 1 {
 		t.Errorf("Result len of SelectTyped != 1")
+	}
+}
+
+func TestClientRequestObjects(t *testing.T) {
+	var (
+		req  Request
+		resp *Response
+		err  error
+	)
+
+	conn := connect(t, server, opts)
+	defer conn.Close()
+
+	// Ping
+	req = NewPingRequest()
+	resp, err = conn.Do(req)
+	if err != nil {
+		t.Fatalf("Failed to Ping: %s", err.Error())
+	}
+	if resp == nil {
+		t.Fatalf("Response is nil after Ping")
+	}
+	if len(resp.Data) != 0 {
+		t.Errorf("Response Body len != 0")
+	}
+
+	// The code prepares data.
+	for i := 1010; i < 1020; i++ {
+		conn.Delete(spaceName, nil, []interface{}{uint(i)})
+	}
+
+	// Insert
+	for i := 1010; i < 1020; i++ {
+		req = NewInsertRequest(spaceName).
+			Tuple([]interface{}{uint(i), fmt.Sprintf("val %d", i), "bla"})
+		resp, err = conn.Do(req)
+		if err != nil {
+			t.Fatalf("Failed to Insert: %s", err.Error())
+		}
+		if resp == nil {
+			t.Fatalf("Response is nil after Insert")
+		}
+		if resp.Data == nil {
+			t.Fatalf("Response data is nil after Insert")
+		}
+		if len(resp.Data) != 1 {
+			t.Fatalf("Response Body len != 1")
+		}
+		if tpl, ok := resp.Data[0].([]interface{}); !ok {
+			t.Errorf("Unexpected body of Insert")
+		} else {
+			if len(tpl) != 3 {
+				t.Errorf("Unexpected body of Insert (tuple len)")
+			}
+			if id, ok := tpl[0].(uint64); !ok || id != uint64(i) {
+				t.Errorf("Unexpected body of Insert (0)")
+			}
+			if h, ok := tpl[1].(string); !ok || h != fmt.Sprintf("val %d", i) {
+				t.Errorf("Unexpected body of Insert (1)")
+			}
+			if h, ok := tpl[2].(string); !ok || h != "bla" {
+				t.Errorf("Unexpected body of Insert (2)")
+			}
+		}
+	}
+
+	// Replace
+	for i := 1015; i < 1020; i++ {
+		req = NewReplaceRequest(spaceName).
+			Tuple([]interface{}{uint(i), fmt.Sprintf("val %d", i), "blar"})
+		resp, err = conn.Do(req)
+		if err != nil {
+			t.Fatalf("Failed to Replace: %s", err.Error())
+		}
+		if resp == nil {
+			t.Fatalf("Response is nil after Replace")
+		}
+		if resp.Data == nil {
+			t.Fatalf("Response data is nil after Replace")
+		}
+		if len(resp.Data) != 1 {
+			t.Fatalf("Response Body len != 1")
+		}
+		if tpl, ok := resp.Data[0].([]interface{}); !ok {
+			t.Errorf("Unexpected body of Replace")
+		} else {
+			if len(tpl) != 3 {
+				t.Errorf("Unexpected body of Replace (tuple len)")
+			}
+			if id, ok := tpl[0].(uint64); !ok || id != uint64(i) {
+				t.Errorf("Unexpected body of Replace (0)")
+			}
+			if h, ok := tpl[1].(string); !ok || h != fmt.Sprintf("val %d", i) {
+				t.Errorf("Unexpected body of Replace (1)")
+			}
+			if h, ok := tpl[2].(string); !ok || h != "blar" {
+				t.Errorf("Unexpected body of Replace (2)")
+			}
+		}
+	}
+
+	// Delete
+	req = NewDeleteRequest(spaceName).
+		Key([]interface{}{uint(1016)})
+	resp, err = conn.Do(req)
+	if err != nil {
+		t.Fatalf("Failed to Delete: %s", err.Error())
+	}
+	if resp == nil {
+		t.Fatalf("Response is nil after Delete")
+	}
+	if resp.Data == nil {
+		t.Fatalf("Response data is nil after Delete")
+	}
+	if len(resp.Data) != 1 {
+		t.Fatalf("Response Body len != 1")
+	}
+	if tpl, ok := resp.Data[0].([]interface{}); !ok {
+		t.Errorf("Unexpected body of Delete")
+	} else {
+		if len(tpl) != 3 {
+			t.Errorf("Unexpected body of Delete (tuple len)")
+		}
+		if id, ok := tpl[0].(uint64); !ok || id != uint64(1016) {
+			t.Errorf("Unexpected body of Delete (0)")
+		}
+		if h, ok := tpl[1].(string); !ok || h != "val 1016" {
+			t.Errorf("Unexpected body of Delete (1)")
+		}
+		if h, ok := tpl[2].(string); !ok || h != "blar" {
+			t.Errorf("Unexpected body of Delete (2)")
+		}
+	}
+
+	// Update without operations.
+	req = NewUpdateRequest(spaceName).
+		Index(indexName).
+		Key([]interface{}{uint(1010)})
+	resp, err = conn.Do(req)
+	if err != nil {
+		t.Errorf("Failed to Update: %s", err.Error())
+	}
+	if resp == nil {
+		t.Fatalf("Response is nil after Update")
+	}
+	if resp.Data == nil {
+		t.Fatalf("Response data is nil after Update")
+	}
+	if len(resp.Data) != 1 {
+		t.Fatalf("Response Data len != 1")
+	}
+	if tpl, ok := resp.Data[0].([]interface{}); !ok {
+		t.Errorf("Unexpected body of Update")
+	} else {
+		if id, ok := tpl[0].(uint64); !ok || id != 1010 {
+			t.Errorf("Unexpected body of Update (0)")
+		}
+		if h, ok := tpl[1].(string); !ok || h != "val 1010" {
+			t.Errorf("Unexpected body of Update (1)")
+		}
+		if h, ok := tpl[2].(string); !ok || h != "bla" {
+			t.Errorf("Unexpected body of Update (2)")
+		}
+	}
+
+	// Update.
+	req = NewUpdateRequest(spaceName).
+		Index(indexName).
+		Key([]interface{}{uint(1010)}).
+		Operations(NewOperations().Assign(1, "bye").Insert(2, 1))
+	resp, err = conn.Do(req)
+	if err != nil {
+		t.Errorf("Failed to Update: %s", err.Error())
+	}
+	if resp == nil {
+		t.Fatalf("Response is nil after Update")
+	}
+	if resp.Data == nil {
+		t.Fatalf("Response data is nil after Update")
+	}
+	if len(resp.Data) != 1 {
+		t.Fatalf("Response Data len != 1")
+	}
+	if tpl, ok := resp.Data[0].([]interface{}); !ok {
+		t.Errorf("Unexpected body of Select")
+	} else {
+		if id, ok := tpl[0].(uint64); !ok || id != 1010 {
+			t.Errorf("Unexpected body of Update (0)")
+		}
+		if h, ok := tpl[1].(string); !ok || h != "bye" {
+			t.Errorf("Unexpected body of Update (1)")
+		}
+		if h, ok := tpl[2].(uint64); !ok || h != 1 {
+			t.Errorf("Unexpected body of Update (2)")
+		}
+	}
+
+	// Upsert without operations.
+	req = NewUpsertRequest(spaceNo).
+		Tuple([]interface{}{uint(1010), "hi", "hi"})
+	resp, err = conn.Do(req)
+	if err != nil {
+		t.Errorf("Failed to Upsert (update): %s", err.Error())
+	}
+	if resp == nil {
+		t.Fatalf("Response is nil after Upsert (update)")
+	}
+	if resp.Data == nil {
+		t.Fatalf("Response data is nil after Upsert")
+	}
+	if len(resp.Data) != 0 {
+		t.Fatalf("Response Data len != 0")
+	}
+
+	// Upsert.
+	req = NewUpsertRequest(spaceNo).
+		Tuple([]interface{}{uint(1010), "hi", "hi"}).
+		Operations(NewOperations().Assign(2, "bye"))
+	resp, err = conn.Do(req)
+	if err != nil {
+		t.Errorf("Failed to Upsert (update): %s", err.Error())
+	}
+	if resp == nil {
+		t.Fatalf("Response is nil after Upsert (update)")
+	}
+	if resp.Data == nil {
+		t.Fatalf("Response data is nil after Upsert")
+	}
+	if len(resp.Data) != 0 {
+		t.Fatalf("Response Data len != 0")
+	}
+
+	// Select.
+	req = NewSelectRequest(spaceNo).
+		Index(indexNo).
+		Limit(20).
+		Iterator(IterGe).
+		Key([]interface{}{uint(1010)})
+	resp, err = conn.Do(req)
+	if err != nil {
+		t.Errorf("Failed to Select: %s", err.Error())
+	}
+	if resp == nil {
+		t.Errorf("Response is nil after Select")
+		return
+	}
+	if len(resp.Data) != 9 {
+		t.Fatalf("Response Data len %d != 9", len(resp.Data))
+	}
+	if tpl, ok := resp.Data[0].([]interface{}); !ok {
+		t.Errorf("Unexpected body of Select")
+	} else {
+		if id, ok := tpl[0].(uint64); !ok || id != 1010 {
+			t.Errorf("Unexpected body of Select (0) %d, expected %d", tpl[0].(uint64), 1010)
+		}
+		if h, ok := tpl[1].(string); !ok || h != "bye" {
+			t.Errorf("Unexpected body of Select (1) %q, expected %q", tpl[1].(string), "bye")
+		}
+		if h, ok := tpl[2].(string); !ok || h != "bye" {
+			t.Errorf("Unexpected body of Select (2) %q, expected %q", tpl[2].(string), "bye")
+		}
+	}
+
+	// Call16 vs Call17
+	req = NewCall16Request("simple_incr").Args([]interface{}{1})
+	resp, err = conn.Do(req)
+	if err != nil {
+		t.Errorf("Failed to use Call")
+	}
+	if resp.Data[0].([]interface{})[0].(uint64) != 2 {
+		t.Errorf("result is not {{1}} : %v", resp.Data)
+	}
+
+	// Call17
+	req = NewCall17Request("simple_incr").Args([]interface{}{1})
+	resp, err = conn.Do(req)
+	if err != nil {
+		t.Errorf("Failed to use Call17")
+	}
+	if resp.Data[0].(uint64) != 2 {
+		t.Errorf("result is not {{1}} : %v", resp.Data)
+	}
+
+	// Eval
+	req = NewEvalRequest("return 5 + 6")
+	resp, err = conn.Do(req)
+	if err != nil {
+		t.Fatalf("Failed to Eval: %s", err.Error())
+	}
+	if resp == nil {
+		t.Fatalf("Response is nil after Eval")
+	}
+	if len(resp.Data) < 1 {
+		t.Errorf("Response.Data is empty after Eval")
+	}
+	val := resp.Data[0].(uint64)
+	if val != 11 {
+		t.Errorf("5 + 6 == 11, but got %v", val)
+	}
+
+	// Tarantool supports SQL since version 2.0.0
+	isLess, err := test_helpers.IsTarantoolVersionLess(2, 0, 0)
+	if err != nil {
+		t.Fatalf("Could not check the Tarantool version")
+	}
+	if isLess {
+		return
+	}
+
+	req = NewExecuteRequest(createTableQuery)
+	resp, err = conn.Do(req)
+	if err != nil {
+		t.Fatalf("Failed to Execute: %s", err.Error())
+	}
+	if resp == nil {
+		t.Fatal("Response is nil after Execute")
+	}
+	if len(resp.Data) != 0 {
+		t.Fatalf("Response Body len != 0")
+	}
+	if resp.Code != OkCode {
+		t.Fatalf("Failed to Execute: %d", resp.Code)
+	}
+	if resp.SQLInfo.AffectedCount != 1 {
+		t.Errorf("Incorrect count of created spaces: %d", resp.SQLInfo.AffectedCount)
+	}
+
+	req = NewExecuteRequest(dropQuery2)
+	resp, err = conn.Do(req)
+	if err != nil {
+		t.Fatalf("Failed to Execute: %s", err.Error())
+	}
+	if resp == nil {
+		t.Fatal("Response is nil after Execute")
+	}
+	if len(resp.Data) != 0 {
+		t.Fatalf("Response Body len != 0")
+	}
+	if resp.Code != OkCode {
+		t.Fatalf("Failed to Execute: %d", resp.Code)
+	}
+	if resp.SQLInfo.AffectedCount != 1 {
+		t.Errorf("Incorrect count of dropped spaces: %d", resp.SQLInfo.AffectedCount)
 	}
 }
 

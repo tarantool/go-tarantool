@@ -4,5 +4,5 @@
 package tarantool
 
 const (
-	CallRequest = Call17Request
+	CallRequestCode = Call17RequestCode
 )

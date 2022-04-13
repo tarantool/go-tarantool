@@ -471,7 +471,7 @@ func (conn *Connection) dial() (err error) {
 func (conn *Connection) writeAuthRequest(w *bufio.Writer, scramble []byte) (err error) {
 	request := &Future{
 		requestId:   0,
-		requestCode: AuthRequest,
+		requestCode: AuthRequestCode,
 	}
 	var packet smallWBuf
 	err = request.pack(&packet, msgpack.NewEncoder(&packet), func(enc *msgpack.Encoder) error {
@@ -976,6 +976,43 @@ func (conn *Connection) read(r io.Reader) (response []byte, err error) {
 
 func (conn *Connection) nextRequestId() (requestId uint32) {
 	return atomic.AddUint32(&conn.requestId, 1)
+}
+
+// Do verifies, sends the request and returns a response.
+//
+// An error is returned if the request was formed incorrectly, or failed to
+// communicate by the connection, or unable to decode the response.
+func (conn *Connection) Do(req Request) (*Response, error) {
+	fut, err := conn.DoAsync(req)
+	if err != nil {
+		return nil, err
+	}
+	return fut.Get()
+}
+
+// DoTyped verifies, sends the request and fills the typed result.
+//
+// An error is returned if the request was formed incorrectly, or failed to
+// communicate by the connection, or unable to decode the response.
+func (conn *Connection) DoTyped(req Request, result interface{}) error {
+	fut, err := conn.DoAsync(req)
+	if err != nil {
+		return err
+	}
+	return fut.GetTyped(result)
+}
+
+// DoAsync verifies, sends the request and returns a future.
+//
+// An error is returned if the request was formed incorrectly, or failed to
+// create the future.
+func (conn *Connection) DoAsync(req Request) (*Future, error) {
+	bodyFunc, err := req.BodyFunc(conn.Schema)
+	if err != nil {
+		return nil, err
+	}
+	future := conn.newFuture(req.Code())
+	return conn.sendFuture(future, bodyFunc), nil
 }
 
 // ConfiguredTimeout returns a timeout from connection config.
