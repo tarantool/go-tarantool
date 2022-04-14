@@ -24,7 +24,6 @@ faster than other packages according to public benchmarks.
 * [Installation](#installation)
 * [API reference](#api-reference)
 * [Walking\-through example in Go](#walking-through-example-in-go)
-* [Help](#help)
 * [Contributing](#contributing)
 * [Alternative connectors](#alternative-connectors)
 
@@ -121,14 +120,6 @@ There are two parameters:
 
 * a space number (it could just as easily have been a space name), and
 * a tuple.
-
-## Help
-
-To contact `go-tarantool` developers on any problems, create an issue at
-[tarantool/go-tarantool](http://github.com/tarantool/go-tarantool/issues).
-
-The developers of the [Tarantool server](http://github.com/tarantool/tarantool)
-will also be happy to provide advice or receive feedback.
 
 ## Contributing
 
