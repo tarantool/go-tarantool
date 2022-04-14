@@ -22,7 +22,6 @@ faster than other packages according to public benchmarks.
 ## Table of contents
 
 * [Installation](#installation)
-* [Hello World](#hello-world)
 * [API reference](#api-reference)
 * [Walking\-through example in Go](#walking-through-example-in-go)
 * [Help](#help)
@@ -51,18 +50,6 @@ This should put the source and binary files in subdirectories of
 `/usr/local/go`, so that you can access them by adding
 `github.com/tarantool/go-tarantool` to the `import {...}` section at the start
 of any Go program.
-
-<h2>Hello World</h2>
-
-In the "[Connectors](https://www.tarantool.io/en/doc/latest/getting_started/getting_started_go/)"
-chapter of the Tarantool manual, there is an explanation of a very short (18-line)
-program written in Go. Follow the instructions at the start of the "Connectors"
-chapter carefully. Then cut and paste the example into a file named `example.go`,
-and run it. You should see: nothing.
-
-If that is what you see, then you have successfully installed `go-tarantool` and
-successfully executed a program that manipulated the contents of a Tarantool
-database.
 
 <h2>API reference</h2>
 
