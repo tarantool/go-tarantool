@@ -485,6 +485,217 @@ func BenchmarkSQLSerial(b *testing.B) {
 
 ///////////////////
 
+func TestConnectionRateLimit(t *testing.T) {
+	var opts = Opts{
+		User:         "test",
+		Pass:         "test",
+		RateLimit:    1,
+		RLimitAction: RLimitWait,
+	}
+	conn, err := Connect(server, opts)
+	if err != nil {
+		t.Fatalf("Failed to connect: %s", err.Error())
+		return
+	}
+	defer conn.Close()
+
+	// Connection is ready.
+	_, err = conn.Ping()
+	if err != nil {
+		t.Errorf("Failed to Ping: %s", err.Error())
+	}
+}
+
+func TestConnectionSkipSchema(t *testing.T) {
+	var opts = Opts{
+		Timeout:    500 * time.Millisecond,
+		User:       "test",
+		Pass:       "test",
+		SkipSchema: true,
+	}
+	conn, err := Connect(server, opts)
+	if err != nil {
+		t.Fatalf("Failed to connect: %s", err.Error())
+		return
+	}
+	defer conn.Close()
+
+	// Connection is ready.
+	_, err = conn.Ping()
+	if err != nil {
+		t.Errorf("Failed to Ping: %s", err.Error())
+	}
+}
+
+func TestClosedNow(t *testing.T) {
+	conn, err := Connect(server, opts)
+	if err != nil {
+		t.Fatalf("Failed to connect: %s", err.Error())
+		return
+	}
+	defer conn.Close()
+
+	if conn.ClosedNow() == true {
+		t.Fatalf("conn is closed now")
+		return
+	}
+}
+
+func TestConnectedNow(t *testing.T) {
+	conn, err := Connect(server, opts)
+	if err != nil {
+		t.Fatalf("Failed to connect: %s", err.Error())
+		return
+	}
+	defer conn.Close()
+
+	if conn.ConnectedNow() == false {
+		t.Fatalf("conn is not connected now")
+		return
+	}
+}
+
+func TestConfiguredTimeout(t *testing.T) {
+	var timeout = 15 * time.Millisecond
+	var opts = Opts{
+		Timeout: timeout,
+		User:    "test",
+		Pass:    "test",
+	}
+	conn, err := Connect(server, opts)
+	if err != nil {
+		t.Fatalf("Failed to connect: %s", err.Error())
+		return
+	}
+	defer conn.Close()
+
+	configuredTimeout := conn.ConfiguredTimeout()
+	if configuredTimeout != timeout {
+		t.Fatalf("ConfiguredTimeout() returns incorrect value (actual %d, expected %d)", configuredTimeout, timeout)
+		return
+	}
+}
+
+func TestConnectionOverrideSchema(t *testing.T) {
+	conn, err := Connect(server, opts)
+	if err != nil {
+		t.Fatalf("Failed to connect: %s", err.Error())
+		return
+	}
+	defer conn.Close()
+
+	schema := conn.Schema
+	if schema == nil {
+		t.Fatalf("schema is nil")
+	}
+	conn.OverrideSchema(schema)
+}
+
+func TestConnectionAddr(t *testing.T) {
+	conn, err := Connect(server, opts)
+	if err != nil {
+		t.Fatalf("Failed to connect: %s", err.Error())
+		return
+	}
+	defer conn.Close()
+
+	if conn.Addr() != server {
+		t.Fatalf("addr is not correct")
+		return
+	}
+}
+
+func TestConnectionRemoteAddr(t *testing.T) {
+	conn, err := Connect(server, opts)
+	if err != nil {
+		t.Fatalf("Failed to connect: %s", err.Error())
+		return
+	}
+	defer conn.Close()
+
+	remoteAddr := conn.RemoteAddr()
+	if remoteAddr != server {
+		t.Fatalf("remote addr is not correct (%s)", remoteAddr)
+		return
+	}
+}
+
+func TestConnectionLocalAddr(t *testing.T) {
+	conn, err := Connect(server, opts)
+	if err != nil {
+		t.Fatalf("Failed to connect: %s", err.Error())
+		return
+	}
+	defer conn.Close()
+
+	localAddr := conn.LocalAddr()
+	// localAddr contains a random port number, we will check ip address only.
+	ipAddr := strings.Split(localAddr, ":")
+	if ipAddr[0] != "127.0.0.1" {
+		t.Fatalf("remote addr is not correct (ipAddr %s, localAddr %s)", ipAddr, localAddr)
+		return
+	}
+}
+
+func TestConnectionHandle(t *testing.T) {
+	var opts = Opts{
+		Timeout: 500 * time.Millisecond,
+		User:    "test",
+		Pass:    "test",
+		Handle:  nil,
+	}
+
+	conn, err := Connect(server, opts)
+	if err != nil {
+		t.Fatalf("Failed to connect: %s", err.Error())
+		return
+	}
+	defer conn.Close()
+
+	if conn.Handle() != nil {
+		t.Fatalf("handle is not nil")
+		return
+	}
+}
+
+func TestResponseTuples(t *testing.T) {
+	conn, err := Connect(server, opts)
+	if err != nil {
+		t.Fatalf("Failed to connect: %s", err.Error())
+		return
+	}
+	defer conn.Close()
+
+	resp, err := conn.Replace(spaceNo, &Tuple{Id: 11, Msg: "hello", Name: "world"})
+	if err != nil {
+		t.Errorf("Failed to insert: %s", err.Error())
+	}
+	if resp.Tuples()[0] == nil {
+		t.Fatalf("Tuples() is nil")
+		return
+	}
+}
+
+func TestResponseString(t *testing.T) {
+	conn, err := Connect(server, opts)
+	if err != nil {
+		t.Fatalf("Failed to connect: %s", err.Error())
+		return
+	}
+	defer conn.Close()
+
+	resp, err := conn.Replace(spaceNo, &Tuple{Id: 12, Msg: "hello", Name: "world"})
+	if err != nil {
+		t.Errorf("Failed to insert: %s", err.Error())
+	}
+
+	str := resp.String()
+	if str != "<3 OK [[12 hello world]]>" {
+		t.Fatalf("String() is not correct (%s)", str)
+		return
+	}
+}
+
 func TestClient(t *testing.T) {
 	var resp *Response
 	var err error
