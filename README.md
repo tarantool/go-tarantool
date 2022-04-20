@@ -129,11 +129,12 @@ to get started with our project.
 
 ## Alternative connectors
 
-There are two more connectors from the open-source community available:
+There are two other connectors available from the open source community:
+
 * [viciious/go-tarantool](https://github.com/viciious/go-tarantool),
 * [FZambia/tarantool](https://github.com/FZambia/tarantool).
 
-See feature comparison in [documentation](https://www.tarantool.io/en/doc/latest/book/connectors/#go-feature-comparison).
+See feature comparison in the [documentation][tarantool-doc-connectors-comparison].
 
 [tarantool-site]: https://tarantool.io/
 [godoc-badge]: https://pkg.go.dev/badge/github.com/tarantool/go-tarantool.svg
@@ -153,3 +154,4 @@ See feature comparison in [documentation](https://www.tarantool.io/en/doc/latest
 [tarantool-doc-data-model-url]: https://www.tarantool.io/en/doc/latest/book/box/data_model/
 [tarantool-doc-box-space-url]: https://www.tarantool.io/en/doc/latest/reference/reference_lua/box_space/
 [godoc-opts-url]: https://pkg.go.dev/github.com/tarantool/go-tarantool#Opts
+[tarantool-doc-connectors-comparison]: https://www.tarantool.io/en/doc/latest/book/connectors/#go-feature-comparison
