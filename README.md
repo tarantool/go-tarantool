@@ -9,10 +9,10 @@
 [![GitHub Discussions][discussions-badge]][discussions-url]
 [![Stack Overflow][stackoverflow-badge]][stackoverflow-url]
 
-# Client in Go for Tarantool 1.6+
+# Client in Go for Tarantool
 
-The `go-tarantool` package has everything necessary for interfacing with
-[Tarantool 1.6+](http://tarantool.org/).
+The package `go-tarantool` contains everything you need to connect to
+[Tarantool 1.6+][tarantool-site].
 
 The advantage of integrating Go with Tarantool, which is an application server
 plus a DBMS, is that Go programmers can handle databases and perform on-the-fly
@@ -714,6 +714,7 @@ There are two more connectors from the open-source community available:
 
 See feature comparison in [documentation](https://www.tarantool.io/en/doc/latest/book/connectors/#go-feature-comparison).
 
+[tarantool-site]: https://tarantool.io/
 [godoc-badge]: https://pkg.go.dev/badge/github.com/tarantool/go-tarantool.svg
 [godoc-url]: https://pkg.go.dev/github.com/tarantool/go-tarantool
 [actions-badge]: https://github.com/tarantool/go-tarantool/actions/workflows/testing.yml/badge.svg
