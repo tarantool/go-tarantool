@@ -36,7 +36,7 @@ operating system.
 You need a current version of `go`, version 1.13 or later (use `go version` to
 check the version number). Do not use `gccgo-go`.
 
-**Note:** If your `go` version is older than 1.3 or if `go` is not installed,
+**Note:** If your `go` version is older than 1.13 or if `go` is not installed,
 download and run the latest tarball from [golang.org][golang-dl].
 
 The package `go-tarantool` is located in [tarantool/go-tarantool][go-tarantool]
