@@ -53,7 +53,7 @@ of any Go program.
 
 ## Documentation
 
-Read the [Tarantool documentation](tarantool-doc-data-model-url)
+Read the [Tarantool documentation][tarantool-doc-data-model-url]
 to find descriptions of terms such as "connect", "space", "index", and the
 requests to create and manipulate database objects or Lua functions.
 
@@ -63,7 +63,7 @@ In general, connector methods can be divided into two main parts:
 * Data manipulation functions and Lua invocations such as `Insert()` or `Call()`.
 
 The supported requests have parameters and results equivalent to requests in
-the [Tarantool CRUD operations](tarantool-doc-box-space-url).
+the [Tarantool CRUD operations][tarantool-doc-box-space-url].
 There are also Typed and Async versions of each data-manipulation function.
 
 ### API Reference
