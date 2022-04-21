@@ -68,8 +68,7 @@ There are also Typed and Async versions of each data-manipulation function.
 
 ### API Reference
 
-Learn API documentation and examples at
-[pkg.go.dev](https://pkg.go.dev/github.com/tarantool/go-tarantool).
+Learn API documentation and examples at [pkg.go.dev][godoc-url].
 
 ### Walking-through example
 
