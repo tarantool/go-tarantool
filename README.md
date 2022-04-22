@@ -22,6 +22,7 @@ faster than other packages according to public benchmarks.
 ## Table of contents
 
 * [Installation](#installation)
+  * [Build tags](#build-tags)
 * [Documentation](#documentation)
   * [API reference](#api-reference)
   * [Walking\-through example](#walking-through-example)
@@ -50,6 +51,13 @@ This should put the source and binary files in subdirectories of
 `/usr/local/go`, so that you can access them by adding
 `github.com/tarantool/go-tarantool` to the `import {...}` section at the start
 of any Go program.
+
+### Build tags
+
+To disable SSL support and linking with OpenSSL, you can use the tag:
+```
+go_tarantool_ssl_disable
+```
 
 ## Documentation
 
