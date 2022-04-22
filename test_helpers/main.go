@@ -13,9 +13,12 @@ package test_helpers
 import (
 	"errors"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"time"
@@ -32,11 +35,27 @@ type StartOpts struct {
 	// https://www.tarantool.io/en/doc/latest/reference/configuration/#cfg-basic-listen
 	Listen string
 
+	// ClientServer changes a host to connect to test startup of a Tarantool
+	// instance. By default, it uses Listen value as the host for the connection.
+	ClientServer string
+
+	// ClientTransport changes Opts.Transport for a connection that checks startup
+	// of a Tarantool instance.
+	ClientTransport string
+
+	// ClientSsl changes Opts.Ssl for a connection that checks startup of
+	// a Tarantool instance.
+	ClientSsl tarantool.SslOpts
+
 	// WorkDir is box.cfg work_dir parameter for tarantool.
 	// Specify folder to store tarantool data files.
 	// Folder must be unique for each tarantool process used simultaneously.
 	// https://www.tarantool.io/en/doc/latest/reference/configuration/#confval-work_dir
 	WorkDir string
+
+	// SslCertsDir is a path to a directory with SSL certificates. It will be
+	// copied to the working directory.
+	SslCertsDir string
 
 	// User is a username used to connect to tarantool.
 	// All required grants must be given in InitScript.
@@ -185,6 +204,14 @@ func StartTarantool(startOpts StartOpts) (TarantoolInstance, error) {
 		return inst, err
 	}
 
+	// Copy SSL certificates.
+	if startOpts.SslCertsDir != "" {
+		err = copySslCerts(startOpts.WorkDir, startOpts.SslCertsDir)
+		if err != nil {
+			return inst, err
+		}
+	}
+
 	// Options for restarting tarantool instance.
 	inst.Opts = startOpts
 
@@ -204,11 +231,19 @@ func StartTarantool(startOpts StartOpts) (TarantoolInstance, error) {
 		User:       startOpts.User,
 		Pass:       startOpts.Pass,
 		SkipSchema: true,
+		Transport:  startOpts.ClientTransport,
+		Ssl:        startOpts.ClientSsl,
 	}
 
 	var i uint
+	var server string
+	if startOpts.ClientServer != "" {
+		server = startOpts.ClientServer
+	} else {
+		server = startOpts.Listen
+	}
 	for i = 0; i <= startOpts.ConnectRetry; i++ {
-		err = isReady(startOpts.Listen, &opts)
+		err = isReady(server, &opts)
 
 		// Both connect and ping is ok.
 		if err == nil {
@@ -253,4 +288,61 @@ func StopTarantoolWithCleanup(inst TarantoolInstance) {
 			log.Fatalf("Failed to clean work directory, got %s", err)
 		}
 	}
+}
+
+func copySslCerts(dst string, sslCertsDir string) (err error) {
+	dstCertPath := filepath.Join(dst, sslCertsDir)
+	if err = os.Mkdir(dstCertPath, 0755); err != nil {
+		return
+	}
+	if err = copyDirectoryFiles(sslCertsDir, dstCertPath); err != nil {
+		return
+	}
+	return
+}
+
+func copyDirectoryFiles(scrDir, dest string) error {
+	entries, err := ioutil.ReadDir(scrDir)
+	if err != nil {
+		return err
+	}
+	for _, entry := range entries {
+		sourcePath := filepath.Join(scrDir, entry.Name())
+		destPath := filepath.Join(dest, entry.Name())
+		_, err := os.Stat(sourcePath)
+		if err != nil {
+			return err
+		}
+
+		if err := copyFile(sourcePath, destPath); err != nil {
+			return err
+		}
+
+		if err := os.Chmod(destPath, entry.Mode()); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func copyFile(srcFile, dstFile string) error {
+	out, err := os.Create(dstFile)
+	if err != nil {
+		return err
+	}
+
+	defer out.Close()
+
+	in, err := os.Open(srcFile)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	_, err = io.Copy(out, in)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

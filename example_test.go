@@ -20,9 +20,27 @@ type Tuple struct {
 func example_connect() *tarantool.Connection {
 	conn, err := tarantool.Connect(server, opts)
 	if err != nil {
-		panic("Connection is not established")
+		panic("Connection is not established: " + err.Error())
 	}
 	return conn
+}
+
+// Example demonstrates how to use SSL transport.
+func ExampleSslOpts() {
+	var opts = tarantool.Opts{
+		User:      "test",
+		Pass:      "test",
+		Transport: "ssl",
+		Ssl: tarantool.SslOpts{
+			KeyFile:  "testdata/localhost.key",
+			CertFile: "testdata/localhost.crt",
+			CaFile:   "testdata/ca.crt",
+		},
+	}
+	_, err := tarantool.Connect("127.0.0.1:3013", opts)
+	if err != nil {
+		panic("Connection is not established: " + err.Error())
+	}
 }
 
 func ExampleConnection_Select() {

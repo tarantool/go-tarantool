@@ -25,6 +25,11 @@ const (
 	connClosed       = 2
 )
 
+const (
+	connTransportNone = ""
+	connTransportSsl  = "ssl"
+)
+
 type ConnEventKind int
 type ConnLogKind int
 
@@ -207,6 +212,32 @@ type Opts struct {
 	Handle interface{}
 	// Logger is user specified logger used for error messages.
 	Logger Logger
+	// Transport is the connection type, by default the connection is unencrypted.
+	Transport string
+	// SslOpts is used only if the Transport == 'ssl' is set.
+	Ssl SslOpts
+}
+
+// SslOpts is a way to configure ssl transport.
+type SslOpts struct {
+	// KeyFile is a path to a private SSL key file.
+	KeyFile string
+	// CertFile is a path to an SSL sertificate file.
+	CertFile string
+	// CaFile is a path to a trusted certificate authorities (CA) file.
+	CaFile string
+	// Ciphers is a colon-separated (:) list of SSL cipher suites the connection
+	// can use.
+	//
+	// We don't provide a list of supported ciphers. This is what OpenSSL
+	// does. The only limitation is usage of TLSv1.2 (because other protocol
+	// versions don't seem to support the GOST cipher). To add additional
+	// ciphers (GOST cipher), you must configure OpenSSL.
+	//
+	// See also
+	//
+	// * https://www.openssl.org/docs/man1.1.1/man1/ciphers.html
+	Ciphers string
 }
 
 // Connect creates and configures a new Connection.
@@ -358,8 +389,10 @@ func (conn *Connection) Handle() interface{} {
 func (conn *Connection) dial() (err error) {
 	var connection net.Conn
 	network := "tcp"
+	opts := conn.opts
 	address := conn.addr
-	timeout := conn.opts.Reconnect / 2
+	timeout := opts.Reconnect / 2
+	transport := opts.Transport
 	if timeout == 0 {
 		timeout = 500 * time.Millisecond
 	} else if timeout > 5*time.Second {
@@ -383,11 +416,17 @@ func (conn *Connection) dial() (err error) {
 	} else if addrLen >= 4 && address[0:4] == "tcp:" {
 		address = address[4:]
 	}
-	connection, err = net.DialTimeout(network, address, timeout)
+	if transport == connTransportNone {
+		connection, err = net.DialTimeout(network, address, timeout)
+	} else if transport == connTransportSsl {
+		connection, err = sslDialTimeout(network, address, timeout, opts.Ssl)
+	} else {
+		err = errors.New("An unsupported transport type: " + transport)
+	}
 	if err != nil {
 		return
 	}
-	dc := &DeadlineIO{to: conn.opts.Timeout, c: connection}
+	dc := &DeadlineIO{to: opts.Timeout, c: connection}
 	r := bufio.NewReaderSize(dc, 128*1024)
 	w := bufio.NewWriterSize(dc, 128*1024)
 	greeting := make([]byte, 128)
@@ -400,8 +439,8 @@ func (conn *Connection) dial() (err error) {
 	conn.Greeting.auth = bytes.NewBuffer(greeting[64:108]).String()
 
 	// Auth
-	if conn.opts.User != "" {
-		scr, err := scramble(conn.Greeting.auth, conn.opts.Pass)
+	if opts.User != "" {
+		scr, err := scramble(conn.Greeting.auth, opts.Pass)
 		if err != nil {
 			err = errors.New("auth: scrambling failure " + err.Error())
 			connection.Close()

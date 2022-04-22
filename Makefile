@@ -35,6 +35,10 @@ golangci-lint:
 test:
 	go test ./... -v -p 1
 
+.PHONY: testdata
+testdata:
+	(cd ./testdata; ./generate.sh)
+
 .PHONY: test-connection-pool
 test-connection-pool:
 	@echo "Running tests in connection_pool package"

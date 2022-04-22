@@ -10,6 +10,8 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Added
 
+- SSL support (#155)
+
 ### Changed
 
 ### Fixed

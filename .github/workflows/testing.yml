@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  linux:
+  run-tests-ce:
     # We want to run on external PRs, but not on our own internal
     # PRs as they'll be run by the push to the branch.
     #
@@ -26,9 +26,6 @@ jobs:
           - '2.9'
           - '2.x-latest'
         coveralls: [false]
-        include:
-          - tarantool: '2.x-latest'
-            coveralls: true
 
     steps:
       - name: Clone the connector
@@ -62,6 +59,65 @@ jobs:
         env:
           COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          make coveralls
+
+      - name: Check workability of benchmark tests
+        run: make bench-deps bench DURATION=1x COUNT=1
+
+  run-tests-ee:
+    if: github.event_name == 'push' ||
+      github.event.pull_request.head.repo.full_name != github.repository
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        sdk-version:
+          - '1.10.11-0-gf0b0e7ecf-r470'
+          - '2.8.3-21-g7d35cd2be-r470'
+        coveralls: [false]
+        ssl: [false]
+        include:
+          - sdk-version: '2.10.0-1-gfa775b383-r486-linux-x86_64'
+            coveralls: true
+            ssl: true
+
+    steps:
+      - name: Clone the connector
+        uses: actions/checkout@v2
+
+      - name: Setup Tarantool ${{ matrix.sdk-version }}
+        run: |
+          ARCHIVE_NAME=tarantool-enterprise-bundle-${{ matrix.sdk-version }}.tar.gz
+          curl -O -L https://${{ secrets.SDK_DOWNLOAD_TOKEN }}@download.tarantool.io/enterprise/${ARCHIVE_NAME}
+          tar -xzf ${ARCHIVE_NAME}
+          rm -f ${ARCHIVE_NAME}
+
+      - name: Setup golang for the connector and tests
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.13
+
+      - name: Install test dependencies
+        run: |
+          source tarantool-enterprise/env.sh
+          make deps
+
+      - name: Run tests
+        run: |
+          source tarantool-enterprise/env.sh
+          make test
+        env:
+          TEST_TNT_SSL: ${{matrix.ssl}}
+
+      - name: Run tests, collect code coverage data and send to Coveralls
+        if: ${{ matrix.coveralls }}
+        env:
+          COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TEST_TNT_SSL: ${{matrix.ssl}}
+        run: |
+          source tarantool-enterprise/env.sh
           make coveralls
 
       - name: Check workability of benchmark tests
