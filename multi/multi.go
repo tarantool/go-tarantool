@@ -322,14 +322,23 @@ func (connMulti *ConnectionMulti) Upsert(space interface{}, tuple, ops interface
 }
 
 // Call calls registered Tarantool function.
-// It uses request code for Tarantool 1.6, so result is converted to array of
-// arrays.
+// It uses request code for Tarantool >= 1.7 if go-tarantool
+// was build with go_tarantool_call_17 tag.
+// Otherwise, uses request code for Tarantool 1.6.
 func (connMulti *ConnectionMulti) Call(functionName string, args interface{}) (resp *tarantool.Response, err error) {
 	return connMulti.getCurrentConnection().Call(functionName, args)
 }
 
+// Call16 calls registered Tarantool function.
+// It uses request code for Tarantool 1.6, so result is converted to array of
+// arrays.
+// Deprecated since Tarantool 1.7.2.
+func (connMulti *ConnectionMulti) Call16(functionName string, args interface{}) (resp *tarantool.Response, err error) {
+	return connMulti.getCurrentConnection().Call16(functionName, args)
+}
+
 // Call17 calls registered Tarantool function.
-// It uses request code for Tarantool 1.7, so result is not converted
+// It uses request code for Tarantool >= 1.7, so result is not converted
 // (though, keep in mind, result is always array).
 func (connMulti *ConnectionMulti) Call17(functionName string, args interface{}) (resp *tarantool.Response, err error) {
 	return connMulti.getCurrentConnection().Call17(functionName, args)
@@ -383,14 +392,23 @@ func (connMulti *ConnectionMulti) UpdateTyped(space, index interface{}, key, ops
 }
 
 // CallTyped calls registered function.
-// It uses request code for Tarantool 1.6, so result is converted to array of
-// arrays.
+// It uses request code for Tarantool >= 1.7 if go-tarantool
+// was build with go_tarantool_call_17 tag.
+// Otherwise, uses request code for Tarantool 1.6.
 func (connMulti *ConnectionMulti) CallTyped(functionName string, args interface{}, result interface{}) (err error) {
 	return connMulti.getCurrentConnection().CallTyped(functionName, args, result)
 }
 
+// Call16Typed calls registered function.
+// It uses request code for Tarantool 1.6, so result is converted to array of
+// arrays.
+// Deprecated since Tarantool 1.7.2.
+func (connMulti *ConnectionMulti) Call16Typed(functionName string, args interface{}, result interface{}) (err error) {
+	return connMulti.getCurrentConnection().Call16Typed(functionName, args, result)
+}
+
 // Call17Typed calls registered function.
-// It uses request code for Tarantool 1.7, so result is not converted (though,
+// It uses request code for Tarantool >= 1.7, so result is not converted (though,
 // keep in mind, result is always array)
 func (connMulti *ConnectionMulti) Call17Typed(functionName string, args interface{}, result interface{}) (err error) {
 	return connMulti.getCurrentConnection().Call17Typed(functionName, args, result)
@@ -437,14 +455,23 @@ func (connMulti *ConnectionMulti) UpsertAsync(space interface{}, tuple interface
 }
 
 // CallAsync sends a call to registered Tarantool function and returns Future.
-// It uses request code for Tarantool 1.6, so future's result is always array
-// of arrays.
+// It uses request code for Tarantool >= 1.7 if go-tarantool
+// was build with go_tarantool_call_17 tag.
+// Otherwise, uses request code for Tarantool 1.6.
 func (connMulti *ConnectionMulti) CallAsync(functionName string, args interface{}) *tarantool.Future {
 	return connMulti.getCurrentConnection().CallAsync(functionName, args)
 }
 
+// Call16Async sends a call to registered Tarantool function and returns Future.
+// It uses request code for Tarantool 1.6, so future's result is always array
+// of arrays.
+// Deprecated since Tarantool 1.7.2.
+func (connMulti *ConnectionMulti) Call16Async(functionName string, args interface{}) *tarantool.Future {
+	return connMulti.getCurrentConnection().Call16Async(functionName, args)
+}
+
 // Call17Async sends a call to registered Tarantool function and returns Future.
-// It uses request code for Tarantool 1.7, so future's result will not be converted
+// It uses request code for Tarantool >= 1.7, so future's result will not be converted
 // (though, keep in mind, result is always array).
 func (connMulti *ConnectionMulti) Call17Async(functionName string, args interface{}) *tarantool.Future {
 	return connMulti.getCurrentConnection().Call17Async(functionName, args)

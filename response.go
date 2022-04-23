@@ -243,7 +243,7 @@ func (resp *Response) String() (str string) {
 	return fmt.Sprintf("<%d ERR 0x%x %s>", resp.RequestId, resp.Code, resp.Error)
 }
 
-// Tuples converts result of Eval and Call17 to same format
+// Tuples converts result of Eval and Call to same format
 // as other actions returns (i.e. array of arrays).
 func (resp *Response) Tuples() (res [][]interface{}) {
 	res = make([][]interface{}, len(resp.Data))

@@ -722,22 +722,22 @@ func TestClient(t *testing.T) {
 		t.Errorf("Result len of SelectTyped != 1")
 	}
 
-	// Call
-	resp, err = conn.Call("box.info", []interface{}{"box.schema.SPACE_ID"})
+	// Call16
+	resp, err = conn.Call16("box.info", []interface{}{"box.schema.SPACE_ID"})
 	if err != nil {
-		t.Fatalf("Failed to Call: %s", err.Error())
+		t.Fatalf("Failed to Call16: %s", err.Error())
 	}
 	if resp == nil {
-		t.Fatalf("Response is nil after Call")
+		t.Fatalf("Response is nil after Call16")
 	}
 	if len(resp.Data) < 1 {
 		t.Errorf("Response.Data is empty after Eval")
 	}
 
-	// Call vs Call17
-	resp, err = conn.Call("simple_incr", []interface{}{1})
+	// Call16 vs Call17
+	resp, err = conn.Call16("simple_incr", []interface{}{1})
 	if err != nil {
-		t.Errorf("Failed to use Call")
+		t.Errorf("Failed to use Call16")
 	}
 	if resp.Data[0].([]interface{})[0].(uint64) != 2 {
 		t.Errorf("result is not {{1}} : %v", resp.Data)
@@ -745,7 +745,7 @@ func TestClient(t *testing.T) {
 
 	resp, err = conn.Call17("simple_incr", []interface{}{1})
 	if err != nil {
-		t.Errorf("Failed to use Call17")
+		t.Errorf("Failed to use Call")
 	}
 	if resp.Data[0].(uint64) != 2 {
 		t.Errorf("result is not {{1}} : %v", resp.Data)
@@ -803,11 +803,11 @@ func TestClientSessionPush(t *testing.T) {
 	// Future.Get ignores push messages.
 	resp, err := fut1.Get()
 	if err != nil {
-		t.Errorf("Failed to Call: %s", err.Error())
+		t.Errorf("Failed to Call17: %s", err.Error())
 	} else if resp == nil {
 		t.Errorf("Response is nil after CallAsync")
 	} else if len(resp.Data) < 1 {
-		t.Errorf("Response.Data is empty after CallAsync")
+		t.Errorf("Response.Data is empty after Call17Async")
 	} else if resp.Data[0].(uint64) != pushMax {
 		t.Errorf("result is not {{1}} : %v", resp.Data)
 	}

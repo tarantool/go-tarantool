@@ -309,7 +309,7 @@ func ExampleConnection_Update() {
 	// Data [[14 bye bla]]
 }
 
-func ExampleConnection_Call17() {
+func ExampleConnection_Call() {
 	conn := example_connect()
 	defer conn.Close()
 

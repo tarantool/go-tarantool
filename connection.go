@@ -116,9 +116,9 @@ func (d defaultLogger) Report(event ConnLogKind, conn *Connection, v ...interfac
 //
 // ATTENTION: result argument for *Typed methods should deserialize from
 // msgpack array, cause Tarantool always returns result as an array.
-// For all space related methods and Call* (but not Call17*) methods Tarantool
+// For all space related methods and Call16* (but not Call17*) methods Tarantool
 // always returns array of array (array of tuples for space related methods).
-// For Eval* and Call17* Tarantool always returns array, but does not forces
+// For Eval* and Call* Tarantool always returns array, but does not forces
 // array of arrays.
 type Connection struct {
 	addr  string

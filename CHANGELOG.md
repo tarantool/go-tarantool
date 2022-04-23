@@ -15,6 +15,9 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Changed
 
+- Add `Call16` method, support build tag `go_tarantool_call_17`
+  to choose behavior for `Call` method (#125)
+
 ### Fixed
 
 ## [1.6.0] - 2022-06-01

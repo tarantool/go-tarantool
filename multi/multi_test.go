@@ -202,9 +202,32 @@ func TestRefresh(t *testing.T) {
 		t.Errorf("Expect connection to exist")
 	}
 
-	_, err := multiConn.Call(multiConn.opts.NodesGetFunctionName, []interface{}{})
+	_, err := multiConn.Call17(multiConn.opts.NodesGetFunctionName, []interface{}{})
 	if err != nil {
 		t.Error("Expect to get data after reconnect")
+	}
+}
+
+func TestCall17(t *testing.T) {
+	var resp *tarantool.Response
+	var err error
+
+	multiConn, err := Connect([]string{server1, server2}, connOpts)
+	if err != nil {
+		t.Fatalf("Failed to connect: %s", err.Error())
+	}
+	if multiConn == nil {
+		t.Fatalf("conn is nil after Connect")
+	}
+	defer multiConn.Close()
+
+	// Call17
+	resp, err = multiConn.Call17("simple_incr", []interface{}{1})
+	if err != nil {
+		t.Fatalf("Failed to use Call: %s", err.Error())
+	}
+	if resp.Data[0].(uint64) != 2 {
+		t.Fatalf("result is not {{1}} : %v", resp.Data)
 	}
 }
 

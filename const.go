@@ -6,11 +6,11 @@ const (
 	ReplaceRequest   = 3
 	UpdateRequest    = 4
 	DeleteRequest    = 5
-	CallRequest      = 6 /* call in 1.6 format */
+	Call16Request    = 6 /* call in 1.6 format */
 	AuthRequest      = 7
 	EvalRequest      = 8
 	UpsertRequest    = 9
-	Call17Request    = 10
+	Call17Request    = 10 /* call in >= 1.7 format */
 	ExecuteRequest   = 11
 	PingRequest      = 64
 	SubscribeRequest = 66

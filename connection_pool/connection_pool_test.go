@@ -206,7 +206,7 @@ func TestClose(t *testing.T) {
 	require.Nil(t, err)
 }
 
-func TestCall(t *testing.T) {
+func TestCall17(t *testing.T) {
 	roles := []bool{false, true, false, false, true}
 
 	err := test_helpers.SetClusterRO(servers, connOpts, roles)

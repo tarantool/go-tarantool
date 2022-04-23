@@ -255,8 +255,10 @@ func (connPool *ConnectionPool) Upsert(space interface{}, tuple, ops interface{}
 	return conn.Upsert(space, tuple, ops)
 }
 
-// Call calls registered Tarantool function.
-// It uses request code for Tarantool 1.6, so result is converted to array of arrays.
+// Call16 calls registered Tarantool function.
+// It uses request code for Tarantool >= 1.7 if go-tarantool
+// was build with go_tarantool_call_17 tag.
+// Otherwise, uses request code for Tarantool 1.6.
 func (connPool *ConnectionPool) Call(functionName string, args interface{}, userMode Mode) (resp *tarantool.Response, err error) {
 	conn, err := connPool.getNextConnection(userMode)
 	if err != nil {
@@ -266,8 +268,20 @@ func (connPool *ConnectionPool) Call(functionName string, args interface{}, user
 	return conn.Call(functionName, args)
 }
 
+// Call16 calls registered Tarantool function.
+// It uses request code for Tarantool 1.6, so result is converted to array of arrays.
+// Deprecated since Tarantool 1.7.2.
+func (connPool *ConnectionPool) Call16(functionName string, args interface{}, userMode Mode) (resp *tarantool.Response, err error) {
+	conn, err := connPool.getNextConnection(userMode)
+	if err != nil {
+		return nil, err
+	}
+
+	return conn.Call16(functionName, args)
+}
+
 // Call17 calls registered Tarantool function.
-// It uses request code for Tarantool 1.7, so result is not converted
+// It uses request code for Tarantool >= 1.7, so result is not converted
 // (though, keep in mind, result is always array).
 func (connPool *ConnectionPool) Call17(functionName string, args interface{}, userMode Mode) (resp *tarantool.Response, err error) {
 	conn, err := connPool.getNextConnection(userMode)
@@ -352,7 +366,9 @@ func (connPool *ConnectionPool) UpdateTyped(space, index interface{}, key, ops i
 }
 
 // CallTyped calls registered function.
-// It uses request code for Tarantool 1.6, so result is converted to array of arrays.
+// It uses request code for Tarantool >= 1.7 if go-tarantool
+// was build with go_tarantool_call_17 tag.
+// Otherwise, uses request code for Tarantool 1.6.
 func (connPool *ConnectionPool) CallTyped(functionName string, args interface{}, result interface{}, userMode Mode) (err error) {
 	conn, err := connPool.getNextConnection(userMode)
 	if err != nil {
@@ -362,8 +378,20 @@ func (connPool *ConnectionPool) CallTyped(functionName string, args interface{},
 	return conn.CallTyped(functionName, args, result)
 }
 
+// Call16Typed calls registered function.
+// It uses request code for Tarantool 1.6, so result is converted to array of arrays.
+// Deprecated since Tarantool 1.7.2.
+func (connPool *ConnectionPool) Call16Typed(functionName string, args interface{}, result interface{}, userMode Mode) (err error) {
+	conn, err := connPool.getNextConnection(userMode)
+	if err != nil {
+		return err
+	}
+
+	return conn.Call16Typed(functionName, args, result)
+}
+
 // Call17Typed calls registered function.
-// It uses request code for Tarantool 1.7, so result is not converted
+// It uses request code for Tarantool >= 1.7, so result is not converted
 // (though, keep in mind, result is always array).
 func (connPool *ConnectionPool) Call17Typed(functionName string, args interface{}, result interface{}, userMode Mode) (err error) {
 	conn, err := connPool.getNextConnection(userMode)
@@ -450,7 +478,9 @@ func (connPool *ConnectionPool) UpsertAsync(space interface{}, tuple interface{}
 }
 
 // CallAsync sends a call to registered Tarantool function and returns Future.
-// It uses request code for Tarantool 1.6, so future's result is always array of arrays.
+// It uses request code for Tarantool >= 1.7 if go-tarantool
+// was build with go_tarantool_call_17 tag.
+// Otherwise, uses request code for Tarantool 1.6.
 func (connPool *ConnectionPool) CallAsync(functionName string, args interface{}, userMode Mode) *tarantool.Future {
 	conn, err := connPool.getNextConnection(userMode)
 	if err != nil {
@@ -460,8 +490,20 @@ func (connPool *ConnectionPool) CallAsync(functionName string, args interface{},
 	return conn.CallAsync(functionName, args)
 }
 
+// Call16Async sends a call to registered Tarantool function and returns Future.
+// It uses request code for Tarantool 1.6, so future's result is always array of arrays.
+// Deprecated since Tarantool 1.7.2.
+func (connPool *ConnectionPool) Call16Async(functionName string, args interface{}, userMode Mode) *tarantool.Future {
+	conn, err := connPool.getNextConnection(userMode)
+	if err != nil {
+		return tarantool.NewErrorFuture(err)
+	}
+
+	return conn.Call16Async(functionName, args)
+}
+
 // Call17Async sends a call to registered Tarantool function and returns Future.
-// It uses request code for Tarantool 1.7, so future's result will not be converted
+// It uses request code for Tarantool >= 1.7, so future's result will not be converted
 // (though, keep in mind, result is always array).
 func (connPool *ConnectionPool) Call17Async(functionName string, args interface{}, userMode Mode) *tarantool.Future {
 	conn, err := connPool.getNextConnection(userMode)

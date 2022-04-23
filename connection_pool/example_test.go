@@ -490,7 +490,7 @@ func ExampleConnectionPool_Update() {
 	// Data [[key1 new_value]]
 }
 
-func ExampleConnectionPool_Call17() {
+func ExampleConnectionPool_Call() {
 	pool, err := examplePool(testRoles)
 	if err != nil {
 		fmt.Println(err)
