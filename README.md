@@ -54,10 +54,20 @@ of any Go program.
 
 ### Build tags
 
-To disable SSL support and linking with OpenSSL, you can use the tag:
-```
-go_tarantool_ssl_disable
-```
+We define multiple [build tags](https://pkg.go.dev/go/build#hdr-Build_Constraints).
+
+This allows us to introduce new features without losing backward compatibility.
+
+1. To disable SSL support and linking with OpenSSL, you can use the tag:
+   ```
+   go_tarantool_ssl_disable
+   ```
+2. to change the default `Call` behavior from `Call16` to `Call17`, you can use the build
+   tag:
+   ```
+   go_tarantool_call_17
+   ```
+   **Note:** In future releases, `Call17` may be used as default `Call` behavior.
 
 ## Documentation
 

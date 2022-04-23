@@ -13,6 +13,7 @@ BENCH_REFERENCE_REPO := ${BENCH_PATH}/go-tarantool
 BENCH_OPTIONS := -bench=. -run=^Benchmark -benchmem -benchtime=${DURATION} -count=${COUNT}
 GO_TARANTOOL_URL := https://github.com/tarantool/go-tarantool
 GO_TARANTOOL_DIR := ${PROJECT_DIR}/${BENCH_PATH}/go-tarantool
+TAGS :=
 
 .PHONY: clean
 clean:
@@ -33,7 +34,7 @@ golangci-lint:
 
 .PHONY: test
 test:
-	go test ./... -v -p 1
+	go test -tags "$(TAGS)" ./... -v -p 1
 
 .PHONY: testdata
 testdata:
@@ -43,38 +44,38 @@ testdata:
 test-connection-pool:
 	@echo "Running tests in connection_pool package"
 	go clean -testcache
-	go test ./connection_pool/ -v -p 1
+	go test -tags "$(TAGS)" ./connection_pool/ -v -p 1
 
 .PHONY: test-multi
 test-multi:
 	@echo "Running tests in multiconnection package"
 	go clean -testcache
-	go test ./multi/ -v -p 1
+	go test -tags "$(TAGS)" ./multi/ -v -p 1
 
 .PHONY: test-queue
 test-queue:
 	@echo "Running tests in queue package"
 	cd ./queue/ && tarantool -e "require('queue')"
 	go clean -testcache
-	go test ./queue/ -v -p 1
+	go test -tags "$(TAGS)" ./queue/ -v -p 1
 
 .PHONY: test-uuid
 test-uuid:
 	@echo "Running tests in UUID package"
 	go clean -testcache
-	go test ./uuid/ -v -p 1
+	go test -tags "$(TAGS)" ./uuid/ -v -p 1
 
 .PHONY: test-main
 test-main:
 	@echo "Running tests in main package"
 	go clean -testcache
-	go test . -v -p 1
+	go test -tags "$(TAGS)" . -v -p 1
 
 .PHONY: coverage
 coverage:
 	go clean -testcache
 	go get golang.org/x/tools/cmd/cover
-	go test ./... -v -p 1 -covermode=atomic -coverprofile=$(COVERAGE_FILE) -coverpkg=./...
+	go test -tags "$(TAGS)" ./... -v -p 1 -covermode=atomic -coverprofile=$(COVERAGE_FILE) -coverpkg=./...
 	go tool cover -func=$(COVERAGE_FILE)
 
 .PHONY: coveralls
@@ -94,7 +95,7 @@ ${BENCH_PATH} bench-deps:
 .PHONY: bench
 ${BENCH_FILE} bench: ${BENCH_PATH}
 	@echo "Running benchmark tests from the current branch"
-	go test ${TEST_PATH} ${BENCH_OPTIONS} 2>&1 \
+	go test -tags "$(TAGS)" ${TEST_PATH} ${BENCH_OPTIONS} 2>&1 \
 		| tee ${BENCH_FILE}
 	benchstat ${BENCH_FILE}
 
@@ -104,7 +105,7 @@ ${GO_TARANTOOL_DIR}:
 
 ${REFERENCE_FILE}: ${GO_TARANTOOL_DIR}
 	@echo "Running benchmark tests from master for using results in bench-diff target"
-	cd ${GO_TARANTOOL_DIR} && git pull && go test ./... ${BENCH_OPTIONS} 2>&1 \
+	cd ${GO_TARANTOOL_DIR} && git pull && go test ./... -tags "$(TAGS)" ${BENCH_OPTIONS} 2>&1 \
 		| tee ${REFERENCE_FILE}
 
 bench-diff: ${BENCH_FILES}

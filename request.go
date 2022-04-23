@@ -88,15 +88,26 @@ func (conn *Connection) Upsert(space interface{}, tuple, ops interface{}) (resp 
 }
 
 // Call calls registered Tarantool function.
-// It uses request code for Tarantool 1.6, so result is converted to array of arrays
+// It uses request code for Tarantool >= 1.7 if go-tarantool
+// was build with go_tarantool_call_17 tag.
+// Otherwise, uses request code for Tarantool 1.6.
 //
 // It is equal to conn.CallAsync(functionName, args).Get().
 func (conn *Connection) Call(functionName string, args interface{}) (resp *Response, err error) {
 	return conn.CallAsync(functionName, args).Get()
 }
 
+// Call16 calls registered Tarantool function.
+// It uses request code for Tarantool 1.6, so result is converted to array of arrays
+// Deprecated since Tarantool 1.7.2.
+//
+// It is equal to conn.Call16Async(functionName, args).Get().
+func (conn *Connection) Call16(functionName string, args interface{}) (resp *Response, err error) {
+	return conn.Call16Async(functionName, args).Get()
+}
+
 // Call17 calls registered Tarantool function.
-// It uses request code for Tarantool 1.7, so result is not converted
+// It uses request code for Tarantool >= 1.7, so result is not converted
 // (though, keep in mind, result is always array)
 //
 // It is equal to conn.Call17Async(functionName, args).Get().
@@ -188,15 +199,26 @@ func (conn *Connection) UpdateTyped(space, index interface{}, key, ops interface
 }
 
 // CallTyped calls registered function.
-// It uses request code for Tarantool 1.6, so result is converted to array of arrays
+// It uses request code for Tarantool >= 1.7 if go-tarantool
+// was build with go_tarantool_call_17 tag.
+// Otherwise, uses request code for Tarantool 1.6.
 //
-// It is equal to conn.CallAsync(functionName, args).GetTyped(&result).
+// It is equal to conn.Call16Async(functionName, args).GetTyped(&result).
 func (conn *Connection) CallTyped(functionName string, args interface{}, result interface{}) (err error) {
 	return conn.CallAsync(functionName, args).GetTyped(result)
 }
 
+// Call16Typed calls registered function.
+// It uses request code for Tarantool 1.6, so result is converted to array of arrays
+// Deprecated since Tarantool 1.7.2.
+//
+// It is equal to conn.Call16Async(functionName, args).GetTyped(&result).
+func (conn *Connection) Call16Typed(functionName string, args interface{}, result interface{}) (err error) {
+	return conn.Call16Async(functionName, args).GetTyped(result)
+}
+
 // Call17Typed calls registered function.
-// It uses request code for Tarantool 1.7, so result is not converted
+// It uses request code for Tarantool >= 1.7, so result is not converted
 // (though, keep in mind, result is always array)
 //
 // It is equal to conn.Call17Async(functionName, args).GetTyped(&result).
@@ -317,7 +339,9 @@ func (conn *Connection) UpsertAsync(space interface{}, tuple interface{}, ops in
 }
 
 // CallAsync sends a call to registered Tarantool function and returns Future.
-// It uses request code for Tarantool 1.6, so future's result is always array of arrays
+// It uses request code for Tarantool >= 1.7 if go-tarantool
+// was build with go_tarantool_call_17 tag.
+// Otherwise, uses request code for Tarantool 1.6.
 func (conn *Connection) CallAsync(functionName string, args interface{}) *Future {
 	future := conn.newFuture(CallRequest)
 	return conn.sendFuture(future, func(enc *msgpack.Encoder) error {
@@ -329,8 +353,22 @@ func (conn *Connection) CallAsync(functionName string, args interface{}) *Future
 	})
 }
 
+// Call16Async sends a call to registered Tarantool function and returns Future.
+// It uses request code for Tarantool 1.6, so future's result is always array of arrays.
+// Deprecated since Tarantool 1.7.2.
+func (conn *Connection) Call16Async(functionName string, args interface{}) *Future {
+	future := conn.newFuture(Call16Request)
+	return conn.sendFuture(future, func(enc *msgpack.Encoder) error {
+		enc.EncodeMapLen(2)
+		enc.EncodeUint64(KeyFunctionName)
+		enc.EncodeString(functionName)
+		enc.EncodeUint64(KeyTuple)
+		return enc.Encode(args)
+	})
+}
+
 // Call17Async sends a call to registered Tarantool function and returns Future.
-// It uses request code for Tarantool 1.7, so future's result will not be converted
+// It uses request code for Tarantool >= 1.7, so future's result will not be converted
 // (though, keep in mind, result is always array)
 func (conn *Connection) Call17Async(functionName string, args interface{}) *Future {
 	future := conn.newFuture(Call17Request)

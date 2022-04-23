@@ -195,7 +195,7 @@ func SetInstanceRO(server string, connOpts tarantool.Opts, isReplica bool) error
 
 	defer conn.Close()
 
-	_, err = conn.Call("box.cfg", []interface{}{map[string]bool{"read_only": isReplica}})
+	_, err = conn.Call17("box.cfg", []interface{}{map[string]bool{"read_only": isReplica}})
 	if err != nil {
 		return err
 	}

@@ -15,6 +15,7 @@ type Connector interface {
 	Update(space, index interface{}, key, ops interface{}) (resp *Response, err error)
 	Upsert(space interface{}, tuple, ops interface{}) (resp *Response, err error)
 	Call(functionName string, args interface{}) (resp *Response, err error)
+	Call16(functionName string, args interface{}) (resp *Response, err error)
 	Call17(functionName string, args interface{}) (resp *Response, err error)
 	Eval(expr string, args interface{}) (resp *Response, err error)
 	Execute(expr string, args interface{}) (resp *Response, err error)
@@ -26,6 +27,7 @@ type Connector interface {
 	DeleteTyped(space, index interface{}, key interface{}, result interface{}) (err error)
 	UpdateTyped(space, index interface{}, key, ops interface{}, result interface{}) (err error)
 	CallTyped(functionName string, args interface{}, result interface{}) (err error)
+	Call16Typed(functionName string, args interface{}, result interface{}) (err error)
 	Call17Typed(functionName string, args interface{}, result interface{}) (err error)
 	EvalTyped(expr string, args interface{}, result interface{}) (err error)
 
@@ -36,6 +38,7 @@ type Connector interface {
 	UpdateAsync(space, index interface{}, key, ops interface{}) *Future
 	UpsertAsync(space interface{}, tuple interface{}, ops interface{}) *Future
 	CallAsync(functionName string, args interface{}) *Future
+	Call16Async(functionName string, args interface{}) *Future
 	Call17Async(functionName string, args interface{}) *Future
 	EvalAsync(expr string, args interface{}) *Future
 }

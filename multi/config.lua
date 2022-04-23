@@ -15,6 +15,12 @@ box.once("init", function()
     box.schema.user.grant('test', 'read,write,execute', 'universe')
 end)
 
+local function simple_incr(a)
+    return a + 1
+end
+
+rawset(_G, 'simple_incr', simple_incr)
+
 -- Set listen only when every other thing is configured.
 box.cfg{
     listen = os.getenv("TEST_TNT_LISTEN"),

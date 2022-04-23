@@ -189,7 +189,7 @@ func (q *queue) put(params ...interface{}) (*Task, error) {
 		result: params[0],
 		q:      q,
 	}
-	if err := q.conn.CallTyped(q.cmds.put, params, &qd); err != nil {
+	if err := q.conn.Call17Typed(q.cmds.put, params, &qd); err != nil {
 		return nil, err
 	}
 	return qd.task, nil
@@ -240,7 +240,7 @@ func (q *queue) take(params interface{}, result ...interface{}) (*Task, error) {
 	if len(result) > 0 {
 		qd.result = result[0]
 	}
-	if err := q.conn.CallTyped(q.cmds.take, []interface{}{params}, &qd); err != nil {
+	if err := q.conn.Call17Typed(q.cmds.take, []interface{}{params}, &qd); err != nil {
 		return nil, err
 	}
 	return qd.task, nil
@@ -248,14 +248,14 @@ func (q *queue) take(params interface{}, result ...interface{}) (*Task, error) {
 
 // Drop queue.
 func (q *queue) Drop() error {
-	_, err := q.conn.Call(q.cmds.drop, []interface{}{})
+	_, err := q.conn.Call17(q.cmds.drop, []interface{}{})
 	return err
 }
 
 // Look at a task without changing its state.
 func (q *queue) Peek(taskId uint64) (*Task, error) {
 	qd := queueData{q: q}
-	if err := q.conn.CallTyped(q.cmds.peek, []interface{}{taskId}, &qd); err != nil {
+	if err := q.conn.Call17Typed(q.cmds.peek, []interface{}{taskId}, &qd); err != nil {
 		return nil, err
 	}
 	return qd.task, nil
@@ -278,7 +278,7 @@ func (q *queue) _release(taskId uint64, cfg Opts) (string, error) {
 }
 func (q *queue) produce(cmd string, params ...interface{}) (string, error) {
 	qd := queueData{q: q}
-	if err := q.conn.CallTyped(cmd, params, &qd); err != nil || qd.task == nil {
+	if err := q.conn.Call17Typed(cmd, params, &qd); err != nil || qd.task == nil {
 		return "", err
 	}
 	return qd.task.status, nil
@@ -286,10 +286,10 @@ func (q *queue) produce(cmd string, params ...interface{}) (string, error) {
 
 // Reverse the effect of a bury request on one or more tasks.
 func (q *queue) Kick(count uint64) (uint64, error) {
-	resp, err := q.conn.Call(q.cmds.kick, []interface{}{count})
+	resp, err := q.conn.Call17(q.cmds.kick, []interface{}{count})
 	var id uint64
 	if err == nil {
-		id = resp.Data[0].([]interface{})[0].(uint64)
+		id = resp.Data[0].(uint64)
 	}
 	return id, err
 }
@@ -303,16 +303,13 @@ func (q *queue) Delete(taskId uint64) error {
 // Return the number of tasks in a queue broken down by task_state, and the
 // number of requests broken down by the type of request.
 func (q *queue) Statistic() (interface{}, error) {
-	resp, err := q.conn.Call(q.cmds.statistics, []interface{}{q.name})
+	resp, err := q.conn.Call17(q.cmds.statistics, []interface{}{q.name})
 	if err != nil {
 		return nil, err
 	}
 
 	if len(resp.Data) != 0 {
-		data, ok := resp.Data[0].([]interface{})
-		if ok && len(data) != 0 {
-			return data[0], nil
-		}
+		return resp.Data[0], nil
 	}
 
 	return nil, nil
