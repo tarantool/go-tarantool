@@ -40,6 +40,31 @@ box.once("init", function()
     })
     st:truncate()
 
+    local s2 = box.schema.space.create('test_perf', {
+        id = 520,
+        temporary = true,
+        if_not_exists = true,
+        field_count = 3,
+        format = {
+            {name = "id", type = "unsigned"},
+            {name = "name", type = "string"},
+            {name = "arr1", type = "array"},
+        },
+    })
+    s2:create_index('primary', {type = 'tree', unique = true, parts = {1, 'unsigned'}, if_not_exists = true})
+    s2:create_index('secondary', {id = 5, type = 'tree', unique = false, parts = {2, 'string'}, if_not_exists = true})
+    local arr_data = {}
+    for i = 1,100 do
+        arr_data[i] = i
+    end
+    for i = 1,1000 do
+        s2:insert{
+            i,
+            'test_name',
+            arr_data,
+        }
+    end
+
     --box.schema.user.grant('guest', 'read,write,execute', 'universe')
     box.schema.func.create('box.info')
     box.schema.func.create('simple_incr')
@@ -49,6 +74,7 @@ box.once("init", function()
     box.schema.user.grant('test', 'execute', 'universe')
     box.schema.user.grant('test', 'read,write', 'space', 'test')
     box.schema.user.grant('test', 'read,write', 'space', 'schematest')
+    box.schema.user.grant('test', 'read,write', 'space', 'test_perf')
 end)
 
 local function func_name()

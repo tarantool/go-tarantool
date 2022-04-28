@@ -362,6 +362,57 @@ func BenchmarkClientParallelMassiveUntyped(b *testing.B) {
 	close(limit)
 }
 
+func BenchmarkClientReplaceParallel(b *testing.B) {
+	conn, err := Connect(server, opts)
+	if err != nil {
+		b.Errorf("No connection available")
+		return
+	}
+	defer conn.Close()
+	spaceNo = 520
+
+	rSpaceNo, _, err := conn.Schema.ResolveSpaceIndex("test_perf", "secondary")
+	if err != nil {
+		b.Fatalf("Space is not resolved: %s", err.Error())
+	}
+
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			_, err := conn.Replace(rSpaceNo, []interface{}{uint(1), "hello", []interface{}{}})
+			if err != nil {
+				b.Error(err)
+			}
+		}
+	})
+}
+
+func BenchmarkClientLargeSelectParallel(b *testing.B) {
+	conn, err := Connect(server, opts)
+	if err != nil {
+		b.Errorf("No connection available")
+		return
+	}
+	defer conn.Close()
+
+	schema := conn.Schema
+	rSpaceNo, rIndexNo, err := schema.ResolveSpaceIndex("test_perf", "secondary")
+	if err != nil {
+		b.Fatalf("symbolic space and index params not resolved")
+	}
+
+	offset, limit := uint32(0), uint32(1000)
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			_, err := conn.Select(rSpaceNo, rIndexNo, offset, limit, IterEq, []interface{}{"test_name"})
+			if err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
+}
+
 ///////////////////
 
 func TestClient(t *testing.T) {

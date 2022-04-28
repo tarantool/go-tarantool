@@ -45,6 +45,113 @@ and run it with next flags:
 golangci-lint run -E gofmt -D errcheck
 ```
 
+## Benchmarking
+
+### Quick start
+
+To run all benchmark tests from the current branch run: 
+
+```bash
+make bench
+```
+
+To measure performance difference between master and the current branch run:
+
+```bash
+make bench-diff
+```
+
+Note: `benchstat` should be in `PATH`. If it is not set, call:
+
+```bash
+export PATH="/home/${USER}/go/bin:${PATH}"
+```
+
+or
+
+```bash
+export PATH="${HOME}/go/bin:${PATH}"
+```
+
+### Customize benchmarking
+
+Before running benchmark or measuring performance degradation, install benchmark dependencies:
+```bash
+make bench-deps BENCH_PATH=custom_path
+```
+
+Use the variable `BENCH_PATH` to specify the path of benchmark artifacts.
+It is set to `bench` by default.
+
+To run benchmark tests, call:
+```bash
+make bench DURATION=5s COUNT=7 BENCH_PATH=custom_path TEST_PATH=.
+```
+
+Use the variable `DURATION` to set the duration of perf tests. That variable is mapped on
+testing [flag](https://pkg.go.dev/cmd/go#hdr-Testing_flags) `-benchtime` for gotest.
+It may take the values in seconds (e.g, `5s`) or count of iterations (e.g, `1000x`).
+It is set to `3s` by default.
+
+Use the variable `COUNT` to control the count of benchmark runs for each test. 
+It is set to `5` by default. That variable is mapped on testing flag `-count`.
+Use higher values if the benchmark numbers aren't stable.
+
+Use the variable `TEST_PATH` to set the directory of test files.
+It is set to `./...` by default, so it runs all the Benchmark tests in the project.
+
+To measure performance degradation after changes in code, run:
+```bash
+make bench-diff BENCH_PATH=custom_path
+```
+
+Note: the variable `BENCH_PATH` is not purposed to be used with absolute paths.
+
+## Recommendations for how to achieve stable results
+
+Before any judgments, verify whether results are stable on given host and how large the noise. Run `make bench-diff` without changes and look on the report. Several times.
+
+There are suggestions how to achieve best results:
+
+* Close all background applications, especially web browser. Look at `top` (`htop`, `atop`, ...) and if something bubbles there, close it.
+* Disable cron daemon.
+* Disable TurboBoost and set fixed frequency.
+  * If you're using `intel_pstate` frequency driver (it is usually default):
+
+    Disable TurboBoost:
+          
+    ```shell
+    $ echo 0 > /sys/devices/system/cpu/intel_pstate/no_turbo
+    ```
+          
+    Set fixed frequency: not sure it is possible.
+
+    * If you're using `acpi-cpufreq` driver:
+                 
+    Ensure you actually don't use intel_pstate:
+                     
+    ```shell
+    $ grep -o 'intel_pstate=\w\+' /proc/cmdline
+     intel_pstate=disable
+     $ cpupower -c all frequency-info | grep driver:
+       driver: acpi-cpufreq
+       <...>
+     ```
+                 
+     Disable TurboBoost:
+      
+     ```shell
+     $ echo 0 > /sys/devices/system/cpu/cpufreq/boost
+     ```
+                 
+     Set fixed frequency:
+                 
+     ```shell
+     $ cpupower -c all frequency-set -g userspace
+     $ cpupower -c all frequency-set -f 1.80GHz # adjust for your CPU
+     ```
+
+
 ## Code review checklist
 
 - Public API contains functions, variables, constants that are needed from

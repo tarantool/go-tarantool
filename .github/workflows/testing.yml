@@ -63,3 +63,6 @@ jobs:
           COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           make coveralls
+
+      - name: Check workability of benchmark tests
+        run: make bench-deps bench DURATION=1x COUNT=1
