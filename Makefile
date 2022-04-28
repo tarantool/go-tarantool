@@ -1,5 +1,18 @@
 SHELL := /bin/bash
 COVERAGE_FILE := coverage.out
+MAKEFILE_PATH := $(abspath $(lastword $(MAKEFILE_LIST)))
+PROJECT_DIR := $(patsubst %/,%,$(dir $(MAKEFILE_PATH)))
+DURATION ?= 3s
+COUNT ?= 5
+BENCH_PATH ?= bench-dir
+TEST_PATH ?= ${PROJECT_DIR}/...
+BENCH_FILE := ${PROJECT_DIR}/${BENCH_PATH}/bench.txt
+REFERENCE_FILE := ${PROJECT_DIR}/${BENCH_PATH}/reference.txt
+BENCH_FILES := ${REFERENCE_FILE} ${BENCH_FILE}
+BENCH_REFERENCE_REPO := ${BENCH_PATH}/go-tarantool
+BENCH_OPTIONS := -bench=. -run=^Benchmark -benchmem -benchtime=${DURATION} -count=${COUNT}
+GO_TARANTOOL_URL := https://github.com/tarantool/go-tarantool
+GO_TARANTOOL_DIR := ${PROJECT_DIR}/${BENCH_PATH}/go-tarantool
 
 .PHONY: clean
 clean:
@@ -55,3 +68,33 @@ coverage:
 coveralls: coverage
 	go get github.com/mattn/goveralls
 	goveralls -coverprofile=$(COVERAGE_FILE) -service=github
+
+.PHONY: bench-deps
+${BENCH_PATH} bench-deps:
+	@echo "Installing benchstat tool"
+	rm -rf ${BENCH_PATH}
+	mkdir ${BENCH_PATH}
+	go clean -testcache
+	cd ${BENCH_PATH} && git clone https://go.googlesource.com/perf && cd perf && go install ./cmd/benchstat
+	rm -rf ${BENCH_PATH}/perf
+
+.PHONY: bench
+${BENCH_FILE} bench: ${BENCH_PATH}
+	@echo "Running benchmark tests from the current branch"
+	go test ${TEST_PATH} ${BENCH_OPTIONS} 2>&1 \
+		| tee ${BENCH_FILE}
+	benchstat ${BENCH_FILE}
+
+${GO_TARANTOOL_DIR}:
+	@echo "Cloning the repository into ${GO_TARANTOOL_DIR}"
+	[ ! -e ${GO_TARANTOOL_DIR} ] && git clone --depth=1 ${GO_TARANTOOL_URL} ${GO_TARANTOOL_DIR}
+
+${REFERENCE_FILE}: ${GO_TARANTOOL_DIR}
+	@echo "Running benchmark tests from master for using results in bench-diff target"
+	cd ${GO_TARANTOOL_DIR} && git pull && go test ./... ${BENCH_OPTIONS} 2>&1 \
+		| tee ${REFERENCE_FILE}
+
+bench-diff: ${BENCH_FILES}
+	@echo "Comparing performance between master and the current branch"
+	@echo "'old' is a version in master branch, 'new' is a version in a current branch"
+	benchstat ${BENCH_FILES} | grep -v pkg:
