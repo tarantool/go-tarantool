@@ -81,6 +81,7 @@ func BenchmarkClientSerial(b *testing.B) {
 		b.Errorf("No connection available")
 	}
 
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, err = conn.Select(spaceNo, indexNo, 0, 1, IterEq, []interface{}{uint(1111)})
 		if err != nil {
@@ -105,6 +106,7 @@ func BenchmarkClientSerialTyped(b *testing.B) {
 	}
 
 	var r []Tuple
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		err = conn.SelectTyped(spaceNo, indexNo, 0, 1, IterEq, IntKey{1111}, &r)
 		if err != nil {
@@ -128,6 +130,7 @@ func BenchmarkClientFuture(b *testing.B) {
 		b.Error(err)
 	}
 
+	b.ResetTimer()
 	for i := 0; i < b.N; i += N {
 		var fs [N]*Future
 		for j := 0; j < N; j++ {
@@ -158,6 +161,7 @@ func BenchmarkClientFutureTyped(b *testing.B) {
 		b.Errorf("No connection available")
 	}
 
+	b.ResetTimer()
 	for i := 0; i < b.N; i += N {
 		var fs [N]*Future
 		for j := 0; j < N; j++ {
@@ -191,6 +195,7 @@ func BenchmarkClientFutureParallel(b *testing.B) {
 		b.Errorf("No connection available")
 	}
 
+	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
 		exit := false
 		for !exit {
@@ -227,6 +232,7 @@ func BenchmarkClientFutureParallelTyped(b *testing.B) {
 		b.Fatal("No connection available")
 	}
 
+	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
 		exit := false
 		for !exit {
@@ -266,6 +272,7 @@ func BenchmarkClientParallel(b *testing.B) {
 		b.Fatal("No connection available")
 	}
 
+	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
 			_, err := conn.Select(spaceNo, indexNo, 0, 1, IterEq, []interface{}{uint(1111)})
@@ -307,6 +314,7 @@ func BenchmarkClientParallelMassive(b *testing.B) {
 			}
 		}()
 	}
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		wg.Add(1)
 		limit <- struct{}{}
@@ -344,6 +352,8 @@ func BenchmarkClientParallelMassiveUntyped(b *testing.B) {
 			}
 		}()
 	}
+
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		wg.Add(1)
 		limit <- struct{}{}
