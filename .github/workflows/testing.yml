@@ -26,12 +26,23 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        golang:
+          - 1.13
         tarantool:
           - '1.10'
           - '2.8'
           - '2.9'
           - '2.x-latest'
         coveralls: [false]
+        fuzzing: [false]
+        include:
+          - tarantool: '2.x-latest'
+            coveralls: true
+            golang: 1.13
+          - tarantool: '2.x-latest'
+            fuzzing: true
+            golang: 1.18
+            coveralls: false
 
     steps:
       - name: Clone the connector
@@ -52,16 +63,20 @@ jobs:
       - name: Setup golang for the connector and tests
         uses: actions/setup-go@v2
         with:
-          go-version: 1.13
+          go-version: ${{ matrix.golang }}
 
       - name: Install test dependencies
         run: make deps
 
-      - name: Run tests
+      - name: Run regression tests
         run: make test
 
       - name: Run tests with call_17
         run: make test TAGS="go_tarantool_call_17"
+
+      - name: Run fuzzing tests
+        if: ${{ matrix.fuzzing }}
+        run: make fuzzing TAGS="go_tarantool_decimal_fuzzing"
 
       - name: Run tests, collect code coverage data and send to Coveralls
         if: ${{ matrix.coveralls }}
@@ -96,6 +111,7 @@ jobs:
           - '1.10.11-0-gf0b0e7ecf-r470'
           - '2.8.3-21-g7d35cd2be-r470'
         coveralls: [false]
+        fuzzing: [false]
         ssl: [false]
         include:
           - sdk-version: '2.10.0-1-gfa775b383-r486-linux-x86_64'
@@ -143,6 +159,10 @@ jobs:
           make test TAGS="go_tarantool_call_17"
         env:
           TEST_TNT_SSL: ${{matrix.ssl}}
+
+      - name: Run fuzzing tests
+        if: ${{ matrix.fuzzing }}
+        run: make fuzzing TAGS="go_tarantool_decimal_fuzzing"
 
       - name: Run tests, collect code coverage data and send to Coveralls
         if: ${{ matrix.coveralls }}

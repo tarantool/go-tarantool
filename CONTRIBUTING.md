@@ -45,6 +45,11 @@ For example, for running tests in `multi`, `uuid` and `main` packages, call
 make test-multi test-uuid test-main
 ```
 
+To run [fuzz tests](https://go.dev/doc/tutorial/fuzz) for the main package and each subpackage:
+```bash
+make TAGS="go_tarantool_decimal_fuzzing" fuzzing
+```
+
 To check if the current changes will pass the linter in CI, install
 golangci-lint from [sources](https://golangci-lint.run/usage/install/)
 and run it with next command:
