@@ -62,12 +62,17 @@ This allows us to introduce new features without losing backward compatibility.
    ```
    go_tarantool_ssl_disable
    ```
-2. to change the default `Call` behavior from `Call16` to `Call17`, you can use the build
-   tag:
+2. To change the default `Call` behavior from `Call16` to `Call17`, you can use
+   the build tag:
    ```
    go_tarantool_call_17
    ```
    **Note:** In future releases, `Call17` may be used as default `Call` behavior.
+3. To run fuzz tests with decimals, you can use the build tag:
+   ```
+   go_tarantool_decimal_fuzzing
+   ```
+   **Note:** It crashes old Tarantool versions and requires Go 1.18+.
 
 ## Documentation
 

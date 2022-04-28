@@ -118,3 +118,9 @@ bench-diff: ${BENCH_FILES}
 	@echo "Comparing performance between master and the current branch"
 	@echo "'old' is a version in master branch, 'new' is a version in a current branch"
 	benchstat ${BENCH_FILES} | grep -v pkg:
+
+.PHONY: fuzzing
+fuzzing:
+	@echo "Running fuzzing tests"
+	go clean -testcache
+	go test -tags "$(TAGS)" ./... -run=^Fuzz -v -p 1
