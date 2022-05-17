@@ -200,7 +200,7 @@ type single struct {
 func (s *single) DecodeMsgpack(d *msgpack.Decoder) error {
 	var err error
 	var len int
-	if len, err = d.DecodeSliceLen(); err != nil {
+	if len, err = d.DecodeArrayLen(); err != nil {
 		return err
 	}
 	if s.found = len >= 1; !s.found {
@@ -433,7 +433,7 @@ func encodeSQLBind(enc *msgpack.Encoder, from interface{}) error {
 	}
 
 	encodeNamedFromMap := func(mp map[string]interface{}) error {
-		if err := enc.EncodeSliceLen(len(mp)); err != nil {
+		if err := enc.EncodeArrayLen(len(mp)); err != nil {
 			return err
 		}
 		for k, v := range mp {
@@ -445,7 +445,7 @@ func encodeSQLBind(enc *msgpack.Encoder, from interface{}) error {
 	}
 
 	encodeNamedFromStruct := func(val reflect.Value) error {
-		if err := enc.EncodeSliceLen(val.NumField()); err != nil {
+		if err := enc.EncodeArrayLen(val.NumField()); err != nil {
 			return err
 		}
 		cached, ok := lowerCaseNames.Load(val.Type())
@@ -479,7 +479,7 @@ func encodeSQLBind(enc *msgpack.Encoder, from interface{}) error {
 		if !ok {
 			castedKVSlice := from.([]KeyValueBind)
 			t := len(castedKVSlice)
-			if err := enc.EncodeSliceLen(t); err != nil {
+			if err := enc.EncodeArrayLen(t); err != nil {
 				return err
 			}
 			for _, v := range castedKVSlice {
@@ -490,7 +490,7 @@ func encodeSQLBind(enc *msgpack.Encoder, from interface{}) error {
 			return nil
 		}
 
-		if err := enc.EncodeSliceLen(len(castedSlice)); err != nil {
+		if err := enc.EncodeArrayLen(len(castedSlice)); err != nil {
 			return err
 		}
 		for i := 0; i < len(castedSlice); i++ {

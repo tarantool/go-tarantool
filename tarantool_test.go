@@ -27,7 +27,7 @@ type Member struct {
 }
 
 func (m *Member) EncodeMsgpack(e *msgpack.Encoder) error {
-	if err := e.EncodeSliceLen(2); err != nil {
+	if err := e.EncodeArrayLen(2); err != nil {
 		return err
 	}
 	if err := e.EncodeString(m.Name); err != nil {
@@ -42,7 +42,7 @@ func (m *Member) EncodeMsgpack(e *msgpack.Encoder) error {
 func (m *Member) DecodeMsgpack(d *msgpack.Decoder) error {
 	var err error
 	var l int
-	if l, err = d.DecodeSliceLen(); err != nil {
+	if l, err = d.DecodeArrayLen(); err != nil {
 		return err
 	}
 	if l != 2 {

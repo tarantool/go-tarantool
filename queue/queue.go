@@ -339,7 +339,7 @@ type queueData struct {
 func (qd *queueData) DecodeMsgpack(d *msgpack.Decoder) error {
 	var err error
 	var l int
-	if l, err = d.DecodeSliceLen(); err != nil {
+	if l, err = d.DecodeArrayLen(); err != nil {
 		return err
 	}
 	if l > 1 {
