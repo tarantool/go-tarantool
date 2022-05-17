@@ -46,7 +46,7 @@ func fillBegin(enc *msgpack.Encoder, txnIsolation TxnIsolationLevel, timeout tim
 	}
 
 	if hasTimeout {
-		err = enc.EncodeUint64(KeyTimeout)
+		err = enc.EncodeUint(KeyTimeout)
 		if err != nil {
 			return err
 		}

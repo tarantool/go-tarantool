@@ -11,28 +11,28 @@ import (
 )
 
 func fillSearch(enc *msgpack.Encoder, spaceNo, indexNo uint32, key interface{}) error {
-	enc.EncodeUint64(KeySpaceNo)
-	enc.EncodeUint64(uint64(spaceNo))
-	enc.EncodeUint64(KeyIndexNo)
-	enc.EncodeUint64(uint64(indexNo))
-	enc.EncodeUint64(KeyKey)
+	enc.EncodeUint(KeySpaceNo)
+	enc.EncodeUint(uint(spaceNo))
+	enc.EncodeUint(KeyIndexNo)
+	enc.EncodeUint(uint(indexNo))
+	enc.EncodeUint(KeyKey)
 	return enc.Encode(key)
 }
 
 func fillIterator(enc *msgpack.Encoder, offset, limit, iterator uint32) {
-	enc.EncodeUint64(KeyIterator)
-	enc.EncodeUint64(uint64(iterator))
-	enc.EncodeUint64(KeyOffset)
-	enc.EncodeUint64(uint64(offset))
-	enc.EncodeUint64(KeyLimit)
-	enc.EncodeUint64(uint64(limit))
+	enc.EncodeUint(KeyIterator)
+	enc.EncodeUint(uint(iterator))
+	enc.EncodeUint(KeyOffset)
+	enc.EncodeUint(uint(offset))
+	enc.EncodeUint(KeyLimit)
+	enc.EncodeUint(uint(limit))
 }
 
 func fillInsert(enc *msgpack.Encoder, spaceNo uint32, tuple interface{}) error {
 	enc.EncodeMapLen(2)
-	enc.EncodeUint64(KeySpaceNo)
-	enc.EncodeUint64(uint64(spaceNo))
-	enc.EncodeUint64(KeyTuple)
+	enc.EncodeUint(KeySpaceNo)
+	enc.EncodeUint(uint(spaceNo))
+	enc.EncodeUint(KeyTuple)
 	return enc.Encode(tuple)
 }
 
@@ -47,19 +47,19 @@ func fillUpdate(enc *msgpack.Encoder, spaceNo, indexNo uint32, key, ops interfac
 	if err := fillSearch(enc, spaceNo, indexNo, key); err != nil {
 		return err
 	}
-	enc.EncodeUint64(KeyTuple)
+	enc.EncodeUint(KeyTuple)
 	return enc.Encode(ops)
 }
 
 func fillUpsert(enc *msgpack.Encoder, spaceNo uint32, tuple, ops interface{}) error {
 	enc.EncodeMapLen(3)
-	enc.EncodeUint64(KeySpaceNo)
-	enc.EncodeUint64(uint64(spaceNo))
-	enc.EncodeUint64(KeyTuple)
+	enc.EncodeUint(KeySpaceNo)
+	enc.EncodeUint(uint(spaceNo))
+	enc.EncodeUint(KeyTuple)
 	if err := enc.Encode(tuple); err != nil {
 		return err
 	}
-	enc.EncodeUint64(KeyDefTuple)
+	enc.EncodeUint(KeyDefTuple)
 	return enc.Encode(ops)
 }
 
@@ -70,25 +70,25 @@ func fillDelete(enc *msgpack.Encoder, spaceNo, indexNo uint32, key interface{}) 
 
 func fillCall(enc *msgpack.Encoder, functionName string, args interface{}) error {
 	enc.EncodeMapLen(2)
-	enc.EncodeUint64(KeyFunctionName)
+	enc.EncodeUint(KeyFunctionName)
 	enc.EncodeString(functionName)
-	enc.EncodeUint64(KeyTuple)
+	enc.EncodeUint(KeyTuple)
 	return enc.Encode(args)
 }
 
 func fillEval(enc *msgpack.Encoder, expr string, args interface{}) error {
 	enc.EncodeMapLen(2)
-	enc.EncodeUint64(KeyExpression)
+	enc.EncodeUint(KeyExpression)
 	enc.EncodeString(expr)
-	enc.EncodeUint64(KeyTuple)
+	enc.EncodeUint(KeyTuple)
 	return enc.Encode(args)
 }
 
 func fillExecute(enc *msgpack.Encoder, expr string, args interface{}) error {
 	enc.EncodeMapLen(2)
-	enc.EncodeUint64(KeySQLText)
+	enc.EncodeUint(KeySQLText)
 	enc.EncodeString(expr)
-	enc.EncodeUint64(KeySQLBind)
+	enc.EncodeUint(KeySQLBind)
 	return encodeSQLBind(enc, args)
 }
 

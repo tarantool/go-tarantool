@@ -22,21 +22,21 @@ type Prepared struct {
 
 func fillPrepare(enc *msgpack.Encoder, expr string) error {
 	enc.EncodeMapLen(1)
-	enc.EncodeUint64(KeySQLText)
+	enc.EncodeUint(KeySQLText)
 	return enc.EncodeString(expr)
 }
 
 func fillUnprepare(enc *msgpack.Encoder, stmt Prepared) error {
 	enc.EncodeMapLen(1)
-	enc.EncodeUint64(KeyStmtID)
-	return enc.EncodeUint64(uint64(stmt.StatementID))
+	enc.EncodeUint(KeyStmtID)
+	return enc.EncodeUint(uint(stmt.StatementID))
 }
 
 func fillExecutePrepared(enc *msgpack.Encoder, stmt Prepared, args interface{}) error {
 	enc.EncodeMapLen(2)
-	enc.EncodeUint64(KeyStmtID)
-	enc.EncodeUint64(uint64(stmt.StatementID))
-	enc.EncodeUint64(KeySQLBind)
+	enc.EncodeUint(KeyStmtID)
+	enc.EncodeUint(uint(stmt.StatementID))
+	enc.EncodeUint(KeySQLBind)
 	return encodeSQLBind(enc, args)
 }
 
