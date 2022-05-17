@@ -271,7 +271,7 @@ type Tuple1 struct {
 }
 
 func (t *Tuple1) EncodeMsgpack(e *msgpack.Encoder) error {
-	if err := e.EncodeSliceLen(2); err != nil {
+	if err := e.EncodeArrayLen(2); err != nil {
 		return err
 	}
 	if err := e.Encode(&t.Datetime); err != nil {
@@ -283,7 +283,7 @@ func (t *Tuple1) EncodeMsgpack(e *msgpack.Encoder) error {
 func (t *Tuple1) DecodeMsgpack(d *msgpack.Decoder) error {
 	var err error
 	var l int
-	if l, err = d.DecodeSliceLen(); err != nil {
+	if l, err = d.DecodeArrayLen(); err != nil {
 		return err
 	}
 	if l != 1 {
@@ -297,7 +297,7 @@ func (t *Tuple1) DecodeMsgpack(d *msgpack.Decoder) error {
 }
 
 func (ev *Event) EncodeMsgpack(e *msgpack.Encoder) error {
-	if err := e.EncodeSliceLen(2); err != nil {
+	if err := e.EncodeArrayLen(2); err != nil {
 		return err
 	}
 	if err := e.EncodeString(ev.Location); err != nil {
@@ -312,7 +312,7 @@ func (ev *Event) EncodeMsgpack(e *msgpack.Encoder) error {
 func (ev *Event) DecodeMsgpack(d *msgpack.Decoder) error {
 	var err error
 	var l int
-	if l, err = d.DecodeSliceLen(); err != nil {
+	if l, err = d.DecodeArrayLen(); err != nil {
 		return err
 	}
 	if l != 2 {
@@ -330,7 +330,7 @@ func (ev *Event) DecodeMsgpack(d *msgpack.Decoder) error {
 }
 
 func (c *Tuple2) EncodeMsgpack(e *msgpack.Encoder) error {
-	if err := e.EncodeSliceLen(3); err != nil {
+	if err := e.EncodeArrayLen(3); err != nil {
 		return err
 	}
 	if err := e.EncodeUint(c.Cid); err != nil {
@@ -346,7 +346,7 @@ func (c *Tuple2) EncodeMsgpack(e *msgpack.Encoder) error {
 func (c *Tuple2) DecodeMsgpack(d *msgpack.Decoder) error {
 	var err error
 	var l int
-	if l, err = d.DecodeSliceLen(); err != nil {
+	if l, err = d.DecodeArrayLen(); err != nil {
 		return err
 	}
 	if l != 3 {
@@ -358,7 +358,7 @@ func (c *Tuple2) DecodeMsgpack(d *msgpack.Decoder) error {
 	if c.Orig, err = d.DecodeString(); err != nil {
 		return err
 	}
-	if l, err = d.DecodeSliceLen(); err != nil {
+	if l, err = d.DecodeArrayLen(); err != nil {
 		return err
 	}
 	c.Events = make([]Event, l)

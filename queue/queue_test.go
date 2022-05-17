@@ -186,7 +186,7 @@ type customData struct {
 func (c *customData) DecodeMsgpack(d *msgpack.Decoder) error {
 	var err error
 	var l int
-	if l, err = d.DecodeSliceLen(); err != nil {
+	if l, err = d.DecodeArrayLen(); err != nil {
 		return err
 	}
 	if l != 1 {
@@ -199,7 +199,7 @@ func (c *customData) DecodeMsgpack(d *msgpack.Decoder) error {
 }
 
 func (c *customData) EncodeMsgpack(e *msgpack.Encoder) error {
-	if err := e.EncodeSliceLen(1); err != nil {
+	if err := e.EncodeArrayLen(1); err != nil {
 		return err
 	}
 	if err := e.EncodeString(c.customField); err != nil {

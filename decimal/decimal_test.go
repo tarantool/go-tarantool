@@ -41,7 +41,7 @@ type TupleDecimal struct {
 }
 
 func (t *TupleDecimal) EncodeMsgpack(e *msgpack.Encoder) error {
-	if err := e.EncodeSliceLen(1); err != nil {
+	if err := e.EncodeArrayLen(1); err != nil {
 		return err
 	}
 	return e.EncodeValue(reflect.ValueOf(&t.number))
@@ -50,7 +50,7 @@ func (t *TupleDecimal) EncodeMsgpack(e *msgpack.Encoder) error {
 func (t *TupleDecimal) DecodeMsgpack(d *msgpack.Decoder) error {
 	var err error
 	var l int
-	if l, err = d.DecodeSliceLen(); err != nil {
+	if l, err = d.DecodeArrayLen(); err != nil {
 		return err
 	}
 	if l != 1 {
