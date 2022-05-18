@@ -26,6 +26,7 @@ faster than other packages according to public benchmarks.
 * [Documentation](#documentation)
   * [API reference](#api-reference)
   * [Walking\-through example](#walking-through-example)
+  * [msgpack.v5 migration](#msgpackv5-migration)
 * [Contributing](#contributing)
 * [Alternative connectors](#alternative-connectors)
 
@@ -68,7 +69,15 @@ This allows us to introduce new features without losing backward compatibility.
    go_tarantool_call_17
    ```
    **Note:** In future releases, `Call17` may be used as default `Call` behavior.
-3. To run fuzz tests with decimals, you can use the build tag:
+3. To replace usage of `msgpack.v2` with `msgpack.v5`, you can use the build
+   tag:
+   ```
+   go_tarantool_msgpack_v5
+   ```
+   **Note:** In future releases, `msgpack.v5` may be used by default. We recommend
+   to read [msgpack.v5 migration notes](#msgpackv5-migration) and try to
+   use msgpack.v5 before the changes.
+4. To run fuzz tests with decimals, you can use the build tag:
    ```
    go_tarantool_decimal_fuzzing
    ```
@@ -143,6 +152,31 @@ There are two parameters:
 
 * a space number (it could just as easily have been a space name), and
 * a tuple.
+
+### msgpack.v5 migration
+
+Most function names and argument types in `msgpack.v5` and `msgpack.v2`
+have not changed (in our code, we noticed changes in `EncodeInt`, `EncodeUint`
+and `RegisterExt`). But there are a lot of changes in a logic of encoding and
+decoding. On the plus side the migration seems easy, but on the minus side you
+need to be very careful.
+
+First of all, `EncodeInt8`, `EncodeInt16`, `EncodeInt32`, `EncodeInt64`
+and `EncodeUint*` analogues at `msgpack.v5` encode numbers as is without loss of
+type. In `msgpack.v2` the type of a number is reduced to a value.
+
+Secondly, a base decoding function does not convert numbers to `int64` or
+`uint64`. It converts numbers to an exact type defined by MessagePack. The
+change makes manual type conversions much more difficult and can lead to
+runtime errors with an old code. We do not recommend to use type conversions
+and give preference to `*Typed` functions (besides, it's faster).
+
+There are also changes in the logic that can lead to errors in the old code,
+[as example](https://github.com/vmihailenco/msgpack/issues/327). Although in
+`msgpack.v5` some functions for the logic tuning were added (see
+[UseLooseInterfaceDecoding](https://pkg.go.dev/github.com/vmihailenco/msgpack/v5#Decoder.UseLooseInterfaceDecoding), [UseCompactInts](https://pkg.go.dev/github.com/vmihailenco/msgpack/v5#Encoder.UseCompactInts) etc), it is still impossible
+to achieve full compliance of behavior between `msgpack.v5` and `msgpack.v2`. So
+we don't go this way. We use standart settings if it possible.
 
 ## Contributing
 

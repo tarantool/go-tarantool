@@ -16,7 +16,7 @@ box.once("init", function()
         id = 517,
         if_not_exists = true,
     })
-    s:create_index('primary', {type = 'tree', parts = {1, 'uint'}, if_not_exists = true})
+    s:create_index('primary', {type = 'tree', parts = {1, 'string'}, if_not_exists = true})
 
     box.schema.user.create('test', { password = 'test' })
     box.schema.user.grant('test', 'read,write,execute', 'universe')
@@ -37,11 +37,11 @@ box.once("init", function()
     box.schema.user.grant('test', 'create', 'sequence')
 end)
 
-local function simple_incr(a)
-    return a + 1
+local function simple_concat(a)
+    return a .. a
 end
 
-rawset(_G, 'simple_incr', simple_incr)
+rawset(_G, 'simple_concat', simple_concat)
 
 -- Set listen only when every other thing is configured.
 box.cfg{

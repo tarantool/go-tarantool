@@ -23,11 +23,11 @@ func TestCall(t *testing.T) {
 	defer multiConn.Close()
 
 	// Call17
-	resp, err = multiConn.Call("simple_incr", []interface{}{1})
+	resp, err = multiConn.Call("simple_concat", []interface{}{"t"})
 	if err != nil {
 		t.Fatalf("Failed to use Call: %s", err.Error())
 	}
-	if resp.Data[0].(uint64) != 2 {
+	if resp.Data[0].(string) != "tt" {
 		t.Fatalf("result is not {{1}} : %v", resp.Data)
 	}
 }

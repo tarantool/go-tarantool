@@ -1,19 +1,21 @@
-//go:build !go_tarantool_msgpack_v5
-// +build !go_tarantool_msgpack_v5
+//go:build go_tarantool_msgpack_v5
+// +build go_tarantool_msgpack_v5
 
 package decimal_test
 
 import (
 	. "github.com/tarantool/go-tarantool/decimal"
-
-	"gopkg.in/vmihailenco/msgpack.v2"
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 type encoder = msgpack.Encoder
 type decoder = msgpack.Decoder
 
 func toDecimal(i interface{}) (dec Decimal, ok bool) {
-	dec, ok = i.(Decimal)
+	var ptr *Decimal
+	if ptr, ok = i.(*Decimal); ok {
+		dec = *ptr
+	}
 	return
 }
 

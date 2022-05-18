@@ -18,11 +18,11 @@ func TestConnection_Call(t *testing.T) {
 	defer conn.Close()
 
 	// Call17
-	resp, err = conn.Call17("simple_incr", []interface{}{1})
+	resp, err = conn.Call17("simple_concat", []interface{}{"1"})
 	if err != nil {
 		t.Errorf("Failed to use Call")
 	}
-	if resp.Data[0].(uint64) != 2 {
+	if val, ok := resp.Data[0].(string); !ok || val != "11" {
 		t.Errorf("result is not {{1}} : %v", resp.Data)
 	}
 }
@@ -34,18 +34,18 @@ func TestCallRequest(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
-	req := NewCallRequest("simple_incr").Args([]interface{}{1})
+	req := NewCallRequest("simple_concat").Args([]interface{}{"1"})
 	resp, err = conn.Do(req).Get()
 	if err != nil {
 		t.Errorf("Failed to use Call")
 	}
-	if resp.Data[0].(uint64) != 2 {
+	if val, ok := resp.Data[0].(string); !ok || val != "11" {
 		t.Errorf("result is not {{1}} : %v", resp.Data)
 	}
 }
 
 func TestCallRequestCode(t *testing.T) {
-	req := NewCallRequest("simple_incrt")
+	req := NewCallRequest("simple_concat")
 	code := req.Code()
 	expected := Call17RequestCode
 	if code != int32(expected) {

@@ -229,11 +229,11 @@ func TestCall17(t *testing.T) {
 	defer multiConn.Close()
 
 	// Call17
-	resp, err = multiConn.Call17("simple_incr", []interface{}{1})
+	resp, err = multiConn.Call17("simple_concat", []interface{}{"s"})
 	if err != nil {
 		t.Fatalf("Failed to use Call: %s", err.Error())
 	}
-	if resp.Data[0].(uint64) != 2 {
+	if resp.Data[0].(string) != "ss" {
 		t.Fatalf("result is not {{1}} : %v", resp.Data)
 	}
 }
@@ -351,7 +351,7 @@ func TestStream_Commit(t *testing.T) {
 
 	// Insert in stream
 	req = tarantool.NewInsertRequest(spaceName).
-		Tuple([]interface{}{uint(1001), "hello2", "world2"})
+		Tuple([]interface{}{"1001", "hello2", "world2"})
 	resp, err = stream.Do(req).Get()
 	if err != nil {
 		t.Fatalf("Failed to Insert: %s", err.Error())
@@ -359,7 +359,7 @@ func TestStream_Commit(t *testing.T) {
 	if resp.Code != tarantool.OkCode {
 		t.Errorf("Failed to Insert: wrong code returned %d", resp.Code)
 	}
-	defer test_helpers.DeleteRecordByKey(t, multiConn, spaceNo, indexNo, []interface{}{uint(1001)})
+	defer test_helpers.DeleteRecordByKey(t, multiConn, spaceNo, indexNo, []interface{}{"1001"})
 
 	// Select not related to the transaction
 	// while transaction is not committed
@@ -368,7 +368,7 @@ func TestStream_Commit(t *testing.T) {
 		Index(indexNo).
 		Limit(1).
 		Iterator(tarantool.IterEq).
-		Key([]interface{}{uint(1001)})
+		Key([]interface{}{"1001"})
 	resp, err = multiConn.Do(selectReq).Get()
 	if err != nil {
 		t.Fatalf("Failed to Select: %s", err.Error())
@@ -394,7 +394,7 @@ func TestStream_Commit(t *testing.T) {
 	if tpl, ok := resp.Data[0].([]interface{}); !ok {
 		t.Fatalf("Unexpected body of Select")
 	} else {
-		if id, ok := tpl[0].(uint64); !ok || id != 1001 {
+		if id, ok := tpl[0].(string); !ok || id != "1001" {
 			t.Fatalf("Unexpected body of Select (0)")
 		}
 		if h, ok := tpl[1].(string); !ok || h != "hello2" {
@@ -429,7 +429,7 @@ func TestStream_Commit(t *testing.T) {
 	if tpl, ok := resp.Data[0].([]interface{}); !ok {
 		t.Fatalf("Unexpected body of Select")
 	} else {
-		if id, ok := tpl[0].(uint64); !ok || id != 1001 {
+		if id, ok := tpl[0].(string); !ok || id != "1001" {
 			t.Fatalf("Unexpected body of Select (0)")
 		}
 		if h, ok := tpl[1].(string); !ok || h != "hello2" {
@@ -471,7 +471,7 @@ func TestStream_Rollback(t *testing.T) {
 
 	// Insert in stream
 	req = tarantool.NewInsertRequest(spaceName).
-		Tuple([]interface{}{uint(1001), "hello2", "world2"})
+		Tuple([]interface{}{"1001", "hello2", "world2"})
 	resp, err = stream.Do(req).Get()
 	if err != nil {
 		t.Fatalf("Failed to Insert: %s", err.Error())
@@ -479,7 +479,7 @@ func TestStream_Rollback(t *testing.T) {
 	if resp.Code != tarantool.OkCode {
 		t.Errorf("Failed to Insert: wrong code returned %d", resp.Code)
 	}
-	defer test_helpers.DeleteRecordByKey(t, multiConn, spaceNo, indexNo, []interface{}{uint(1001)})
+	defer test_helpers.DeleteRecordByKey(t, multiConn, spaceNo, indexNo, []interface{}{"1001"})
 
 	// Select not related to the transaction
 	// while transaction is not committed
@@ -488,7 +488,7 @@ func TestStream_Rollback(t *testing.T) {
 		Index(indexNo).
 		Limit(1).
 		Iterator(tarantool.IterEq).
-		Key([]interface{}{uint(1001)})
+		Key([]interface{}{"1001"})
 	resp, err = multiConn.Do(selectReq).Get()
 	if err != nil {
 		t.Fatalf("Failed to Select: %s", err.Error())
@@ -514,7 +514,7 @@ func TestStream_Rollback(t *testing.T) {
 	if tpl, ok := resp.Data[0].([]interface{}); !ok {
 		t.Fatalf("Unexpected body of Select")
 	} else {
-		if id, ok := tpl[0].(uint64); !ok || id != 1001 {
+		if id, ok := tpl[0].(string); !ok || id != "1001" {
 			t.Fatalf("Unexpected body of Select (0)")
 		}
 		if h, ok := tpl[1].(string); !ok || h != "hello2" {

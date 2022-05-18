@@ -56,6 +56,36 @@ func (m *Member) DecodeMsgpack(d *decoder) error {
 	return nil
 }
 
+// msgpack.v2 and msgpack.v5 return different uint types in responses. The
+// function helps to unify a result.
+func convertUint64(v interface{}) (result uint64, err error) {
+	switch v := v.(type) {
+	case uint:
+		result = uint64(v)
+	case uint8:
+		result = uint64(v)
+	case uint16:
+		result = uint64(v)
+	case uint32:
+		result = uint64(v)
+	case uint64:
+		result = uint64(v)
+	case int:
+		result = uint64(v)
+	case int8:
+		result = uint64(v)
+	case int16:
+		result = uint64(v)
+	case int32:
+		result = uint64(v)
+	case int64:
+		result = uint64(v)
+	default:
+		err = fmt.Errorf("Non-number value %T", v)
+	}
+	return
+}
+
 var server = "127.0.0.1:3013"
 var spaceNo = uint32(517)
 var spaceName = "test"
@@ -726,7 +756,7 @@ func TestClient(t *testing.T) {
 		if len(tpl) != 3 {
 			t.Errorf("Unexpected body of Insert (tuple len)")
 		}
-		if id, ok := tpl[0].(uint64); !ok || id != 1 {
+		if id, err := convertUint64(tpl[0]); err != nil || id != 1 {
 			t.Errorf("Unexpected body of Insert (0)")
 		}
 		if h, ok := tpl[1].(string); !ok || h != "hello" {
@@ -759,7 +789,7 @@ func TestClient(t *testing.T) {
 		if len(tpl) != 3 {
 			t.Errorf("Unexpected body of Delete (tuple len)")
 		}
-		if id, ok := tpl[0].(uint64); !ok || id != 1 {
+		if id, err := convertUint64(tpl[0]); err != nil || id != 1 {
 			t.Errorf("Unexpected body of Delete (0)")
 		}
 		if h, ok := tpl[1].(string); !ok || h != "hello" {
@@ -801,7 +831,7 @@ func TestClient(t *testing.T) {
 		if len(tpl) != 3 {
 			t.Errorf("Unexpected body of Replace (tuple len)")
 		}
-		if id, ok := tpl[0].(uint64); !ok || id != 2 {
+		if id, err := convertUint64(tpl[0]); err != nil || id != 2 {
 			t.Errorf("Unexpected body of Replace (0)")
 		}
 		if h, ok := tpl[1].(string); !ok || h != "hi" {
@@ -826,7 +856,7 @@ func TestClient(t *testing.T) {
 		if len(tpl) != 2 {
 			t.Errorf("Unexpected body of Update (tuple len)")
 		}
-		if id, ok := tpl[0].(uint64); !ok || id != 2 {
+		if id, err := convertUint64(tpl[0]); err != nil || id != 2 {
 			t.Errorf("Unexpected body of Update (0)")
 		}
 		if h, ok := tpl[1].(string); !ok || h != "bye" {
@@ -875,7 +905,7 @@ func TestClient(t *testing.T) {
 	if tpl, ok := resp.Data[0].([]interface{}); !ok {
 		t.Errorf("Unexpected body of Select")
 	} else {
-		if id, ok := tpl[0].(uint64); !ok || id != 10 {
+		if id, err := convertUint64(tpl[0]); err != nil || id != 10 {
 			t.Errorf("Unexpected body of Select (0)")
 		}
 		if h, ok := tpl[1].(string); !ok || h != "val 10" {
@@ -966,19 +996,19 @@ func TestClient(t *testing.T) {
 	}
 
 	// Call16 vs Call17
-	resp, err = conn.Call16("simple_incr", []interface{}{1})
+	resp, err = conn.Call16("simple_concat", []interface{}{"1"})
 	if err != nil {
 		t.Errorf("Failed to use Call16")
 	}
-	if resp.Data[0].([]interface{})[0].(uint64) != 2 {
+	if val, ok := resp.Data[0].([]interface{})[0].(string); !ok || val != "11" {
 		t.Errorf("result is not {{1}} : %v", resp.Data)
 	}
 
-	resp, err = conn.Call17("simple_incr", []interface{}{1})
+	resp, err = conn.Call17("simple_concat", []interface{}{"1"})
 	if err != nil {
 		t.Errorf("Failed to use Call")
 	}
-	if resp.Data[0].(uint64) != 2 {
+	if val, ok := resp.Data[0].(string); !ok || val != "11" {
 		t.Errorf("result is not {{1}} : %v", resp.Data)
 	}
 
@@ -993,8 +1023,7 @@ func TestClient(t *testing.T) {
 	if len(resp.Data) < 1 {
 		t.Errorf("Response.Data is empty after Eval")
 	}
-	val := resp.Data[0].(uint64)
-	if val != 11 {
+	if val, err := convertUint64(resp.Data[0]); err != nil || val != 11 {
 		t.Errorf("5 + 6 == 11, but got %v", val)
 	}
 }
@@ -1039,7 +1068,7 @@ func TestClientSessionPush(t *testing.T) {
 		t.Errorf("Response is nil after CallAsync")
 	} else if len(resp.Data) < 1 {
 		t.Errorf("Response.Data is empty after Call17Async")
-	} else if resp.Data[0].(uint64) != pushMax {
+	} else if val, err := convertUint64(resp.Data[0]); err != nil || val != pushMax {
 		t.Errorf("result is not {{1}} : %v", resp.Data)
 	}
 
@@ -1068,12 +1097,12 @@ func TestClientSessionPush(t *testing.T) {
 			}
 			if resp.Code == PushCode {
 				pushCnt += 1
-				if resp.Data[0].(uint64) != pushCnt {
+				if val, err := convertUint64(resp.Data[0]); err != nil || val != pushCnt {
 					t.Errorf("Unexpected push data = %v", resp.Data)
 				}
 			} else {
 				respCnt += 1
-				if resp.Data[0].(uint64) != pushMax {
+				if val, err := convertUint64(resp.Data[0]); err != nil || val != pushMax {
 					t.Errorf("result is not {{1}} : %v", resp.Data)
 				}
 			}
@@ -1094,13 +1123,13 @@ func TestClientSessionPush(t *testing.T) {
 }
 
 const (
-	createTableQuery         = "CREATE TABLE SQL_SPACE (id INTEGER PRIMARY KEY AUTOINCREMENT, name STRING COLLATE \"unicode\" DEFAULT NULL);"
+	createTableQuery         = "CREATE TABLE SQL_SPACE (id STRING PRIMARY KEY, name STRING COLLATE \"unicode\" DEFAULT NULL);"
 	insertQuery              = "INSERT INTO SQL_SPACE VALUES (?, ?);"
 	selectNamedQuery         = "SELECT id, name FROM SQL_SPACE WHERE id=:id AND name=:name;"
 	selectPosQuery           = "SELECT id, name FROM SQL_SPACE WHERE id=? AND name=?;"
 	updateQuery              = "UPDATE SQL_SPACE SET name=? WHERE id=?;"
 	enableFullMetaDataQuery  = "SET SESSION \"sql_full_metadata\" = true;"
-	selectSpanDifQuery       = "SELECT id*2, name, id FROM SQL_SPACE WHERE name=?;"
+	selectSpanDifQuery       = "SELECT id||id, name, id FROM SQL_SPACE WHERE name=?;"
 	alterTableQuery          = "ALTER TABLE SQL_SPACE RENAME TO SQL_SPACE2;"
 	insertIncrQuery          = "INSERT INTO SQL_SPACE2 VALUES (?, ?);"
 	deleteQuery              = "DELETE FROM SQL_SPACE2 WHERE name=?;"
@@ -1135,7 +1164,7 @@ func TestSQL(t *testing.T) {
 		},
 		{
 			insertQuery,
-			[]interface{}{1, "test"},
+			[]interface{}{"1", "test"},
 			Response{
 				SQLInfo:  SQLInfo{AffectedCount: 1},
 				Data:     []interface{}{},
@@ -1145,31 +1174,31 @@ func TestSQL(t *testing.T) {
 		{
 			selectNamedQuery,
 			map[string]interface{}{
-				"id":   1,
+				"id":   "1",
 				"name": "test",
 			},
 			Response{
 				SQLInfo: SQLInfo{AffectedCount: 0},
-				Data:    []interface{}{[]interface{}{uint64(1), "test"}},
+				Data:    []interface{}{[]interface{}{"1", "test"}},
 				MetaData: []ColumnMetaData{
-					{FieldType: "integer", FieldName: "ID"},
+					{FieldType: "string", FieldName: "ID"},
 					{FieldType: "string", FieldName: "NAME"}},
 			},
 		},
 		{
 			selectPosQuery,
-			[]interface{}{1, "test"},
+			[]interface{}{"1", "test"},
 			Response{
 				SQLInfo: SQLInfo{AffectedCount: 0},
-				Data:    []interface{}{[]interface{}{uint64(1), "test"}},
+				Data:    []interface{}{[]interface{}{"1", "test"}},
 				MetaData: []ColumnMetaData{
-					{FieldType: "integer", FieldName: "ID"},
+					{FieldType: "string", FieldName: "ID"},
 					{FieldType: "string", FieldName: "NAME"}},
 			},
 		},
 		{
 			updateQuery,
-			[]interface{}{"test_test", 1},
+			[]interface{}{"test_test", "1"},
 			Response{
 				SQLInfo:  SQLInfo{AffectedCount: 1},
 				Data:     []interface{}{},
@@ -1189,14 +1218,14 @@ func TestSQL(t *testing.T) {
 			selectSpanDifQuery,
 			[]interface{}{"test_test"},
 			Response{
-				SQLInfo: SQLInfo{AffectedCount: 0}, Data: []interface{}{[]interface{}{uint64(2), "test_test", uint64(1)}},
+				SQLInfo: SQLInfo{AffectedCount: 0}, Data: []interface{}{[]interface{}{"11", "test_test", "1"}},
 				MetaData: []ColumnMetaData{
 					{
-						FieldType:            "integer",
+						FieldType:            "string",
 						FieldName:            "COLUMN_1",
 						FieldIsNullable:      false,
 						FieldIsAutoincrement: false,
-						FieldSpan:            "id*2",
+						FieldSpan:            "id||id",
 					},
 					{
 						FieldType:            "string",
@@ -1207,11 +1236,12 @@ func TestSQL(t *testing.T) {
 						FieldCollation:       "unicode",
 					},
 					{
-						FieldType:            "integer",
+						FieldType:            "string",
 						FieldName:            "ID",
 						FieldIsNullable:      false,
-						FieldIsAutoincrement: true,
+						FieldIsAutoincrement: false,
 						FieldSpan:            "id",
+						FieldCollation:       "",
 					},
 				}},
 		},
@@ -1226,7 +1256,7 @@ func TestSQL(t *testing.T) {
 		},
 		{
 			insertIncrQuery,
-			[]interface{}{2, "test_2"},
+			[]interface{}{"2", "test_2"},
 			Response{
 				SQLInfo:  SQLInfo{AffectedCount: 1, InfoAutoincrementIds: []uint64{1}},
 				Data:     []interface{}{},
@@ -1944,7 +1974,7 @@ func TestClientRequestObjects(t *testing.T) {
 			if len(tpl) != 3 {
 				t.Errorf("Unexpected body of Insert (tuple len)")
 			}
-			if id, ok := tpl[0].(uint64); !ok || id != uint64(i) {
+			if id, err := convertUint64(tpl[0]); err != nil || id != uint64(i) {
 				t.Errorf("Unexpected body of Insert (0)")
 			}
 			if h, ok := tpl[1].(string); !ok || h != fmt.Sprintf("val %d", i) {
@@ -1979,7 +2009,7 @@ func TestClientRequestObjects(t *testing.T) {
 			if len(tpl) != 3 {
 				t.Errorf("Unexpected body of Replace (tuple len)")
 			}
-			if id, ok := tpl[0].(uint64); !ok || id != uint64(i) {
+			if id, err := convertUint64(tpl[0]); err != nil || id != uint64(i) {
 				t.Errorf("Unexpected body of Replace (0)")
 			}
 			if h, ok := tpl[1].(string); !ok || h != fmt.Sprintf("val %d", i) {
@@ -2013,7 +2043,7 @@ func TestClientRequestObjects(t *testing.T) {
 		if len(tpl) != 3 {
 			t.Errorf("Unexpected body of Delete (tuple len)")
 		}
-		if id, ok := tpl[0].(uint64); !ok || id != uint64(1016) {
+		if id, err := convertUint64(tpl[0]); err != nil || id != uint64(1016) {
 			t.Errorf("Unexpected body of Delete (0)")
 		}
 		if h, ok := tpl[1].(string); !ok || h != "val 1016" {
@@ -2044,7 +2074,7 @@ func TestClientRequestObjects(t *testing.T) {
 	if tpl, ok := resp.Data[0].([]interface{}); !ok {
 		t.Errorf("Unexpected body of Update")
 	} else {
-		if id, ok := tpl[0].(uint64); !ok || id != 1010 {
+		if id, err := convertUint64(tpl[0]); err != nil || id != uint64(1010) {
 			t.Errorf("Unexpected body of Update (0)")
 		}
 		if h, ok := tpl[1].(string); !ok || h != "val 1010" {
@@ -2076,13 +2106,13 @@ func TestClientRequestObjects(t *testing.T) {
 	if tpl, ok := resp.Data[0].([]interface{}); !ok {
 		t.Errorf("Unexpected body of Select")
 	} else {
-		if id, ok := tpl[0].(uint64); !ok || id != 1010 {
+		if id, err := convertUint64(tpl[0]); err != nil || id != 1010 {
 			t.Errorf("Unexpected body of Update (0)")
 		}
 		if h, ok := tpl[1].(string); !ok || h != "bye" {
 			t.Errorf("Unexpected body of Update (1)")
 		}
-		if h, ok := tpl[2].(uint64); !ok || h != 1 {
+		if h, err := convertUint64(tpl[2]); err != nil || h != 1 {
 			t.Errorf("Unexpected body of Update (2)")
 		}
 	}
@@ -2142,8 +2172,8 @@ func TestClientRequestObjects(t *testing.T) {
 	if tpl, ok := resp.Data[0].([]interface{}); !ok {
 		t.Errorf("Unexpected body of Select")
 	} else {
-		if id, ok := tpl[0].(uint64); !ok || id != 1010 {
-			t.Errorf("Unexpected body of Select (0) %d, expected %d", tpl[0].(uint64), 1010)
+		if id, err := convertUint64(tpl[0]); err != nil || id != 1010 {
+			t.Errorf("Unexpected body of Select (0) %v, expected %d", tpl[0], 1010)
 		}
 		if h, ok := tpl[1].(string); !ok || h != "bye" {
 			t.Errorf("Unexpected body of Select (1) %q, expected %q", tpl[1].(string), "bye")
@@ -2154,22 +2184,22 @@ func TestClientRequestObjects(t *testing.T) {
 	}
 
 	// Call16 vs Call17
-	req = NewCall16Request("simple_incr").Args([]interface{}{1})
+	req = NewCall16Request("simple_concat").Args([]interface{}{"1"})
 	resp, err = conn.Do(req).Get()
 	if err != nil {
 		t.Errorf("Failed to use Call")
 	}
-	if resp.Data[0].([]interface{})[0].(uint64) != 2 {
+	if val, ok := resp.Data[0].([]interface{})[0].(string); !ok || val != "11" {
 		t.Errorf("result is not {{1}} : %v", resp.Data)
 	}
 
 	// Call17
-	req = NewCall17Request("simple_incr").Args([]interface{}{1})
+	req = NewCall17Request("simple_concat").Args([]interface{}{"1"})
 	resp, err = conn.Do(req).Get()
 	if err != nil {
 		t.Errorf("Failed to use Call17")
 	}
-	if resp.Data[0].(uint64) != 2 {
+	if val, ok := resp.Data[0].(string); !ok || val != "11" {
 		t.Errorf("result is not {{1}} : %v", resp.Data)
 	}
 
@@ -2185,8 +2215,7 @@ func TestClientRequestObjects(t *testing.T) {
 	if len(resp.Data) < 1 {
 		t.Errorf("Response.Data is empty after Eval")
 	}
-	val := resp.Data[0].(uint64)
-	if val != 11 {
+	if val, err := convertUint64(resp.Data[0]); err != nil || val != 11 {
 		t.Errorf("5 + 6 == 11, but got %v", val)
 	}
 
@@ -2386,7 +2415,7 @@ func TestStream_Commit(t *testing.T) {
 	if tpl, ok := resp.Data[0].([]interface{}); !ok {
 		t.Fatalf("Unexpected body of Select")
 	} else {
-		if id, ok := tpl[0].(uint64); !ok || id != 1001 {
+		if id, err := convertUint64(tpl[0]); err != nil || id != 1001 {
 			t.Fatalf("Unexpected body of Select (0)")
 		}
 		if h, ok := tpl[1].(string); !ok || h != "hello2" {
@@ -2421,7 +2450,7 @@ func TestStream_Commit(t *testing.T) {
 	if tpl, ok := resp.Data[0].([]interface{}); !ok {
 		t.Fatalf("Unexpected body of Select")
 	} else {
-		if id, ok := tpl[0].(uint64); !ok || id != 1001 {
+		if id, err := convertUint64(tpl[0]); err != nil || id != 1001 {
 			t.Fatalf("Unexpected body of Select (0)")
 		}
 		if h, ok := tpl[1].(string); !ok || h != "hello2" {
@@ -2501,7 +2530,7 @@ func TestStream_Rollback(t *testing.T) {
 	if tpl, ok := resp.Data[0].([]interface{}); !ok {
 		t.Fatalf("Unexpected body of Select")
 	} else {
-		if id, ok := tpl[0].(uint64); !ok || id != 1001 {
+		if id, err := convertUint64(tpl[0]); err != nil || id != 1001 {
 			t.Fatalf("Unexpected body of Select (0)")
 		}
 		if h, ok := tpl[1].(string); !ok || h != "hello2" {
@@ -2606,8 +2635,8 @@ func TestStream_TxnIsolationLevel(t *testing.T) {
 		require.Truef(t, ok, "unexpected body of Select")
 		require.Equalf(t, 3, len(tpl), "unexpected body of Select")
 
-		key, ok := tpl[0].(uint64)
-		require.Truef(t, ok, "unexpected body of Select (0)")
+		key, err := convertUint64(tpl[0])
+		require.Nilf(t, err, "unexpected body of Select (0)")
 		require.Equalf(t, uint64(1001), key, "unexpected body of Select (0)")
 
 		value1, ok := tpl[1].(string)

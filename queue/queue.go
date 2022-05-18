@@ -283,14 +283,27 @@ func (q *queue) produce(cmd string, params ...interface{}) (string, error) {
 	return qd.task.status, nil
 }
 
+type kickResult struct {
+	id uint64
+}
+
+func (r *kickResult) DecodeMsgpack(d *decoder) (err error) {
+	var l int
+	if l, err = d.DecodeArrayLen(); err != nil {
+		return err
+	}
+	if l > 1 {
+		return fmt.Errorf("array len doesn't match for queue kick data: %d", l)
+	}
+	r.id, err = d.DecodeUint64()
+	return
+}
+
 // Reverse the effect of a bury request on one or more tasks.
 func (q *queue) Kick(count uint64) (uint64, error) {
-	resp, err := q.conn.Call17(q.cmds.kick, []interface{}{count})
-	var id uint64
-	if err == nil {
-		id = resp.Data[0].(uint64)
-	}
-	return id, err
+	var r kickResult
+	err := q.conn.Call17Typed(q.cmds.kick, []interface{}{count}, &r)
+	return r.id, err
 }
 
 // Delete the task identified by its id.
