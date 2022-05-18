@@ -332,7 +332,7 @@ func (c *Tuple2) EncodeMsgpack(e *encoder) error {
 	if err := e.EncodeArrayLen(3); err != nil {
 		return err
 	}
-	if err := e.EncodeUint(c.Cid); err != nil {
+	if err := encodeUint(e, uint64(c.Cid)); err != nil {
 		return err
 	}
 	if err := e.EncodeString(c.Orig); err != nil {

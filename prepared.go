@@ -20,21 +20,21 @@ type Prepared struct {
 
 func fillPrepare(enc *encoder, expr string) error {
 	enc.EncodeMapLen(1)
-	enc.EncodeUint(KeySQLText)
+	encodeUint(enc, KeySQLText)
 	return enc.EncodeString(expr)
 }
 
 func fillUnprepare(enc *encoder, stmt Prepared) error {
 	enc.EncodeMapLen(1)
-	enc.EncodeUint(KeyStmtID)
-	return enc.EncodeUint(uint(stmt.StatementID))
+	encodeUint(enc, KeyStmtID)
+	return encodeUint(enc, uint64(stmt.StatementID))
 }
 
 func fillExecutePrepared(enc *encoder, stmt Prepared, args interface{}) error {
 	enc.EncodeMapLen(2)
-	enc.EncodeUint(KeyStmtID)
-	enc.EncodeUint(uint(stmt.StatementID))
-	enc.EncodeUint(KeySQLBind)
+	encodeUint(enc, KeyStmtID)
+	encodeUint(enc, uint64(stmt.StatementID))
+	encodeUint(enc, KeySQLBind)
 	return encodeSQLBind(enc, args)
 }
 

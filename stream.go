@@ -44,7 +44,7 @@ func fillBegin(enc *encoder, txnIsolation TxnIsolationLevel, timeout time.Durati
 	}
 
 	if hasTimeout {
-		err = enc.EncodeUint(KeyTimeout)
+		err = encodeUint(enc, KeyTimeout)
 		if err != nil {
 			return err
 		}
@@ -56,12 +56,12 @@ func fillBegin(enc *encoder, txnIsolation TxnIsolationLevel, timeout time.Durati
 	}
 
 	if hasIsolationLevel {
-		err = enc.EncodeUint(KeyTxnIsolation)
+		err = encodeUint(enc, KeyTxnIsolation)
 		if err != nil {
 			return err
 		}
 
-		err = enc.Encode(txnIsolation)
+		err = encodeUint(enc, uint64(txnIsolation))
 		if err != nil {
 			return err
 		}

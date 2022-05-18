@@ -32,7 +32,7 @@ func (m *Member) EncodeMsgpack(e *encoder) error {
 	if err := e.EncodeString(m.Name); err != nil {
 		return err
 	}
-	if err := e.EncodeUint(m.Val); err != nil {
+	if err := encodeUint(e, uint64(m.Val)); err != nil {
 		return err
 	}
 	return nil

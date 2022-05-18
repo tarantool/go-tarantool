@@ -8,7 +8,7 @@ type IntKey struct {
 
 func (k IntKey) EncodeMsgpack(enc *encoder) error {
 	enc.EncodeArrayLen(1)
-	enc.EncodeInt(k.I)
+	encodeInt(enc, int64(k.I))
 	return nil
 }
 
@@ -20,7 +20,7 @@ type UintKey struct {
 
 func (k UintKey) EncodeMsgpack(enc *encoder) error {
 	enc.EncodeArrayLen(1)
-	enc.EncodeUint(k.I)
+	encodeUint(enc, uint64(k.I))
 	return nil
 }
 
@@ -44,8 +44,8 @@ type IntIntKey struct {
 
 func (k IntIntKey) EncodeMsgpack(enc *encoder) error {
 	enc.EncodeArrayLen(2)
-	enc.EncodeInt(k.I1)
-	enc.EncodeInt(k.I2)
+	encodeInt(enc, int64(k.I1))
+	encodeInt(enc, int64(k.I2))
 	return nil
 }
 
@@ -59,7 +59,7 @@ type Op struct {
 func (o Op) EncodeMsgpack(enc *encoder) error {
 	enc.EncodeArrayLen(3)
 	enc.EncodeString(o.Op)
-	enc.EncodeInt(o.Field)
+	encodeInt(enc, int64(o.Field))
 	return enc.Encode(o.Arg)
 }
 
@@ -147,9 +147,9 @@ type OpSplice struct {
 func (o OpSplice) EncodeMsgpack(enc *encoder) error {
 	enc.EncodeArrayLen(5)
 	enc.EncodeString(o.Op)
-	enc.EncodeInt(o.Field)
-	enc.EncodeInt(o.Pos)
-	enc.EncodeInt(o.Len)
+	encodeInt(enc, int64(o.Field))
+	encodeInt(enc, int64(o.Pos))
+	encodeInt(enc, int64(o.Len))
 	enc.EncodeString(o.Replace)
 	return nil
 }
