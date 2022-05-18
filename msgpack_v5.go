@@ -1,13 +1,13 @@
-//go:build !go_tarantool_msgpack_v5
-// +build !go_tarantool_msgpack_v5
+//go:build go_tarantool_msgpack_v5
+// +build go_tarantool_msgpack_v5
 
 package tarantool
 
 import (
 	"io"
 
-	"gopkg.in/vmihailenco/msgpack.v2"
-	msgpcode "gopkg.in/vmihailenco/msgpack.v2/codes"
+	"github.com/vmihailenco/msgpack/v5"
+	"github.com/vmihailenco/msgpack/v5/msgpcode"
 )
 
 type encoder = msgpack.Encoder
@@ -18,15 +18,19 @@ func newEncoder(w io.Writer) *encoder {
 }
 
 func newDecoder(r io.Reader) *decoder {
-	return msgpack.NewDecoder(r)
+	dec := msgpack.NewDecoder(r)
+	dec.SetMapDecoder(func(dec *msgpack.Decoder) (interface{}, error) {
+		return dec.DecodeUntypedMap()
+	})
+	return dec
 }
 
 func encodeUint(e *encoder, v uint64) error {
-	return e.EncodeUint(uint(v))
+	return e.EncodeUint(v)
 }
 
 func encodeInt(e *encoder, v int64) error {
-	return e.EncodeInt(int(v))
+	return e.EncodeInt(v)
 }
 
 func msgpackIsUint(code byte) bool {

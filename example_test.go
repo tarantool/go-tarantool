@@ -471,10 +471,10 @@ func ExampleFuture_GetIterator() {
 		resp := it.Value()
 		if resp.Code == tarantool.PushCode {
 			// It is a push message.
-			fmt.Printf("push message: %d\n", resp.Data[0].(uint64))
+			fmt.Printf("push message: %v\n", resp.Data[0])
 		} else if resp.Code == tarantool.OkCode {
 			// It is a regular response.
-			fmt.Printf("response: %d", resp.Data[0].(uint64))
+			fmt.Printf("response: %v", resp.Data[0])
 		} else {
 			fmt.Printf("an unexpected response code %d", resp.Code)
 		}
@@ -645,17 +645,17 @@ func ExampleConnection_Call() {
 	conn := example_connect()
 	defer conn.Close()
 
-	// Call a function 'simple_incr' with arguments.
-	resp, err := conn.Call17("simple_incr", []interface{}{1})
-	fmt.Println("Call simple_incr()")
+	// Call a function 'simple_concat' with arguments.
+	resp, err := conn.Call17("simple_concat", []interface{}{"1"})
+	fmt.Println("Call simple_concat()")
 	fmt.Println("Error", err)
 	fmt.Println("Code", resp.Code)
 	fmt.Println("Data", resp.Data)
 	// Output:
-	// Call simple_incr()
+	// Call simple_concat()
 	// Error <nil>
 	// Code 0
-	// Data [2]
+	// Data [11]
 }
 
 func ExampleConnection_Eval() {

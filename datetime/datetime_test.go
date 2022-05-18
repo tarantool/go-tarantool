@@ -64,10 +64,10 @@ func assertDatetimeIsEqual(t *testing.T, tuples []interface{}, tm time.Time) {
 		if len(tpl) != 2 {
 			t.Fatalf("Unexpected return value body (tuple len = %d)", len(tpl))
 		}
-		if val, ok := tpl[dtIndex].(Datetime); !ok || !val.ToTime().Equal(tm) {
+		if val, ok := toDatetime(tpl[dtIndex]); !ok || !val.ToTime().Equal(tm) {
 			t.Fatalf("Unexpected tuple %d field %v, expected %v",
 				dtIndex,
-				val.ToTime(),
+				val,
 				tm)
 		}
 	}
@@ -324,7 +324,10 @@ func (ev *Event) DecodeMsgpack(d *decoder) error {
 	if err != nil {
 		return err
 	}
-	ev.Datetime = res.(Datetime)
+	var ok bool
+	if ev.Datetime, ok = toDatetime(res); !ok {
+		return fmt.Errorf("datetime doesn't match")
+	}
 	return nil
 }
 
@@ -332,7 +335,7 @@ func (c *Tuple2) EncodeMsgpack(e *encoder) error {
 	if err := e.EncodeArrayLen(3); err != nil {
 		return err
 	}
-	if err := encodeUint(e, uint64(c.Cid)); err != nil {
+	if err := e.EncodeUint64(uint64(c.Cid)); err != nil {
 		return err
 	}
 	if err := e.EncodeString(c.Orig); err != nil {
@@ -428,8 +431,8 @@ func TestCustomEncodeDecodeTuple1(t *testing.T) {
 	}
 
 	for i, tv := range []time.Time{tm1, tm2} {
-		dt := events[i].([]interface{})[1].(Datetime)
-		if !dt.ToTime().Equal(tv) {
+		dt, ok := toDatetime(events[i].([]interface{})[1])
+		if !ok || !dt.ToTime().Equal(tv) {
 			t.Fatalf("%v != %v", dt.ToTime(), tv)
 		}
 	}
@@ -501,7 +504,7 @@ func TestCustomEncodeDecodeTuple5(t *testing.T) {
 	if tpl, ok := resp.Data[0].([]interface{}); !ok {
 		t.Errorf("Unexpected body of Select")
 	} else {
-		if val, ok := tpl[0].(Datetime); !ok || !val.ToTime().Equal(tm) {
+		if val, ok := toDatetime(tpl[0]); !ok || !val.ToTime().Equal(tm) {
 			t.Fatalf("Unexpected body of Select")
 		}
 	}

@@ -1,19 +1,21 @@
-//go:build !go_tarantool_msgpack_v5
-// +build !go_tarantool_msgpack_v5
+//go:build go_tarantool_msgpack_v5
+// +build go_tarantool_msgpack_v5
 
 package datetime_test
 
 import (
 	. "github.com/tarantool/go-tarantool/datetime"
-
-	"gopkg.in/vmihailenco/msgpack.v2"
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 type encoder = msgpack.Encoder
 type decoder = msgpack.Decoder
 
 func toDatetime(i interface{}) (dt Datetime, ok bool) {
-	dt, ok = i.(Datetime)
+	var ptr *Datetime
+	if ptr, ok = i.(*Datetime); ok {
+		dt = *ptr
+	}
 	return
 }
 

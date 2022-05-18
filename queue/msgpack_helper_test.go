@@ -1,3 +1,6 @@
+//go:build !go_tarantool_msgpack_v5
+// +build !go_tarantool_msgpack_v5
+
 package queue_test
 
 import (

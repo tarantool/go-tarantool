@@ -60,8 +60,10 @@ func (t *TupleDecimal) DecodeMsgpack(d *decoder) error {
 	if err != nil {
 		return err
 	}
-	t.number = res.(Decimal)
-
+	var ok bool
+	if t.number, ok = toDecimal(res); !ok {
+		return fmt.Errorf("decimal doesn't match")
+	}
 	return nil
 }
 
@@ -347,7 +349,7 @@ func tupleValueIsDecimal(t *testing.T, tuples []interface{}, number decimal.Deci
 		if len(tpl) != 1 {
 			t.Fatalf("Unexpected return value body (tuple len)")
 		}
-		if val, ok := tpl[0].(Decimal); !ok || !val.Equal(number) {
+		if val, ok := toDecimal(tpl[0]); !ok || !val.Equal(number) {
 			t.Fatalf("Unexpected return value body (tuple 0 field)")
 		}
 	}
@@ -445,7 +447,10 @@ func TestMPDecode(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Unmarshalling failed: %s", err.Error())
 			}
-			decActual := v.(Decimal)
+			decActual, ok := toDecimal(v)
+			if !ok {
+				t.Fatalf("Unable to convert to Decimal")
+			}
 
 			decExpected, err := decimal.NewFromString(testcase.numString)
 			if err != nil {

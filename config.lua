@@ -80,7 +80,7 @@ box.once("init", function()
 
     --box.schema.user.grant('guest', 'read,write,execute', 'universe')
     box.schema.func.create('box.info')
-    box.schema.func.create('simple_incr')
+    box.schema.func.create('simple_concat')
 
     -- auth testing: access control
     box.schema.user.create('test', {password = 'test'})
@@ -106,10 +106,10 @@ local function func_name()
 end
 rawset(_G, 'func_name', func_name)
 
-local function simple_incr(a)
-    return a + 1
+local function simple_concat(a)
+    return a .. a
 end
-rawset(_G, 'simple_incr', simple_incr)
+rawset(_G, 'simple_concat', simple_concat)
 
 local function push_func(cnt)
     for i = 1, cnt do

@@ -14,4 +14,5 @@ require (
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 	gopkg.in/vmihailenco/msgpack.v2 v2.9.2
 	gotest.tools/v3 v3.2.0 // indirect
+	github.com/vmihailenco/msgpack/v5 v5.3.5
 )
