@@ -18,6 +18,14 @@ func newDecoder(r io.Reader) *decoder {
 	return msgpack.NewDecoder(r)
 }
 
+func encodeUint(e *encoder, v uint64) error {
+	return e.EncodeUint(uint(v))
+}
+
+func encodeInt(e *encoder, v int64) error {
+	return e.EncodeInt(int(v))
+}
+
 func msgpackIsUint(code byte) bool {
 	return code == msgpcode.Uint8 || code == msgpcode.Uint16 ||
 		code == msgpcode.Uint32 || code == msgpcode.Uint64 ||
