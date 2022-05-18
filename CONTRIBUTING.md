@@ -39,7 +39,7 @@ make test-multi test-uuid test-main
 ```
 
 To check if the current changes will pass the linter in CI, install
-golnagci-lint from [sources](https://golangci-lint.run/usage/install/) 
+golnagci-lint from [sources](https://golangci-lint.run/usage/install/)
 and run it with next flags:
 ```bash
 golangci-lint run -E gofmt -D errcheck
@@ -49,7 +49,7 @@ golangci-lint run -E gofmt -D errcheck
 
 ### Quick start
 
-To run all benchmark tests from the current branch run: 
+To run all benchmark tests from the current branch run:
 
 ```bash
 make bench
@@ -93,7 +93,7 @@ testing [flag](https://pkg.go.dev/cmd/go#hdr-Testing_flags) `-benchtime` for got
 It may take the values in seconds (e.g, `5s`) or count of iterations (e.g, `1000x`).
 It is set to `3s` by default.
 
-Use the variable `COUNT` to control the count of benchmark runs for each test. 
+Use the variable `COUNT` to control the count of benchmark runs for each test.
 It is set to `5` by default. That variable is mapped on testing flag `-count`.
 Use higher values if the benchmark numbers aren't stable.
 
@@ -119,17 +119,17 @@ There are suggestions how to achieve best results:
   * If you're using `intel_pstate` frequency driver (it is usually default):
 
     Disable TurboBoost:
-          
+
     ```shell
     $ echo 0 > /sys/devices/system/cpu/intel_pstate/no_turbo
     ```
-          
+
     Set fixed frequency: not sure it is possible.
 
     * If you're using `acpi-cpufreq` driver:
-                 
+
     Ensure you actually don't use intel_pstate:
-                     
+
     ```shell
     $ grep -o 'intel_pstate=\w\+' /proc/cmdline
      intel_pstate=disable
@@ -137,20 +137,19 @@ There are suggestions how to achieve best results:
        driver: acpi-cpufreq
        <...>
      ```
-                 
+
      Disable TurboBoost:
-      
+
      ```shell
      $ echo 0 > /sys/devices/system/cpu/cpufreq/boost
      ```
-                 
+
      Set fixed frequency:
-                 
+
      ```shell
      $ cpupower -c all frequency-set -g userspace
      $ cpupower -c all frequency-set -f 1.80GHz # adjust for your CPU
      ```
-
 
 ## Code review checklist
 
