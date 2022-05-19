@@ -29,6 +29,11 @@ make test
 The tests set up all required `tarantool` processes before run and clean up
 afterwards.
 
+If you want to run the tests with specific build tags:
+```bash
+make test TAGS=go_tarantool_ssl_disable,go_tarantool_msgpack_v5
+```
+
 If you have Tarantool Enterprise Edition 2.10 or newer, you can run additional
 SSL tests. To do this, you need to set an environment variable 'TEST_TNT_SSL':
 
