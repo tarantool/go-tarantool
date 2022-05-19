@@ -63,6 +63,7 @@ coverage:
 	go clean -testcache
 	go get golang.org/x/tools/cmd/cover
 	go test ./... -v -p 1 -covermode=atomic -coverprofile=$(COVERAGE_FILE) -coverpkg=./...
+	go tool cover -func=$(COVERAGE_FILE)
 
 .PHONY: coveralls
 coveralls: coverage
