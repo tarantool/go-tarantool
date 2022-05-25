@@ -5,21 +5,9 @@ import (
 	"reflect"
 	"strings"
 	"sync"
-	"time"
 
 	"gopkg.in/vmihailenco/msgpack.v2"
 )
-
-// Future is a handle for asynchronous request.
-type Future struct {
-	requestId   uint32
-	requestCode int32
-	timeout     time.Duration
-	resp        *Response
-	err         error
-	ready       chan struct{}
-	next        *Future
-}
 
 // Ping sends empty request to Tarantool to check connection.
 func (conn *Connection) Ping() (resp *Response, err error) {
@@ -27,7 +15,7 @@ func (conn *Connection) Ping() (resp *Response, err error) {
 	return future.send(conn, func(enc *msgpack.Encoder) error { enc.EncodeMapLen(0); return nil }).Get()
 }
 
-func (req *Future) fillSearch(enc *msgpack.Encoder, spaceNo, indexNo uint32, key interface{}) error {
+func fillSearch(enc *msgpack.Encoder, spaceNo, indexNo uint32, key interface{}) error {
 	enc.EncodeUint64(KeySpaceNo)
 	enc.EncodeUint64(uint64(spaceNo))
 	enc.EncodeUint64(KeyIndexNo)
@@ -36,7 +24,7 @@ func (req *Future) fillSearch(enc *msgpack.Encoder, spaceNo, indexNo uint32, key
 	return enc.Encode(key)
 }
 
-func (req *Future) fillIterator(enc *msgpack.Encoder, offset, limit, iterator uint32) {
+func fillIterator(enc *msgpack.Encoder, offset, limit, iterator uint32) {
 	enc.EncodeUint64(KeyIterator)
 	enc.EncodeUint64(uint64(iterator))
 	enc.EncodeUint64(KeyOffset)
@@ -45,7 +33,7 @@ func (req *Future) fillIterator(enc *msgpack.Encoder, offset, limit, iterator ui
 	enc.EncodeUint64(uint64(limit))
 }
 
-func (req *Future) fillInsert(enc *msgpack.Encoder, spaceNo uint32, tuple interface{}) error {
+func fillInsert(enc *msgpack.Encoder, spaceNo uint32, tuple interface{}) error {
 	enc.EncodeUint64(KeySpaceNo)
 	enc.EncodeUint64(uint64(spaceNo))
 	enc.EncodeUint64(KeyTuple)
@@ -242,8 +230,8 @@ func (conn *Connection) SelectAsync(space, index interface{}, offset, limit, ite
 	}
 	return future.send(conn, func(enc *msgpack.Encoder) error {
 		enc.EncodeMapLen(6)
-		future.fillIterator(enc, offset, limit, iterator)
-		return future.fillSearch(enc, spaceNo, indexNo, key)
+		fillIterator(enc, offset, limit, iterator)
+		return fillSearch(enc, spaceNo, indexNo, key)
 	})
 }
 
@@ -257,7 +245,7 @@ func (conn *Connection) InsertAsync(space interface{}, tuple interface{}) *Futur
 	}
 	return future.send(conn, func(enc *msgpack.Encoder) error {
 		enc.EncodeMapLen(2)
-		return future.fillInsert(enc, spaceNo, tuple)
+		return fillInsert(enc, spaceNo, tuple)
 	})
 }
 
@@ -271,7 +259,7 @@ func (conn *Connection) ReplaceAsync(space interface{}, tuple interface{}) *Futu
 	}
 	return future.send(conn, func(enc *msgpack.Encoder) error {
 		enc.EncodeMapLen(2)
-		return future.fillInsert(enc, spaceNo, tuple)
+		return fillInsert(enc, spaceNo, tuple)
 	})
 }
 
@@ -285,7 +273,7 @@ func (conn *Connection) DeleteAsync(space, index interface{}, key interface{}) *
 	}
 	return future.send(conn, func(enc *msgpack.Encoder) error {
 		enc.EncodeMapLen(3)
-		return future.fillSearch(enc, spaceNo, indexNo, key)
+		return fillSearch(enc, spaceNo, indexNo, key)
 	})
 }
 
@@ -299,7 +287,7 @@ func (conn *Connection) UpdateAsync(space, index interface{}, key, ops interface
 	}
 	return future.send(conn, func(enc *msgpack.Encoder) error {
 		enc.EncodeMapLen(4)
-		if err := future.fillSearch(enc, spaceNo, indexNo, key); err != nil {
+		if err := fillSearch(enc, spaceNo, indexNo, key); err != nil {
 			return err
 		}
 		enc.EncodeUint64(KeyTuple)
@@ -519,117 +507,4 @@ func encodeSQLBind(enc *msgpack.Encoder, from interface{}) error {
 		}
 	}
 	return nil
-}
-
-func (fut *Future) pack(h *smallWBuf, enc *msgpack.Encoder, body func(*msgpack.Encoder) error) (err error) {
-	rid := fut.requestId
-	hl := h.Len()
-	h.Write([]byte{
-		0xce, 0, 0, 0, 0, // length
-		0x82,                           // 2 element map
-		KeyCode, byte(fut.requestCode), // request code
-		KeySync, 0xce,
-		byte(rid >> 24), byte(rid >> 16),
-		byte(rid >> 8), byte(rid),
-	})
-
-	if err = body(enc); err != nil {
-		return
-	}
-
-	l := uint32(h.Len() - 5 - hl)
-	h.b[hl+1] = byte(l >> 24)
-	h.b[hl+2] = byte(l >> 16)
-	h.b[hl+3] = byte(l >> 8)
-	h.b[hl+4] = byte(l)
-
-	return
-}
-
-func (fut *Future) send(conn *Connection, body func(*msgpack.Encoder) error) *Future {
-	if fut.ready == nil {
-		return fut
-	}
-	conn.putFuture(fut, body)
-	return fut
-}
-
-func (fut *Future) markReady(conn *Connection) {
-	close(fut.ready)
-	if conn.rlimit != nil {
-		<-conn.rlimit
-	}
-}
-
-func (fut *Future) fail(conn *Connection, err error) *Future {
-	if f := conn.fetchFuture(fut.requestId); f == fut {
-		f.err = err
-		fut.markReady(conn)
-	}
-	return fut
-}
-
-func (fut *Future) wait() {
-	if fut.ready == nil {
-		return
-	}
-	<-fut.ready
-}
-
-// Get waits for Future to be filled and returns Response and error.
-//
-// Response will contain deserialized result in Data field.
-// It will be []interface{}, so if you want more performace, use GetTyped method.
-//
-// Note: Response could be equal to nil if ClientError is returned in error.
-//
-// "error" could be Error, if it is error returned by Tarantool,
-// or ClientError, if something bad happens in a client process.
-func (fut *Future) Get() (*Response, error) {
-	fut.wait()
-	if fut.err != nil {
-		return fut.resp, fut.err
-	}
-	fut.err = fut.resp.decodeBody()
-	return fut.resp, fut.err
-}
-
-// GetTyped waits for Future and calls msgpack.Decoder.Decode(result) if no error happens.
-// It is could be much faster than Get() function.
-//
-// Note: Tarantool usually returns array of tuples (except for Eval and Call17 actions)
-func (fut *Future) GetTyped(result interface{}) error {
-	fut.wait()
-	if fut.err != nil {
-		return fut.err
-	}
-	fut.err = fut.resp.decodeBodyTyped(result)
-	return fut.err
-}
-
-var closedChan = make(chan struct{})
-
-func init() {
-	close(closedChan)
-}
-
-// WaitChan returns channel which becomes closed when response arrived or error occured.
-func (fut *Future) WaitChan() <-chan struct{} {
-	if fut.ready == nil {
-		return closedChan
-	}
-	return fut.ready
-}
-
-// Err returns error set on Future.
-// It waits for future to be set.
-// Note: it doesn't decode body, therefore decoding error are not set here.
-func (fut *Future) Err() error {
-	fut.wait()
-	return fut.err
-}
-
-// NewErrorFuture returns new set empty Future with filled error field.
-func NewErrorFuture(err error) *Future {
-	return &Future{err: err}
 }
