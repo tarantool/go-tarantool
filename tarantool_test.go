@@ -136,6 +136,39 @@ func BenchmarkClientSerialTyped(b *testing.B) {
 	}
 }
 
+func BenchmarkClientSerialSQL(b *testing.B) {
+	// Tarantool supports SQL since version 2.0.0
+	isLess, err := test_helpers.IsTarantoolVersionLess(2, 0, 0)
+	if err != nil {
+		b.Fatal("Could not check the Tarantool version")
+	}
+	if isLess {
+		b.Skip()
+	}
+
+	conn, err := Connect(server, opts)
+	if err != nil {
+		b.Errorf("Failed to connect: %s", err)
+		return
+	}
+	defer conn.Close()
+
+	spaceNo := 519
+	_, err = conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
+	if err != nil {
+		b.Errorf("Failed to replace: %s", err)
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := conn.Execute("SELECT NAME0,NAME1,NAME2 FROM SQL_TEST WHERE NAME0=?", []interface{}{uint(1111)})
+		if err != nil {
+			b.Errorf("Select failed: %s", err.Error())
+			break
+		}
+	}
+}
+
 func BenchmarkClientFuture(b *testing.B) {
 	var err error
 
@@ -398,7 +431,7 @@ func BenchmarkClientLargeSelectParallel(b *testing.B) {
 	})
 }
 
-func BenchmarkSQLParallel(b *testing.B) {
+func BenchmarkClientParallelSQL(b *testing.B) {
 	// Tarantool supports SQL since version 2.0.0
 	isLess, err := test_helpers.IsTarantoolVersionLess(2, 0, 0)
 	if err != nil {
