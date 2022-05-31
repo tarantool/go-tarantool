@@ -2,7 +2,6 @@ package tarantool_test
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"log"
 	"os"
 	"reflect"
@@ -11,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	. "github.com/tarantool/go-tarantool"
 	"github.com/tarantool/go-tarantool/test_helpers"
 	"gopkg.in/vmihailenco/msgpack.v2"

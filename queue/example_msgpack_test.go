@@ -10,12 +10,12 @@ package queue_test
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/tarantool/go-tarantool"
 	"github.com/tarantool/go-tarantool/queue"
 	"gopkg.in/vmihailenco/msgpack.v2"
-	"log"
 )
 
 type dummyData struct {

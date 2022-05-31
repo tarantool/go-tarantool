@@ -2,10 +2,11 @@ package tarantool_test
 
 import (
 	"fmt"
-	"github.com/tarantool/go-tarantool"
-	"gopkg.in/vmihailenco/msgpack.v2"
 	"log"
 	"time"
+
+	"github.com/tarantool/go-tarantool"
+	"gopkg.in/vmihailenco/msgpack.v2"
 )
 
 type Tuple2 struct {
