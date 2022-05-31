@@ -47,4 +47,4 @@ jobs:
           # The `//nolint` workaround was not the acceptable way of warnings suppression,
           # cause those comments get rendered in documentation by godoc.
           # See https://github.com/tarantool/go-tarantool/pull/160#discussion_r858608221
-          args: -E gofmt -D errcheck
+          args: -E goimports -D errcheck

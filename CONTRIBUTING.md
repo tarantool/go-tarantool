@@ -42,7 +42,7 @@ To check if the current changes will pass the linter in CI, install
 golnagci-lint from [sources](https://golangci-lint.run/usage/install/)
 and run it with next flags:
 ```bash
-golangci-lint run -E gofmt -D errcheck
+golangci-lint run -E goimports -D errcheck
 ```
 
 ## Benchmarking
