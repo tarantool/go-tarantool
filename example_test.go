@@ -2,10 +2,10 @@ package tarantool_test
 
 import (
 	"fmt"
-	"github.com/tarantool/go-tarantool/test_helpers"
 	"time"
 
 	"github.com/tarantool/go-tarantool"
+	"github.com/tarantool/go-tarantool/test_helpers"
 )
 
 type Tuple struct {

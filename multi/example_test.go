@@ -2,8 +2,9 @@ package multi
 
 import (
 	"fmt"
-	"github.com/tarantool/go-tarantool"
 	"time"
+
+	"github.com/tarantool/go-tarantool"
 )
 
 func ExampleConnect() {
