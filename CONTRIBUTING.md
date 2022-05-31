@@ -39,10 +39,16 @@ make test-multi test-uuid test-main
 ```
 
 To check if the current changes will pass the linter in CI, install
-golnagci-lint from [sources](https://golangci-lint.run/usage/install/)
-and run it with next flags:
+golangci-lint from [sources](https://golangci-lint.run/usage/install/)
+and run it with next command:
 ```bash
-golangci-lint run -E goimports -D errcheck
+make golangci-lint
+```
+
+To format the code install [goimports](https://pkg.go.dev/golang.org/x/tools/cmd/goimports)
+and run it with next command:
+```bash
+make format
 ```
 
 ## Benchmarking

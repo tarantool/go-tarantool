@@ -23,6 +23,14 @@ clean:
 deps: clean
 	( cd ./queue; tarantoolctl rocks install queue 1.1.0 )
 
+.PHONY: format
+format:
+	goimports -l -w .
+
+.PHONY: golangci-lint
+golangci-lint:
+	golangci-lint run -E goimports -D errcheck
+
 .PHONY: test
 test:
 	go test ./... -v -p 1
