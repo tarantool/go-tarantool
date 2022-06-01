@@ -10,8 +10,19 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [1.6.0] - 2022-06-01
+
+This release adds a number of features. Also it significantly improves testing,
+CI and documentation.
+
+### Added
+
 - Coveralls support (#149)
-- Reusable testing workflow (integration testing with latest Tarantool) (#123)
+- Reusable testing workflow (integration testing with latest Tarantool) (#112)
 - Simple CI based on GitHub actions (#114)
 - Support UUID type in msgpack (#90)
 - Go modules support (#91)
@@ -19,17 +30,17 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 - Master discovery (#113)
 - SQL support (#62)
 
-### Fixed
-
-- Fix queue tests (#107)
-- Make test case consistent with comments (#105)
-
 ### Changed
 
 - Handle everything with `go test` (#115)
 - Use plain package instead of module for UUID submodule (#134)
 - Reset buffer if its average use size smaller than quater of capacity (#95)
-- Update API documentation: comments and examples (#123).
+- Update API documentation: comments and examples (#123)
+
+### Fixed
+
+- Fix queue tests (#107)
+- Make test case consistent with comments (#105)
 
 ## [1.5] - 2019-12-29
 
