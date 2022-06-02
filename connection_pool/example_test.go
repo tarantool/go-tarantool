@@ -529,3 +529,22 @@ func ExampleConnectionPool_Eval() {
 	// Code 0
 	// Data [3]
 }
+
+func ExampleConnectionPool_Do() {
+	pool, err := examplePool(testRoles)
+	if err != nil {
+		fmt.Println(err)
+	}
+	defer pool.Close()
+
+	// Ping a Tarantool instance to check connection.
+	req := tarantool.NewPingRequest()
+	resp, err := pool.Do(req, connection_pool.ANY)
+	fmt.Println("Ping Code", resp.Code)
+	fmt.Println("Ping Data", resp.Data)
+	fmt.Println("Ping Error", err)
+	// Output:
+	// Ping Code 0
+	// Ping Data []
+	// Ping Error <nil>
+}

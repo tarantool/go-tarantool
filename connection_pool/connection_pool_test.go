@@ -1252,6 +1252,45 @@ func TestPing(t *testing.T) {
 	require.NotNilf(t, resp, "response is nil after Ping")
 }
 
+func TestDo(t *testing.T) {
+	roles := []bool{true, true, false, true, false}
+
+	err := test_helpers.SetClusterRO(servers, connOpts, roles)
+	require.Nilf(t, err, "fail to set roles for cluster")
+
+	connPool, err := connection_pool.Connect(servers, connOpts)
+	require.Nilf(t, err, "failed to connect")
+	require.NotNilf(t, connPool, "conn is nil after Connect")
+
+	defer connPool.Close()
+
+	req := tarantool.NewPingRequest()
+	// ANY
+	resp, err := connPool.Do(req, connection_pool.ANY)
+	require.Nilf(t, err, "failed to Ping")
+	require.NotNilf(t, resp, "response is nil after Ping")
+
+	// RW
+	resp, err = connPool.Do(req, connection_pool.RW)
+	require.Nilf(t, err, "failed to Ping")
+	require.NotNilf(t, resp, "response is nil after Ping")
+
+	// RO
+	resp, err = connPool.Do(req, connection_pool.RO)
+	require.Nilf(t, err, "failed to Ping")
+	require.NotNilf(t, resp, "response is nil after Ping")
+
+	// PreferRW
+	resp, err = connPool.Do(req, connection_pool.PreferRW)
+	require.Nilf(t, err, "failed to Ping")
+	require.NotNilf(t, resp, "response is nil after Ping")
+
+	// PreferRO
+	resp, err = connPool.Do(req, connection_pool.PreferRO)
+	require.Nilf(t, err, "failed to Ping")
+	require.NotNilf(t, resp, "response is nil after Ping")
+}
+
 // runTestMain is a body of TestMain function
 // (see https://pkg.go.dev/testing#hdr-Main).
 // Using defer + os.Exit is not works so TestMain body
