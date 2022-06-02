@@ -524,6 +524,36 @@ func (connPool *ConnectionPool) EvalAsync(expr string, args interface{}, userMod
 	return conn.EvalAsync(expr, args)
 }
 
+// Do sends the request and returns a response.
+func (connPool *ConnectionPool) Do(req tarantool.Request, userMode Mode) (*tarantool.Response, error) {
+	conn, err := connPool.getNextConnection(userMode)
+	if err != nil {
+		return nil, err
+	}
+
+	return conn.Do(req)
+}
+
+// DoTyped sends the request and fills the typed result.
+func (connPool *ConnectionPool) DoTyped(req tarantool.Request, result interface{}, userMode Mode) error {
+	conn, err := connPool.getNextConnection(userMode)
+	if err != nil {
+		return err
+	}
+
+	return conn.DoTyped(req, result)
+}
+
+// DoAsync sends the request and returns a future.
+func (connPool *ConnectionPool) DoAsync(req tarantool.Request, userMode Mode) (*tarantool.Future, error) {
+	conn, err := connPool.getNextConnection(userMode)
+	if err != nil {
+		return nil, err
+	}
+
+	return conn.DoAsync(req)
+}
+
 //
 // private
 //

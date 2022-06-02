@@ -41,4 +41,8 @@ type Connector interface {
 	Call16Async(functionName string, args interface{}) *Future
 	Call17Async(functionName string, args interface{}) *Future
 	EvalAsync(expr string, args interface{}) *Future
+
+	Do(req Request) (resp *Response, err error)
+	DoTyped(req Request, result interface{}) (err error)
+	DoAsync(req Request) (fut *Future, err error)
 }
