@@ -3,6 +3,8 @@ name: testing
 on:
   push:
   pull_request:
+  pull_request_target:
+    types: [labeled]
   workflow_dispatch:
 
 jobs:
@@ -12,8 +14,12 @@ jobs:
     #
     # The main trick is described here:
     # https://github.com/Dart-Code/Dart-Code/pull/2375
-    if: github.event_name == 'push' ||
-      github.event.pull_request.head.repo.full_name != github.repository
+    #
+    # Also we want to run it always for manually triggered workflows.
+    if: (github.event_name == 'push') ||
+      (github.event_name == 'pull_request' &&
+        github.event.pull_request.head.repo.full_name != github.repository) ||
+      (github.event_name == 'workflow_dispatch')
 
     runs-on: ubuntu-latest
 
@@ -65,8 +71,18 @@ jobs:
         run: make bench-deps bench DURATION=1x COUNT=1
 
   run-tests-ee:
-    if: github.event_name == 'push' ||
-      github.event.pull_request.head.repo.full_name != github.repository
+    # The same as for run-tests-ce, but it does not run on pull requests from
+    # forks by default. Tests will run only when the pull request is labeled
+    # with `full-ci`. To avoid security problems, the label must be reset
+    # manually for every run.
+    #
+    # We need to use `pull_request_target` because it has access to base
+    # repository secrets unlike `pull_request`.
+    if: (github.event_name == 'push') ||
+      (github.event_name == 'pull_request_target' &&
+        github.event.pull_request.head.repo.full_name != github.repository &&
+        github.event.label.name == 'full-ci') ||
+      (github.event_name == 'workflow_dispatch')
 
     runs-on: ubuntu-latest
 
@@ -86,6 +102,13 @@ jobs:
     steps:
       - name: Clone the connector
         uses: actions/checkout@v2
+        # This is needed for pull_request_target because this event runs in the
+        # context of the base commit of the pull request. It works fine for
+        # `push` and `workflow_dispatch` because the default behavior is used
+        # if `ref` and `repository` are empty.
+        with:
+          ref: ${{github.event.pull_request.head.ref}}
+          repository: ${{github.event.pull_request.head.repo.full_name}}
 
       - name: Setup Tarantool ${{ matrix.sdk-version }}
         run: |
