@@ -544,6 +544,20 @@ func (connPool *ConnectionPool) Do(req tarantool.Request, userMode Mode) *tarant
 	return conn.Do(req)
 }
 
+// NewStream creates new Stream object for connection selected
+// by userMode from connPool.
+//
+// Since v. 2.10.0, Tarantool supports streams and interactive transactions over them.
+// To use interactive transactions, memtx_use_mvcc_engine box option should be set to true.
+// Since 1.7.0
+func (connPool *ConnectionPool) NewStream(userMode Mode) (*tarantool.Stream, error) {
+	conn, err := connPool.getNextConnection(userMode)
+	if err != nil {
+		return nil, err
+	}
+	return conn.NewStream()
+}
+
 //
 // private
 //

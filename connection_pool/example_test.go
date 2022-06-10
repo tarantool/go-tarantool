@@ -2,6 +2,7 @@ package connection_pool_test
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/tarantool/go-tarantool"
 	"github.com/tarantool/go-tarantool/connection_pool"
@@ -572,4 +573,264 @@ func ExampleConnectionPool_NewPrepared() {
 	if err != nil {
 		fmt.Printf("Failed to prepare")
 	}
+}
+
+func ExampleCommitRequest() {
+	var req tarantool.Request
+	var resp *tarantool.Response
+	var err error
+
+	// Tarantool supports streams and interactive transactions since version 2.10.0
+	isLess, _ := test_helpers.IsTarantoolVersionLess(2, 10, 0)
+	if err != nil || isLess {
+		return
+	}
+
+	pool, err := examplePool(testRoles)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer pool.Close()
+
+	// example pool has only one rw instance
+	stream, err := pool.NewStream(connection_pool.RW)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	// Begin transaction
+	req = tarantool.NewBeginRequest()
+	resp, err = stream.Do(req).Get()
+	if err != nil {
+		fmt.Printf("Failed to Begin: %s", err.Error())
+		return
+	}
+	fmt.Printf("Begin transaction: response is %#v\n", resp.Code)
+
+	// Insert in stream
+	req = tarantool.NewInsertRequest(spaceName).
+		Tuple([]interface{}{"example_commit_key", "example_commit_value"})
+	resp, err = stream.Do(req).Get()
+	if err != nil {
+		fmt.Printf("Failed to Insert: %s", err.Error())
+		return
+	}
+	fmt.Printf("Insert in stream: response is %#v\n", resp.Code)
+
+	// Select not related to the transaction
+	// while transaction is not commited
+	// result of select is empty
+	selectReq := tarantool.NewSelectRequest(spaceNo).
+		Index(indexNo).
+		Limit(1).
+		Iterator(tarantool.IterEq).
+		Key([]interface{}{"example_commit_key"})
+	resp, err = pool.Do(selectReq, connection_pool.RW).Get()
+	if err != nil {
+		fmt.Printf("Failed to Select: %s", err.Error())
+		return
+	}
+	fmt.Printf("Select out of stream before commit: response is %#v\n", resp.Data)
+
+	// Select in stream
+	resp, err = stream.Do(selectReq).Get()
+	if err != nil {
+		fmt.Printf("Failed to Select: %s", err.Error())
+		return
+	}
+	fmt.Printf("Select in stream: response is %#v\n", resp.Data)
+
+	// Commit transaction
+	req = tarantool.NewCommitRequest()
+	resp, err = stream.Do(req).Get()
+	if err != nil {
+		fmt.Printf("Failed to Commit: %s", err.Error())
+		return
+	}
+	fmt.Printf("Commit transaction: response is %#v\n", resp.Code)
+
+	// Select outside of transaction
+	// example pool has only one rw instance
+	resp, err = pool.Do(selectReq, connection_pool.RW).Get()
+	if err != nil {
+		fmt.Printf("Failed to Select: %s", err.Error())
+		return
+	}
+	fmt.Printf("Select after commit: response is %#v\n", resp.Data)
+}
+
+func ExampleRollbackRequest() {
+	var req tarantool.Request
+	var resp *tarantool.Response
+	var err error
+
+	// Tarantool supports streams and interactive transactions since version 2.10.0
+	isLess, _ := test_helpers.IsTarantoolVersionLess(2, 10, 0)
+	if err != nil || isLess {
+		return
+	}
+
+	// example pool has only one rw instance
+	pool, err := examplePool(testRoles)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer pool.Close()
+
+	stream, err := pool.NewStream(connection_pool.RW)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	// Begin transaction
+	req = tarantool.NewBeginRequest()
+	resp, err = stream.Do(req).Get()
+	if err != nil {
+		fmt.Printf("Failed to Begin: %s", err.Error())
+		return
+	}
+	fmt.Printf("Begin transaction: response is %#v\n", resp.Code)
+
+	// Insert in stream
+	req = tarantool.NewInsertRequest(spaceName).
+		Tuple([]interface{}{"example_rollback_key", "example_rollback_value"})
+	resp, err = stream.Do(req).Get()
+	if err != nil {
+		fmt.Printf("Failed to Insert: %s", err.Error())
+		return
+	}
+	fmt.Printf("Insert in stream: response is %#v\n", resp.Code)
+
+	// Select not related to the transaction
+	// while transaction is not commited
+	// result of select is empty
+	selectReq := tarantool.NewSelectRequest(spaceNo).
+		Index(indexNo).
+		Limit(1).
+		Iterator(tarantool.IterEq).
+		Key([]interface{}{"example_rollback_key"})
+	resp, err = pool.Do(selectReq, connection_pool.RW).Get()
+	if err != nil {
+		fmt.Printf("Failed to Select: %s", err.Error())
+		return
+	}
+	fmt.Printf("Select out of stream: response is %#v\n", resp.Data)
+
+	// Select in stream
+	resp, err = stream.Do(selectReq).Get()
+	if err != nil {
+		fmt.Printf("Failed to Select: %s", err.Error())
+		return
+	}
+	fmt.Printf("Select in stream: response is %#v\n", resp.Data)
+
+	// Rollback transaction
+	req = tarantool.NewRollbackRequest()
+	resp, err = stream.Do(req).Get()
+	if err != nil {
+		fmt.Printf("Failed to Rollback: %s", err.Error())
+		return
+	}
+	fmt.Printf("Rollback transaction: response is %#v\n", resp.Code)
+
+	// Select outside of transaction
+	// example pool has only one rw instance
+	resp, err = pool.Do(selectReq, connection_pool.RW).Get()
+	if err != nil {
+		fmt.Printf("Failed to Select: %s", err.Error())
+		return
+	}
+	fmt.Printf("Select after Rollback: response is %#v\n", resp.Data)
+}
+
+func ExampleBeginRequest_TxnIsolation() {
+	var req tarantool.Request
+	var resp *tarantool.Response
+	var err error
+
+	// Tarantool supports streams and interactive transactions since version 2.10.0
+	isLess, _ := test_helpers.IsTarantoolVersionLess(2, 10, 0)
+	if err != nil || isLess {
+		return
+	}
+
+	// example pool has only one rw instance
+	pool, err := examplePool(testRoles)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer pool.Close()
+
+	stream, err := pool.NewStream(connection_pool.RW)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	// Begin transaction
+	req = tarantool.NewBeginRequest().
+		TxnIsolation(tarantool.ReadConfirmedLevel).
+		Timeout(500 * time.Millisecond)
+	resp, err = stream.Do(req).Get()
+	if err != nil {
+		fmt.Printf("Failed to Begin: %s", err.Error())
+		return
+	}
+	fmt.Printf("Begin transaction: response is %#v\n", resp.Code)
+
+	// Insert in stream
+	req = tarantool.NewInsertRequest(spaceName).
+		Tuple([]interface{}{"isolation_level_key", "isolation_level_value"})
+	resp, err = stream.Do(req).Get()
+	if err != nil {
+		fmt.Printf("Failed to Insert: %s", err.Error())
+		return
+	}
+	fmt.Printf("Insert in stream: response is %#v\n", resp.Code)
+
+	// Select not related to the transaction
+	// while transaction is not commited
+	// result of select is empty
+	selectReq := tarantool.NewSelectRequest(spaceNo).
+		Index(indexNo).
+		Limit(1).
+		Iterator(tarantool.IterEq).
+		Key([]interface{}{"isolation_level_key"})
+	resp, err = pool.Do(selectReq, connection_pool.RW).Get()
+	if err != nil {
+		fmt.Printf("Failed to Select: %s", err.Error())
+		return
+	}
+	fmt.Printf("Select out of stream: response is %#v\n", resp.Data)
+
+	// Select in stream
+	resp, err = stream.Do(selectReq).Get()
+	if err != nil {
+		fmt.Printf("Failed to Select: %s", err.Error())
+		return
+	}
+	fmt.Printf("Select in stream: response is %#v\n", resp.Data)
+
+	// Rollback transaction
+	req = tarantool.NewRollbackRequest()
+	resp, err = stream.Do(req).Get()
+	if err != nil {
+		fmt.Printf("Failed to Rollback: %s", err.Error())
+		return
+	}
+	fmt.Printf("Rollback transaction: response is %#v\n", resp.Code)
+
+	// Select outside of transaction
+	// example pool has only one rw instance
+	resp, err = pool.Do(selectReq, connection_pool.RW).Get()
+	if err != nil {
+		fmt.Printf("Failed to Select: %s", err.Error())
+		return
+	}
+	fmt.Printf("Select after Rollback: response is %#v\n", resp.Data)
 }

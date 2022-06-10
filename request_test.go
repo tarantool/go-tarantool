@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -21,6 +22,11 @@ const validIndex = 3           // Any valid value != default.
 const validExpr = "any string" // We don't check the value here.
 const defaultSpace = 0         // And valid too.
 const defaultIndex = 0         // And valid too.
+
+const defaultIsolationLevel = DefaultIsolationLevel
+const defaultTimeout = 0
+
+const validTimeout = 500 * time.Millisecond
 
 var validStmt *Prepared = &Prepared{StatementID: 1, Conn: &Connection{}}
 
@@ -175,6 +181,9 @@ func TestRequestsCodes(t *testing.T) {
 		{req: NewPrepareRequest(validExpr), code: PrepareRequestCode},
 		{req: NewUnprepareRequest(validStmt), code: PrepareRequestCode},
 		{req: NewExecutePreparedRequest(validStmt), code: ExecuteRequestCode},
+		{req: NewBeginRequest(), code: BeginRequestCode},
+		{req: NewCommitRequest(), code: CommitRequestCode},
+		{req: NewRollbackRequest(), code: RollbackRequestCode},
 	}
 
 	for _, test := range tests {
@@ -583,5 +592,61 @@ func TestExecutePreparedRequestDefaultValues(t *testing.T) {
 
 	req := NewExecutePreparedRequest(validStmt)
 	assert.Equal(t, req.Conn(), validStmt.Conn)
+	assertBodyEqual(t, refBuf.Bytes(), req)
+}
+
+func TestBeginRequestDefaultValues(t *testing.T) {
+	var refBuf bytes.Buffer
+
+	refEnc := msgpack.NewEncoder(&refBuf)
+	err := RefImplBeginBody(refEnc, defaultIsolationLevel, defaultTimeout)
+	if err != nil {
+		t.Errorf("An unexpected RefImplBeginBody() error: %q", err.Error())
+		return
+	}
+
+	req := NewBeginRequest()
+	assertBodyEqual(t, refBuf.Bytes(), req)
+}
+
+func TestBeginRequestSetters(t *testing.T) {
+	var refBuf bytes.Buffer
+
+	refEnc := msgpack.NewEncoder(&refBuf)
+	err := RefImplBeginBody(refEnc, ReadConfirmedLevel, validTimeout)
+	if err != nil {
+		t.Errorf("An unexpected RefImplBeginBody() error: %q", err.Error())
+		return
+	}
+
+	req := NewBeginRequest().TxnIsolation(ReadConfirmedLevel).Timeout(validTimeout)
+	assertBodyEqual(t, refBuf.Bytes(), req)
+}
+
+func TestCommitRequestDefaultValues(t *testing.T) {
+	var refBuf bytes.Buffer
+
+	refEnc := msgpack.NewEncoder(&refBuf)
+	err := RefImplCommitBody(refEnc)
+	if err != nil {
+		t.Errorf("An unexpected RefImplCommitBody() error: %q", err.Error())
+		return
+	}
+
+	req := NewCommitRequest()
+	assertBodyEqual(t, refBuf.Bytes(), req)
+}
+
+func TestRollbackRequestDefaultValues(t *testing.T) {
+	var refBuf bytes.Buffer
+
+	refEnc := msgpack.NewEncoder(&refBuf)
+	err := RefImplRollbackBody(refEnc)
+	if err != nil {
+		t.Errorf("An unexpected RefImplRollbackBody() error: %q", err.Error())
+		return
+	}
+
+	req := NewRollbackRequest()
 	assertBodyEqual(t, refBuf.Bytes(), req)
 }

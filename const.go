@@ -13,11 +13,15 @@ const (
 	Call17RequestCode    = 10 /* call in >= 1.7 format */
 	ExecuteRequestCode   = 11
 	PrepareRequestCode   = 13
+	BeginRequestCode     = 14
+	CommitRequestCode    = 15
+	RollbackRequestCode  = 16
 	PingRequestCode      = 64
 	SubscribeRequestCode = 66
 
 	KeyCode         = 0x00
 	KeySync         = 0x01
+	KeyStreamId     = 0x0a
 	KeySpaceNo      = 0x10
 	KeyIndexNo      = 0x11
 	KeyLimit        = 0x12
@@ -37,6 +41,8 @@ const (
 	KeySQLBind      = 0x41
 	KeySQLInfo      = 0x42
 	KeyStmtID       = 0x43
+	KeyTimeout      = 0x56
+	KeyTxnIsolation = 0x59
 
 	KeyFieldName               = 0x00
 	KeyFieldType               = 0x01

@@ -2319,21 +2319,389 @@ func TestComplexStructs(t *testing.T) {
 	}
 }
 
+func TestStream_Commit(t *testing.T) {
+	var req Request
+	var resp *Response
+	var err error
+	var conn *Connection
+
+	test_helpers.SkipIfStreamsUnsupported(t)
+
+	conn = test_helpers.ConnectWithValidation(t, server, opts)
+	defer conn.Close()
+
+	stream, _ := conn.NewStream()
+
+	// Begin transaction
+	req = NewBeginRequest()
+	resp, err = stream.Do(req).Get()
+	if err != nil {
+		t.Fatalf("Failed to Begin: %s", err.Error())
+	}
+	if resp.Code != OkCode {
+		t.Fatalf("Failed to Begin: wrong code returned %d", resp.Code)
+	}
+
+	// Insert in stream
+	req = NewInsertRequest(spaceName).
+		Tuple([]interface{}{uint(1001), "hello2", "world2"})
+	resp, err = stream.Do(req).Get()
+	if err != nil {
+		t.Fatalf("Failed to Insert: %s", err.Error())
+	}
+	if resp.Code != OkCode {
+		t.Errorf("Failed to Insert: wrong code returned %d", resp.Code)
+	}
+	defer test_helpers.DeleteRecordByKey(t, conn, spaceNo, indexNo, []interface{}{uint(1001)})
+
+	// Select not related to the transaction
+	// while transaction is not committed
+	// result of select is empty
+	selectReq := NewSelectRequest(spaceNo).
+		Index(indexNo).
+		Limit(1).
+		Iterator(IterEq).
+		Key([]interface{}{uint(1001)})
+	resp, err = conn.Do(selectReq).Get()
+	if err != nil {
+		t.Fatalf("Failed to Select: %s", err.Error())
+	}
+	if resp == nil {
+		t.Fatalf("Response is nil after Select")
+	}
+	if len(resp.Data) != 0 {
+		t.Fatalf("Response Data len != 0")
+	}
+
+	// Select in stream
+	resp, err = stream.Do(selectReq).Get()
+	if err != nil {
+		t.Fatalf("Failed to Select: %s", err.Error())
+	}
+	if resp == nil {
+		t.Fatalf("Response is nil after Select")
+	}
+	if len(resp.Data) != 1 {
+		t.Fatalf("Response Data len != 1")
+	}
+	if tpl, ok := resp.Data[0].([]interface{}); !ok {
+		t.Fatalf("Unexpected body of Select")
+	} else {
+		if id, ok := tpl[0].(uint64); !ok || id != 1001 {
+			t.Fatalf("Unexpected body of Select (0)")
+		}
+		if h, ok := tpl[1].(string); !ok || h != "hello2" {
+			t.Fatalf("Unexpected body of Select (1)")
+		}
+		if h, ok := tpl[2].(string); !ok || h != "world2" {
+			t.Fatalf("Unexpected body of Select (2)")
+		}
+	}
+
+	// Commit transaction
+	req = NewCommitRequest()
+	resp, err = stream.Do(req).Get()
+	if err != nil {
+		t.Fatalf("Failed to Commit: %s", err.Error())
+	}
+	if resp.Code != OkCode {
+		t.Fatalf("Failed to Commit: wrong code returned %d", resp.Code)
+	}
+
+	// Select outside of transaction
+	resp, err = conn.Do(selectReq).Get()
+	if err != nil {
+		t.Fatalf("Failed to Select: %s", err.Error())
+	}
+	if resp == nil {
+		t.Fatalf("Response is nil after Select")
+	}
+	if len(resp.Data) != 1 {
+		t.Fatalf("Response Data len != 1")
+	}
+	if tpl, ok := resp.Data[0].([]interface{}); !ok {
+		t.Fatalf("Unexpected body of Select")
+	} else {
+		if id, ok := tpl[0].(uint64); !ok || id != 1001 {
+			t.Fatalf("Unexpected body of Select (0)")
+		}
+		if h, ok := tpl[1].(string); !ok || h != "hello2" {
+			t.Fatalf("Unexpected body of Select (1)")
+		}
+		if h, ok := tpl[2].(string); !ok || h != "world2" {
+			t.Fatalf("Unexpected body of Select (2)")
+		}
+	}
+}
+
+func TestStream_Rollback(t *testing.T) {
+	var req Request
+	var resp *Response
+	var err error
+	var conn *Connection
+
+	test_helpers.SkipIfStreamsUnsupported(t)
+
+	conn = test_helpers.ConnectWithValidation(t, server, opts)
+	defer conn.Close()
+
+	stream, _ := conn.NewStream()
+
+	// Begin transaction
+	req = NewBeginRequest()
+	resp, err = stream.Do(req).Get()
+	if err != nil {
+		t.Fatalf("Failed to Begin: %s", err.Error())
+	}
+	if resp.Code != OkCode {
+		t.Fatalf("Failed to Begin: wrong code returned %d", resp.Code)
+	}
+
+	// Insert in stream
+	req = NewInsertRequest(spaceName).
+		Tuple([]interface{}{uint(1001), "hello2", "world2"})
+	resp, err = stream.Do(req).Get()
+	if err != nil {
+		t.Fatalf("Failed to Insert: %s", err.Error())
+	}
+	if resp.Code != OkCode {
+		t.Errorf("Failed to Insert: wrong code returned %d", resp.Code)
+	}
+	defer test_helpers.DeleteRecordByKey(t, conn, spaceNo, indexNo, []interface{}{uint(1001)})
+
+	// Select not related to the transaction
+	// while transaction is not committed
+	// result of select is empty
+	selectReq := NewSelectRequest(spaceNo).
+		Index(indexNo).
+		Limit(1).
+		Iterator(IterEq).
+		Key([]interface{}{uint(1001)})
+	resp, err = conn.Do(selectReq).Get()
+	if err != nil {
+		t.Fatalf("Failed to Select: %s", err.Error())
+	}
+	if resp == nil {
+		t.Fatalf("Response is nil after Select")
+	}
+	if len(resp.Data) != 0 {
+		t.Fatalf("Response Data len != 0")
+	}
+
+	// Select in stream
+	resp, err = stream.Do(selectReq).Get()
+	if err != nil {
+		t.Fatalf("Failed to Select: %s", err.Error())
+	}
+	if resp == nil {
+		t.Fatalf("Response is nil after Select")
+	}
+	if len(resp.Data) != 1 {
+		t.Fatalf("Response Data len != 1")
+	}
+	if tpl, ok := resp.Data[0].([]interface{}); !ok {
+		t.Fatalf("Unexpected body of Select")
+	} else {
+		if id, ok := tpl[0].(uint64); !ok || id != 1001 {
+			t.Fatalf("Unexpected body of Select (0)")
+		}
+		if h, ok := tpl[1].(string); !ok || h != "hello2" {
+			t.Fatalf("Unexpected body of Select (1)")
+		}
+		if h, ok := tpl[2].(string); !ok || h != "world2" {
+			t.Fatalf("Unexpected body of Select (2)")
+		}
+	}
+
+	// Rollback transaction
+	req = NewRollbackRequest()
+	resp, err = stream.Do(req).Get()
+	if err != nil {
+		t.Fatalf("Failed to Rollback: %s", err.Error())
+	}
+	if resp.Code != OkCode {
+		t.Fatalf("Failed to Rollback: wrong code returned %d", resp.Code)
+	}
+
+	// Select outside of transaction
+	resp, err = conn.Do(selectReq).Get()
+	if err != nil {
+		t.Fatalf("Failed to Select: %s", err.Error())
+	}
+	if resp == nil {
+		t.Fatalf("Response is nil after Select")
+	}
+	if len(resp.Data) != 0 {
+		t.Fatalf("Response Data len != 0")
+	}
+
+	// Select inside of stream after rollback
+	resp, err = stream.Do(selectReq).Get()
+	if err != nil {
+		t.Fatalf("Failed to Select: %s", err.Error())
+	}
+	if resp == nil {
+		t.Fatalf("Response is nil after Select")
+	}
+	if len(resp.Data) != 0 {
+		t.Fatalf("Response Data len != 0")
+	}
+}
+
+func TestStream_TxnIsolationLevel(t *testing.T) {
+	var req Request
+	var resp *Response
+	var err error
+	var conn *Connection
+
+	txnIsolationLevels := []TxnIsolationLevel{
+		DefaultIsolationLevel,
+		ReadCommittedLevel,
+		ReadConfirmedLevel,
+		BestEffortLevel,
+	}
+
+	test_helpers.SkipIfStreamsUnsupported(t)
+
+	conn = test_helpers.ConnectWithValidation(t, server, opts)
+	defer conn.Close()
+
+	stream, _ := conn.NewStream()
+
+	for _, level := range txnIsolationLevels {
+		// Begin transaction
+		req = NewBeginRequest().TxnIsolation(level).Timeout(500 * time.Millisecond)
+		resp, err = stream.Do(req).Get()
+		require.Nilf(t, err, "failed to Begin")
+		require.NotNilf(t, resp, "response is nil after Begin")
+		require.Equalf(t, OkCode, resp.Code, "wrong code returned")
+
+		// Insert in stream
+		req = NewInsertRequest(spaceName).
+			Tuple([]interface{}{uint(1001), "hello2", "world2"})
+		resp, err = stream.Do(req).Get()
+		require.Nilf(t, err, "failed to Insert")
+		require.NotNilf(t, resp, "response is nil after Insert")
+		require.Equalf(t, OkCode, resp.Code, "wrong code returned")
+
+		// Select not related to the transaction
+		// while transaction is not committed
+		// result of select is empty
+		selectReq := NewSelectRequest(spaceNo).
+			Index(indexNo).
+			Limit(1).
+			Iterator(IterEq).
+			Key([]interface{}{uint(1001)})
+		resp, err = conn.Do(selectReq).Get()
+		require.Nilf(t, err, "failed to Select")
+		require.NotNilf(t, resp, "response is nil after Select")
+		require.Equalf(t, 0, len(resp.Data), "response Data len != 0")
+
+		// Select in stream
+		resp, err = stream.Do(selectReq).Get()
+		require.Nilf(t, err, "failed to Select")
+		require.NotNilf(t, resp, "response is nil after Select")
+		require.Equalf(t, 1, len(resp.Data), "response Body len != 1 after Select")
+
+		tpl, ok := resp.Data[0].([]interface{})
+		require.Truef(t, ok, "unexpected body of Select")
+		require.Equalf(t, 3, len(tpl), "unexpected body of Select")
+
+		key, ok := tpl[0].(uint64)
+		require.Truef(t, ok, "unexpected body of Select (0)")
+		require.Equalf(t, uint64(1001), key, "unexpected body of Select (0)")
+
+		value1, ok := tpl[1].(string)
+		require.Truef(t, ok, "unexpected body of Select (1)")
+		require.Equalf(t, "hello2", value1, "unexpected body of Select (1)")
+
+		value2, ok := tpl[2].(string)
+		require.Truef(t, ok, "unexpected body of Select (2)")
+		require.Equalf(t, "world2", value2, "unexpected body of Select (2)")
+
+		// Rollback transaction
+		req = NewRollbackRequest()
+		resp, err = stream.Do(req).Get()
+		require.Nilf(t, err, "failed to Rollback")
+		require.NotNilf(t, resp, "response is nil after Rollback")
+		require.Equalf(t, OkCode, resp.Code, "wrong code returned")
+
+		// Select outside of transaction
+		resp, err = conn.Do(selectReq).Get()
+		require.Nilf(t, err, "failed to Select")
+		require.NotNilf(t, resp, "response is nil after Select")
+		require.Equalf(t, 0, len(resp.Data), "response Data len != 0")
+
+		// Select inside of stream after rollback
+		resp, err = stream.Do(selectReq).Get()
+		require.Nilf(t, err, "failed to Select")
+		require.NotNilf(t, resp, "response is nil after Select")
+		require.Equalf(t, 0, len(resp.Data), "response Data len != 0")
+
+		test_helpers.DeleteRecordByKey(t, conn, spaceNo, indexNo, []interface{}{uint(1001)})
+	}
+}
+
+func TestStream_DoWithStrangerConn(t *testing.T) {
+	expectedErr := fmt.Errorf("the passed connected request " +
+		"doesn't belong to the current connection or connection pool")
+
+	conn := &Connection{}
+	stream, _ := conn.NewStream()
+	req := test_helpers.NewStrangerRequest()
+
+	_, err := stream.Do(req).Get()
+	if err == nil {
+		t.Fatalf("nil error has been caught")
+	}
+	if err.Error() != expectedErr.Error() {
+		t.Fatalf("Unexpected error has been caught: %s", err.Error())
+	}
+}
+
+func TestStream_DoWithClosedConn(t *testing.T) {
+	expectedErr := fmt.Errorf("using closed connection")
+
+	test_helpers.SkipIfStreamsUnsupported(t)
+
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
+
+	stream, _ := conn.NewStream()
+	conn.Close()
+
+	// Begin transaction
+	req := NewBeginRequest()
+	_, err := stream.Do(req).Get()
+	if err == nil {
+		t.Fatalf("nil error has been caught")
+	}
+	if !strings.Contains(err.Error(), expectedErr.Error()) {
+		t.Fatalf("Unexpected error has been caught: %s", err.Error())
+	}
+}
+
 // runTestMain is a body of TestMain function
 // (see https://pkg.go.dev/testing#hdr-Main).
 // Using defer + os.Exit is not works so TestMain body
 // is a separate function, see
 // https://stackoverflow.com/questions/27629380/how-to-exit-a-go-program-honoring-deferred-calls
 func runTestMain(m *testing.M) int {
+	// Tarantool supports streams and interactive transactions since version 2.10.0
+	isStreamUnsupported, err := test_helpers.IsTarantoolVersionLess(2, 10, 0)
+	if err != nil {
+		log.Fatalf("Could not check the Tarantool version")
+	}
+
 	inst, err := test_helpers.StartTarantool(test_helpers.StartOpts{
-		InitScript:   "config.lua",
-		Listen:       server,
-		WorkDir:      "work_dir",
-		User:         opts.User,
-		Pass:         opts.Pass,
-		WaitStart:    100 * time.Millisecond,
-		ConnectRetry: 3,
-		RetryTimeout: 500 * time.Millisecond,
+		InitScript:         "config.lua",
+		Listen:             server,
+		WorkDir:            "work_dir",
+		User:               opts.User,
+		Pass:               opts.Pass,
+		WaitStart:          100 * time.Millisecond,
+		ConnectRetry:       3,
+		RetryTimeout:       500 * time.Millisecond,
+		MemtxUseMvccEngine: !isStreamUnsupported,
 	})
 	defer test_helpers.StopTarantoolWithCleanup(inst)
 

@@ -45,6 +45,7 @@ type Connector interface {
 	ExecuteAsync(expr string, args interface{}) *Future
 
 	NewPrepared(expr string) (*Prepared, error)
+	NewStream() (*Stream, error)
 
 	Do(req Request) (fut *Future)
 }
