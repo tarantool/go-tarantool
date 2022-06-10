@@ -1369,6 +1369,300 @@ func TestDoWithStrangerConn(t *testing.T) {
 	}
 }
 
+func TestStream_Commit(t *testing.T) {
+	var req tarantool.Request
+	var resp *tarantool.Response
+	var err error
+
+	test_helpers.SkipIfStreamsUnsupported(t)
+
+	roles := []bool{true, true, false, true, true}
+
+	err = test_helpers.SetClusterRO(servers, connOpts, roles)
+	require.Nilf(t, err, "fail to set roles for cluster")
+
+	connPool, err := connection_pool.Connect(servers, connOpts)
+	require.Nilf(t, err, "failed to connect")
+	require.NotNilf(t, connPool, "conn is nil after Connect")
+	defer connPool.Close()
+
+	stream, err := connPool.NewStream(connection_pool.PreferRW)
+	require.Nilf(t, err, "failed to create stream")
+	require.NotNilf(t, connPool, "stream is nil after NewStream")
+
+	// Begin transaction
+	req = tarantool.NewBeginRequest()
+	resp, err = stream.Do(req).Get()
+	require.Nilf(t, err, "failed to Begin")
+	require.NotNilf(t, resp, "response is nil after Begin")
+	require.Equalf(t, tarantool.OkCode, resp.Code, "failed to Begin: wrong code returned")
+
+	// Insert in stream
+	req = tarantool.NewInsertRequest(spaceName).
+		Tuple([]interface{}{"commit_key", "commit_value"})
+	resp, err = stream.Do(req).Get()
+	require.Nilf(t, err, "failed to Insert")
+	require.NotNilf(t, resp, "response is nil after Insert")
+	require.Equalf(t, tarantool.OkCode, resp.Code, "failed to Insert: wrong code returned")
+
+	// Connect to servers[2] to check if tuple
+	// was inserted outside of stream on RW instance
+	// before transaction commit
+	conn := test_helpers.ConnectWithValidation(t, servers[2], connOpts)
+	defer conn.Close()
+
+	// Select not related to the transaction
+	// while transaction is not committed
+	// result of select is empty
+	selectReq := tarantool.NewSelectRequest(spaceNo).
+		Index(indexNo).
+		Limit(1).
+		Iterator(tarantool.IterEq).
+		Key([]interface{}{"commit_key"})
+	resp, err = conn.Do(selectReq).Get()
+	require.Nilf(t, err, "failed to Select")
+	require.NotNilf(t, resp, "response is nil after Select")
+	require.Equalf(t, 0, len(resp.Data), "response Data len != 0")
+
+	// Select in stream
+	resp, err = stream.Do(selectReq).Get()
+	require.Nilf(t, err, "failed to Select")
+	require.NotNilf(t, resp, "response is nil after Select")
+	require.Equalf(t, 1, len(resp.Data), "response Body len != 1 after Select")
+
+	tpl, ok := resp.Data[0].([]interface{})
+	require.Truef(t, ok, "unexpected body of Select")
+	require.Equalf(t, 2, len(tpl), "unexpected body of Select")
+
+	key, ok := tpl[0].(string)
+	require.Truef(t, ok, "unexpected body of Select (0)")
+	require.Equalf(t, "commit_key", key, "unexpected body of Select (0)")
+
+	value, ok := tpl[1].(string)
+	require.Truef(t, ok, "unexpected body of Select (1)")
+	require.Equalf(t, "commit_value", value, "unexpected body of Select (1)")
+
+	// Commit transaction
+	req = tarantool.NewCommitRequest()
+	resp, err = stream.Do(req).Get()
+	require.Nilf(t, err, "failed to Commit")
+	require.NotNilf(t, resp, "response is nil after Commit")
+	require.Equalf(t, tarantool.OkCode, resp.Code, "failed to Commit: wrong code returned")
+
+	// Select outside of transaction
+	resp, err = conn.Do(selectReq).Get()
+	require.Nilf(t, err, "failed to Select")
+	require.NotNilf(t, resp, "response is nil after Select")
+	require.Equalf(t, len(resp.Data), 1, "response Body len != 1 after Select")
+
+	tpl, ok = resp.Data[0].([]interface{})
+	require.Truef(t, ok, "unexpected body of Select")
+	require.Equalf(t, 2, len(tpl), "unexpected body of Select")
+
+	key, ok = tpl[0].(string)
+	require.Truef(t, ok, "unexpected body of Select (0)")
+	require.Equalf(t, "commit_key", key, "unexpected body of Select (0)")
+
+	value, ok = tpl[1].(string)
+	require.Truef(t, ok, "unexpected body of Select (1)")
+	require.Equalf(t, "commit_value", value, "unexpected body of Select (1)")
+}
+
+func TestStream_Rollback(t *testing.T) {
+	var req tarantool.Request
+	var resp *tarantool.Response
+	var err error
+
+	test_helpers.SkipIfStreamsUnsupported(t)
+
+	roles := []bool{true, true, false, true, true}
+
+	err = test_helpers.SetClusterRO(servers, connOpts, roles)
+	require.Nilf(t, err, "fail to set roles for cluster")
+
+	connPool, err := connection_pool.Connect(servers, connOpts)
+	require.Nilf(t, err, "failed to connect")
+	require.NotNilf(t, connPool, "conn is nil after Connect")
+	defer connPool.Close()
+
+	stream, err := connPool.NewStream(connection_pool.PreferRW)
+	require.Nilf(t, err, "failed to create stream")
+	require.NotNilf(t, connPool, "stream is nil after NewStream")
+
+	// Begin transaction
+	req = tarantool.NewBeginRequest()
+	resp, err = stream.Do(req).Get()
+	require.Nilf(t, err, "failed to Begin")
+	require.NotNilf(t, resp, "response is nil after Begin")
+	require.Equalf(t, tarantool.OkCode, resp.Code, "failed to Begin: wrong code returned")
+
+	// Insert in stream
+	req = tarantool.NewInsertRequest(spaceName).
+		Tuple([]interface{}{"rollback_key", "rollback_value"})
+	resp, err = stream.Do(req).Get()
+	require.Nilf(t, err, "failed to Insert")
+	require.NotNilf(t, resp, "response is nil after Insert")
+	require.Equalf(t, tarantool.OkCode, resp.Code, "failed to Insert: wrong code returned")
+
+	// Connect to servers[2] to check if tuple
+	// was not inserted outside of stream on RW instance
+	conn := test_helpers.ConnectWithValidation(t, servers[2], connOpts)
+	defer conn.Close()
+
+	// Select not related to the transaction
+	// while transaction is not committed
+	// result of select is empty
+	selectReq := tarantool.NewSelectRequest(spaceNo).
+		Index(indexNo).
+		Limit(1).
+		Iterator(tarantool.IterEq).
+		Key([]interface{}{"rollback_key"})
+	resp, err = conn.Do(selectReq).Get()
+	require.Nilf(t, err, "failed to Select")
+	require.NotNilf(t, resp, "response is nil after Select")
+	require.Equalf(t, 0, len(resp.Data), "response Data len != 0")
+
+	// Select in stream
+	resp, err = stream.Do(selectReq).Get()
+	require.Nilf(t, err, "failed to Select")
+	require.NotNilf(t, resp, "response is nil after Select")
+	require.Equalf(t, 1, len(resp.Data), "response Body len != 1 after Select")
+
+	tpl, ok := resp.Data[0].([]interface{})
+	require.Truef(t, ok, "unexpected body of Select")
+	require.Equalf(t, 2, len(tpl), "unexpected body of Select")
+
+	key, ok := tpl[0].(string)
+	require.Truef(t, ok, "unexpected body of Select (0)")
+	require.Equalf(t, "rollback_key", key, "unexpected body of Select (0)")
+
+	value, ok := tpl[1].(string)
+	require.Truef(t, ok, "unexpected body of Select (1)")
+	require.Equalf(t, "rollback_value", value, "unexpected body of Select (1)")
+
+	// Rollback transaction
+	req = tarantool.NewRollbackRequest()
+	resp, err = stream.Do(req).Get()
+	require.Nilf(t, err, "failed to Rollback")
+	require.NotNilf(t, resp, "response is nil after Rollback")
+	require.Equalf(t, tarantool.OkCode, resp.Code, "failed to Rollback: wrong code returned")
+
+	// Select outside of transaction
+	resp, err = conn.Do(selectReq).Get()
+	require.Nilf(t, err, "failed to Select")
+	require.NotNilf(t, resp, "response is nil after Select")
+	require.Equalf(t, 0, len(resp.Data), "response Body len != 0 after Select")
+
+	// Select inside of stream after rollback
+	resp, err = stream.Do(selectReq).Get()
+	require.Nilf(t, err, "failed to Select")
+	require.NotNilf(t, resp, "response is nil after Select")
+	require.Equalf(t, 0, len(resp.Data), "response Body len != 0 after Select")
+}
+
+func TestStream_TxnIsolationLevel(t *testing.T) {
+	var req tarantool.Request
+	var resp *tarantool.Response
+	var err error
+
+	txnIsolationLevels := []tarantool.TxnIsolationLevel{
+		tarantool.DefaultIsolationLevel,
+		tarantool.ReadCommittedLevel,
+		tarantool.ReadConfirmedLevel,
+		tarantool.BestEffortLevel,
+	}
+
+	test_helpers.SkipIfStreamsUnsupported(t)
+
+	roles := []bool{true, true, false, true, true}
+
+	err = test_helpers.SetClusterRO(servers, connOpts, roles)
+	require.Nilf(t, err, "fail to set roles for cluster")
+
+	connPool, err := connection_pool.Connect(servers, connOpts)
+	require.Nilf(t, err, "failed to connect")
+	require.NotNilf(t, connPool, "conn is nil after Connect")
+	defer connPool.Close()
+
+	stream, err := connPool.NewStream(connection_pool.PreferRW)
+	require.Nilf(t, err, "failed to create stream")
+	require.NotNilf(t, connPool, "stream is nil after NewStream")
+
+	// Connect to servers[2] to check if tuple
+	// was not inserted outside of stream on RW instance
+	conn := test_helpers.ConnectWithValidation(t, servers[2], connOpts)
+	defer conn.Close()
+
+	for _, level := range txnIsolationLevels {
+		// Begin transaction
+		req = tarantool.NewBeginRequest().TxnIsolation(level).Timeout(500 * time.Millisecond)
+		resp, err = stream.Do(req).Get()
+		require.Nilf(t, err, "failed to Begin")
+		require.NotNilf(t, resp, "response is nil after Begin")
+		require.Equalf(t, tarantool.OkCode, resp.Code, "wrong code returned")
+
+		// Insert in stream
+		req = tarantool.NewInsertRequest(spaceName).
+			Tuple([]interface{}{"level_key", "level_value"})
+		resp, err = stream.Do(req).Get()
+		require.Nilf(t, err, "failed to Insert")
+		require.NotNilf(t, resp, "response is nil after Insert")
+		require.Equalf(t, tarantool.OkCode, resp.Code, "wrong code returned")
+
+		// Select not related to the transaction
+		// while transaction is not committed
+		// result of select is empty
+		selectReq := tarantool.NewSelectRequest(spaceNo).
+			Index(indexNo).
+			Limit(1).
+			Iterator(tarantool.IterEq).
+			Key([]interface{}{"level_key"})
+		resp, err = conn.Do(selectReq).Get()
+		require.Nilf(t, err, "failed to Select")
+		require.NotNilf(t, resp, "response is nil after Select")
+		require.Equalf(t, 0, len(resp.Data), "response Data len != 0")
+
+		// Select in stream
+		resp, err = stream.Do(selectReq).Get()
+		require.Nilf(t, err, "failed to Select")
+		require.NotNilf(t, resp, "response is nil after Select")
+		require.Equalf(t, 1, len(resp.Data), "response Body len != 1 after Select")
+
+		tpl, ok := resp.Data[0].([]interface{})
+		require.Truef(t, ok, "unexpected body of Select")
+		require.Equalf(t, 2, len(tpl), "unexpected body of Select")
+
+		key, ok := tpl[0].(string)
+		require.Truef(t, ok, "unexpected body of Select (0)")
+		require.Equalf(t, "level_key", key, "unexpected body of Select (0)")
+
+		value, ok := tpl[1].(string)
+		require.Truef(t, ok, "unexpected body of Select (1)")
+		require.Equalf(t, "level_value", value, "unexpected body of Select (1)")
+
+		// Rollback transaction
+		req = tarantool.NewRollbackRequest()
+		resp, err = stream.Do(req).Get()
+		require.Nilf(t, err, "failed to Rollback")
+		require.NotNilf(t, resp, "response is nil after Rollback")
+		require.Equalf(t, tarantool.OkCode, resp.Code, "wrong code returned")
+
+		// Select outside of transaction
+		resp, err = conn.Do(selectReq).Get()
+		require.Nilf(t, err, "failed to Select")
+		require.NotNilf(t, resp, "response is nil after Select")
+		require.Equalf(t, 0, len(resp.Data), "response Data len != 0")
+
+		// Select inside of stream after rollback
+		resp, err = stream.Do(selectReq).Get()
+		require.Nilf(t, err, "failed to Select")
+		require.NotNilf(t, resp, "response is nil after Select")
+		require.Equalf(t, 0, len(resp.Data), "response Data len != 0")
+
+		test_helpers.DeleteRecordByKey(t, conn, spaceNo, indexNo, []interface{}{"level_key"})
+	}
+}
+
 // runTestMain is a body of TestMain function
 // (see https://pkg.go.dev/testing#hdr-Main).
 // Using defer + os.Exit is not works so TestMain body
@@ -1383,15 +1677,21 @@ func runTestMain(m *testing.M) int {
 		"work_dir1", "work_dir2",
 		"work_dir3", "work_dir4",
 		"work_dir5"}
-	var err error
+
+	// Tarantool supports streams and interactive transactions since version 2.10.0
+	isStreamUnsupported, err := test_helpers.IsTarantoolVersionLess(2, 10, 0)
+	if err != nil {
+		log.Fatalf("Could not check the Tarantool version")
+	}
 
 	instances, err = test_helpers.StartTarantoolInstances(servers, workDirs, test_helpers.StartOpts{
-		InitScript:   initScript,
-		User:         connOpts.User,
-		Pass:         connOpts.Pass,
-		WaitStart:    waitStart,
-		ConnectRetry: connectRetry,
-		RetryTimeout: retryTimeout,
+		InitScript:         initScript,
+		User:               connOpts.User,
+		Pass:               connOpts.Pass,
+		WaitStart:          waitStart,
+		ConnectRetry:       connectRetry,
+		RetryTimeout:       retryTimeout,
+		MemtxUseMvccEngine: !isStreamUnsupported,
 	})
 
 	if err != nil {

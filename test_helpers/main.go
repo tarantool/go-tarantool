@@ -72,6 +72,10 @@ type StartOpts struct {
 
 	// RetryTimeout is a time between tarantool ping retries.
 	RetryTimeout time.Duration
+
+	// MemtxUseMvccEngine is flag to enable transactional
+	// manager if set to true.
+	MemtxUseMvccEngine bool
 }
 
 // TarantoolInstance is a data for instance graceful shutdown and cleanup.
@@ -190,6 +194,7 @@ func StartTarantool(startOpts StartOpts) (TarantoolInstance, error) {
 		os.Environ(),
 		fmt.Sprintf("TEST_TNT_WORK_DIR=%s", startOpts.WorkDir),
 		fmt.Sprintf("TEST_TNT_LISTEN=%s", startOpts.Listen),
+		fmt.Sprintf("TEST_TNT_MEMTX_USE_MVCC_ENGINE=%t", startOpts.MemtxUseMvccEngine),
 	)
 
 	// Clean up existing work_dir.

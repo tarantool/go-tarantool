@@ -20,6 +20,7 @@ import (
 )
 
 const requestsMap = 128
+const ignoreStreamId = 0
 const (
 	connDisconnected = 0
 	connConnected    = 1
@@ -143,6 +144,8 @@ type Connection struct {
 	state   uint32
 	dec     *msgpack.Decoder
 	lenbuf  [PacketLengthBytes]byte
+
+	lastStreamId uint64
 }
 
 var _ = Connector(&Connection{}) // Check compatibility with connector interface.
@@ -528,16 +531,27 @@ func (conn *Connection) dial() (err error) {
 	return
 }
 
-func pack(h *smallWBuf, enc *msgpack.Encoder, reqid uint32, req Request, res SchemaResolver) (err error) {
+func pack(h *smallWBuf, enc *msgpack.Encoder, reqid uint32,
+	req Request, streamId uint64, res SchemaResolver) (err error) {
 	hl := h.Len()
-	h.Write([]byte{
+
+	hMapLen := byte(0x82) // 2 element map.
+	if streamId != ignoreStreamId {
+		hMapLen = byte(0x83) // 3 element map.
+	}
+	hBytes := []byte{
 		0xce, 0, 0, 0, 0, // Length.
-		0x82,                      // 2 element map.
+		hMapLen,
 		KeyCode, byte(req.Code()), // Request code.
 		KeySync, 0xce,
 		byte(reqid >> 24), byte(reqid >> 16),
 		byte(reqid >> 8), byte(reqid),
-	})
+	}
+	if streamId != ignoreStreamId {
+		hBytes = append(hBytes, KeyStreamId, byte(streamId))
+	}
+
+	h.Write(hBytes)
 
 	if err = req.Body(res, enc); err != nil {
 		return
@@ -555,7 +569,7 @@ func pack(h *smallWBuf, enc *msgpack.Encoder, reqid uint32, req Request, res Sch
 func (conn *Connection) writeAuthRequest(w *bufio.Writer, scramble []byte) (err error) {
 	var packet smallWBuf
 	req := newAuthRequest(conn.opts.User, string(scramble))
-	err = pack(&packet, msgpack.NewEncoder(&packet), 0, req, conn.Schema)
+	err = pack(&packet, msgpack.NewEncoder(&packet), 0, req, ignoreStreamId, conn.Schema)
 
 	if err != nil {
 		return errors.New("auth: pack error " + err.Error())
@@ -869,7 +883,7 @@ func (conn *Connection) contextWatchdog(fut *Future, ctx context.Context) {
 	}
 }
 
-func (conn *Connection) send(req Request) *Future {
+func (conn *Connection) send(req Request, streamId uint64) *Future {
 	fut := conn.newFuture(req.Ctx())
 	if fut.ready == nil {
 		return fut
@@ -882,14 +896,14 @@ func (conn *Connection) send(req Request) *Future {
 		default:
 		}
 	}
-	conn.putFuture(fut, req)
+	conn.putFuture(fut, req, streamId)
 	if req.Ctx() != nil {
 		go conn.contextWatchdog(fut, req.Ctx())
 	}
 	return fut
 }
 
-func (conn *Connection) putFuture(fut *Future, req Request) {
+func (conn *Connection) putFuture(fut *Future, req Request, streamId uint64) {
 	shardn := fut.requestId & (conn.opts.Concurrency - 1)
 	shard := &conn.shard[shardn]
 	shard.bufmut.Lock()
@@ -906,7 +920,7 @@ func (conn *Connection) putFuture(fut *Future, req Request) {
 	}
 	blen := shard.buf.Len()
 	reqid := fut.requestId
-	if err := pack(&shard.buf, shard.enc, reqid, req, conn.Schema); err != nil {
+	if err := pack(&shard.buf, shard.enc, reqid, req, streamId, conn.Schema); err != nil {
 		shard.buf.Trunc(blen)
 		shard.bufmut.Unlock()
 		if f := conn.fetchFuture(reqid); f == fut {
@@ -1095,7 +1109,7 @@ func (conn *Connection) Do(req Request) *Future {
 		default:
 		}
 	}
-	return conn.send(req)
+	return conn.send(req, ignoreStreamId)
 }
 
 // ConfiguredTimeout returns a timeout from connection config.
@@ -1120,4 +1134,17 @@ func (conn *Connection) NewPrepared(expr string) (*Prepared, error) {
 		return nil, err
 	}
 	return NewPreparedFromResponse(conn, resp)
+}
+
+// NewStream creates new Stream object for connection.
+//
+// Since v. 2.10.0, Tarantool supports streams and interactive transactions over them.
+// To use interactive transactions, memtx_use_mvcc_engine box option should be set to true.
+// Since 1.7.0
+func (conn *Connection) NewStream() (*Stream, error) {
+	next := atomic.AddUint64(&conn.lastStreamId, 1)
+	return &Stream{
+		Id:   next,
+		Conn: conn,
+	}, nil
 }

@@ -16,6 +16,9 @@ import (
 
 var server1 = "127.0.0.1:3013"
 var server2 = "127.0.0.1:3014"
+var spaceNo = uint32(517)
+var spaceName = "test"
+var indexNo = uint32(0)
 var connOpts = tarantool.Opts{
 	Timeout: 500 * time.Millisecond,
 	User:    "test",
@@ -318,6 +321,233 @@ func TestDoWithStrangerConn(t *testing.T) {
 	}
 }
 
+func TestStream_Commit(t *testing.T) {
+	var req tarantool.Request
+	var resp *tarantool.Response
+	var err error
+
+	test_helpers.SkipIfStreamsUnsupported(t)
+
+	multiConn, err := Connect([]string{server1, server2}, connOpts)
+	if err != nil {
+		t.Fatalf("Failed to connect: %s", err.Error())
+	}
+	if multiConn == nil {
+		t.Fatalf("conn is nil after Connect")
+	}
+	defer multiConn.Close()
+
+	stream, _ := multiConn.NewStream()
+
+	// Begin transaction
+	req = tarantool.NewBeginRequest()
+	resp, err = stream.Do(req).Get()
+	if err != nil {
+		t.Fatalf("Failed to Begin: %s", err.Error())
+	}
+	if resp.Code != tarantool.OkCode {
+		t.Fatalf("Failed to Begin: wrong code returned %d", resp.Code)
+	}
+
+	// Insert in stream
+	req = tarantool.NewInsertRequest(spaceName).
+		Tuple([]interface{}{uint(1001), "hello2", "world2"})
+	resp, err = stream.Do(req).Get()
+	if err != nil {
+		t.Fatalf("Failed to Insert: %s", err.Error())
+	}
+	if resp.Code != tarantool.OkCode {
+		t.Errorf("Failed to Insert: wrong code returned %d", resp.Code)
+	}
+	defer test_helpers.DeleteRecordByKey(t, multiConn, spaceNo, indexNo, []interface{}{uint(1001)})
+
+	// Select not related to the transaction
+	// while transaction is not committed
+	// result of select is empty
+	selectReq := tarantool.NewSelectRequest(spaceNo).
+		Index(indexNo).
+		Limit(1).
+		Iterator(tarantool.IterEq).
+		Key([]interface{}{uint(1001)})
+	resp, err = multiConn.Do(selectReq).Get()
+	if err != nil {
+		t.Fatalf("Failed to Select: %s", err.Error())
+	}
+	if resp == nil {
+		t.Fatalf("Response is nil after Select")
+	}
+	if len(resp.Data) != 0 {
+		t.Fatalf("Response Data len != 0")
+	}
+
+	// Select in stream
+	resp, err = stream.Do(selectReq).Get()
+	if err != nil {
+		t.Fatalf("Failed to Select: %s", err.Error())
+	}
+	if resp == nil {
+		t.Fatalf("Response is nil after Select")
+	}
+	if len(resp.Data) != 1 {
+		t.Fatalf("Response Data len != 1")
+	}
+	if tpl, ok := resp.Data[0].([]interface{}); !ok {
+		t.Fatalf("Unexpected body of Select")
+	} else {
+		if id, ok := tpl[0].(uint64); !ok || id != 1001 {
+			t.Fatalf("Unexpected body of Select (0)")
+		}
+		if h, ok := tpl[1].(string); !ok || h != "hello2" {
+			t.Fatalf("Unexpected body of Select (1)")
+		}
+		if h, ok := tpl[2].(string); !ok || h != "world2" {
+			t.Fatalf("Unexpected body of Select (2)")
+		}
+	}
+
+	// Commit transaction
+	req = tarantool.NewCommitRequest()
+	resp, err = stream.Do(req).Get()
+	if err != nil {
+		t.Fatalf("Failed to Commit: %s", err.Error())
+	}
+	if resp.Code != tarantool.OkCode {
+		t.Fatalf("Failed to Commit: wrong code returned %d", resp.Code)
+	}
+
+	// Select outside of transaction
+	resp, err = multiConn.Do(selectReq).Get()
+	if err != nil {
+		t.Fatalf("Failed to Select: %s", err.Error())
+	}
+	if resp == nil {
+		t.Fatalf("Response is nil after Select")
+	}
+	if len(resp.Data) != 1 {
+		t.Fatalf("Response Data len != 1")
+	}
+	if tpl, ok := resp.Data[0].([]interface{}); !ok {
+		t.Fatalf("Unexpected body of Select")
+	} else {
+		if id, ok := tpl[0].(uint64); !ok || id != 1001 {
+			t.Fatalf("Unexpected body of Select (0)")
+		}
+		if h, ok := tpl[1].(string); !ok || h != "hello2" {
+			t.Fatalf("Unexpected body of Select (1)")
+		}
+		if h, ok := tpl[2].(string); !ok || h != "world2" {
+			t.Fatalf("Unexpected body of Select (2)")
+		}
+	}
+}
+
+func TestStream_Rollback(t *testing.T) {
+	var req tarantool.Request
+	var resp *tarantool.Response
+	var err error
+
+	test_helpers.SkipIfStreamsUnsupported(t)
+
+	multiConn, err := Connect([]string{server1, server2}, connOpts)
+	if err != nil {
+		t.Fatalf("Failed to connect: %s", err.Error())
+	}
+	if multiConn == nil {
+		t.Fatalf("conn is nil after Connect")
+	}
+	defer multiConn.Close()
+
+	stream, _ := multiConn.NewStream()
+
+	// Begin transaction
+	req = tarantool.NewBeginRequest()
+	resp, err = stream.Do(req).Get()
+	if err != nil {
+		t.Fatalf("Failed to Begin: %s", err.Error())
+	}
+	if resp.Code != tarantool.OkCode {
+		t.Fatalf("Failed to Begin: wrong code returned %d", resp.Code)
+	}
+
+	// Insert in stream
+	req = tarantool.NewInsertRequest(spaceName).
+		Tuple([]interface{}{uint(1001), "hello2", "world2"})
+	resp, err = stream.Do(req).Get()
+	if err != nil {
+		t.Fatalf("Failed to Insert: %s", err.Error())
+	}
+	if resp.Code != tarantool.OkCode {
+		t.Errorf("Failed to Insert: wrong code returned %d", resp.Code)
+	}
+	defer test_helpers.DeleteRecordByKey(t, multiConn, spaceNo, indexNo, []interface{}{uint(1001)})
+
+	// Select not related to the transaction
+	// while transaction is not committed
+	// result of select is empty
+	selectReq := tarantool.NewSelectRequest(spaceNo).
+		Index(indexNo).
+		Limit(1).
+		Iterator(tarantool.IterEq).
+		Key([]interface{}{uint(1001)})
+	resp, err = multiConn.Do(selectReq).Get()
+	if err != nil {
+		t.Fatalf("Failed to Select: %s", err.Error())
+	}
+	if resp == nil {
+		t.Fatalf("Response is nil after Select")
+	}
+	if len(resp.Data) != 0 {
+		t.Fatalf("Response Data len != 0")
+	}
+
+	// Select in stream
+	resp, err = stream.Do(selectReq).Get()
+	if err != nil {
+		t.Fatalf("Failed to Select: %s", err.Error())
+	}
+	if resp == nil {
+		t.Fatalf("Response is nil after Select")
+	}
+	if len(resp.Data) != 1 {
+		t.Fatalf("Response Data len != 1")
+	}
+	if tpl, ok := resp.Data[0].([]interface{}); !ok {
+		t.Fatalf("Unexpected body of Select")
+	} else {
+		if id, ok := tpl[0].(uint64); !ok || id != 1001 {
+			t.Fatalf("Unexpected body of Select (0)")
+		}
+		if h, ok := tpl[1].(string); !ok || h != "hello2" {
+			t.Fatalf("Unexpected body of Select (1)")
+		}
+		if h, ok := tpl[2].(string); !ok || h != "world2" {
+			t.Fatalf("Unexpected body of Select (2)")
+		}
+	}
+
+	// Rollback transaction
+	req = tarantool.NewRollbackRequest()
+	resp, err = stream.Do(req).Get()
+	if err != nil {
+		t.Fatalf("Failed to Rollback: %s", err.Error())
+	}
+	if resp.Code != tarantool.OkCode {
+		t.Fatalf("Failed to Rollback: wrong code returned %d", resp.Code)
+	}
+
+	// Select outside of transaction
+	resp, err = multiConn.Do(selectReq).Get()
+	if err != nil {
+		t.Fatalf("Failed to Select: %s", err.Error())
+	}
+	if resp == nil {
+		t.Fatalf("Response is nil after Select")
+	}
+	if len(resp.Data) != 0 {
+		t.Fatalf("Response Data len != 0")
+	}
+}
+
 // runTestMain is a body of TestMain function
 // (see https://pkg.go.dev/testing#hdr-Main).
 // Using defer + os.Exit is not works so TestMain body
@@ -329,15 +559,22 @@ func runTestMain(m *testing.M) int {
 	var connectRetry uint = 3
 	retryTimeout := 500 * time.Millisecond
 
+	// Tarantool supports streams and interactive transactions since version 2.10.0
+	isStreamUnsupported, err := test_helpers.IsTarantoolVersionLess(2, 10, 0)
+	if err != nil {
+		log.Fatalf("Could not check the Tarantool version")
+	}
+
 	inst1, err := test_helpers.StartTarantool(test_helpers.StartOpts{
-		InitScript:   initScript,
-		Listen:       server1,
-		WorkDir:      "work_dir1",
-		User:         connOpts.User,
-		Pass:         connOpts.Pass,
-		WaitStart:    waitStart,
-		ConnectRetry: connectRetry,
-		RetryTimeout: retryTimeout,
+		InitScript:         initScript,
+		Listen:             server1,
+		WorkDir:            "work_dir1",
+		User:               connOpts.User,
+		Pass:               connOpts.Pass,
+		WaitStart:          waitStart,
+		ConnectRetry:       connectRetry,
+		RetryTimeout:       retryTimeout,
+		MemtxUseMvccEngine: !isStreamUnsupported,
 	})
 	defer test_helpers.StopTarantoolWithCleanup(inst1)
 

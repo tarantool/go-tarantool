@@ -93,3 +93,21 @@ func RefImplExecutePreparedBody(enc *msgpack.Encoder, stmt Prepared, args interf
 func RefImplUnprepareBody(enc *msgpack.Encoder, stmt Prepared) error {
 	return fillUnprepare(enc, stmt)
 }
+
+// RefImplBeginBody is reference implementation for filling of an begin
+// request's body.
+func RefImplBeginBody(enc *msgpack.Encoder, txnIsolation TxnIsolationLevel, timeout time.Duration) error {
+	return fillBegin(enc, txnIsolation, timeout)
+}
+
+// RefImplCommitBody is reference implementation for filling of an commit
+// request's body.
+func RefImplCommitBody(enc *msgpack.Encoder) error {
+	return fillCommit(enc)
+}
+
+// RefImplRollbackBody is reference implementation for filling of an rollback
+// request's body.
+func RefImplRollbackBody(enc *msgpack.Encoder) error {
+	return fillRollback(enc)
+}

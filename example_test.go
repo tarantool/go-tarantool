@@ -228,6 +228,236 @@ func ExampleUpsertRequest() {
 	// response is []interface {}{[]interface {}{0x459, "first", "updated"}}
 }
 
+func ExampleCommitRequest() {
+	var req tarantool.Request
+	var resp *tarantool.Response
+	var err error
+
+	// Tarantool supports streams and interactive transactions since version 2.10.0
+	isLess, _ := test_helpers.IsTarantoolVersionLess(2, 10, 0)
+	if err != nil || isLess {
+		return
+	}
+
+	conn := example_connect()
+	defer conn.Close()
+
+	stream, _ := conn.NewStream()
+
+	// Begin transaction
+	req = tarantool.NewBeginRequest()
+	resp, err = stream.Do(req).Get()
+	if err != nil {
+		fmt.Printf("Failed to Begin: %s", err.Error())
+		return
+	}
+	fmt.Printf("Begin transaction: response is %#v\n", resp.Code)
+
+	// Insert in stream
+	req = tarantool.NewInsertRequest(spaceName).
+		Tuple([]interface{}{uint(1001), "commit_hello", "commit_world"})
+	resp, err = stream.Do(req).Get()
+	if err != nil {
+		fmt.Printf("Failed to Insert: %s", err.Error())
+		return
+	}
+	fmt.Printf("Insert in stream: response is %#v\n", resp.Code)
+
+	// Select not related to the transaction
+	// while transaction is not commited
+	// result of select is empty
+	selectReq := tarantool.NewSelectRequest(spaceNo).
+		Index(indexNo).
+		Limit(1).
+		Iterator(tarantool.IterEq).
+		Key([]interface{}{uint(1001)})
+	resp, err = conn.Do(selectReq).Get()
+	if err != nil {
+		fmt.Printf("Failed to Select: %s", err.Error())
+		return
+	}
+	fmt.Printf("Select out of stream before commit: response is %#v\n", resp.Data)
+
+	// Select in stream
+	resp, err = stream.Do(selectReq).Get()
+	if err != nil {
+		fmt.Printf("Failed to Select: %s", err.Error())
+		return
+	}
+	fmt.Printf("Select in stream: response is %#v\n", resp.Data)
+
+	// Commit transaction
+	req = tarantool.NewCommitRequest()
+	resp, err = stream.Do(req).Get()
+	if err != nil {
+		fmt.Printf("Failed to Commit: %s", err.Error())
+		return
+	}
+	fmt.Printf("Commit transaction: response is %#v\n", resp.Code)
+
+	// Select outside of transaction
+	resp, err = conn.Do(selectReq).Get()
+	if err != nil {
+		fmt.Printf("Failed to Select: %s", err.Error())
+		return
+	}
+	fmt.Printf("Select after commit: response is %#v\n", resp.Data)
+}
+
+func ExampleRollbackRequest() {
+	var req tarantool.Request
+	var resp *tarantool.Response
+	var err error
+
+	// Tarantool supports streams and interactive transactions since version 2.10.0
+	isLess, _ := test_helpers.IsTarantoolVersionLess(2, 10, 0)
+	if err != nil || isLess {
+		return
+	}
+
+	conn := example_connect()
+	defer conn.Close()
+
+	stream, _ := conn.NewStream()
+
+	// Begin transaction
+	req = tarantool.NewBeginRequest()
+	resp, err = stream.Do(req).Get()
+	if err != nil {
+		fmt.Printf("Failed to Begin: %s", err.Error())
+		return
+	}
+	fmt.Printf("Begin transaction: response is %#v\n", resp.Code)
+
+	// Insert in stream
+	req = tarantool.NewInsertRequest(spaceName).
+		Tuple([]interface{}{uint(2001), "rollback_hello", "rollback_world"})
+	resp, err = stream.Do(req).Get()
+	if err != nil {
+		fmt.Printf("Failed to Insert: %s", err.Error())
+		return
+	}
+	fmt.Printf("Insert in stream: response is %#v\n", resp.Code)
+
+	// Select not related to the transaction
+	// while transaction is not commited
+	// result of select is empty
+	selectReq := tarantool.NewSelectRequest(spaceNo).
+		Index(indexNo).
+		Limit(1).
+		Iterator(tarantool.IterEq).
+		Key([]interface{}{uint(2001)})
+	resp, err = conn.Do(selectReq).Get()
+	if err != nil {
+		fmt.Printf("Failed to Select: %s", err.Error())
+		return
+	}
+	fmt.Printf("Select out of stream: response is %#v\n", resp.Data)
+
+	// Select in stream
+	resp, err = stream.Do(selectReq).Get()
+	if err != nil {
+		fmt.Printf("Failed to Select: %s", err.Error())
+		return
+	}
+	fmt.Printf("Select in stream: response is %#v\n", resp.Data)
+
+	// Rollback transaction
+	req = tarantool.NewRollbackRequest()
+	resp, err = stream.Do(req).Get()
+	if err != nil {
+		fmt.Printf("Failed to Rollback: %s", err.Error())
+		return
+	}
+	fmt.Printf("Rollback transaction: response is %#v\n", resp.Code)
+
+	// Select outside of transaction
+	resp, err = conn.Do(selectReq).Get()
+	if err != nil {
+		fmt.Printf("Failed to Select: %s", err.Error())
+		return
+	}
+	fmt.Printf("Select after Rollback: response is %#v\n", resp.Data)
+}
+
+func ExampleBeginRequest_TxnIsolation() {
+	var req tarantool.Request
+	var resp *tarantool.Response
+	var err error
+
+	// Tarantool supports streams and interactive transactions since version 2.10.0
+	isLess, _ := test_helpers.IsTarantoolVersionLess(2, 10, 0)
+	if err != nil || isLess {
+		return
+	}
+
+	conn := example_connect()
+	defer conn.Close()
+
+	stream, _ := conn.NewStream()
+
+	// Begin transaction
+	req = tarantool.NewBeginRequest().
+		TxnIsolation(tarantool.ReadConfirmedLevel).
+		Timeout(500 * time.Millisecond)
+	resp, err = stream.Do(req).Get()
+	if err != nil {
+		fmt.Printf("Failed to Begin: %s", err.Error())
+		return
+	}
+	fmt.Printf("Begin transaction: response is %#v\n", resp.Code)
+
+	// Insert in stream
+	req = tarantool.NewInsertRequest(spaceName).
+		Tuple([]interface{}{uint(2001), "rollback_hello", "rollback_world"})
+	resp, err = stream.Do(req).Get()
+	if err != nil {
+		fmt.Printf("Failed to Insert: %s", err.Error())
+		return
+	}
+	fmt.Printf("Insert in stream: response is %#v\n", resp.Code)
+
+	// Select not related to the transaction
+	// while transaction is not commited
+	// result of select is empty
+	selectReq := tarantool.NewSelectRequest(spaceNo).
+		Index(indexNo).
+		Limit(1).
+		Iterator(tarantool.IterEq).
+		Key([]interface{}{uint(2001)})
+	resp, err = conn.Do(selectReq).Get()
+	if err != nil {
+		fmt.Printf("Failed to Select: %s", err.Error())
+		return
+	}
+	fmt.Printf("Select out of stream: response is %#v\n", resp.Data)
+
+	// Select in stream
+	resp, err = stream.Do(selectReq).Get()
+	if err != nil {
+		fmt.Printf("Failed to Select: %s", err.Error())
+		return
+	}
+	fmt.Printf("Select in stream: response is %#v\n", resp.Data)
+
+	// Rollback transaction
+	req = tarantool.NewRollbackRequest()
+	resp, err = stream.Do(req).Get()
+	if err != nil {
+		fmt.Printf("Failed to Rollback: %s", err.Error())
+		return
+	}
+	fmt.Printf("Rollback transaction: response is %#v\n", resp.Code)
+
+	// Select outside of transaction
+	resp, err = conn.Do(selectReq).Get()
+	if err != nil {
+		fmt.Printf("Failed to Select: %s", err.Error())
+		return
+	}
+	fmt.Printf("Select after Rollback: response is %#v\n", resp.Data)
+}
+
 func ExampleFuture_GetIterator() {
 	conn := example_connect()
 	defer conn.Close()

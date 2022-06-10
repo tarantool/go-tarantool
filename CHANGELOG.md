@@ -17,6 +17,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 - Support datetime type in msgpack (#118)
 - Prepared SQL statements (#117)
 - Context support for request objects (#48)
+- Streams and interactive transactions support (#101)
 
 ### Changed
 

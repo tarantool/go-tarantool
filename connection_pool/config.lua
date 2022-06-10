@@ -2,6 +2,7 @@
 -- able to send requests until everything is configured.
 box.cfg{
     work_dir = os.getenv("TEST_TNT_WORK_DIR"),
+    memtx_use_mvcc_engine = os.getenv("TEST_TNT_MEMTX_USE_MVCC_ENGINE") == 'true' or nil,
 }
 
 box.once("init", function()

@@ -4,6 +4,7 @@ local nodes_load = require("config_load_nodes")
 -- able to send requests until everything is configured.
 box.cfg{
     work_dir = os.getenv("TEST_TNT_WORK_DIR"),
+    memtx_use_mvcc_engine = os.getenv("TEST_TNT_MEMTX_USE_MVCC_ENGINE") == 'true' or nil,
 }
 
 -- Function to call for getting address list, part of tarantool/multi API.
@@ -11,6 +12,12 @@ local get_cluster_nodes = nodes_load.get_cluster_nodes
 rawset(_G, 'get_cluster_nodes', get_cluster_nodes)
 
 box.once("init", function()
+    local s = box.schema.space.create('test', {
+        id = 517,
+        if_not_exists = true,
+    })
+    s:create_index('primary', {type = 'tree', parts = {1, 'uint'}, if_not_exists = true})
+
     box.schema.user.create('test', { password = 'test' })
     box.schema.user.grant('test', 'read,write,execute', 'universe')
 

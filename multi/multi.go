@@ -498,6 +498,15 @@ func (connMulti *ConnectionMulti) NewPrepared(expr string) (*tarantool.Prepared,
 	return connMulti.getCurrentConnection().NewPrepared(expr)
 }
 
+// NewStream creates new Stream object for connection.
+//
+// Since v. 2.10.0, Tarantool supports streams and interactive transactions over them.
+// To use interactive transactions, memtx_use_mvcc_engine box option should be set to true.
+// Since 1.7.0
+func (connMulti *ConnectionMulti) NewStream() (*tarantool.Stream, error) {
+	return connMulti.getCurrentConnection().NewStream()
+}
+
 // Do sends the request and returns a future.
 func (connMulti *ConnectionMulti) Do(req tarantool.Request) *tarantool.Future {
 	if connectedReq, ok := req.(tarantool.ConnectedRequest); ok {
