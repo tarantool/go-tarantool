@@ -545,10 +545,10 @@ func (connPool *ConnectionPool) DoTyped(req tarantool.Request, result interface{
 }
 
 // DoAsync sends the request and returns a future.
-func (connPool *ConnectionPool) DoAsync(req tarantool.Request, userMode Mode) (*tarantool.Future, error) {
+func (connPool *ConnectionPool) DoAsync(req tarantool.Request, userMode Mode) *tarantool.Future {
 	conn, err := connPool.getNextConnection(userMode)
 	if err != nil {
-		return nil, err
+		return tarantool.NewErrorFuture(err)
 	}
 
 	return conn.DoAsync(req)

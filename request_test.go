@@ -45,12 +45,15 @@ func (*ValidSchemeResolver) ResolveSpaceIndex(s, i interface{}) (spaceNo, indexN
 
 var resolver ValidSchemeResolver
 
-func assertBodyFuncCall(t testing.TB, requests []Request, errorMsg string) {
+func assertBodyCall(t testing.TB, requests []Request, errorMsg string) {
 	t.Helper()
 
-	const errBegin = "An unexpected Request.BodyFunc() "
+	const errBegin = "An unexpected Request.Body() "
 	for _, req := range requests {
-		_, err := req.BodyFunc(&resolver)
+		var reqBuf bytes.Buffer
+		enc := msgpack.NewEncoder(&reqBuf)
+
+		err := req.Body(&resolver, enc)
 		if err != nil && errorMsg != "" && err.Error() != errorMsg {
 			t.Errorf(errBegin+"error %q expected %q", err.Error(), errorMsg)
 		}
@@ -69,14 +72,10 @@ func assertBodyEqual(t testing.TB, reference []byte, req Request) {
 	var reqBuf bytes.Buffer
 	reqEnc := msgpack.NewEncoder(&reqBuf)
 
-	f, err := req.BodyFunc(&resolver)
+	err := req.Body(&resolver, reqEnc)
 	if err != nil {
-		t.Errorf("An unexpected Response.BodyFunc() error: %q", err.Error())
+		t.Errorf("An unexpected Response.Body() error: %q", err.Error())
 	} else {
-		err = f(reqEnc)
-		if err != nil {
-			t.Errorf("An unexpected encode body error: %q", err.Error())
-		}
 		reqBody := reqBuf.Bytes()
 		if !bytes.Equal(reqBody, reference) {
 			t.Errorf("Encoded request %v != reference %v", reqBody, reference)
@@ -124,7 +123,7 @@ func TestRequestsValidSpaceAndIndex(t *testing.T) {
 		NewDeleteRequest(validSpace).Index(validIndex),
 	}
 
-	assertBodyFuncCall(t, requests, "")
+	assertBodyCall(t, requests, "")
 }
 
 func TestRequestsInvalidSpace(t *testing.T) {
@@ -140,7 +139,7 @@ func TestRequestsInvalidSpace(t *testing.T) {
 		NewDeleteRequest(invalidSpace),
 	}
 
-	assertBodyFuncCall(t, requests, invalidSpaceMsg)
+	assertBodyCall(t, requests, invalidSpaceMsg)
 }
 
 func TestRequestsInvalidIndex(t *testing.T) {
@@ -150,7 +149,7 @@ func TestRequestsInvalidIndex(t *testing.T) {
 		NewDeleteRequest(validSpace).Index(invalidIndex),
 	}
 
-	assertBodyFuncCall(t, requests, invalidIndexMsg)
+	assertBodyCall(t, requests, invalidIndexMsg)
 }
 
 func TestRequestsCodes(t *testing.T) {

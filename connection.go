@@ -468,18 +468,35 @@ func (conn *Connection) dial() (err error) {
 	return
 }
 
-func (conn *Connection) writeAuthRequest(w *bufio.Writer, scramble []byte) (err error) {
-	request := &Future{
-		requestId:   0,
-		requestCode: AuthRequestCode,
-	}
-	var packet smallWBuf
-	err = request.pack(&packet, msgpack.NewEncoder(&packet), func(enc *msgpack.Encoder) error {
-		return enc.Encode(map[uint32]interface{}{
-			KeyUserName: conn.opts.User,
-			KeyTuple:    []interface{}{string("chap-sha1"), string(scramble)},
-		})
+func pack(h *smallWBuf, enc *msgpack.Encoder, reqid uint32, req Request, res SchemaResolver) (err error) {
+	hl := h.Len()
+	h.Write([]byte{
+		0xce, 0, 0, 0, 0, // Length.
+		0x82,                      // 2 element map.
+		KeyCode, byte(req.Code()), // Request code.
+		KeySync, 0xce,
+		byte(reqid >> 24), byte(reqid >> 16),
+		byte(reqid >> 8), byte(reqid),
 	})
+
+	if err = req.Body(res, enc); err != nil {
+		return
+	}
+
+	l := uint32(h.Len() - 5 - hl)
+	h.b[hl+1] = byte(l >> 24)
+	h.b[hl+2] = byte(l >> 16)
+	h.b[hl+3] = byte(l >> 8)
+	h.b[hl+4] = byte(l)
+
+	return
+}
+
+func (conn *Connection) writeAuthRequest(w *bufio.Writer, scramble []byte) (err error) {
+	var packet smallWBuf
+	req := newAuthRequest(conn.opts.User, string(scramble))
+	err = pack(&packet, msgpack.NewEncoder(&packet), 0, req, conn.Schema)
+
 	if err != nil {
 		return errors.New("auth: pack error " + err.Error())
 	}
@@ -704,7 +721,7 @@ func (conn *Connection) reader(r *bufio.Reader, c net.Conn) {
 	}
 }
 
-func (conn *Connection) newFuture(requestCode int32) (fut *Future) {
+func (conn *Connection) newFuture() (fut *Future) {
 	fut = NewFuture()
 	if conn.rlimit != nil && conn.opts.RLimitAction == RLimitDrop {
 		select {
@@ -720,7 +737,6 @@ func (conn *Connection) newFuture(requestCode int32) (fut *Future) {
 		}
 	}
 	fut.requestId = conn.nextRequestId()
-	fut.requestCode = requestCode
 	shardn := fut.requestId & (conn.opts.Concurrency - 1)
 	shard := &conn.shard[shardn]
 	shard.rmut.Lock()
@@ -769,23 +785,16 @@ func (conn *Connection) newFuture(requestCode int32) (fut *Future) {
 	return
 }
 
-func (conn *Connection) sendFuture(fut *Future, body func(*msgpack.Encoder) error) *Future {
+func (conn *Connection) send(req Request) *Future {
+	fut := conn.newFuture()
 	if fut.ready == nil {
 		return fut
 	}
-	conn.putFuture(fut, body)
+	conn.putFuture(fut, req)
 	return fut
 }
 
-func (conn *Connection) failFuture(fut *Future, err error) *Future {
-	if f := conn.fetchFuture(fut.requestId); f == fut {
-		fut.SetError(err)
-		conn.markDone(fut)
-	}
-	return fut
-}
-
-func (conn *Connection) putFuture(fut *Future, body func(*msgpack.Encoder) error) {
+func (conn *Connection) putFuture(fut *Future, req Request) {
 	shardn := fut.requestId & (conn.opts.Concurrency - 1)
 	shard := &conn.shard[shardn]
 	shard.bufmut.Lock()
@@ -801,10 +810,11 @@ func (conn *Connection) putFuture(fut *Future, body func(*msgpack.Encoder) error
 		shard.enc = msgpack.NewEncoder(&shard.buf)
 	}
 	blen := shard.buf.Len()
-	if err := fut.pack(&shard.buf, shard.enc, body); err != nil {
+	reqid := fut.requestId
+	if err := pack(&shard.buf, shard.enc, reqid, req, conn.Schema); err != nil {
 		shard.buf.Trunc(blen)
 		shard.bufmut.Unlock()
-		if f := conn.fetchFuture(fut.requestId); f == fut {
+		if f := conn.fetchFuture(reqid); f == fut {
 			fut.SetError(err)
 			conn.markDone(fut)
 		} else if f != nil {
@@ -983,10 +993,7 @@ func (conn *Connection) nextRequestId() (requestId uint32) {
 // An error is returned if the request was formed incorrectly, or failed to
 // communicate by the connection, or unable to decode the response.
 func (conn *Connection) Do(req Request) (*Response, error) {
-	fut, err := conn.DoAsync(req)
-	if err != nil {
-		return nil, err
-	}
+	fut := conn.DoAsync(req)
 	return fut.Get()
 }
 
@@ -995,10 +1002,7 @@ func (conn *Connection) Do(req Request) (*Response, error) {
 // An error is returned if the request was formed incorrectly, or failed to
 // communicate by the connection, or unable to decode the response.
 func (conn *Connection) DoTyped(req Request, result interface{}) error {
-	fut, err := conn.DoAsync(req)
-	if err != nil {
-		return err
-	}
+	fut := conn.DoAsync(req)
 	return fut.GetTyped(result)
 }
 
@@ -1006,13 +1010,8 @@ func (conn *Connection) DoTyped(req Request, result interface{}) error {
 //
 // An error is returned if the request was formed incorrectly, or failed to
 // create the future.
-func (conn *Connection) DoAsync(req Request) (*Future, error) {
-	bodyFunc, err := req.BodyFunc(conn.Schema)
-	if err != nil {
-		return nil, err
-	}
-	future := conn.newFuture(req.Code())
-	return conn.sendFuture(future, bodyFunc), nil
+func (conn *Connection) DoAsync(req Request) *Future {
+	return conn.send(req)
 }
 
 // ConfiguredTimeout returns a timeout from connection config.

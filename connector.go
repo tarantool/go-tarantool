@@ -44,5 +44,5 @@ type Connector interface {
 
 	Do(req Request) (resp *Response, err error)
 	DoTyped(req Request, result interface{}) (err error)
-	DoAsync(req Request) (fut *Future, err error)
+	DoAsync(req Request) (fut *Future)
 }
