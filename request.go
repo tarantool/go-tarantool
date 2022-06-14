@@ -97,8 +97,7 @@ func fillPing(enc *msgpack.Encoder) error {
 
 // Ping sends empty request to Tarantool to check connection.
 func (conn *Connection) Ping() (resp *Response, err error) {
-	future := conn.newFuture(PingRequestCode)
-	return conn.sendFuture(future, func(enc *msgpack.Encoder) error { return fillPing(enc) }).Get()
+	return conn.Do(NewPingRequest())
 }
 
 // Select performs select to box space.
@@ -306,79 +305,50 @@ func (conn *Connection) ExecuteTyped(expr string, args interface{}, result inter
 
 // SelectAsync sends select request to Tarantool and returns Future.
 func (conn *Connection) SelectAsync(space, index interface{}, offset, limit, iterator uint32, key interface{}) *Future {
-	future := conn.newFuture(SelectRequestCode)
-	spaceNo, indexNo, err := conn.Schema.ResolveSpaceIndex(space, index)
-	if err != nil {
-		return conn.failFuture(future, err)
-	}
-	return conn.sendFuture(future, func(enc *msgpack.Encoder) error {
-		return fillSelect(enc, spaceNo, indexNo, offset, limit, iterator, key)
-	})
+	req := NewSelectRequest(space).
+		Index(index).
+		Offset(offset).
+		Limit(limit).
+		Iterator(iterator).
+		Key(key)
+	return conn.DoAsync(req)
 }
 
 // InsertAsync sends insert action to Tarantool and returns Future.
 // Tarantool will reject Insert when tuple with same primary key exists.
 func (conn *Connection) InsertAsync(space interface{}, tuple interface{}) *Future {
-	future := conn.newFuture(InsertRequestCode)
-	spaceNo, _, err := conn.Schema.ResolveSpaceIndex(space, nil)
-	if err != nil {
-		return conn.failFuture(future, err)
-	}
-	return conn.sendFuture(future, func(enc *msgpack.Encoder) error {
-		return fillInsert(enc, spaceNo, tuple)
-	})
+	req := NewInsertRequest(space).Tuple(tuple)
+	return conn.DoAsync(req)
 }
 
 // ReplaceAsync sends "insert or replace" action to Tarantool and returns Future.
 // If tuple with same primary key exists, it will be replaced.
 func (conn *Connection) ReplaceAsync(space interface{}, tuple interface{}) *Future {
-	future := conn.newFuture(ReplaceRequestCode)
-	spaceNo, _, err := conn.Schema.ResolveSpaceIndex(space, nil)
-	if err != nil {
-		return conn.failFuture(future, err)
-	}
-	return conn.sendFuture(future, func(enc *msgpack.Encoder) error {
-		return fillInsert(enc, spaceNo, tuple)
-	})
+	req := NewReplaceRequest(space).Tuple(tuple)
+	return conn.DoAsync(req)
 }
 
 // DeleteAsync sends deletion action to Tarantool and returns Future.
 // Future's result will contain array with deleted tuple.
 func (conn *Connection) DeleteAsync(space, index interface{}, key interface{}) *Future {
-	future := conn.newFuture(DeleteRequestCode)
-	spaceNo, indexNo, err := conn.Schema.ResolveSpaceIndex(space, index)
-	if err != nil {
-		return conn.failFuture(future, err)
-	}
-	return conn.sendFuture(future, func(enc *msgpack.Encoder) error {
-		return fillDelete(enc, spaceNo, indexNo, key)
-	})
+	req := NewDeleteRequest(space).Index(index).Key(key)
+	return conn.DoAsync(req)
 }
 
 // Update sends deletion of a tuple by key and returns Future.
 // Future's result will contain array with updated tuple.
 func (conn *Connection) UpdateAsync(space, index interface{}, key, ops interface{}) *Future {
-	future := conn.newFuture(UpdateRequestCode)
-	spaceNo, indexNo, err := conn.Schema.ResolveSpaceIndex(space, index)
-	if err != nil {
-		return conn.failFuture(future, err)
-	}
-	return conn.sendFuture(future, func(enc *msgpack.Encoder) error {
-		return fillUpdate(enc, spaceNo, indexNo, key, ops)
-	})
+	req := NewUpdateRequest(space).Index(index).Key(key)
+	req.ops = ops
+	return conn.DoAsync(req)
 }
 
 // UpsertAsync sends "update or insert" action to Tarantool and returns Future.
 // Future's sesult will not contain any tuple.
 func (conn *Connection) UpsertAsync(space interface{}, tuple interface{}, ops interface{}) *Future {
-	future := conn.newFuture(UpsertRequestCode)
-	spaceNo, _, err := conn.Schema.ResolveSpaceIndex(space, nil)
-	if err != nil {
-		return conn.failFuture(future, err)
-	}
-	return conn.sendFuture(future, func(enc *msgpack.Encoder) error {
-		return fillUpsert(enc, spaceNo, tuple, ops)
-	})
+	req := NewUpsertRequest(space).Tuple(tuple)
+	req.ops = ops
+	return conn.DoAsync(req)
 }
 
 // CallAsync sends a call to registered Tarantool function and returns Future.
@@ -386,47 +356,37 @@ func (conn *Connection) UpsertAsync(space interface{}, tuple interface{}, ops in
 // was build with go_tarantool_call_17 tag.
 // Otherwise, uses request code for Tarantool 1.6.
 func (conn *Connection) CallAsync(functionName string, args interface{}) *Future {
-	future := conn.newFuture(CallRequestCode)
-	return conn.sendFuture(future, func(enc *msgpack.Encoder) error {
-		return fillCall(enc, functionName, args)
-	})
+	req := NewCallRequest(functionName).Args(args)
+	return conn.DoAsync(req)
 }
 
 // Call16Async sends a call to registered Tarantool function and returns Future.
 // It uses request code for Tarantool 1.6, so future's result is always array of arrays.
 // Deprecated since Tarantool 1.7.2.
 func (conn *Connection) Call16Async(functionName string, args interface{}) *Future {
-	future := conn.newFuture(Call16RequestCode)
-	return conn.sendFuture(future, func(enc *msgpack.Encoder) error {
-		return fillCall(enc, functionName, args)
-	})
+	req := NewCall16Request(functionName).Args(args)
+	return conn.DoAsync(req)
 }
 
 // Call17Async sends a call to registered Tarantool function and returns Future.
 // It uses request code for Tarantool >= 1.7, so future's result will not be converted
 // (though, keep in mind, result is always array)
 func (conn *Connection) Call17Async(functionName string, args interface{}) *Future {
-	future := conn.newFuture(Call17RequestCode)
-	return conn.sendFuture(future, func(enc *msgpack.Encoder) error {
-		return fillCall(enc, functionName, args)
-	})
+	req := NewCall17Request(functionName).Args(args)
+	return conn.DoAsync(req)
 }
 
 // EvalAsync sends a Lua expression for evaluation and returns Future.
 func (conn *Connection) EvalAsync(expr string, args interface{}) *Future {
-	future := conn.newFuture(EvalRequestCode)
-	return conn.sendFuture(future, func(enc *msgpack.Encoder) error {
-		return fillEval(enc, expr, args)
-	})
+	req := NewEvalRequest(expr).Args(args)
+	return conn.DoAsync(req)
 }
 
 // ExecuteAsync sends a sql expression for execution and returns Future.
 // Since 1.6.0
 func (conn *Connection) ExecuteAsync(expr string, args interface{}) *Future {
-	future := conn.newFuture(ExecuteRequestCode)
-	return conn.sendFuture(future, func(enc *msgpack.Encoder) error {
-		return fillExecute(enc, expr, args)
-	})
+	req := NewExecuteRequest(expr).Args(args)
+	return conn.DoAsync(req)
 }
 
 // KeyValueBind is a type for encoding named SQL parameters
@@ -575,9 +535,8 @@ func encodeSQLBind(enc *msgpack.Encoder, from interface{}) error {
 type Request interface {
 	// Code returns a IPROTO code for the request.
 	Code() int32
-	// BodyFunc returns a functions that can fill an encoder with
-	// the request body or it returns an error if unable to create the function.
-	BodyFunc(resolver SchemaResolver) (func(enc *msgpack.Encoder) error, error)
+	// Body fills an encoder with a request body.
+	Body(resolver SchemaResolver, enc *msgpack.Encoder) error
 }
 
 type baseRequest struct {
@@ -607,6 +566,27 @@ func (req *spaceIndexRequest) setIndex(index interface{}) {
 	req.index = index
 }
 
+type authRequest struct {
+	baseRequest
+	user, scramble string
+}
+
+func newAuthRequest(user, scramble string) *authRequest {
+	req := new(authRequest)
+	req.requestCode = AuthRequestCode
+	req.user = user
+	req.scramble = scramble
+	return req
+}
+
+// Body fills an encoder with the auth request body.
+func (req *authRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
+	return enc.Encode(map[uint32]interface{}{
+		KeyUserName: req.user,
+		KeyTuple:    []interface{}{string("chap-sha1"), string(req.scramble)},
+	})
+}
+
 // PingRequest helps you to create an execute request object for execution
 // by a Connection.
 type PingRequest struct {
@@ -620,12 +600,9 @@ func NewPingRequest() *PingRequest {
 	return req
 }
 
-// BodyFunc returns a function that can create an encoded body of
-// the ping request.
-func (req *PingRequest) BodyFunc(res SchemaResolver) (func(enc *msgpack.Encoder) error, error) {
-	return func(enc *msgpack.Encoder) error {
-		return fillPing(enc)
-	}, nil
+// Body fills an encoder with the ping request body.
+func (req *PingRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
+	return fillPing(enc)
 }
 
 // SelectRequest allows you to create a select request object for execution
@@ -688,19 +665,14 @@ func (req *SelectRequest) Key(key interface{}) *SelectRequest {
 	return req
 }
 
-// BodyFunc returns a function that can create an encoded body of
-// the select request.
-// It returns an error if the request space or the request index cannot
-// be resolved.
-func (req *SelectRequest) BodyFunc(res SchemaResolver) (func(enc *msgpack.Encoder) error, error) {
+// Body fills an encoder with the select request body.
+func (req *SelectRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 	spaceNo, indexNo, err := res.ResolveSpaceIndex(req.space, req.index)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return func(enc *msgpack.Encoder) error {
-		return fillSelect(enc, spaceNo, indexNo, req.offset, req.limit, req.iterator, req.key)
-	}, nil
+	return fillSelect(enc, spaceNo, indexNo, req.offset, req.limit, req.iterator, req.key)
 }
 
 // InsertRequest helps you to create an insert request object for execution
@@ -726,18 +698,14 @@ func (req *InsertRequest) Tuple(tuple interface{}) *InsertRequest {
 	return req
 }
 
-// BodyFunc returns a function that can create an encoded body of
-// the insert request.
-// It returns an error if the request space cannot be resolved.
-func (req *InsertRequest) BodyFunc(res SchemaResolver) (func(enc *msgpack.Encoder) error, error) {
+// Body fills an encoder with the insert request body.
+func (req *InsertRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 	spaceNo, _, err := res.ResolveSpaceIndex(req.space, nil)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return func(enc *msgpack.Encoder) error {
-		return fillInsert(enc, spaceNo, req.tuple)
-	}, nil
+	return fillInsert(enc, spaceNo, req.tuple)
 }
 
 // ReplaceRequest helps you to create a replace request object for execution
@@ -763,18 +731,14 @@ func (req *ReplaceRequest) Tuple(tuple interface{}) *ReplaceRequest {
 	return req
 }
 
-// BodyFunc returns a function that can create an encoded body of
-// the replace request.
-// It returns an error if the request space cannot be resolved.
-func (req *ReplaceRequest) BodyFunc(res SchemaResolver) (func(enc *msgpack.Encoder) error, error) {
+// Body fills an encoder with the replace request body.
+func (req *ReplaceRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 	spaceNo, _, err := res.ResolveSpaceIndex(req.space, nil)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return func(enc *msgpack.Encoder) error {
-		return fillInsert(enc, spaceNo, req.tuple)
-	}, nil
+	return fillInsert(enc, spaceNo, req.tuple)
 }
 
 // DeleteRequest helps you to create a delete request object for execution
@@ -807,19 +771,14 @@ func (req *DeleteRequest) Key(key interface{}) *DeleteRequest {
 	return req
 }
 
-// BodyFunc returns a function that can create an encoded body of
-// the delete request.
-// It returns an error if the request space or the request index cannot
-// be resolved.
-func (req *DeleteRequest) BodyFunc(res SchemaResolver) (func(enc *msgpack.Encoder) error, error) {
+// Body fills an encoder with the delete request body.
+func (req *DeleteRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 	spaceNo, indexNo, err := res.ResolveSpaceIndex(req.space, req.index)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return func(enc *msgpack.Encoder) error {
-		return fillDelete(enc, spaceNo, indexNo, req.key)
-	}, nil
+	return fillDelete(enc, spaceNo, indexNo, req.key)
 }
 
 // UpdateRequest helps you to create an update request object for execution
@@ -827,7 +786,7 @@ func (req *DeleteRequest) BodyFunc(res SchemaResolver) (func(enc *msgpack.Encode
 type UpdateRequest struct {
 	spaceIndexRequest
 	key interface{}
-	ops []Op
+	ops interface{}
 }
 
 // NewUpdateRequest returns a new empty UpdateRequest.
@@ -836,7 +795,7 @@ func NewUpdateRequest(space interface{}) *UpdateRequest {
 	req.requestCode = UpdateRequestCode
 	req.setSpace(space)
 	req.key = []interface{}{}
-	req.ops = []Op{}
+	req.ops = []interface{}{}
 	return req
 }
 
@@ -863,19 +822,14 @@ func (req *UpdateRequest) Operations(ops *Operations) *UpdateRequest {
 	return req
 }
 
-// BodyFunc returns a function that can create an encoded body of
-// the update request.
-// It returns an error if the request space or the request index cannot
-// be resolved.
-func (req *UpdateRequest) BodyFunc(res SchemaResolver) (func(enc *msgpack.Encoder) error, error) {
+// Body fills an encoder with the update request body.
+func (req *UpdateRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 	spaceNo, indexNo, err := res.ResolveSpaceIndex(req.space, req.index)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return func(enc *msgpack.Encoder) error {
-		return fillUpdate(enc, spaceNo, indexNo, req.key, req.ops)
-	}, nil
+	return fillUpdate(enc, spaceNo, indexNo, req.key, req.ops)
 }
 
 // UpsertRequest helps you to create an upsert request object for execution
@@ -883,7 +837,7 @@ func (req *UpdateRequest) BodyFunc(res SchemaResolver) (func(enc *msgpack.Encode
 type UpsertRequest struct {
 	spaceRequest
 	tuple interface{}
-	ops   []Op
+	ops   interface{}
 }
 
 // NewUpsertRequest returns a new empty UpsertRequest.
@@ -892,7 +846,7 @@ func NewUpsertRequest(space interface{}) *UpsertRequest {
 	req.requestCode = UpsertRequestCode
 	req.setSpace(space)
 	req.tuple = []interface{}{}
-	req.ops = []Op{}
+	req.ops = []interface{}{}
 	return req
 }
 
@@ -912,19 +866,14 @@ func (req *UpsertRequest) Operations(ops *Operations) *UpsertRequest {
 	return req
 }
 
-// BodyFunc returns a function that can create an encoded body of
-// the upsert request.
-// It returns an error if the request space or the request index cannot
-// be resolved.
-func (req *UpsertRequest) BodyFunc(res SchemaResolver) (func(enc *msgpack.Encoder) error, error) {
+// Body fills an encoder with the upsert request body.
+func (req *UpsertRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 	spaceNo, _, err := res.ResolveSpaceIndex(req.space, nil)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return func(enc *msgpack.Encoder) error {
-		return fillUpsert(enc, spaceNo, req.tuple, req.ops)
-	}, nil
+	return fillUpsert(enc, spaceNo, req.tuple, req.ops)
 }
 
 // CallRequest helps you to create a call request object for execution
@@ -953,12 +902,9 @@ func (req *CallRequest) Args(args interface{}) *CallRequest {
 	return req
 }
 
-// BodyFunc returns a function that can create an encoded body of
-// the call request.
-func (req *CallRequest) BodyFunc(res SchemaResolver) (func(enc *msgpack.Encoder) error, error) {
-	return func(enc *msgpack.Encoder) error {
-		return fillCall(enc, req.function, req.args)
-	}, nil
+// Body fills an encoder with the call request body.
+func (req *CallRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
+	return fillCall(enc, req.function, req.args)
 }
 
 // NewCall16Request returns a new empty Call16Request. It uses request code for
@@ -1002,12 +948,9 @@ func (req *EvalRequest) Args(args interface{}) *EvalRequest {
 	return req
 }
 
-// BodyFunc returns a function that can create an encoded body of
-// the eval request.
-func (req *EvalRequest) BodyFunc(res SchemaResolver) (func(enc *msgpack.Encoder) error, error) {
-	return func(enc *msgpack.Encoder) error {
-		return fillEval(enc, req.expr, req.args)
-	}, nil
+// Body fills an encoder with the eval request body.
+func (req *EvalRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
+	return fillEval(enc, req.expr, req.args)
 }
 
 // ExecuteRequest helps you to create an execute request object for execution
@@ -1034,10 +977,7 @@ func (req *ExecuteRequest) Args(args interface{}) *ExecuteRequest {
 	return req
 }
 
-// BodyFunc returns a function that can create an encoded body of
-// the execute request.
-func (req *ExecuteRequest) BodyFunc(res SchemaResolver) (func(enc *msgpack.Encoder) error, error) {
-	return func(enc *msgpack.Encoder) error {
-		return fillExecute(enc, req.expr, req.args)
-	}, nil
+// Body fills an encoder with the execute request body.
+func (req *ExecuteRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
+	return fillExecute(enc, req.expr, req.args)
 }

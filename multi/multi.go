@@ -493,6 +493,6 @@ func (connMulti *ConnectionMulti) DoTyped(req tarantool.Request, result interfac
 }
 
 // DoAsync sends the request and returns a future.
-func (connMulti *ConnectionMulti) DoAsync(req tarantool.Request) (*tarantool.Future, error) {
+func (connMulti *ConnectionMulti) DoAsync(req tarantool.Request) *tarantool.Future {
 	return connMulti.getCurrentConnection().DoAsync(req)
 }

@@ -3,47 +3,19 @@ package tarantool
 import (
 	"sync"
 	"time"
-
-	"gopkg.in/vmihailenco/msgpack.v2"
 )
 
 // Future is a handle for asynchronous request.
 type Future struct {
-	requestId   uint32
-	requestCode int32
-	timeout     time.Duration
-	mutex       sync.Mutex
-	pushes      []*Response
-	resp        *Response
-	err         error
-	ready       chan struct{}
-	done        chan struct{}
-	next        *Future
-}
-
-func (fut *Future) pack(h *smallWBuf, enc *msgpack.Encoder, body func(*msgpack.Encoder) error) (err error) {
-	rid := fut.requestId
-	hl := h.Len()
-	h.Write([]byte{
-		0xce, 0, 0, 0, 0, // Length.
-		0x82,                           // 2 element map.
-		KeyCode, byte(fut.requestCode), // Request code.
-		KeySync, 0xce,
-		byte(rid >> 24), byte(rid >> 16),
-		byte(rid >> 8), byte(rid),
-	})
-
-	if err = body(enc); err != nil {
-		return
-	}
-
-	l := uint32(h.Len() - 5 - hl)
-	h.b[hl+1] = byte(l >> 24)
-	h.b[hl+2] = byte(l >> 16)
-	h.b[hl+3] = byte(l >> 8)
-	h.b[hl+4] = byte(l)
-
-	return
+	requestId uint32
+	next      *Future
+	timeout   time.Duration
+	mutex     sync.Mutex
+	pushes    []*Response
+	resp      *Response
+	err       error
+	ready     chan struct{}
+	done      chan struct{}
 }
 
 func (fut *Future) wait() {

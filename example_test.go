@@ -144,10 +144,7 @@ func ExampleSelectRequest() {
 		Index("primary").
 		Limit(100).
 		Key(tarantool.IntKey{1111})
-	fut, err := conn.DoAsync(req)
-	if err != nil {
-		fmt.Printf("error in do async select request is %v", err)
-	}
+	fut := conn.DoAsync(req)
 	resp, err = fut.Get()
 	if err != nil {
 		fmt.Printf("error in do async select request is %v", err)
@@ -177,10 +174,7 @@ func ExampleUpdateRequest() {
 		Index("primary").
 		Key(tarantool.IntKey{1111}).
 		Operations(tarantool.NewOperations().Assign(1, "hello"))
-	fut, err := conn.DoAsync(req)
-	if err != nil {
-		fmt.Printf("error in do async update request is %v", err)
-	}
+	fut := conn.DoAsync(req)
 	resp, err = fut.Get()
 	if err != nil {
 		fmt.Printf("error in do async update request is %v", err)
@@ -210,10 +204,7 @@ func ExampleUpsertRequest() {
 	req = tarantool.NewUpsertRequest("test").
 		Tuple([]interface{}{uint(1113), "second", "second"}).
 		Operations(tarantool.NewOperations().Assign(2, "updated"))
-	fut, err := conn.DoAsync(req)
-	if err != nil {
-		fmt.Printf("error in do async upsert request is %v", err)
-	}
+	fut := conn.DoAsync(req)
 	resp, err = fut.Get()
 	if err != nil {
 		fmt.Printf("error in do async upsert request is %v", err)
