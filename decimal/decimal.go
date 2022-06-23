@@ -37,29 +37,29 @@ const (
 	decimalPrecision = 38
 )
 
-type DecNumber struct {
+type Decimal struct {
 	decimal.Decimal
 }
 
-// NewDecNumber creates a new DecNumber from a decimal.Decimal.
-func NewDecNumber(decimal decimal.Decimal) *DecNumber {
-	return &DecNumber{Decimal: decimal}
+// NewDecimal creates a new Decimal from a decimal.Decimal.
+func NewDecimal(decimal decimal.Decimal) *Decimal {
+	return &Decimal{Decimal: decimal}
 }
 
-// NewDecNumberFromString creates a new DecNumber from a string.
-func NewDecNumberFromString(src string) (result *DecNumber, err error) {
+// NewDecimalFromString creates a new Decimal from a string.
+func NewDecimalFromString(src string) (result *Decimal, err error) {
 	dec, err := decimal.NewFromString(src)
 	if err != nil {
 		return
 	}
-	result = NewDecNumber(dec)
+	result = NewDecimal(dec)
 	return
 }
 
-var _ msgpack.Marshaler = (*DecNumber)(nil)
-var _ msgpack.Unmarshaler = (*DecNumber)(nil)
+var _ msgpack.Marshaler = (*Decimal)(nil)
+var _ msgpack.Unmarshaler = (*Decimal)(nil)
 
-func (decNum *DecNumber) MarshalMsgpack() ([]byte, error) {
+func (decNum *Decimal) MarshalMsgpack() ([]byte, error) {
 	one := decimal.NewFromInt(1)
 	maxSupportedDecimal := decimal.New(1, DecimalPrecision).Sub(one) // 10^DecimalPrecision - 1
 	minSupportedDecimal := maxSupportedDecimal.Neg().Sub(one)        // -10^DecimalPrecision - 1
@@ -86,13 +86,13 @@ func (decNum *DecNumber) MarshalMsgpack() ([]byte, error) {
 // +--------+-------------------+------------+===============+
 // | MP_EXT | length (optional) | MP_DECIMAL | PackedDecimal |
 // +--------+-------------------+------------+===============+
-func (decNum *DecNumber) UnmarshalMsgpack(b []byte) error {
+func (decNum *Decimal) UnmarshalMsgpack(b []byte) error {
 	digits, err := decodeStringFromBCD(b)
 	if err != nil {
 		return fmt.Errorf("msgpack: can't decode string from BCD buffer (%x): %w", b, err)
 	}
 	dec, err := decimal.NewFromString(digits)
-	*decNum = *NewDecNumber(dec)
+	*decNum = *NewDecimal(dec)
 	if err != nil {
 		return fmt.Errorf("msgpack: can't encode string (%s) to a decimal number: %w", digits, err)
 	}
@@ -101,5 +101,5 @@ func (decNum *DecNumber) UnmarshalMsgpack(b []byte) error {
 }
 
 func init() {
-	msgpack.RegisterExt(decimalExtID, &DecNumber{})
+	msgpack.RegisterExt(decimalExtID, &Decimal{})
 }
