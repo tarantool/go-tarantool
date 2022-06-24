@@ -48,8 +48,8 @@ jobs:
       - name: Clone the connector
         uses: actions/checkout@v2
 
-      - name: Setup Tarantool ${{ matrix.tarantool }} (< 2.10)
-        if: matrix.tarantool != '2.x-latest' && matrix.tarantool != '2.10'
+      - name: Setup Tarantool ${{ matrix.tarantool }}
+        if: matrix.tarantool != '2.x-latest'
         uses: tarantool/setup-tarantool@v1
         with:
           tarantool-version: ${{ matrix.tarantool }}
@@ -58,12 +58,6 @@ jobs:
         if: matrix.tarantool == '2.x-latest'
         run: |
           curl -L https://tarantool.io/pre-release/2/installer.sh | sudo bash
-          sudo apt install -y tarantool tarantool-dev
-
-      - name: Setup Tarantool 2.10
-        if: matrix.tarantool == '2.10'
-        run: |
-          curl -L https://tarantool.io/tWsLBdI/release/2/installer.sh | bash
           sudo apt install -y tarantool tarantool-dev
 
       - name: Setup golang for the connector and tests
