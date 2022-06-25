@@ -50,17 +50,6 @@ func (t *TupleUUID) DecodeMsgpack(d *msgpack.Decoder) error {
 	return nil
 }
 
-func connectWithValidation(t *testing.T) *Connection {
-	conn, err := Connect(server, opts)
-	if err != nil {
-		t.Fatalf("Failed to connect: %s", err.Error())
-	}
-	if conn == nil {
-		t.Errorf("conn is nil after Connect")
-	}
-	return conn
-}
-
 func tupleValueIsId(t *testing.T, tuples []interface{}, id uuid.UUID) {
 	if len(tuples) != 1 {
 		t.Fatalf("Response Data len != 1")
@@ -83,7 +72,7 @@ func TestSelect(t *testing.T) {
 		t.Skip("Skipping test for Tarantool without UUID support in msgpack")
 	}
 
-	conn := connectWithValidation(t)
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
 	id, uuidErr := uuid.Parse("c8f0fa1f-da29-438c-a040-393f1126ad39")
@@ -118,7 +107,7 @@ func TestReplace(t *testing.T) {
 		t.Skip("Skipping test for Tarantool without UUID support in msgpack")
 	}
 
-	conn := connectWithValidation(t)
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
 	id, uuidErr := uuid.Parse("64d22e4d-ac92-4a23-899a-e59f34af5479")

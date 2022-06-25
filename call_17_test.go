@@ -7,13 +7,14 @@ import (
 	"testing"
 
 	. "github.com/tarantool/go-tarantool"
+	"github.com/tarantool/go-tarantool/test_helpers"
 )
 
 func TestConnection_Call(t *testing.T) {
 	var resp *Response
 	var err error
 
-	conn := connect(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
 	// Call17
@@ -30,7 +31,7 @@ func TestCallRequest(t *testing.T) {
 	var resp *Response
 	var err error
 
-	conn := connect(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
 	req := NewCallRequest("simple_incr").Args([]interface{}{1})

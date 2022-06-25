@@ -26,45 +26,29 @@ var opts = Opts{
 /////////QUEUE/////////
 
 func TestFifoQueue(t *testing.T) {
-	conn, err := Connect(server, opts)
-	if err != nil {
-		t.Errorf("Failed to connect: %s", err.Error())
-		return
-	}
-	if conn == nil {
-		t.Errorf("conn is nil after Connect")
-		return
-	}
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
 	name := "test_queue"
 	q := queue.New(conn, name)
-	if err = q.Create(queue.Cfg{Temporary: true, Kind: queue.FIFO}); err != nil {
+	if err := q.Create(queue.Cfg{Temporary: true, Kind: queue.FIFO}); err != nil {
 		t.Errorf("Failed to create queue: %s", err.Error())
 		return
 	}
 
 	//Drop
-	if err = q.Drop(); err != nil {
+	if err := q.Drop(); err != nil {
 		t.Errorf("Failed drop queue: %s", err.Error())
 	}
 }
 
 func TestFifoQueue_GetExist_Statistic(t *testing.T) {
-	conn, err := Connect(server, opts)
-	if err != nil {
-		t.Errorf("Failed to connect: %s", err.Error())
-		return
-	}
-	if conn == nil {
-		t.Errorf("conn is nil after Connect")
-		return
-	}
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
 	name := "test_queue"
 	q := queue.New(conn, name)
-	if err = q.Create(queue.Cfg{Temporary: true, Kind: queue.FIFO}); err != nil {
+	if err := q.Create(queue.Cfg{Temporary: true, Kind: queue.FIFO}); err != nil {
 		t.Errorf("Failed to create queue: %s", err.Error())
 		return
 	}
@@ -102,15 +86,7 @@ func TestFifoQueue_GetExist_Statistic(t *testing.T) {
 }
 
 func TestFifoQueue_Put(t *testing.T) {
-	conn, err := Connect(server, opts)
-	if err != nil {
-		t.Errorf("Failed to connect: %s", err.Error())
-		return
-	}
-	if conn == nil {
-		t.Errorf("conn is nil after Connect")
-		return
-	}
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
 	name := "test_queue"
@@ -145,20 +121,12 @@ func TestFifoQueue_Put(t *testing.T) {
 }
 
 func TestFifoQueue_Take(t *testing.T) {
-	conn, err := Connect(server, opts)
-	if err != nil {
-		t.Errorf("Failed to connect: %s", err.Error())
-		return
-	}
-	if conn == nil {
-		t.Errorf("conn is nil after Connect")
-		return
-	}
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
 	name := "test_queue"
 	q := queue.New(conn, name)
-	if err = q.Create(queue.Cfg{Temporary: true, Kind: queue.FIFO}); err != nil {
+	if err := q.Create(queue.Cfg{Temporary: true, Kind: queue.FIFO}); err != nil {
 		t.Errorf("Failed to create queue: %s", err.Error())
 		return
 	}
@@ -241,20 +209,12 @@ func (c *customData) EncodeMsgpack(e *msgpack.Encoder) error {
 }
 
 func TestFifoQueue_TakeTyped(t *testing.T) {
-	conn, err := Connect(server, opts)
-	if err != nil {
-		t.Errorf("Failed to connect: %s", err.Error())
-		return
-	}
-	if conn == nil {
-		t.Errorf("conn is nil after Connect")
-		return
-	}
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
 	name := "test_queue"
 	q := queue.New(conn, name)
-	if err = q.Create(queue.Cfg{Temporary: true, Kind: queue.FIFO}); err != nil {
+	if err := q.Create(queue.Cfg{Temporary: true, Kind: queue.FIFO}); err != nil {
 		t.Errorf("Failed to create queue: %s", err.Error())
 		return
 	}
@@ -318,20 +278,12 @@ func TestFifoQueue_TakeTyped(t *testing.T) {
 }
 
 func TestFifoQueue_Peek(t *testing.T) {
-	conn, err := Connect(server, opts)
-	if err != nil {
-		t.Errorf("Failed to connect: %s", err.Error())
-		return
-	}
-	if conn == nil {
-		t.Errorf("conn is nil after Connect")
-		return
-	}
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
 	name := "test_queue"
 	q := queue.New(conn, name)
-	if err = q.Create(queue.Cfg{Temporary: true, Kind: queue.FIFO}); err != nil {
+	if err := q.Create(queue.Cfg{Temporary: true, Kind: queue.FIFO}); err != nil {
 		t.Errorf("Failed to create queue: %s", err.Error())
 		return
 	}
@@ -377,20 +329,12 @@ func TestFifoQueue_Peek(t *testing.T) {
 }
 
 func TestFifoQueue_Bury_Kick(t *testing.T) {
-	conn, err := Connect(server, opts)
-	if err != nil {
-		t.Errorf("Failed to connect: %s", err.Error())
-		return
-	}
-	if conn == nil {
-		t.Errorf("conn is nil after Connect")
-		return
-	}
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
 	name := "test_queue"
 	q := queue.New(conn, name)
-	if err = q.Create(queue.Cfg{Temporary: true, Kind: queue.FIFO}); err != nil {
+	if err := q.Create(queue.Cfg{Temporary: true, Kind: queue.FIFO}); err != nil {
 		t.Errorf("Failed to create queue: %s", err.Error())
 		return
 	}
@@ -464,15 +408,7 @@ func TestFifoQueue_Bury_Kick(t *testing.T) {
 func TestFifoQueue_Delete(t *testing.T) {
 	var err error
 
-	conn, err := Connect(server, opts)
-	if err != nil {
-		t.Errorf("Failed to connect: %s", err.Error())
-		return
-	}
-	if conn == nil {
-		t.Errorf("conn is nil after Connect")
-		return
-	}
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
 	name := "test_queue"
@@ -539,20 +475,12 @@ func TestFifoQueue_Delete(t *testing.T) {
 }
 
 func TestFifoQueue_Release(t *testing.T) {
-	conn, err := Connect(server, opts)
-	if err != nil {
-		t.Errorf("Failed to connect: %s", err.Error())
-		return
-	}
-	if conn == nil {
-		t.Errorf("conn is nil after Connect")
-		return
-	}
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
 	name := "test_queue"
 	q := queue.New(conn, name)
-	if err = q.Create(queue.Cfg{Temporary: true, Kind: queue.FIFO}); err != nil {
+	if err := q.Create(queue.Cfg{Temporary: true, Kind: queue.FIFO}); err != nil {
 		t.Errorf("Failed to create queue: %s", err.Error())
 		return
 	}
@@ -628,10 +556,7 @@ func TestFifoQueue_Release(t *testing.T) {
 }
 
 func TestTtlQueue(t *testing.T) {
-	conn, err := Connect(server, opts)
-	if err != nil {
-		t.Fatalf("Failed to connect: %s", err.Error())
-	}
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
 	name := "test_queue"
@@ -641,7 +566,7 @@ func TestTtlQueue(t *testing.T) {
 		Opts:      queue.Opts{Ttl: 5 * time.Second},
 	}
 	q := queue.New(conn, name)
-	if err = q.Create(cfg); err != nil {
+	if err := q.Create(cfg); err != nil {
 		t.Errorf("Failed to create queue: %s", err.Error())
 		return
 	}
@@ -680,13 +605,7 @@ func TestTtlQueue(t *testing.T) {
 }
 
 func TestTtlQueue_Put(t *testing.T) {
-	conn, err := Connect(server, opts)
-	if err != nil {
-		t.Fatalf("Failed to connect: %s", err.Error())
-	}
-	if conn == nil {
-		t.Fatalf("conn is nil after Connect")
-	}
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
 	name := "test_queue"
@@ -696,7 +615,7 @@ func TestTtlQueue_Put(t *testing.T) {
 		Opts:      queue.Opts{Ttl: 5 * time.Second},
 	}
 	q := queue.New(conn, name)
-	if err = q.Create(cfg); err != nil {
+	if err := q.Create(cfg); err != nil {
 		t.Errorf("Failed to create queue: %s", err.Error())
 		return
 	}
@@ -750,13 +669,7 @@ func TestTtlQueue_Put(t *testing.T) {
 }
 
 func TestUtube_Put(t *testing.T) {
-	conn, err := Connect(server, opts)
-	if err != nil {
-		t.Fatalf("Failed to connect: %s", err.Error())
-	}
-	if conn == nil {
-		t.Fatalf("conn is nil after Connect")
-	}
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
 	name := "test_utube"
@@ -766,7 +679,7 @@ func TestUtube_Put(t *testing.T) {
 		IfNotExists: true,
 	}
 	q := queue.New(conn, name)
-	if err = q.Create(cfg); err != nil {
+	if err := q.Create(cfg); err != nil {
 		t.Errorf("Failed to create queue: %s", err.Error())
 		return
 	}
@@ -779,7 +692,7 @@ func TestUtube_Put(t *testing.T) {
 	}()
 
 	data1 := &customData{"test-data-0"}
-	_, err = q.PutWithOpts(data1, queue.Opts{Utube: "test-utube-consumer-key"})
+	_, err := q.PutWithOpts(data1, queue.Opts{Utube: "test-utube-consumer-key"})
 	if err != nil {
 		t.Fatalf("Failed put task to queue: %s", err.Error())
 	}
