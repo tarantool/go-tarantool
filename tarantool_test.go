@@ -22,19 +22,6 @@ type Member struct {
 	Val   uint
 }
 
-func connect(t testing.TB, server string, opts Opts) (conn *Connection) {
-	t.Helper()
-
-	conn, err := Connect(server, opts)
-	if err != nil {
-		t.Fatalf("Failed to connect: %s", err.Error())
-	}
-	if conn == nil {
-		t.Fatalf("conn is nil after Connect")
-	}
-	return conn
-}
-
 func (m *Member) EncodeMsgpack(e *msgpack.Encoder) error {
 	if err := e.EncodeSliceLen(2); err != nil {
 		return err
@@ -84,7 +71,7 @@ const N = 500
 func BenchmarkClientSerial(b *testing.B) {
 	var err error
 
-	conn := connect(b, server, opts)
+	conn := test_helpers.ConnectWithValidation(b, server, opts)
 	defer conn.Close()
 
 	_, err = conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
@@ -104,7 +91,7 @@ func BenchmarkClientSerial(b *testing.B) {
 func BenchmarkClientSerialRequestObject(b *testing.B) {
 	var err error
 
-	conn := connect(b, server, opts)
+	conn := test_helpers.ConnectWithValidation(b, server, opts)
 	defer conn.Close()
 
 	_, err = conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
@@ -131,7 +118,7 @@ func BenchmarkClientSerialRequestObject(b *testing.B) {
 func BenchmarkClientSerialTyped(b *testing.B) {
 	var err error
 
-	conn := connect(b, server, opts)
+	conn := test_helpers.ConnectWithValidation(b, server, opts)
 	defer conn.Close()
 
 	_, err = conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
@@ -152,7 +139,7 @@ func BenchmarkClientSerialTyped(b *testing.B) {
 func BenchmarkClientFuture(b *testing.B) {
 	var err error
 
-	conn := connect(b, server, opts)
+	conn := test_helpers.ConnectWithValidation(b, server, opts)
 	defer conn.Close()
 
 	_, err = conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
@@ -179,7 +166,7 @@ func BenchmarkClientFuture(b *testing.B) {
 func BenchmarkClientFutureTyped(b *testing.B) {
 	var err error
 
-	conn := connect(b, server, opts)
+	conn := test_helpers.ConnectWithValidation(b, server, opts)
 	defer conn.Close()
 
 	_, err = conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
@@ -209,7 +196,7 @@ func BenchmarkClientFutureTyped(b *testing.B) {
 func BenchmarkClientFutureParallel(b *testing.B) {
 	var err error
 
-	conn := connect(b, server, opts)
+	conn := test_helpers.ConnectWithValidation(b, server, opts)
 	defer conn.Close()
 
 	_, err = conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
@@ -242,7 +229,7 @@ func BenchmarkClientFutureParallel(b *testing.B) {
 func BenchmarkClientFutureParallelTyped(b *testing.B) {
 	var err error
 
-	conn := connect(b, server, opts)
+	conn := test_helpers.ConnectWithValidation(b, server, opts)
 	defer conn.Close()
 
 	_, err = conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
@@ -278,7 +265,7 @@ func BenchmarkClientFutureParallelTyped(b *testing.B) {
 }
 
 func BenchmarkClientParallel(b *testing.B) {
-	conn := connect(b, server, opts)
+	conn := test_helpers.ConnectWithValidation(b, server, opts)
 	defer conn.Close()
 
 	_, err := conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
@@ -299,7 +286,7 @@ func BenchmarkClientParallel(b *testing.B) {
 }
 
 func BenchmarkClientParallelMassive(b *testing.B) {
-	conn := connect(b, server, opts)
+	conn := test_helpers.ConnectWithValidation(b, server, opts)
 	defer conn.Close()
 
 	_, err := conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
@@ -334,7 +321,7 @@ func BenchmarkClientParallelMassive(b *testing.B) {
 }
 
 func BenchmarkClientParallelMassiveUntyped(b *testing.B) {
-	conn := connect(b, server, opts)
+	conn := test_helpers.ConnectWithValidation(b, server, opts)
 	defer conn.Close()
 
 	_, err := conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
@@ -369,11 +356,7 @@ func BenchmarkClientParallelMassiveUntyped(b *testing.B) {
 }
 
 func BenchmarkClientReplaceParallel(b *testing.B) {
-	conn, err := Connect(server, opts)
-	if err != nil {
-		b.Errorf("No connection available")
-		return
-	}
+	conn := test_helpers.ConnectWithValidation(b, server, opts)
 	defer conn.Close()
 	spaceNo = 520
 
@@ -394,11 +377,7 @@ func BenchmarkClientReplaceParallel(b *testing.B) {
 }
 
 func BenchmarkClientLargeSelectParallel(b *testing.B) {
-	conn, err := Connect(server, opts)
-	if err != nil {
-		b.Errorf("No connection available")
-		return
-	}
+	conn := test_helpers.ConnectWithValidation(b, server, opts)
 	defer conn.Close()
 
 	schema := conn.Schema
@@ -429,11 +408,7 @@ func BenchmarkSQLParallel(b *testing.B) {
 		b.Skip()
 	}
 
-	conn, err := Connect(server, opts)
-	if err != nil {
-		b.Errorf("No connection available")
-		return
-	}
+	conn := test_helpers.ConnectWithValidation(b, server, opts)
 	defer conn.Close()
 
 	spaceNo := 519
@@ -464,11 +439,7 @@ func BenchmarkSQLSerial(b *testing.B) {
 		b.Skip()
 	}
 
-	conn, err := Connect(server, opts)
-	if err != nil {
-		b.Errorf("Failed to connect: %s", err)
-		return
-	}
+	conn := test_helpers.ConnectWithValidation(b, server, opts)
 	defer conn.Close()
 
 	spaceNo := 519
@@ -493,7 +464,7 @@ func TestClient(t *testing.T) {
 	var resp *Response
 	var err error
 
-	conn := connect(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
 	// Ping
@@ -796,7 +767,7 @@ func TestClient(t *testing.T) {
 }
 
 func TestClientSessionPush(t *testing.T) {
-	conn := connect(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
 	var it ResponseIterator
@@ -1065,7 +1036,7 @@ func TestSQL(t *testing.T) {
 		},
 	}
 
-	conn := connect(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
 	for i, test := range testCases {
@@ -1099,7 +1070,7 @@ func TestSQLTyped(t *testing.T) {
 		t.Skip()
 	}
 
-	conn := connect(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
 	mem := []Member{}
@@ -1135,7 +1106,7 @@ func TestSQLBindings(t *testing.T) {
 
 	var resp *Response
 
-	conn := connect(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
 	// test all types of supported bindings
@@ -1244,7 +1215,7 @@ func TestStressSQL(t *testing.T) {
 
 	var resp *Response
 
-	conn := connect(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
 	resp, err = conn.Execute(createTableQuery, []interface{}{})
@@ -1340,7 +1311,7 @@ func TestStressSQL(t *testing.T) {
 func TestSchema(t *testing.T) {
 	var err error
 
-	conn := connect(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
 	// Schema
@@ -1515,7 +1486,7 @@ func TestClientNamed(t *testing.T) {
 	var resp *Response
 	var err error
 
-	conn := connect(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
 	// Insert
@@ -1608,7 +1579,7 @@ func TestClientRequestObjects(t *testing.T) {
 		err  error
 	)
 
-	conn := connect(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
 	// Ping
@@ -1947,7 +1918,7 @@ func TestClientRequestObjects(t *testing.T) {
 func TestComplexStructs(t *testing.T) {
 	var err error
 
-	conn := connect(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
 	tuple := Tuple2{Cid: 777, Orig: "orig", Members: []Member{{"lol", "", 1}, {"wut", "", 3}}}

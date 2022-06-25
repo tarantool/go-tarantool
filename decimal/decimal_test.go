@@ -337,19 +337,6 @@ func BenchmarkMPDecodeDecimal(b *testing.B) {
 	}
 }
 
-func connectWithValidation(t *testing.T) *Connection {
-	t.Helper()
-
-	conn, err := Connect(server, opts)
-	if err != nil {
-		t.Fatalf("Failed to connect: %s", err.Error())
-	}
-	if conn == nil {
-		t.Fatalf("conn is nil after Connect")
-	}
-	return conn
-}
-
 func tupleValueIsDecimal(t *testing.T, tuples []interface{}, number decimal.Decimal) {
 	if len(tuples) != 1 {
 		t.Fatalf("Response Data len (%d) != 1", len(tuples))
@@ -499,7 +486,7 @@ func BenchmarkDecodeStringFromBCD(b *testing.B) {
 func TestSelect(t *testing.T) {
 	skipIfDecimalUnsupported(t)
 
-	conn := connectWithValidation(t)
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
 	number, err := decimal.NewFromString("-12.34")
@@ -559,7 +546,7 @@ func assertInsert(t *testing.T, conn *Connection, numString string) {
 func TestInsert(t *testing.T) {
 	skipIfDecimalUnsupported(t)
 
-	conn := connectWithValidation(t)
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
 	samples := append(correctnessSamples, benchmarkSamples...)
@@ -573,7 +560,7 @@ func TestInsert(t *testing.T) {
 func TestReplace(t *testing.T) {
 	skipIfDecimalUnsupported(t)
 
-	conn := connectWithValidation(t)
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
 	number, err := decimal.NewFromString("-12.34")

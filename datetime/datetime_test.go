@@ -33,19 +33,6 @@ var spaceTuple1 = "testDatetime_1"
 var spaceTuple2 = "testDatetime_2"
 var index = "primary"
 
-func connectWithValidation(t *testing.T) *Connection {
-	t.Helper()
-
-	conn, err := Connect(server, opts)
-	if err != nil {
-		t.Fatalf("Failed to connect: %s", err.Error())
-	}
-	if conn == nil {
-		t.Fatalf("conn is nil after Connect")
-	}
-	return conn
-}
-
 func skipIfDatetimeUnsupported(t *testing.T) {
 	t.Helper()
 
@@ -168,7 +155,7 @@ var datetimeSample = []struct {
 func TestDatetimeInsertSelectDelete(t *testing.T) {
 	skipIfDatetimeUnsupported(t)
 
-	conn := connectWithValidation(t)
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
 	for _, testcase := range datetimeSample {
@@ -188,7 +175,7 @@ func TestDatetimeInsertSelectDelete(t *testing.T) {
 func TestDatetimeMax(t *testing.T) {
 	skipIfDatetimeUnsupported(t)
 
-	conn := connectWithValidation(t)
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
 	tupleInsertSelectDelete(t, conn, maxTime)
@@ -197,7 +184,7 @@ func TestDatetimeMax(t *testing.T) {
 func TestDatetimeMin(t *testing.T) {
 	skipIfDatetimeUnsupported(t)
 
-	conn := connectWithValidation(t)
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
 	tupleInsertSelectDelete(t, conn, minTime)
@@ -206,7 +193,7 @@ func TestDatetimeMin(t *testing.T) {
 func TestDatetimeReplace(t *testing.T) {
 	skipIfDatetimeUnsupported(t)
 
-	conn := connectWithValidation(t)
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
 	tm, err := time.Parse(time.RFC3339, "2007-01-02T15:04:05Z")
@@ -356,7 +343,7 @@ func (c *Tuple2) DecodeMsgpack(d *msgpack.Decoder) error {
 func TestCustomEncodeDecodeTuple1(t *testing.T) {
 	skipIfDatetimeUnsupported(t)
 
-	conn := connectWithValidation(t)
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
 	dt1, _ := time.Parse(time.RFC3339, "2010-05-24T17:51:56.000000009Z")
@@ -416,7 +403,7 @@ func TestCustomEncodeDecodeTuple1(t *testing.T) {
 func TestCustomDecodeFunction(t *testing.T) {
 	skipIfDatetimeUnsupported(t)
 
-	conn := connectWithValidation(t)
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
 	// Call function 'call_datetime_testdata' returning a table of custom tuples.
@@ -459,7 +446,7 @@ func TestCustomDecodeFunction(t *testing.T) {
 func TestCustomEncodeDecodeTuple5(t *testing.T) {
 	skipIfDatetimeUnsupported(t)
 
-	conn := connectWithValidation(t)
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
 	tm := time.Unix(500, 1000)

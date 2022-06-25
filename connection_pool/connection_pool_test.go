@@ -739,10 +739,7 @@ func TestInsert(t *testing.T) {
 
 	// Connect to servers[2] to check if tuple
 	// was inserted on RW instance
-	conn, err := tarantool.Connect(servers[2], connOpts)
-	require.Nilf(t, err, "failed to connect %s", servers[2])
-	require.NotNilf(t, conn, "conn is nil after Connect")
-
+	conn := test_helpers.ConnectWithValidation(t, servers[2], connOpts)
 	defer conn.Close()
 
 	resp, err = conn.Select(spaceNo, indexNo, 0, 1, tarantool.IterEq, []interface{}{"rw_insert_key"})
@@ -812,10 +809,7 @@ func TestDelete(t *testing.T) {
 
 	// Connect to servers[2] to check if tuple
 	// was inserted on RW instance
-	conn, err := tarantool.Connect(servers[2], connOpts)
-	require.Nilf(t, err, "failed to connect %s", servers[2])
-	require.NotNilf(t, conn, "conn is nil after Connect")
-
+	conn := test_helpers.ConnectWithValidation(t, servers[2], connOpts)
 	defer conn.Close()
 
 	resp, err := conn.Insert(spaceNo, []interface{}{"delete_key", "delete_value"})
@@ -873,10 +867,7 @@ func TestUpsert(t *testing.T) {
 
 	// Connect to servers[2] to check if tuple
 	// was inserted on RW instance
-	conn, err := tarantool.Connect(servers[2], connOpts)
-	require.Nilf(t, err, "failed to connect %s", servers[2])
-	require.NotNilf(t, conn, "conn is nil after Connect")
-
+	conn := test_helpers.ConnectWithValidation(t, servers[2], connOpts)
 	defer conn.Close()
 
 	// Mode is `RW` by default, we have only one RW instance (servers[2])
@@ -941,10 +932,7 @@ func TestUpdate(t *testing.T) {
 
 	// Connect to servers[2] to check if tuple
 	// was inserted on RW instance
-	conn, err := tarantool.Connect(servers[2], connOpts)
-	require.Nilf(t, err, "failed to connect %s", servers[2])
-	require.NotNilf(t, conn, "conn is nil after Connect")
-
+	conn := test_helpers.ConnectWithValidation(t, servers[2], connOpts)
 	defer conn.Close()
 
 	resp, err := conn.Insert(spaceNo, []interface{}{"update_key", "update_value"})
@@ -1026,10 +1014,7 @@ func TestReplace(t *testing.T) {
 
 	// Connect to servers[2] to check if tuple
 	// was inserted on RW instance
-	conn, err := tarantool.Connect(servers[2], connOpts)
-	require.Nilf(t, err, "failed to connect %s", servers[2])
-	require.NotNilf(t, conn, "conn is nil after Connect")
-
+	conn := test_helpers.ConnectWithValidation(t, servers[2], connOpts)
 	defer conn.Close()
 
 	resp, err := conn.Insert(spaceNo, []interface{}{"replace_key", "replace_value"})
