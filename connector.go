@@ -42,7 +42,5 @@ type Connector interface {
 	Call17Async(functionName string, args interface{}) *Future
 	EvalAsync(expr string, args interface{}) *Future
 
-	Do(req Request) (resp *Response, err error)
-	DoTyped(req Request, result interface{}) (err error)
-	DoAsync(req Request) (fut *Future)
+	Do(req Request) (fut *Future)
 }

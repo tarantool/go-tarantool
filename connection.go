@@ -988,29 +988,11 @@ func (conn *Connection) nextRequestId() (requestId uint32) {
 	return atomic.AddUint32(&conn.requestId, 1)
 }
 
-// Do verifies, sends the request and returns a response.
-//
-// An error is returned if the request was formed incorrectly, or failed to
-// communicate by the connection, or unable to decode the response.
-func (conn *Connection) Do(req Request) (*Response, error) {
-	fut := conn.DoAsync(req)
-	return fut.Get()
-}
-
-// DoTyped verifies, sends the request and fills the typed result.
-//
-// An error is returned if the request was formed incorrectly, or failed to
-// communicate by the connection, or unable to decode the response.
-func (conn *Connection) DoTyped(req Request, result interface{}) error {
-	fut := conn.DoAsync(req)
-	return fut.GetTyped(result)
-}
-
-// DoAsync verifies, sends the request and returns a future.
+// Do performs a request asynchronously on the connection.
 //
 // An error is returned if the request was formed incorrectly, or failed to
 // create the future.
-func (conn *Connection) DoAsync(req Request) *Future {
+func (conn *Connection) Do(req Request) *Future {
 	return conn.send(req)
 }
 

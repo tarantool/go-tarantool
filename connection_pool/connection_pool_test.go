@@ -1251,27 +1251,27 @@ func TestDo(t *testing.T) {
 
 	req := tarantool.NewPingRequest()
 	// ANY
-	resp, err := connPool.Do(req, connection_pool.ANY)
+	resp, err := connPool.Do(req, connection_pool.ANY).Get()
 	require.Nilf(t, err, "failed to Ping")
 	require.NotNilf(t, resp, "response is nil after Ping")
 
 	// RW
-	resp, err = connPool.Do(req, connection_pool.RW)
+	resp, err = connPool.Do(req, connection_pool.RW).Get()
 	require.Nilf(t, err, "failed to Ping")
 	require.NotNilf(t, resp, "response is nil after Ping")
 
 	// RO
-	resp, err = connPool.Do(req, connection_pool.RO)
+	resp, err = connPool.Do(req, connection_pool.RO).Get()
 	require.Nilf(t, err, "failed to Ping")
 	require.NotNilf(t, resp, "response is nil after Ping")
 
 	// PreferRW
-	resp, err = connPool.Do(req, connection_pool.PreferRW)
+	resp, err = connPool.Do(req, connection_pool.PreferRW).Get()
 	require.Nilf(t, err, "failed to Ping")
 	require.NotNilf(t, resp, "response is nil after Ping")
 
 	// PreferRO
-	resp, err = connPool.Do(req, connection_pool.PreferRO)
+	resp, err = connPool.Do(req, connection_pool.PreferRO).Get()
 	require.Nilf(t, err, "failed to Ping")
 	require.NotNilf(t, resp, "response is nil after Ping")
 }

@@ -97,7 +97,7 @@ func fillPing(enc *msgpack.Encoder) error {
 
 // Ping sends empty request to Tarantool to check connection.
 func (conn *Connection) Ping() (resp *Response, err error) {
-	return conn.Do(NewPingRequest())
+	return conn.Do(NewPingRequest()).Get()
 }
 
 // Select performs select to box space.
@@ -311,28 +311,28 @@ func (conn *Connection) SelectAsync(space, index interface{}, offset, limit, ite
 		Limit(limit).
 		Iterator(iterator).
 		Key(key)
-	return conn.DoAsync(req)
+	return conn.Do(req)
 }
 
 // InsertAsync sends insert action to Tarantool and returns Future.
 // Tarantool will reject Insert when tuple with same primary key exists.
 func (conn *Connection) InsertAsync(space interface{}, tuple interface{}) *Future {
 	req := NewInsertRequest(space).Tuple(tuple)
-	return conn.DoAsync(req)
+	return conn.Do(req)
 }
 
 // ReplaceAsync sends "insert or replace" action to Tarantool and returns Future.
 // If tuple with same primary key exists, it will be replaced.
 func (conn *Connection) ReplaceAsync(space interface{}, tuple interface{}) *Future {
 	req := NewReplaceRequest(space).Tuple(tuple)
-	return conn.DoAsync(req)
+	return conn.Do(req)
 }
 
 // DeleteAsync sends deletion action to Tarantool and returns Future.
 // Future's result will contain array with deleted tuple.
 func (conn *Connection) DeleteAsync(space, index interface{}, key interface{}) *Future {
 	req := NewDeleteRequest(space).Index(index).Key(key)
-	return conn.DoAsync(req)
+	return conn.Do(req)
 }
 
 // Update sends deletion of a tuple by key and returns Future.
@@ -340,7 +340,7 @@ func (conn *Connection) DeleteAsync(space, index interface{}, key interface{}) *
 func (conn *Connection) UpdateAsync(space, index interface{}, key, ops interface{}) *Future {
 	req := NewUpdateRequest(space).Index(index).Key(key)
 	req.ops = ops
-	return conn.DoAsync(req)
+	return conn.Do(req)
 }
 
 // UpsertAsync sends "update or insert" action to Tarantool and returns Future.
@@ -348,7 +348,7 @@ func (conn *Connection) UpdateAsync(space, index interface{}, key, ops interface
 func (conn *Connection) UpsertAsync(space interface{}, tuple interface{}, ops interface{}) *Future {
 	req := NewUpsertRequest(space).Tuple(tuple)
 	req.ops = ops
-	return conn.DoAsync(req)
+	return conn.Do(req)
 }
 
 // CallAsync sends a call to registered Tarantool function and returns Future.
@@ -357,7 +357,7 @@ func (conn *Connection) UpsertAsync(space interface{}, tuple interface{}, ops in
 // Otherwise, uses request code for Tarantool 1.6.
 func (conn *Connection) CallAsync(functionName string, args interface{}) *Future {
 	req := NewCallRequest(functionName).Args(args)
-	return conn.DoAsync(req)
+	return conn.Do(req)
 }
 
 // Call16Async sends a call to registered Tarantool function and returns Future.
@@ -365,7 +365,7 @@ func (conn *Connection) CallAsync(functionName string, args interface{}) *Future
 // Deprecated since Tarantool 1.7.2.
 func (conn *Connection) Call16Async(functionName string, args interface{}) *Future {
 	req := NewCall16Request(functionName).Args(args)
-	return conn.DoAsync(req)
+	return conn.Do(req)
 }
 
 // Call17Async sends a call to registered Tarantool function and returns Future.
@@ -373,20 +373,20 @@ func (conn *Connection) Call16Async(functionName string, args interface{}) *Futu
 // (though, keep in mind, result is always array)
 func (conn *Connection) Call17Async(functionName string, args interface{}) *Future {
 	req := NewCall17Request(functionName).Args(args)
-	return conn.DoAsync(req)
+	return conn.Do(req)
 }
 
 // EvalAsync sends a Lua expression for evaluation and returns Future.
 func (conn *Connection) EvalAsync(expr string, args interface{}) *Future {
 	req := NewEvalRequest(expr).Args(args)
-	return conn.DoAsync(req)
+	return conn.Do(req)
 }
 
 // ExecuteAsync sends a sql expression for execution and returns Future.
 // Since 1.6.0
 func (conn *Connection) ExecuteAsync(expr string, args interface{}) *Future {
 	req := NewExecuteRequest(expr).Args(args)
-	return conn.DoAsync(req)
+	return conn.Do(req)
 }
 
 // KeyValueBind is a type for encoding named SQL parameters
