@@ -133,7 +133,7 @@ func ExampleSelectRequest() {
 	req := tarantool.NewSelectRequest(517).
 		Limit(100).
 		Key(tarantool.IntKey{1111})
-	resp, err := conn.Do(req)
+	resp, err := conn.Do(req).Get()
 	if err != nil {
 		fmt.Printf("error in do select request is %v", err)
 		return
@@ -144,7 +144,7 @@ func ExampleSelectRequest() {
 		Index("primary").
 		Limit(100).
 		Key(tarantool.IntKey{1111})
-	fut := conn.DoAsync(req)
+	fut := conn.Do(req)
 	resp, err = fut.Get()
 	if err != nil {
 		fmt.Printf("error in do async select request is %v", err)
@@ -163,7 +163,7 @@ func ExampleUpdateRequest() {
 	req := tarantool.NewUpdateRequest(517).
 		Key(tarantool.IntKey{1111}).
 		Operations(tarantool.NewOperations().Assign(1, "bye"))
-	resp, err := conn.Do(req)
+	resp, err := conn.Do(req).Get()
 	if err != nil {
 		fmt.Printf("error in do update request is %v", err)
 		return
@@ -174,7 +174,7 @@ func ExampleUpdateRequest() {
 		Index("primary").
 		Key(tarantool.IntKey{1111}).
 		Operations(tarantool.NewOperations().Assign(1, "hello"))
-	fut := conn.DoAsync(req)
+	fut := conn.Do(req)
 	resp, err = fut.Get()
 	if err != nil {
 		fmt.Printf("error in do async update request is %v", err)
@@ -194,7 +194,7 @@ func ExampleUpsertRequest() {
 	req = tarantool.NewUpsertRequest(517).
 		Tuple([]interface{}{uint(1113), "first", "first"}).
 		Operations(tarantool.NewOperations().Assign(1, "updated"))
-	resp, err := conn.Do(req)
+	resp, err := conn.Do(req).Get()
 	if err != nil {
 		fmt.Printf("error in do select upsert is %v", err)
 		return
@@ -204,7 +204,7 @@ func ExampleUpsertRequest() {
 	req = tarantool.NewUpsertRequest("test").
 		Tuple([]interface{}{uint(1113), "second", "second"}).
 		Operations(tarantool.NewOperations().Assign(2, "updated"))
-	fut := conn.DoAsync(req)
+	fut := conn.Do(req)
 	resp, err = fut.Get()
 	if err != nil {
 		fmt.Printf("error in do async upsert request is %v", err)
@@ -215,7 +215,7 @@ func ExampleUpsertRequest() {
 	req = tarantool.NewSelectRequest(517).
 		Limit(100).
 		Key(tarantool.IntKey{1113})
-	resp, err = conn.Do(req)
+	resp, err = conn.Do(req).Get()
 	if err != nil {
 		fmt.Printf("error in do select request is %v", err)
 		return

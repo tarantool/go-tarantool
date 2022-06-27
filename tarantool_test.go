@@ -121,7 +121,7 @@ func BenchmarkClientSerialRequestObject(b *testing.B) {
 			Limit(1).
 			Iterator(IterEq).
 			Key([]interface{}{uint(1111)})
-		_, err := conn.Do(req)
+		_, err := conn.Do(req).Get()
 		if err != nil {
 			b.Error(err)
 		}
@@ -1613,7 +1613,7 @@ func TestClientRequestObjects(t *testing.T) {
 
 	// Ping
 	req = NewPingRequest()
-	resp, err = conn.Do(req)
+	resp, err = conn.Do(req).Get()
 	if err != nil {
 		t.Fatalf("Failed to Ping: %s", err.Error())
 	}
@@ -1633,7 +1633,7 @@ func TestClientRequestObjects(t *testing.T) {
 	for i := 1010; i < 1020; i++ {
 		req = NewInsertRequest(spaceName).
 			Tuple([]interface{}{uint(i), fmt.Sprintf("val %d", i), "bla"})
-		resp, err = conn.Do(req)
+		resp, err = conn.Do(req).Get()
 		if err != nil {
 			t.Fatalf("Failed to Insert: %s", err.Error())
 		}
@@ -1668,7 +1668,7 @@ func TestClientRequestObjects(t *testing.T) {
 	for i := 1015; i < 1020; i++ {
 		req = NewReplaceRequest(spaceName).
 			Tuple([]interface{}{uint(i), fmt.Sprintf("val %d", i), "blar"})
-		resp, err = conn.Do(req)
+		resp, err = conn.Do(req).Get()
 		if err != nil {
 			t.Fatalf("Failed to Replace: %s", err.Error())
 		}
@@ -1702,7 +1702,7 @@ func TestClientRequestObjects(t *testing.T) {
 	// Delete
 	req = NewDeleteRequest(spaceName).
 		Key([]interface{}{uint(1016)})
-	resp, err = conn.Do(req)
+	resp, err = conn.Do(req).Get()
 	if err != nil {
 		t.Fatalf("Failed to Delete: %s", err.Error())
 	}
@@ -1736,7 +1736,7 @@ func TestClientRequestObjects(t *testing.T) {
 	req = NewUpdateRequest(spaceName).
 		Index(indexName).
 		Key([]interface{}{uint(1010)})
-	resp, err = conn.Do(req)
+	resp, err = conn.Do(req).Get()
 	if err != nil {
 		t.Errorf("Failed to Update: %s", err.Error())
 	}
@@ -1768,7 +1768,7 @@ func TestClientRequestObjects(t *testing.T) {
 		Index(indexName).
 		Key([]interface{}{uint(1010)}).
 		Operations(NewOperations().Assign(1, "bye").Insert(2, 1))
-	resp, err = conn.Do(req)
+	resp, err = conn.Do(req).Get()
 	if err != nil {
 		t.Errorf("Failed to Update: %s", err.Error())
 	}
@@ -1798,7 +1798,7 @@ func TestClientRequestObjects(t *testing.T) {
 	// Upsert without operations.
 	req = NewUpsertRequest(spaceNo).
 		Tuple([]interface{}{uint(1010), "hi", "hi"})
-	resp, err = conn.Do(req)
+	resp, err = conn.Do(req).Get()
 	if err != nil {
 		t.Errorf("Failed to Upsert (update): %s", err.Error())
 	}
@@ -1816,7 +1816,7 @@ func TestClientRequestObjects(t *testing.T) {
 	req = NewUpsertRequest(spaceNo).
 		Tuple([]interface{}{uint(1010), "hi", "hi"}).
 		Operations(NewOperations().Assign(2, "bye"))
-	resp, err = conn.Do(req)
+	resp, err = conn.Do(req).Get()
 	if err != nil {
 		t.Errorf("Failed to Upsert (update): %s", err.Error())
 	}
@@ -1836,7 +1836,7 @@ func TestClientRequestObjects(t *testing.T) {
 		Limit(20).
 		Iterator(IterGe).
 		Key([]interface{}{uint(1010)})
-	resp, err = conn.Do(req)
+	resp, err = conn.Do(req).Get()
 	if err != nil {
 		t.Errorf("Failed to Select: %s", err.Error())
 	}
@@ -1863,7 +1863,7 @@ func TestClientRequestObjects(t *testing.T) {
 
 	// Call16 vs Call17
 	req = NewCall16Request("simple_incr").Args([]interface{}{1})
-	resp, err = conn.Do(req)
+	resp, err = conn.Do(req).Get()
 	if err != nil {
 		t.Errorf("Failed to use Call")
 	}
@@ -1873,7 +1873,7 @@ func TestClientRequestObjects(t *testing.T) {
 
 	// Call17
 	req = NewCall17Request("simple_incr").Args([]interface{}{1})
-	resp, err = conn.Do(req)
+	resp, err = conn.Do(req).Get()
 	if err != nil {
 		t.Errorf("Failed to use Call17")
 	}
@@ -1883,7 +1883,7 @@ func TestClientRequestObjects(t *testing.T) {
 
 	// Eval
 	req = NewEvalRequest("return 5 + 6")
-	resp, err = conn.Do(req)
+	resp, err = conn.Do(req).Get()
 	if err != nil {
 		t.Fatalf("Failed to Eval: %s", err.Error())
 	}
@@ -1908,7 +1908,7 @@ func TestClientRequestObjects(t *testing.T) {
 	}
 
 	req = NewExecuteRequest(createTableQuery)
-	resp, err = conn.Do(req)
+	resp, err = conn.Do(req).Get()
 	if err != nil {
 		t.Fatalf("Failed to Execute: %s", err.Error())
 	}
@@ -1926,7 +1926,7 @@ func TestClientRequestObjects(t *testing.T) {
 	}
 
 	req = NewExecuteRequest(dropQuery2)
-	resp, err = conn.Do(req)
+	resp, err = conn.Do(req).Get()
 	if err != nil {
 		t.Fatalf("Failed to Execute: %s", err.Error())
 	}

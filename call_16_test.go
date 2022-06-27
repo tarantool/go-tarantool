@@ -34,7 +34,7 @@ func TestCallRequest(t *testing.T) {
 	defer conn.Close()
 
 	req := NewCallRequest("simple_incr").Args([]interface{}{1})
-	resp, err = conn.Do(req)
+	resp, err = conn.Do(req).Get()
 	if err != nil {
 		t.Errorf("Failed to use Call")
 	}

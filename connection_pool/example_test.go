@@ -539,7 +539,7 @@ func ExampleConnectionPool_Do() {
 
 	// Ping a Tarantool instance to check connection.
 	req := tarantool.NewPingRequest()
-	resp, err := pool.Do(req, connection_pool.ANY)
+	resp, err := pool.Do(req, connection_pool.ANY).Get()
 	fmt.Println("Ping Code", resp.Code)
 	fmt.Println("Ping Data", resp.Data)
 	fmt.Println("Ping Error", err)

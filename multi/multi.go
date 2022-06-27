@@ -482,17 +482,7 @@ func (connMulti *ConnectionMulti) EvalAsync(expr string, args interface{}) *tara
 	return connMulti.getCurrentConnection().EvalAsync(expr, args)
 }
 
-// Do sends the request and returns a response.
-func (connMulti *ConnectionMulti) Do(req tarantool.Request) (*tarantool.Response, error) {
+// Do sends the request and returns a future.
+func (connMulti *ConnectionMulti) Do(req tarantool.Request) *tarantool.Future {
 	return connMulti.getCurrentConnection().Do(req)
-}
-
-// DoTyped sends the request and fills the typed result.
-func (connMulti *ConnectionMulti) DoTyped(req tarantool.Request, result interface{}) error {
-	return connMulti.getCurrentConnection().DoTyped(req, result)
-}
-
-// DoAsync sends the request and returns a future.
-func (connMulti *ConnectionMulti) DoAsync(req tarantool.Request) *tarantool.Future {
-	return connMulti.getCurrentConnection().DoAsync(req)
 }
