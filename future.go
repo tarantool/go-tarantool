@@ -126,13 +126,6 @@ func NewFuture() (fut *Future) {
 	return fut
 }
 
-// NewErrorFuture returns new set empty Future with filled error field.
-func NewErrorFuture(err error) *Future {
-	fut := NewFuture()
-	fut.SetError(err)
-	return fut
-}
-
 // AppendPush appends the push response to the future.
 // Note: it works only before SetResponse() or SetError()
 func (fut *Future) AppendPush(resp *Response) {

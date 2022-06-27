@@ -23,6 +23,10 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 - `IPROTO_*` constants that identify requests renamed from `<Name>Request` to
   `<Name>RequestCode` (#126)
 
+### Removed
+
+- NewErrorFuture function (#190)
+
 ### Fixed
 
 ## [1.6.0] - 2022-06-01

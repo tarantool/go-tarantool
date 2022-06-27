@@ -416,7 +416,7 @@ func (connPool *ConnectionPool) EvalTyped(expr string, args interface{}, result 
 func (connPool *ConnectionPool) SelectAsync(space, index interface{}, offset, limit, iterator uint32, key interface{}, userMode ...Mode) *tarantool.Future {
 	conn, err := connPool.getConnByMode(ANY, userMode)
 	if err != nil {
-		return tarantool.NewErrorFuture(err)
+		return newErrorFuture(err)
 	}
 
 	return conn.SelectAsync(space, index, offset, limit, iterator, key)
@@ -427,7 +427,7 @@ func (connPool *ConnectionPool) SelectAsync(space, index interface{}, offset, li
 func (connPool *ConnectionPool) InsertAsync(space interface{}, tuple interface{}, userMode ...Mode) *tarantool.Future {
 	conn, err := connPool.getConnByMode(RW, userMode)
 	if err != nil {
-		return tarantool.NewErrorFuture(err)
+		return newErrorFuture(err)
 	}
 
 	return conn.InsertAsync(space, tuple)
@@ -438,7 +438,7 @@ func (connPool *ConnectionPool) InsertAsync(space interface{}, tuple interface{}
 func (connPool *ConnectionPool) ReplaceAsync(space interface{}, tuple interface{}, userMode ...Mode) *tarantool.Future {
 	conn, err := connPool.getConnByMode(RW, userMode)
 	if err != nil {
-		return tarantool.NewErrorFuture(err)
+		return newErrorFuture(err)
 	}
 
 	return conn.ReplaceAsync(space, tuple)
@@ -449,7 +449,7 @@ func (connPool *ConnectionPool) ReplaceAsync(space interface{}, tuple interface{
 func (connPool *ConnectionPool) DeleteAsync(space, index interface{}, key interface{}, userMode ...Mode) *tarantool.Future {
 	conn, err := connPool.getConnByMode(RW, userMode)
 	if err != nil {
-		return tarantool.NewErrorFuture(err)
+		return newErrorFuture(err)
 	}
 
 	return conn.DeleteAsync(space, index, key)
@@ -460,7 +460,7 @@ func (connPool *ConnectionPool) DeleteAsync(space, index interface{}, key interf
 func (connPool *ConnectionPool) UpdateAsync(space, index interface{}, key, ops interface{}, userMode ...Mode) *tarantool.Future {
 	conn, err := connPool.getConnByMode(RW, userMode)
 	if err != nil {
-		return tarantool.NewErrorFuture(err)
+		return newErrorFuture(err)
 	}
 
 	return conn.UpdateAsync(space, index, key, ops)
@@ -471,7 +471,7 @@ func (connPool *ConnectionPool) UpdateAsync(space, index interface{}, key, ops i
 func (connPool *ConnectionPool) UpsertAsync(space interface{}, tuple interface{}, ops interface{}, userMode ...Mode) *tarantool.Future {
 	conn, err := connPool.getConnByMode(RW, userMode)
 	if err != nil {
-		return tarantool.NewErrorFuture(err)
+		return newErrorFuture(err)
 	}
 
 	return conn.UpsertAsync(space, tuple, ops)
@@ -484,7 +484,7 @@ func (connPool *ConnectionPool) UpsertAsync(space interface{}, tuple interface{}
 func (connPool *ConnectionPool) CallAsync(functionName string, args interface{}, userMode Mode) *tarantool.Future {
 	conn, err := connPool.getNextConnection(userMode)
 	if err != nil {
-		return tarantool.NewErrorFuture(err)
+		return newErrorFuture(err)
 	}
 
 	return conn.CallAsync(functionName, args)
@@ -496,7 +496,7 @@ func (connPool *ConnectionPool) CallAsync(functionName string, args interface{},
 func (connPool *ConnectionPool) Call16Async(functionName string, args interface{}, userMode Mode) *tarantool.Future {
 	conn, err := connPool.getNextConnection(userMode)
 	if err != nil {
-		return tarantool.NewErrorFuture(err)
+		return newErrorFuture(err)
 	}
 
 	return conn.Call16Async(functionName, args)
@@ -508,7 +508,7 @@ func (connPool *ConnectionPool) Call16Async(functionName string, args interface{
 func (connPool *ConnectionPool) Call17Async(functionName string, args interface{}, userMode Mode) *tarantool.Future {
 	conn, err := connPool.getNextConnection(userMode)
 	if err != nil {
-		return tarantool.NewErrorFuture(err)
+		return newErrorFuture(err)
 	}
 
 	return conn.Call17Async(functionName, args)
@@ -518,7 +518,7 @@ func (connPool *ConnectionPool) Call17Async(functionName string, args interface{
 func (connPool *ConnectionPool) EvalAsync(expr string, args interface{}, userMode Mode) *tarantool.Future {
 	conn, err := connPool.getNextConnection(userMode)
 	if err != nil {
-		return tarantool.NewErrorFuture(err)
+		return newErrorFuture(err)
 	}
 
 	return conn.EvalAsync(expr, args)
@@ -548,7 +548,7 @@ func (connPool *ConnectionPool) DoTyped(req tarantool.Request, result interface{
 func (connPool *ConnectionPool) DoAsync(req tarantool.Request, userMode Mode) *tarantool.Future {
 	conn, err := connPool.getNextConnection(userMode)
 	if err != nil {
-		return tarantool.NewErrorFuture(err)
+		return newErrorFuture(err)
 	}
 
 	return conn.DoAsync(req)
@@ -801,4 +801,10 @@ func (connPool *ConnectionPool) getConnByMode(defaultMode Mode, userMode []Mode)
 	}
 
 	return connPool.getNextConnection(mode)
+}
+
+func newErrorFuture(err error) *tarantool.Future {
+	fut := tarantool.NewFuture()
+	fut.SetError(err)
+	return fut
 }
