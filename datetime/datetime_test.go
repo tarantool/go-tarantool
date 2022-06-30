@@ -15,10 +15,22 @@ import (
 	"gopkg.in/vmihailenco/msgpack.v2"
 )
 
-var (
-	minTime = time.Unix(0, 0)
-	maxTime = time.Unix(1<<63-1, 999999999)
-)
+var lesserBoundaryTimes = []time.Time{
+	time.Date(-5879610, 06, 22, 0, 0, 1, 0, time.UTC),
+	time.Date(-5879610, 06, 22, 0, 0, 0, 1, time.UTC),
+	time.Date(5879611, 07, 10, 23, 59, 59, 0, time.UTC),
+	time.Date(5879611, 07, 10, 23, 59, 59, 999999999, time.UTC),
+}
+
+var boundaryTimes = []time.Time{
+	time.Date(-5879610, 06, 22, 0, 0, 0, 0, time.UTC),
+	time.Date(5879611, 07, 11, 0, 0, 0, 999999999, time.UTC),
+}
+
+var greaterBoundaryTimes = []time.Time{
+	time.Date(-5879610, 06, 21, 23, 59, 59, 999999999, time.UTC),
+	time.Date(5879611, 07, 11, 0, 0, 1, 0, time.UTC),
+}
 
 var isDatetimeSupported = false
 
@@ -63,10 +75,15 @@ func assertDatetimeIsEqual(t *testing.T, tuples []interface{}, tm time.Time) {
 }
 
 func tupleInsertSelectDelete(t *testing.T, conn *Connection, tm time.Time) {
-	dt := NewDatetime(tm)
+	t.Helper()
+
+	dt, err := NewDatetime(tm)
+	if err != nil {
+		t.Fatalf("Unable to create Datetime from %s: %s", tm, err)
+	}
 
 	// Insert tuple with datetime.
-	_, err := conn.Insert(spaceTuple1, []interface{}{dt, "payload"})
+	_, err = conn.Insert(spaceTuple1, []interface{}{dt, "payload"})
 	if err != nil {
 		t.Fatalf("Datetime insert failed: %s", err.Error())
 	}
@@ -172,22 +189,30 @@ func TestDatetimeInsertSelectDelete(t *testing.T) {
 // time.Parse() could not parse formatted string with datetime where year is
 // bigger than 9999. That's why testcase with maximum datetime value represented
 // as a separate testcase. Testcase with minimal value added for consistency.
-func TestDatetimeMax(t *testing.T) {
+func TestDatetimeBoundaryRange(t *testing.T) {
 	skipIfDatetimeUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
-	tupleInsertSelectDelete(t, conn, maxTime)
+	for _, tm := range append(lesserBoundaryTimes, boundaryTimes...) {
+		t.Run(tm.String(), func(t *testing.T) {
+			tupleInsertSelectDelete(t, conn, tm)
+		})
+	}
 }
 
-func TestDatetimeMin(t *testing.T) {
+func TestDatetimeOutOfRange(t *testing.T) {
 	skipIfDatetimeUnsupported(t)
 
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
-
-	tupleInsertSelectDelete(t, conn, minTime)
+	for _, tm := range greaterBoundaryTimes {
+		t.Run(tm.String(), func(t *testing.T) {
+			_, err := NewDatetime(tm)
+			if err == nil {
+				t.Errorf("Time %s should be unsupported!", tm)
+			}
+		})
+	}
 }
 
 func TestDatetimeReplace(t *testing.T) {
@@ -201,7 +226,10 @@ func TestDatetimeReplace(t *testing.T) {
 		t.Fatalf("Time parse failed: %s", err)
 	}
 
-	dt := NewDatetime(tm)
+	dt, err := NewDatetime(tm)
+	if err != nil {
+		t.Fatalf("Unable to create Datetime from %s: %s", tm, err)
+	}
 	resp, err := conn.Replace(spaceTuple1, []interface{}{dt, "payload"})
 	if err != nil {
 		t.Fatalf("Datetime replace failed: %s", err)
@@ -346,16 +374,24 @@ func TestCustomEncodeDecodeTuple1(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
-	dt1, _ := time.Parse(time.RFC3339, "2010-05-24T17:51:56.000000009Z")
-	dt2, _ := time.Parse(time.RFC3339, "2022-05-24T17:51:56.000000009Z")
+	tm1, _ := time.Parse(time.RFC3339, "2010-05-24T17:51:56.000000009Z")
+	tm2, _ := time.Parse(time.RFC3339, "2022-05-24T17:51:56.000000009Z")
+	dt1, err := NewDatetime(tm1)
+	if err != nil {
+		t.Fatalf("Unable to create Datetime from %s: %s", tm1, err)
+	}
+	dt2, err := NewDatetime(tm2)
+	if err != nil {
+		t.Fatalf("Unable to create Datetime from %s: %s", tm2, err)
+	}
 	const cid = 13
 	const orig = "orig"
 
 	tuple := Tuple2{Cid: cid,
 		Orig: orig,
 		Events: []Event{
-			{*NewDatetime(dt1), "Minsk"},
-			{*NewDatetime(dt2), "Moscow"},
+			{*dt1, "Minsk"},
+			{*dt2, "Moscow"},
 		},
 	}
 	resp, err := conn.Replace(spaceTuple2, &tuple)
@@ -392,7 +428,7 @@ func TestCustomEncodeDecodeTuple1(t *testing.T) {
 		t.Fatalf("Unable to convert 2 field to []interface{}")
 	}
 
-	for i, tv := range []time.Time{dt1, dt2} {
+	for i, tv := range []time.Time{tm1, tm2} {
 		dt := events[i].([]interface{})[1].(Datetime)
 		if !dt.ToTime().Equal(tv) {
 			t.Fatalf("%v != %v", dt.ToTime(), tv)
@@ -450,8 +486,11 @@ func TestCustomEncodeDecodeTuple5(t *testing.T) {
 	defer conn.Close()
 
 	tm := time.Unix(500, 1000)
-	dt := NewDatetime(tm)
-	_, err := conn.Insert(spaceTuple1, []interface{}{dt})
+	dt, err := NewDatetime(tm)
+	if err != nil {
+		t.Fatalf("Unable to create Datetime from %s: %s", tm, err)
+	}
+	_, err = conn.Insert(spaceTuple1, []interface{}{dt})
 	if err != nil {
 		t.Fatalf("Datetime insert failed: %s", err.Error())
 	}
@@ -482,7 +521,10 @@ func TestMPEncode(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Time (%s) parse failed: %s", testcase.dt, err)
 			}
-			dt := NewDatetime(tm)
+			dt, err := NewDatetime(tm)
+			if err != nil {
+				t.Fatalf("Unable to create Datetime from %s: %s", tm, err)
+			}
 			buf, err := msgpack.Marshal(dt)
 			if err != nil {
 				t.Fatalf("Marshalling failed: %s", err.Error())

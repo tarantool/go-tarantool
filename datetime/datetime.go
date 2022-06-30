@@ -67,6 +67,14 @@ const (
 	tzOffsetSize = 2
 )
 
+// Limits are from c-dt library:
+// https://github.com/tarantool/c-dt/blob/e6214325fe8d4336464ebae859ac2b456fd22b77/API.pod#introduction
+// https://github.com/tarantool/tarantool/blob/a99ccce5f517d2a04670289d3d09a8cc2f5916f9/src/lib/core/datetime.h#L44-L61
+const (
+	minSeconds = -185604722870400
+	maxSeconds = 185480451417600
+)
+
 const maxSize = secondsSize + nsecSize + tzIndexSize + tzOffsetSize
 
 type Datetime struct {
@@ -74,11 +82,18 @@ type Datetime struct {
 }
 
 // NewDatetime returns a pointer to a new datetime.Datetime that contains a
-// specified time.Time.
-func NewDatetime(t time.Time) *Datetime {
+// specified time.Time. It may returns an error if the Time value is out of
+// supported range: [-5879610-06-22T00:00Z .. 5879611-07-11T00:00Z]
+func NewDatetime(t time.Time) (*Datetime, error) {
+	seconds := t.Unix()
+
+	if seconds < minSeconds || seconds > maxSeconds {
+		return nil, fmt.Errorf("Time %s is out of supported range.", t)
+	}
+
 	dt := new(Datetime)
 	dt.time = t
-	return dt
+	return dt, nil
 }
 
 // ToTime returns a time.Time that Datetime contains.
@@ -129,10 +144,13 @@ func (tm *Datetime) UnmarshalMsgpack(b []byte) error {
 		dt.tzOffset = int16(binary.LittleEndian.Uint16(b[secondsSize+nsecSize:]))
 		dt.tzIndex = int16(binary.LittleEndian.Uint16(b[secondsSize+nsecSize+tzOffsetSize:]))
 	}
-	tt := time.Unix(dt.seconds, int64(dt.nsec)).UTC()
-	*tm = *NewDatetime(tt)
 
-	return nil
+	tt := time.Unix(dt.seconds, int64(dt.nsec)).UTC()
+	dtp, err := NewDatetime(tt)
+	if dtp != nil {
+		*tm = *dtp
+	}
+	return err
 }
 
 func init() {

@@ -35,7 +35,11 @@ func Example() {
 		fmt.Printf("error in time.Parse() is %v", err)
 		return
 	}
-	dt := NewDatetime(tm)
+	dt, err := NewDatetime(tm)
+	if err != nil {
+		fmt.Printf("Unable to create Datetime from %s: %s", tm, err)
+		return
+	}
 
 	space := "testDatetime_1"
 	index := "primary"
