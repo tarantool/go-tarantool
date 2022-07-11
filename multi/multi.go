@@ -419,6 +419,11 @@ func (connMulti *ConnectionMulti) EvalTyped(expr string, args interface{}, resul
 	return connMulti.getCurrentConnection().EvalTyped(expr, args, result)
 }
 
+// ExecuteTyped passes sql expression to Tarantool for execution.
+func (connMulti *ConnectionMulti) ExecuteTyped(expr string, args interface{}, result interface{}) (tarantool.SQLInfo, []tarantool.ColumnMetaData, error) {
+	return connMulti.getCurrentConnection().ExecuteTyped(expr, args, result)
+}
+
 // SelectAsync sends select request to Tarantool and returns Future.
 func (connMulti *ConnectionMulti) SelectAsync(space, index interface{}, offset, limit, iterator uint32, key interface{}) *tarantool.Future {
 	return connMulti.getCurrentConnection().SelectAsync(space, index, offset, limit, iterator, key)
@@ -480,6 +485,11 @@ func (connMulti *ConnectionMulti) Call17Async(functionName string, args interfac
 // EvalAsync passes Lua expression for evaluation.
 func (connMulti *ConnectionMulti) EvalAsync(expr string, args interface{}) *tarantool.Future {
 	return connMulti.getCurrentConnection().EvalAsync(expr, args)
+}
+
+// ExecuteAsync passes sql expression to Tarantool for execution.
+func (connMulti *ConnectionMulti) ExecuteAsync(expr string, args interface{}) *tarantool.Future {
+	return connMulti.getCurrentConnection().ExecuteAsync(expr, args)
 }
 
 // Do sends the request and returns a future.
