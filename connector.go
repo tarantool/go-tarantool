@@ -30,6 +30,7 @@ type Connector interface {
 	Call16Typed(functionName string, args interface{}, result interface{}) (err error)
 	Call17Typed(functionName string, args interface{}, result interface{}) (err error)
 	EvalTyped(expr string, args interface{}, result interface{}) (err error)
+	ExecuteTyped(expr string, args interface{}, result interface{}) (SQLInfo, []ColumnMetaData, error)
 
 	SelectAsync(space, index interface{}, offset, limit, iterator uint32, key interface{}) *Future
 	InsertAsync(space interface{}, tuple interface{}) *Future
@@ -41,6 +42,7 @@ type Connector interface {
 	Call16Async(functionName string, args interface{}) *Future
 	Call17Async(functionName string, args interface{}) *Future
 	EvalAsync(expr string, args interface{}) *Future
+	ExecuteAsync(expr string, args interface{}) *Future
 
 	Do(req Request) (fut *Future)
 }
