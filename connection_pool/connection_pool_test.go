@@ -1,8 +1,10 @@
 package connection_pool_test
 
 import (
+	"fmt"
 	"log"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -1274,6 +1276,97 @@ func TestDo(t *testing.T) {
 	resp, err = connPool.Do(req, connection_pool.PreferRO).Get()
 	require.Nilf(t, err, "failed to Ping")
 	require.NotNilf(t, resp, "response is nil after Ping")
+}
+
+func TestNewPrepared(t *testing.T) {
+	test_helpers.SkipIfSQLUnsupported(t)
+
+	roles := []bool{true, true, false, true, false}
+
+	err := test_helpers.SetClusterRO(servers, connOpts, roles)
+	require.Nilf(t, err, "fail to set roles for cluster")
+
+	connPool, err := connection_pool.Connect(servers, connOpts)
+	require.Nilf(t, err, "failed to connect")
+	require.NotNilf(t, connPool, "conn is nil after Connect")
+
+	defer connPool.Close()
+
+	stmt, err := connPool.NewPrepared("SELECT NAME0, NAME1 FROM SQL_TEST WHERE NAME0=:id AND NAME1=:name;", connection_pool.RO)
+	require.Nilf(t, err, "fail to prepare statement: %v", err)
+
+	if connPool.GetPoolInfo()[stmt.Conn.Addr()].ConnRole != connection_pool.RO {
+		t.Errorf("wrong role for the statement's connection")
+	}
+
+	executeReq := tarantool.NewExecutePreparedRequest(stmt)
+	unprepareReq := tarantool.NewUnprepareRequest(stmt)
+
+	resp, err := connPool.Do(executeReq.Args([]interface{}{1, "test"}), connection_pool.ANY).Get()
+	if err != nil {
+		t.Fatalf("failed to execute prepared: %v", err)
+	}
+	if resp == nil {
+		t.Fatalf("nil response")
+	}
+	if resp.Code != tarantool.OkCode {
+		t.Fatalf("failed to execute prepared: code %d", resp.Code)
+	}
+	if reflect.DeepEqual(resp.Data[0], []interface{}{1, "test"}) {
+		t.Error("Select with named arguments failed")
+	}
+	if resp.MetaData[0].FieldType != "unsigned" ||
+		resp.MetaData[0].FieldName != "NAME0" ||
+		resp.MetaData[1].FieldType != "string" ||
+		resp.MetaData[1].FieldName != "NAME1" {
+		t.Error("Wrong metadata")
+	}
+
+	// the second argument for unprepare request is unused - it already belongs to some connection
+	resp, err = connPool.Do(unprepareReq, connection_pool.ANY).Get()
+	if err != nil {
+		t.Errorf("failed to unprepare prepared statement: %v", err)
+	}
+	if resp.Code != tarantool.OkCode {
+		t.Errorf("failed to unprepare prepared statement: code %d", resp.Code)
+	}
+
+	_, err = connPool.Do(unprepareReq, connection_pool.ANY).Get()
+	if err == nil {
+		t.Errorf("the statement must be already unprepared")
+	}
+	require.Contains(t, err.Error(), "Prepared statement with id")
+
+	_, err = connPool.Do(executeReq, connection_pool.ANY).Get()
+	if err == nil {
+		t.Errorf("the statement must be already unprepared")
+	}
+	require.Contains(t, err.Error(), "Prepared statement with id")
+}
+
+func TestDoWithStrangerConn(t *testing.T) {
+	expectedErr := fmt.Errorf("the passed connected request doesn't belong to the current connection or connection pool")
+
+	roles := []bool{true, true, false, true, false}
+
+	err := test_helpers.SetClusterRO(servers, connOpts, roles)
+	require.Nilf(t, err, "fail to set roles for cluster")
+
+	connPool, err := connection_pool.Connect(servers, connOpts)
+	require.Nilf(t, err, "failed to connect")
+	require.NotNilf(t, connPool, "conn is nil after Connect")
+
+	defer connPool.Close()
+
+	req := test_helpers.NewStrangerRequest()
+
+	_, err = connPool.Do(req, connection_pool.ANY).Get()
+	if err == nil {
+		t.Fatalf("nil error catched")
+	}
+	if err.Error() != expectedErr.Error() {
+		t.Fatalf("Unexpected error catched")
+	}
 }
 
 // runTestMain is a body of TestMain function

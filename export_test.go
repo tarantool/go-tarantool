@@ -75,3 +75,21 @@ func RefImplEvalBody(enc *msgpack.Encoder, expr string, args interface{}) error 
 func RefImplExecuteBody(enc *msgpack.Encoder, expr string, args interface{}) error {
 	return fillExecute(enc, expr, args)
 }
+
+// RefImplPrepareBody is reference implementation for filling of an prepare
+// request's body.
+func RefImplPrepareBody(enc *msgpack.Encoder, expr string) error {
+	return fillPrepare(enc, expr)
+}
+
+// RefImplUnprepareBody is reference implementation for filling of an execute prepared
+// request's body.
+func RefImplExecutePreparedBody(enc *msgpack.Encoder, stmt Prepared, args interface{}) error {
+	return fillExecutePrepared(enc, stmt, args)
+}
+
+// RefImplUnprepareBody is reference implementation for filling of an unprepare
+// request's body.
+func RefImplUnprepareBody(enc *msgpack.Encoder, stmt Prepared) error {
+	return fillUnprepare(enc, stmt)
+}

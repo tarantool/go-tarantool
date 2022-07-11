@@ -12,6 +12,7 @@ const (
 	UpsertRequestCode    = 9
 	Call17RequestCode    = 10 /* call in >= 1.7 format */
 	ExecuteRequestCode   = 11
+	PrepareRequestCode   = 13
 	PingRequestCode      = 64
 	SubscribeRequestCode = 66
 
@@ -31,9 +32,11 @@ const (
 	KeyData         = 0x30
 	KeyError        = 0x31
 	KeyMetaData     = 0x32
+	KeyBindCount    = 0x34
 	KeySQLText      = 0x40
 	KeySQLBind      = 0x41
 	KeySQLInfo      = 0x42
+	KeyStmtID       = 0x43
 
 	KeyFieldName               = 0x00
 	KeyFieldType               = 0x01

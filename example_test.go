@@ -651,3 +651,43 @@ func ExampleConnection_Execute() {
 	fmt.Println("MetaData", resp.MetaData)
 	fmt.Println("SQL Info", resp.SQLInfo)
 }
+
+// To use prepared statements to query a tarantool instance, call NewPrepared.
+func ExampleConnection_NewPrepared() {
+	// Tarantool supports SQL since version 2.0.0
+	isLess, err := test_helpers.IsTarantoolVersionLess(2, 0, 0)
+	if err != nil || isLess {
+		return
+	}
+
+	server := "127.0.0.1:3013"
+	opts := tarantool.Opts{
+		Timeout:       500 * time.Millisecond,
+		Reconnect:     1 * time.Second,
+		MaxReconnects: 3,
+		User:          "test",
+		Pass:          "test",
+	}
+	conn, err := tarantool.Connect(server, opts)
+	if err != nil {
+		fmt.Printf("Failed to connect: %s", err.Error())
+	}
+
+	stmt, err := conn.NewPrepared("SELECT 1")
+	if err != nil {
+		fmt.Printf("Failed to connect: %s", err.Error())
+	}
+
+	executeReq := tarantool.NewExecutePreparedRequest(stmt)
+	unprepareReq := tarantool.NewUnprepareRequest(stmt)
+
+	_, err = conn.Do(executeReq).Get()
+	if err != nil {
+		fmt.Printf("Failed to execute prepared stmt")
+	}
+
+	_, err = conn.Do(unprepareReq).Get()
+	if err != nil {
+		fmt.Printf("Failed to prepare")
+	}
+}

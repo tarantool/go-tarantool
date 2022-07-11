@@ -147,6 +147,7 @@ func (resp *Response) decodeHeader(d *msgpack.Decoder) (err error) {
 func (resp *Response) decodeBody() (err error) {
 	if resp.buf.Len() > 2 {
 		var l int
+		var stmtID, bindCount uint64
 		d := msgpack.NewDecoder(&resp.buf)
 		if l, err = d.DecodeMapLen(); err != nil {
 			return err
@@ -178,11 +179,27 @@ func (resp *Response) decodeBody() (err error) {
 				if err = d.Decode(&resp.MetaData); err != nil {
 					return err
 				}
+			case KeyStmtID:
+				if stmtID, err = d.DecodeUint64(); err != nil {
+					return err
+				}
+			case KeyBindCount:
+				if bindCount, err = d.DecodeUint64(); err != nil {
+					return err
+				}
 			default:
 				if err = d.Skip(); err != nil {
 					return err
 				}
 			}
+		}
+		if stmtID != 0 {
+			stmt := &Prepared{
+				StatementID: PreparedID(stmtID),
+				ParamCount:  bindCount,
+				MetaData:    resp.MetaData,
+			}
+			resp.Data = []interface{}{stmt}
 		}
 		if resp.Code != OkCode && resp.Code != PushCode {
 			resp.Code &^= ErrorCodeBit

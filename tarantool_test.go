@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/stretchr/testify/assert"
 	. "github.com/tarantool/go-tarantool"
 	"github.com/tarantool/go-tarantool/test_helpers"
@@ -137,24 +139,13 @@ func BenchmarkClientSerialTyped(b *testing.B) {
 }
 
 func BenchmarkClientSerialSQL(b *testing.B) {
-	// Tarantool supports SQL since version 2.0.0
-	isLess, err := test_helpers.IsTarantoolVersionLess(2, 0, 0)
-	if err != nil {
-		b.Fatal("Could not check the Tarantool version")
-	}
-	if isLess {
-		b.Skip()
-	}
+	test_helpers.SkipIfSQLUnsupported(b)
 
-	conn, err := Connect(server, opts)
-	if err != nil {
-		b.Errorf("Failed to connect: %s", err)
-		return
-	}
+	conn := test_helpers.ConnectWithValidation(b, server, opts)
 	defer conn.Close()
 
 	spaceNo := 519
-	_, err = conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
+	_, err := conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
 	if err != nil {
 		b.Errorf("Failed to replace: %s", err)
 	}
@@ -166,6 +157,39 @@ func BenchmarkClientSerialSQL(b *testing.B) {
 			b.Errorf("Select failed: %s", err.Error())
 			break
 		}
+	}
+}
+
+func BenchmarkClientSerialSQLPrepared(b *testing.B) {
+	test_helpers.SkipIfSQLUnsupported(b)
+
+	conn := test_helpers.ConnectWithValidation(b, server, opts)
+	defer conn.Close()
+
+	spaceNo := 519
+	_, err := conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
+	if err != nil {
+		b.Errorf("Failed to replace: %s", err)
+	}
+
+	stmt, err := conn.NewPrepared("SELECT NAME0,NAME1,NAME2 FROM SQL_TEST WHERE NAME0=?")
+	if err != nil {
+		b.Fatalf("failed to prepare a SQL statement")
+	}
+	executeReq := NewExecutePreparedRequest(stmt)
+	unprepareReq := NewUnprepareRequest(stmt)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := conn.Do(executeReq.Args([]interface{}{uint(1111)})).Get()
+		if err != nil {
+			b.Errorf("Select failed: %s", err.Error())
+			break
+		}
+	}
+	_, err = conn.Do(unprepareReq).Get()
+	if err != nil {
+		b.Fatalf("failed to unprepare a SQL statement")
 	}
 }
 
@@ -432,20 +456,13 @@ func BenchmarkClientLargeSelectParallel(b *testing.B) {
 }
 
 func BenchmarkClientParallelSQL(b *testing.B) {
-	// Tarantool supports SQL since version 2.0.0
-	isLess, err := test_helpers.IsTarantoolVersionLess(2, 0, 0)
-	if err != nil {
-		b.Fatal("Could not check the Tarantool version")
-	}
-	if isLess {
-		b.Skip()
-	}
+	test_helpers.SkipIfSQLUnsupported(b)
 
 	conn := test_helpers.ConnectWithValidation(b, server, opts)
 	defer conn.Close()
 
 	spaceNo := 519
-	_, err = conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
+	_, err := conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
 	if err != nil {
 		b.Errorf("No connection available")
 	}
@@ -462,21 +479,49 @@ func BenchmarkClientParallelSQL(b *testing.B) {
 	})
 }
 
-func BenchmarkSQLSerial(b *testing.B) {
-	// Tarantool supports SQL since version 2.0.0
-	isLess, err := test_helpers.IsTarantoolVersionLess(2, 0, 0)
-	if err != nil {
-		b.Fatal("Could not check the Tarantool version")
-	}
-	if isLess {
-		b.Skip()
-	}
+func BenchmarkClientParallelSQLPrepared(b *testing.B) {
+	test_helpers.SkipIfSQLUnsupported(b)
 
 	conn := test_helpers.ConnectWithValidation(b, server, opts)
 	defer conn.Close()
 
 	spaceNo := 519
-	_, err = conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
+	_, err := conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
+	if err != nil {
+		b.Errorf("No connection available")
+	}
+
+	stmt, err := conn.NewPrepared("SELECT NAME0,NAME1,NAME2 FROM SQL_TEST WHERE NAME0=?")
+	if err != nil {
+		b.Fatalf("failed to prepare a SQL statement")
+	}
+	executeReq := NewExecutePreparedRequest(stmt)
+	unprepareReq := NewUnprepareRequest(stmt)
+
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			_, err := conn.Do(executeReq.Args([]interface{}{uint(1111)})).Get()
+			if err != nil {
+				b.Errorf("Select failed: %s", err.Error())
+				break
+			}
+		}
+	})
+	_, err = conn.Do(unprepareReq).Get()
+	if err != nil {
+		b.Fatalf("failed to unprepare a SQL statement")
+	}
+}
+
+func BenchmarkSQLSerial(b *testing.B) {
+	test_helpers.SkipIfSQLUnsupported(b)
+
+	conn := test_helpers.ConnectWithValidation(b, server, opts)
+	defer conn.Close()
+
+	spaceNo := 519
+	_, err := conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
 	if err != nil {
 		b.Errorf("Failed to replace: %s", err)
 	}
@@ -915,14 +960,7 @@ const (
 )
 
 func TestSQL(t *testing.T) {
-	// Tarantool supports SQL since version 2.0.0
-	isLess, err := test_helpers.IsTarantoolVersionLess(2, 0, 0)
-	if err != nil {
-		t.Fatalf("Could not check the Tarantool version")
-	}
-	if isLess {
-		t.Skip()
-	}
+	test_helpers.SkipIfSQLUnsupported(t)
 
 	type testCase struct {
 		Query string
@@ -1094,14 +1132,7 @@ func TestSQL(t *testing.T) {
 }
 
 func TestSQLTyped(t *testing.T) {
-	// Tarantool supports SQL since version 2.0.0
-	isLess, err := test_helpers.IsTarantoolVersionLess(2, 0, 0)
-	if err != nil {
-		t.Fatal("Could not check the Tarantool version")
-	}
-	if isLess {
-		t.Skip()
-	}
+	test_helpers.SkipIfSQLUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
@@ -1123,18 +1154,11 @@ func TestSQLTyped(t *testing.T) {
 }
 
 func TestSQLBindings(t *testing.T) {
+	test_helpers.SkipIfSQLUnsupported(t)
+
 	// Data for test table
 	testData := map[int]string{
 		1: "test",
-	}
-
-	// Tarantool supports SQL since version 2.0.0
-	isLess, err := test_helpers.IsTarantoolVersionLess(2, 0, 0)
-	if err != nil {
-		t.Fatal("Could not check the Tarantool version")
-	}
-	if isLess {
-		t.Skip()
 	}
 
 	var resp *Response
@@ -1183,7 +1207,7 @@ func TestSQLBindings(t *testing.T) {
 	}
 
 	for _, bind := range namedSQLBinds {
-		resp, err = conn.Execute(selectNamedQuery2, bind)
+		resp, err := conn.Execute(selectNamedQuery2, bind)
 		if err != nil {
 			t.Fatalf("Failed to Execute: %s", err.Error())
 		}
@@ -1201,7 +1225,7 @@ func TestSQLBindings(t *testing.T) {
 		}
 	}
 
-	resp, err = conn.Execute(selectPosQuery2, sqlBind5)
+	resp, err := conn.Execute(selectPosQuery2, sqlBind5)
 	if err != nil {
 		t.Fatalf("Failed to Execute: %s", err.Error())
 	}
@@ -1237,21 +1261,14 @@ func TestSQLBindings(t *testing.T) {
 }
 
 func TestStressSQL(t *testing.T) {
-	// Tarantool supports SQL since version 2.0.0
-	isLess, err := test_helpers.IsTarantoolVersionLess(2, 0, 0)
-	if err != nil {
-		t.Fatalf("Could not check the Tarantool version")
-	}
-	if isLess {
-		t.Skip()
-	}
+	test_helpers.SkipIfSQLUnsupported(t)
 
 	var resp *Response
 
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
-	resp, err = conn.Execute(createTableQuery, []interface{}{})
+	resp, err := conn.Execute(createTableQuery, []interface{}{})
 	if err != nil {
 		t.Fatalf("Failed to Execute: %s", err.Error())
 	}
@@ -1338,6 +1355,122 @@ func TestStressSQL(t *testing.T) {
 	}
 	if resp.SQLInfo.AffectedCount != 0 {
 		t.Errorf("Incorrect count of created spaces: %d", resp.SQLInfo.AffectedCount)
+	}
+}
+
+func TestNewPrepared(t *testing.T) {
+	test_helpers.SkipIfSQLUnsupported(t)
+
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	defer conn.Close()
+
+	stmt, err := conn.NewPrepared(selectNamedQuery2)
+	if err != nil {
+		t.Errorf("failed to prepare: %v", err)
+	}
+
+	executeReq := NewExecutePreparedRequest(stmt)
+	unprepareReq := NewUnprepareRequest(stmt)
+
+	resp, err := conn.Do(executeReq.Args([]interface{}{1, "test"})).Get()
+	if err != nil {
+		t.Errorf("failed to execute prepared: %v", err)
+	}
+	if resp.Code != OkCode {
+		t.Errorf("failed to execute prepared: code %d", resp.Code)
+	}
+	if reflect.DeepEqual(resp.Data[0], []interface{}{1, "test"}) {
+		t.Error("Select with named arguments failed")
+	}
+	if resp.MetaData[0].FieldType != "unsigned" ||
+		resp.MetaData[0].FieldName != "NAME0" ||
+		resp.MetaData[1].FieldType != "string" ||
+		resp.MetaData[1].FieldName != "NAME1" {
+		t.Error("Wrong metadata")
+	}
+
+	resp, err = conn.Do(unprepareReq).Get()
+	if err != nil {
+		t.Errorf("failed to unprepare prepared statement: %v", err)
+	}
+	if resp.Code != OkCode {
+		t.Errorf("failed to unprepare prepared statement: code %d", resp.Code)
+	}
+
+	_, err = conn.Do(unprepareReq).Get()
+	if err == nil {
+		t.Errorf("the statement must be already unprepared")
+	}
+	require.Contains(t, err.Error(), "Prepared statement with id")
+
+	_, err = conn.Do(executeReq).Get()
+	if err == nil {
+		t.Errorf("the statement must be already unprepared")
+	}
+	require.Contains(t, err.Error(), "Prepared statement with id")
+
+	prepareReq := NewPrepareRequest(selectNamedQuery2)
+	resp, err = conn.Do(prepareReq).Get()
+	if err != nil {
+		t.Errorf("failed to prepare: %v", err)
+	}
+	if resp.Data == nil {
+		t.Errorf("failed to prepare: Data is nil")
+	}
+	if resp.Code != OkCode {
+		t.Errorf("failed to unprepare prepared statement: code %d", resp.Code)
+	}
+
+	if len(resp.Data) == 0 {
+		t.Errorf("failed to prepare: response Data has no elements")
+	}
+	stmt, ok := resp.Data[0].(*Prepared)
+	if !ok {
+		t.Errorf("failed to prepare: failed to cast the response Data to Prepared object")
+	}
+	if stmt.StatementID == 0 {
+		t.Errorf("failed to prepare: statement id is 0")
+	}
+}
+
+func TestConnection_DoWithStrangerConn(t *testing.T) {
+	expectedErr := fmt.Errorf("the passed connected request doesn't belong to the current connection or connection pool")
+
+	conn1 := &Connection{}
+	req := test_helpers.NewStrangerRequest()
+
+	_, err := conn1.Do(req).Get()
+	if err == nil {
+		t.Fatalf("nil error catched")
+	}
+	if err.Error() != expectedErr.Error() {
+		t.Fatalf("Unexpected error catched")
+	}
+}
+
+func TestNewPreparedFromResponse(t *testing.T) {
+	var (
+		ErrNilResponsePassed = fmt.Errorf("pased nil response")
+		ErrNilResponseData   = fmt.Errorf("response Data is nil")
+		ErrWrongDataFormat   = fmt.Errorf("response Data format is wrong")
+	)
+	testConn := &Connection{}
+	testCases := []struct {
+		name          string
+		resp          *Response
+		expectedError error
+	}{
+		{"ErrNilResponsePassed", nil, ErrNilResponsePassed},
+		{"ErrNilResponseData", &Response{Data: nil}, ErrNilResponseData},
+		{"ErrWrongDataFormat", &Response{Data: []interface{}{}}, ErrWrongDataFormat},
+		{"ErrWrongDataFormat", &Response{Data: []interface{}{"test"}}, ErrWrongDataFormat},
+		{"nil", &Response{Data: []interface{}{&Prepared{}}}, nil},
+	}
+	for _, testCase := range testCases {
+		t.Run("Expecting error "+testCase.name, func(t *testing.T) {
+			_, err := NewPreparedFromResponse(testConn, testCase.resp)
+			assert.Equal(t, err, testCase.expectedError)
+		})
 	}
 }
 

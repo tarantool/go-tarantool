@@ -5,6 +5,8 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	. "github.com/tarantool/go-tarantool"
 	"gopkg.in/vmihailenco/msgpack.v2"
 )
@@ -19,6 +21,8 @@ const validIndex = 3           // Any valid value != default.
 const validExpr = "any string" // We don't check the value here.
 const defaultSpace = 0         // And valid too.
 const defaultIndex = 0         // And valid too.
+
+var validStmt *Prepared = &Prepared{StatementID: 1, Conn: &Connection{}}
 
 type ValidSchemeResolver struct {
 }
@@ -168,6 +172,9 @@ func TestRequestsCodes(t *testing.T) {
 		{req: NewEvalRequest(validExpr), code: EvalRequestCode},
 		{req: NewExecuteRequest(validExpr), code: ExecuteRequestCode},
 		{req: NewPingRequest(), code: PingRequestCode},
+		{req: NewPrepareRequest(validExpr), code: PrepareRequestCode},
+		{req: NewUnprepareRequest(validStmt), code: PrepareRequestCode},
+		{req: NewExecutePreparedRequest(validStmt), code: ExecuteRequestCode},
 	}
 
 	for _, test := range tests {
@@ -515,5 +522,66 @@ func TestExecuteRequestSetters(t *testing.T) {
 
 	req := NewExecuteRequest(validExpr).
 		Args(args)
+	assertBodyEqual(t, refBuf.Bytes(), req)
+}
+
+func TestPrepareRequestDefaultValues(t *testing.T) {
+	var refBuf bytes.Buffer
+
+	refEnc := msgpack.NewEncoder(&refBuf)
+	err := RefImplPrepareBody(refEnc, validExpr)
+	if err != nil {
+		t.Errorf("An unexpected RefImplPrepareBody() error: %q", err.Error())
+		return
+	}
+
+	req := NewPrepareRequest(validExpr)
+	assertBodyEqual(t, refBuf.Bytes(), req)
+}
+
+func TestUnprepareRequestDefaultValues(t *testing.T) {
+	var refBuf bytes.Buffer
+
+	refEnc := msgpack.NewEncoder(&refBuf)
+	err := RefImplUnprepareBody(refEnc, *validStmt)
+	if err != nil {
+		t.Errorf("An unexpected RefImplUnprepareBody() error: %q", err.Error())
+		return
+	}
+
+	req := NewUnprepareRequest(validStmt)
+	assert.Equal(t, req.Conn(), validStmt.Conn)
+	assertBodyEqual(t, refBuf.Bytes(), req)
+}
+
+func TestExecutePreparedRequestSetters(t *testing.T) {
+	args := []interface{}{uint(11)}
+	var refBuf bytes.Buffer
+
+	refEnc := msgpack.NewEncoder(&refBuf)
+	err := RefImplExecutePreparedBody(refEnc, *validStmt, args)
+	if err != nil {
+		t.Errorf("An unexpected RefImplExecutePreparedBody() error: %q", err.Error())
+		return
+	}
+
+	req := NewExecutePreparedRequest(validStmt).
+		Args(args)
+	assert.Equal(t, req.Conn(), validStmt.Conn)
+	assertBodyEqual(t, refBuf.Bytes(), req)
+}
+
+func TestExecutePreparedRequestDefaultValues(t *testing.T) {
+	var refBuf bytes.Buffer
+
+	refEnc := msgpack.NewEncoder(&refBuf)
+	err := RefImplExecutePreparedBody(refEnc, *validStmt, []interface{}{})
+	if err != nil {
+		t.Errorf("An unexpected RefImplExecutePreparedBody() error: %q", err.Error())
+		return
+	}
+
+	req := NewExecutePreparedRequest(validStmt)
+	assert.Equal(t, req.Conn(), validStmt.Conn)
 	assertBodyEqual(t, refBuf.Bytes(), req)
 }
