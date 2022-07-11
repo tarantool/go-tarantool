@@ -13,6 +13,7 @@ package multi
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -492,7 +493,21 @@ func (connMulti *ConnectionMulti) ExecuteAsync(expr string, args interface{}) *t
 	return connMulti.getCurrentConnection().ExecuteAsync(expr, args)
 }
 
+// NewPrepared passes a sql statement to Tarantool for preparation synchronously.
+func (connMulti *ConnectionMulti) NewPrepared(expr string) (*tarantool.Prepared, error) {
+	return connMulti.getCurrentConnection().NewPrepared(expr)
+}
+
 // Do sends the request and returns a future.
 func (connMulti *ConnectionMulti) Do(req tarantool.Request) *tarantool.Future {
+	if connectedReq, ok := req.(tarantool.ConnectedRequest); ok {
+		_, belongs := connMulti.getConnectionFromPool(connectedReq.Conn().Addr())
+		if !belongs {
+			fut := tarantool.NewFuture()
+			fut.SetError(fmt.Errorf("the passed connected request doesn't belong to the current connection or connection pool"))
+			return fut
+		}
+		return connectedReq.Conn().Do(req)
+	}
 	return connMulti.getCurrentConnection().Do(req)
 }

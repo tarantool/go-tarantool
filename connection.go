@@ -993,6 +993,13 @@ func (conn *Connection) nextRequestId() (requestId uint32) {
 // An error is returned if the request was formed incorrectly, or failed to
 // create the future.
 func (conn *Connection) Do(req Request) *Future {
+	if connectedReq, ok := req.(ConnectedRequest); ok {
+		if connectedReq.Conn() != conn {
+			fut := NewFuture()
+			fut.SetError(fmt.Errorf("the passed connected request doesn't belong to the current connection or connection pool"))
+			return fut
+		}
+	}
 	return conn.send(req)
 }
 
@@ -1008,4 +1015,14 @@ func (conn *Connection) OverrideSchema(s *Schema) {
 		defer conn.mutex.Unlock()
 		conn.Schema = s
 	}
+}
+
+// NewPrepared passes a sql statement to Tarantool for preparation synchronously.
+func (conn *Connection) NewPrepared(expr string) (*Prepared, error) {
+	req := NewPrepareRequest(expr)
+	resp, err := conn.Do(req).Get()
+	if err != nil {
+		return nil, err
+	}
+	return NewPreparedFromResponse(conn, resp)
 }

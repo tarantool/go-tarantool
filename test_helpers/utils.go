@@ -23,3 +23,16 @@ func ConnectWithValidation(t testing.TB,
 	}
 	return conn
 }
+
+func SkipIfSQLUnsupported(t testing.TB) {
+	t.Helper()
+
+	// Tarantool supports SQL since version 2.0.0
+	isLess, err := IsTarantoolVersionLess(2, 0, 0)
+	if err != nil {
+		t.Fatalf("Could not check the Tarantool version")
+	}
+	if isLess {
+		t.Skip()
+	}
+}

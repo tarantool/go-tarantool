@@ -12,6 +12,7 @@ package connection_pool
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"sync/atomic"
 	"time"
@@ -525,7 +526,16 @@ func (connPool *ConnectionPool) EvalAsync(expr string, args interface{}, userMod
 }
 
 // Do sends the request and returns a future.
+// For requests that belong to an only one connection (e.g. Unprepare or ExecutePrepared)
+// the argument of type Mode is unused.
 func (connPool *ConnectionPool) Do(req tarantool.Request, userMode Mode) *tarantool.Future {
+	if connectedReq, ok := req.(tarantool.ConnectedRequest); ok {
+		conn, _ := connPool.getConnectionFromPool(connectedReq.Conn().Addr())
+		if conn == nil {
+			return newErrorFuture(fmt.Errorf("the passed connected request doesn't belong to the current connection or connection pool"))
+		}
+		return connectedReq.Conn().Do(req)
+	}
 	conn, err := connPool.getNextConnection(userMode)
 	if err != nil {
 		return newErrorFuture(err)
@@ -787,4 +797,13 @@ func newErrorFuture(err error) *tarantool.Future {
 	fut := tarantool.NewFuture()
 	fut.SetError(err)
 	return fut
+}
+
+// NewPrepared passes a sql statement to Tarantool for preparation synchronously.
+func (connPool *ConnectionPool) NewPrepared(expr string, userMode Mode) (*tarantool.Prepared, error) {
+	conn, err := connPool.getNextConnection(userMode)
+	if err != nil {
+		return nil, err
+	}
+	return conn.NewPrepared(expr)
 }

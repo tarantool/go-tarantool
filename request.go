@@ -539,6 +539,14 @@ type Request interface {
 	Body(resolver SchemaResolver, enc *msgpack.Encoder) error
 }
 
+// ConnectedRequest is an interface that provides the info about a Connection
+// the request belongs to.
+type ConnectedRequest interface {
+	Request
+	// Conn returns a Connection the request belongs to.
+	Conn() *Connection
+}
+
 type baseRequest struct {
 	requestCode int32
 }

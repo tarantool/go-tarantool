@@ -1,8 +1,6 @@
 package tarantool
 
-import (
-	"fmt"
-)
+import "fmt"
 
 // Error is wrapper around error returned by Tarantool.
 type Error struct {

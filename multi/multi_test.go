@@ -1,10 +1,14 @@
 package multi
 
 import (
+	"fmt"
 	"log"
 	"os"
+	"reflect"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/tarantool/go-tarantool"
 	"github.com/tarantool/go-tarantool/test_helpers"
@@ -228,6 +232,89 @@ func TestCall17(t *testing.T) {
 	}
 	if resp.Data[0].(uint64) != 2 {
 		t.Fatalf("result is not {{1}} : %v", resp.Data)
+	}
+}
+
+func TestNewPrepared(t *testing.T) {
+	test_helpers.SkipIfSQLUnsupported(t)
+
+	multiConn, err := Connect([]string{server1, server2}, connOpts)
+	if err != nil {
+		t.Fatalf("Failed to connect: %s", err.Error())
+	}
+	if multiConn == nil {
+		t.Fatalf("conn is nil after Connect")
+	}
+	defer multiConn.Close()
+
+	stmt, err := multiConn.NewPrepared("SELECT NAME0, NAME1 FROM SQL_TEST WHERE NAME0=:id AND NAME1=:name;")
+	require.Nilf(t, err, "fail to prepare statement: %v", err)
+
+	executeReq := tarantool.NewExecutePreparedRequest(stmt)
+	unprepareReq := tarantool.NewUnprepareRequest(stmt)
+
+	resp, err := multiConn.Do(executeReq.Args([]interface{}{1, "test"})).Get()
+	if err != nil {
+		t.Fatalf("failed to execute prepared: %v", err)
+	}
+	if resp == nil {
+		t.Fatalf("nil response")
+	}
+	if resp.Code != tarantool.OkCode {
+		t.Fatalf("failed to execute prepared: code %d", resp.Code)
+	}
+	if reflect.DeepEqual(resp.Data[0], []interface{}{1, "test"}) {
+		t.Error("Select with named arguments failed")
+	}
+	if resp.MetaData[0].FieldType != "unsigned" ||
+		resp.MetaData[0].FieldName != "NAME0" ||
+		resp.MetaData[1].FieldType != "string" ||
+		resp.MetaData[1].FieldName != "NAME1" {
+		t.Error("Wrong metadata")
+	}
+
+	// the second argument for unprepare request is unused - it already belongs to some connection
+	resp, err = multiConn.Do(unprepareReq).Get()
+	if err != nil {
+		t.Errorf("failed to unprepare prepared statement: %v", err)
+	}
+	if resp.Code != tarantool.OkCode {
+		t.Errorf("failed to unprepare prepared statement: code %d", resp.Code)
+	}
+
+	_, err = multiConn.Do(unprepareReq).Get()
+	if err == nil {
+		t.Errorf("the statement must be already unprepared")
+	}
+	require.Contains(t, err.Error(), "Prepared statement with id")
+
+	_, err = multiConn.Do(executeReq).Get()
+	if err == nil {
+		t.Errorf("the statement must be already unprepared")
+	}
+	require.Contains(t, err.Error(), "Prepared statement with id")
+}
+
+func TestDoWithStrangerConn(t *testing.T) {
+	expectedErr := fmt.Errorf("the passed connected request doesn't belong to the current connection or connection pool")
+
+	multiConn, err := Connect([]string{server1, server2}, connOpts)
+	if err != nil {
+		t.Fatalf("Failed to connect: %s", err.Error())
+	}
+	if multiConn == nil {
+		t.Fatalf("conn is nil after Connect")
+	}
+	defer multiConn.Close()
+
+	req := test_helpers.NewStrangerRequest()
+
+	_, err = multiConn.Do(req).Get()
+	if err == nil {
+		t.Fatalf("nil error catched")
+	}
+	if err.Error() != expectedErr.Error() {
+		t.Fatalf("Unexpected error catched")
 	}
 }
 

@@ -44,5 +44,7 @@ type Connector interface {
 	EvalAsync(expr string, args interface{}) *Future
 	ExecuteAsync(expr string, args interface{}) *Future
 
+	NewPrepared(expr string) (*Prepared, error)
+
 	Do(req Request) (fut *Future)
 }

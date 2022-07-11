@@ -548,3 +548,28 @@ func ExampleConnectionPool_Do() {
 	// Ping Data []
 	// Ping Error <nil>
 }
+
+func ExampleConnectionPool_NewPrepared() {
+	pool, err := examplePool(testRoles)
+	if err != nil {
+		fmt.Println(err)
+	}
+	defer pool.Close()
+
+	stmt, err := pool.NewPrepared("SELECT 1", connection_pool.ANY)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	executeReq := tarantool.NewExecutePreparedRequest(stmt)
+	unprepareReq := tarantool.NewUnprepareRequest(stmt)
+
+	_, err = pool.Do(executeReq, connection_pool.ANY).Get()
+	if err != nil {
+		fmt.Printf("Failed to execute prepared stmt")
+	}
+	_, err = pool.Do(unprepareReq, connection_pool.ANY).Get()
+	if err != nil {
+		fmt.Printf("Failed to prepare")
+	}
+}
