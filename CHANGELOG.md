@@ -29,6 +29,8 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Fixed
 
+- Build with OpenSSL < 1.1.1 (#194)
+
 ## [1.6.0] - 2022-06-01
 
 This release adds a number of features. Also it significantly improves testing,
