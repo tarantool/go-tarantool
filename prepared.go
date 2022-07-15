@@ -1,6 +1,7 @@
 package tarantool
 
 import (
+	"context"
 	"fmt"
 
 	"gopkg.in/vmihailenco/msgpack.v2"
@@ -58,6 +59,17 @@ func (req *PrepareRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error 
 	return fillPrepare(enc, req.expr)
 }
 
+// Context sets a passed context to the request.
+//
+// Pay attention that when using context with request objects,
+// the timeout option for Connection does not affect the lifetime
+// of the request. For those purposes use context.WithTimeout() as
+// the root context.
+func (req *PrepareRequest) Context(ctx context.Context) *PrepareRequest {
+	req.ctx = ctx
+	return req
+}
+
 // UnprepareRequest helps you to create an unprepare request object for
 // execution by a Connection.
 type UnprepareRequest struct {
@@ -81,6 +93,17 @@ func (req *UnprepareRequest) Conn() *Connection {
 // Body fills an encoder with the execute request body.
 func (req *UnprepareRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 	return fillUnprepare(enc, *req.stmt)
+}
+
+// Context sets a passed context to the request.
+//
+// Pay attention that when using context with request objects,
+// the timeout option for Connection does not affect the lifetime
+// of the request. For those purposes use context.WithTimeout() as
+// the root context.
+func (req *UnprepareRequest) Context(ctx context.Context) *UnprepareRequest {
+	req.ctx = ctx
+	return req
 }
 
 // ExecutePreparedRequest helps you to create an execute prepared request
@@ -115,6 +138,17 @@ func (req *ExecutePreparedRequest) Args(args interface{}) *ExecutePreparedReques
 // Body fills an encoder with the execute request body.
 func (req *ExecutePreparedRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 	return fillExecutePrepared(enc, *req.stmt, req.args)
+}
+
+// Context sets a passed context to the request.
+//
+// Pay attention that when using context with request objects,
+// the timeout option for Connection does not affect the lifetime
+// of the request. For those purposes use context.WithTimeout() as
+// the root context.
+func (req *ExecutePreparedRequest) Context(ctx context.Context) *ExecutePreparedRequest {
+	req.ctx = ctx
+	return req
 }
 
 func fillPrepare(enc *msgpack.Encoder, expr string) error {

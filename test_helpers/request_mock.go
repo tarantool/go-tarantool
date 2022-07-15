@@ -1,6 +1,8 @@
 package test_helpers
 
 import (
+	"context"
+
 	"github.com/tarantool/go-tarantool"
 	"gopkg.in/vmihailenco/msgpack.v2"
 )
@@ -22,4 +24,8 @@ func (sr *StrangerRequest) Body(resolver tarantool.SchemaResolver, enc *msgpack.
 
 func (sr *StrangerRequest) Conn() *tarantool.Connection {
 	return &tarantool.Connection{}
+}
+
+func (sr *StrangerRequest) Ctx() context.Context {
+	return nil
 }

@@ -5,6 +5,7 @@ package tarantool
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -125,8 +126,11 @@ type Connection struct {
 	c     net.Conn
 	mutex sync.Mutex
 	// Schema contains schema loaded on connection.
-	Schema    *Schema
+	Schema *Schema
+	// requestId contains the last request ID for requests with nil context.
 	requestId uint32
+	// contextRequestId contains the last request ID for requests with context.
+	contextRequestId uint32
 	// Greeting contains first message sent by Tarantool.
 	Greeting *Greeting
 
@@ -143,16 +147,57 @@ type Connection struct {
 
 var _ = Connector(&Connection{}) // Check compatibility with connector interface.
 
-type connShard struct {
-	rmut     sync.Mutex
-	requests [requestsMap]struct {
-		first *Future
-		last  **Future
+type futureList struct {
+	first *Future
+	last  **Future
+}
+
+func (list *futureList) findFuture(reqid uint32, fetch bool) *Future {
+	root := &list.first
+	for {
+		fut := *root
+		if fut == nil {
+			return nil
+		}
+		if fut.requestId == reqid {
+			if fetch {
+				*root = fut.next
+				if fut.next == nil {
+					list.last = root
+				} else {
+					fut.next = nil
+				}
+			}
+			return fut
+		}
+		root = &fut.next
 	}
-	bufmut sync.Mutex
-	buf    smallWBuf
-	enc    *msgpack.Encoder
-	_pad   [16]uint64 //nolint: unused,structcheck
+}
+
+func (list *futureList) addFuture(fut *Future) {
+	*list.last = fut
+	list.last = &fut.next
+}
+
+func (list *futureList) clear(err error, conn *Connection) {
+	fut := list.first
+	list.first = nil
+	list.last = &list.first
+	for fut != nil {
+		fut.SetError(err)
+		conn.markDone(fut)
+		fut, fut.next = fut.next, nil
+	}
+}
+
+type connShard struct {
+	rmut            sync.Mutex
+	requests        [requestsMap]futureList
+	requestsWithCtx [requestsMap]futureList
+	bufmut          sync.Mutex
+	buf             smallWBuf
+	enc             *msgpack.Encoder
+	_pad            [16]uint64 //nolint: unused,structcheck
 }
 
 // Greeting is a message sent by Tarantool on connect.
@@ -167,6 +212,11 @@ type Opts struct {
 	// push messages are received. If Timeout is zero, any request can be
 	// blocked infinitely.
 	// Also used to setup net.TCPConn.Set(Read|Write)Deadline.
+	//
+	// Pay attention, when using contexts with request objects,
+	// the timeout option for Connection does not affect the lifetime
+	// of the request. For those purposes use context.WithTimeout() as
+	// the root context.
 	Timeout time.Duration
 	// Timeout between reconnect attempts. If Reconnect is zero, no
 	// reconnect attempts will be made.
@@ -262,12 +312,13 @@ type SslOpts struct {
 // and will not finish to make attempts on authorization failures.
 func Connect(addr string, opts Opts) (conn *Connection, err error) {
 	conn = &Connection{
-		addr:      addr,
-		requestId: 0,
-		Greeting:  &Greeting{},
-		control:   make(chan struct{}),
-		opts:      opts,
-		dec:       msgpack.NewDecoder(&smallBuf{}),
+		addr:             addr,
+		requestId:        0,
+		contextRequestId: 1,
+		Greeting:         &Greeting{},
+		control:          make(chan struct{}),
+		opts:             opts,
+		dec:              msgpack.NewDecoder(&smallBuf{}),
 	}
 	maxprocs := uint32(runtime.GOMAXPROCS(-1))
 	if conn.opts.Concurrency == 0 || conn.opts.Concurrency > maxprocs*128 {
@@ -283,8 +334,11 @@ func Connect(addr string, opts Opts) (conn *Connection, err error) {
 	conn.shard = make([]connShard, conn.opts.Concurrency)
 	for i := range conn.shard {
 		shard := &conn.shard[i]
-		for j := range shard.requests {
-			shard.requests[j].last = &shard.requests[j].first
+		requestsLists := []*[requestsMap]futureList{&shard.requests, &shard.requestsWithCtx}
+		for _, requests := range requestsLists {
+			for j := range requests {
+				requests[j].last = &requests[j].first
+			}
 		}
 	}
 
@@ -385,6 +439,13 @@ func (conn *Connection) LocalAddr() string {
 // Handle returns a user-specified handle from Opts.
 func (conn *Connection) Handle() interface{} {
 	return conn.opts.Handle
+}
+
+func (conn *Connection) cancelFuture(fut *Future, err error) {
+	if fut = conn.fetchFuture(fut.requestId); fut != nil {
+		fut.SetError(err)
+		conn.markDone(fut)
+	}
 }
 
 func (conn *Connection) dial() (err error) {
@@ -580,15 +641,10 @@ func (conn *Connection) closeConnection(neterr error, forever bool) (err error) 
 	}
 	for i := range conn.shard {
 		conn.shard[i].buf.Reset()
-		requests := &conn.shard[i].requests
-		for pos := range requests {
-			fut := requests[pos].first
-			requests[pos].first = nil
-			requests[pos].last = &requests[pos].first
-			for fut != nil {
-				fut.SetError(neterr)
-				conn.markDone(fut)
-				fut, fut.next = fut.next, nil
+		requestsLists := []*[requestsMap]futureList{&conn.shard[i].requests, &conn.shard[i].requestsWithCtx}
+		for _, requests := range requestsLists {
+			for pos := range requests {
+				requests[pos].clear(neterr, conn)
 			}
 		}
 	}
@@ -721,7 +777,7 @@ func (conn *Connection) reader(r *bufio.Reader, c net.Conn) {
 	}
 }
 
-func (conn *Connection) newFuture() (fut *Future) {
+func (conn *Connection) newFuture(ctx context.Context) (fut *Future) {
 	fut = NewFuture()
 	if conn.rlimit != nil && conn.opts.RLimitAction == RLimitDrop {
 		select {
@@ -736,7 +792,7 @@ func (conn *Connection) newFuture() (fut *Future) {
 			return
 		}
 	}
-	fut.requestId = conn.nextRequestId()
+	fut.requestId = conn.nextRequestId(ctx != nil)
 	shardn := fut.requestId & (conn.opts.Concurrency - 1)
 	shard := &conn.shard[shardn]
 	shard.rmut.Lock()
@@ -761,11 +817,20 @@ func (conn *Connection) newFuture() (fut *Future) {
 		return
 	}
 	pos := (fut.requestId / conn.opts.Concurrency) & (requestsMap - 1)
-	pair := &shard.requests[pos]
-	*pair.last = fut
-	pair.last = &fut.next
-	if conn.opts.Timeout > 0 {
-		fut.timeout = time.Since(epoch) + conn.opts.Timeout
+	if ctx != nil {
+		select {
+		case <-ctx.Done():
+			fut.SetError(fmt.Errorf("context is done"))
+			shard.rmut.Unlock()
+			return
+		default:
+		}
+		shard.requestsWithCtx[pos].addFuture(fut)
+	} else {
+		shard.requests[pos].addFuture(fut)
+		if conn.opts.Timeout > 0 {
+			fut.timeout = time.Since(epoch) + conn.opts.Timeout
+		}
 	}
 	shard.rmut.Unlock()
 	if conn.rlimit != nil && conn.opts.RLimitAction == RLimitWait {
@@ -785,12 +850,43 @@ func (conn *Connection) newFuture() (fut *Future) {
 	return
 }
 
+// This method removes a future from the internal queue if the context
+// is "done" before the response is come. Such select logic is inspired
+// from this thread: https://groups.google.com/g/golang-dev/c/jX4oQEls3uk
+func (conn *Connection) contextWatchdog(fut *Future, ctx context.Context) {
+	select {
+	case <-fut.done:
+	default:
+		select {
+		case <-ctx.Done():
+			conn.cancelFuture(fut, fmt.Errorf("context is done"))
+		default:
+			select {
+			case <-fut.done:
+			case <-ctx.Done():
+				conn.cancelFuture(fut, fmt.Errorf("context is done"))
+			}
+		}
+	}
+}
+
 func (conn *Connection) send(req Request) *Future {
-	fut := conn.newFuture()
+	fut := conn.newFuture(req.Ctx())
 	if fut.ready == nil {
 		return fut
 	}
+	if req.Ctx() != nil {
+		select {
+		case <-req.Ctx().Done():
+			conn.cancelFuture(fut, fmt.Errorf("context is done"))
+			return fut
+		default:
+		}
+	}
 	conn.putFuture(fut, req)
+	if req.Ctx() != nil {
+		go conn.contextWatchdog(fut, req.Ctx())
+	}
 	return fut
 }
 
@@ -877,25 +973,11 @@ func (conn *Connection) fetchFuture(reqid uint32) (fut *Future) {
 func (conn *Connection) getFutureImp(reqid uint32, fetch bool) *Future {
 	shard := &conn.shard[reqid&(conn.opts.Concurrency-1)]
 	pos := (reqid / conn.opts.Concurrency) & (requestsMap - 1)
-	pair := &shard.requests[pos]
-	root := &pair.first
-	for {
-		fut := *root
-		if fut == nil {
-			return nil
-		}
-		if fut.requestId == reqid {
-			if fetch {
-				*root = fut.next
-				if fut.next == nil {
-					pair.last = root
-				} else {
-					fut.next = nil
-				}
-			}
-			return fut
-		}
-		root = &fut.next
+	// futures with even requests id belong to requests list with nil context
+	if reqid%2 == 0 {
+		return shard.requests[pos].findFuture(reqid, fetch)
+	} else {
+		return shard.requestsWithCtx[pos].findFuture(reqid, fetch)
 	}
 }
 
@@ -984,8 +1066,12 @@ func (conn *Connection) read(r io.Reader) (response []byte, err error) {
 	return
 }
 
-func (conn *Connection) nextRequestId() (requestId uint32) {
-	return atomic.AddUint32(&conn.requestId, 1)
+func (conn *Connection) nextRequestId(context bool) (requestId uint32) {
+	if context {
+		return atomic.AddUint32(&conn.contextRequestId, 2)
+	} else {
+		return atomic.AddUint32(&conn.requestId, 2)
+	}
 }
 
 // Do performs a request asynchronously on the connection.
@@ -998,6 +1084,15 @@ func (conn *Connection) Do(req Request) *Future {
 			fut := NewFuture()
 			fut.SetError(fmt.Errorf("the passed connected request doesn't belong to the current connection or connection pool"))
 			return fut
+		}
+	}
+	if req.Ctx() != nil {
+		select {
+		case <-req.Ctx().Done():
+			fut := NewFuture()
+			fut.SetError(fmt.Errorf("context is done"))
+			return fut
+		default:
 		}
 	}
 	return conn.send(req)

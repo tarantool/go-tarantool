@@ -1,6 +1,7 @@
 package tarantool
 
 import (
+	"context"
 	"errors"
 	"reflect"
 	"strings"
@@ -537,6 +538,8 @@ type Request interface {
 	Code() int32
 	// Body fills an encoder with a request body.
 	Body(resolver SchemaResolver, enc *msgpack.Encoder) error
+	// Ctx returns a context of the request.
+	Ctx() context.Context
 }
 
 // ConnectedRequest is an interface that provides the info about a Connection
@@ -549,11 +552,17 @@ type ConnectedRequest interface {
 
 type baseRequest struct {
 	requestCode int32
+	ctx         context.Context
 }
 
 // Code returns a IPROTO code for the request.
 func (req *baseRequest) Code() int32 {
 	return req.requestCode
+}
+
+// Ctx returns a context of the request.
+func (req *baseRequest) Ctx() context.Context {
+	return req.ctx
 }
 
 type spaceRequest struct {
@@ -611,6 +620,17 @@ func NewPingRequest() *PingRequest {
 // Body fills an encoder with the ping request body.
 func (req *PingRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 	return fillPing(enc)
+}
+
+// Context sets a passed context to the request.
+//
+// Pay attention that when using context with request objects,
+// the timeout option for Connection does not affect the lifetime
+// of the request. For those purposes use context.WithTimeout() as
+// the root context.
+func (req *PingRequest) Context(ctx context.Context) *PingRequest {
+	req.ctx = ctx
+	return req
 }
 
 // SelectRequest allows you to create a select request object for execution
@@ -683,6 +703,17 @@ func (req *SelectRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 	return fillSelect(enc, spaceNo, indexNo, req.offset, req.limit, req.iterator, req.key)
 }
 
+// Context sets a passed context to the request.
+//
+// Pay attention that when using context with request objects,
+// the timeout option for Connection does not affect the lifetime
+// of the request. For those purposes use context.WithTimeout() as
+// the root context.
+func (req *SelectRequest) Context(ctx context.Context) *SelectRequest {
+	req.ctx = ctx
+	return req
+}
+
 // InsertRequest helps you to create an insert request object for execution
 // by a Connection.
 type InsertRequest struct {
@@ -716,6 +747,17 @@ func (req *InsertRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 	return fillInsert(enc, spaceNo, req.tuple)
 }
 
+// Context sets a passed context to the request.
+//
+// Pay attention that when using context with request objects,
+// the timeout option for Connection does not affect the lifetime
+// of the request. For those purposes use context.WithTimeout() as
+// the root context.
+func (req *InsertRequest) Context(ctx context.Context) *InsertRequest {
+	req.ctx = ctx
+	return req
+}
+
 // ReplaceRequest helps you to create a replace request object for execution
 // by a Connection.
 type ReplaceRequest struct {
@@ -747,6 +789,17 @@ func (req *ReplaceRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error 
 	}
 
 	return fillInsert(enc, spaceNo, req.tuple)
+}
+
+// Context sets a passed context to the request.
+//
+// Pay attention that when using context with request objects,
+// the timeout option for Connection does not affect the lifetime
+// of the request. For those purposes use context.WithTimeout() as
+// the root context.
+func (req *ReplaceRequest) Context(ctx context.Context) *ReplaceRequest {
+	req.ctx = ctx
+	return req
 }
 
 // DeleteRequest helps you to create a delete request object for execution
@@ -787,6 +840,17 @@ func (req *DeleteRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 	}
 
 	return fillDelete(enc, spaceNo, indexNo, req.key)
+}
+
+// Context sets a passed context to the request.
+//
+// Pay attention that when using context with request objects,
+// the timeout option for Connection does not affect the lifetime
+// of the request. For those purposes use context.WithTimeout() as
+// the root context.
+func (req *DeleteRequest) Context(ctx context.Context) *DeleteRequest {
+	req.ctx = ctx
+	return req
 }
 
 // UpdateRequest helps you to create an update request object for execution
@@ -840,6 +904,17 @@ func (req *UpdateRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 	return fillUpdate(enc, spaceNo, indexNo, req.key, req.ops)
 }
 
+// Context sets a passed context to the request.
+//
+// Pay attention that when using context with request objects,
+// the timeout option for Connection does not affect the lifetime
+// of the request. For those purposes use context.WithTimeout() as
+// the root context.
+func (req *UpdateRequest) Context(ctx context.Context) *UpdateRequest {
+	req.ctx = ctx
+	return req
+}
+
 // UpsertRequest helps you to create an upsert request object for execution
 // by a Connection.
 type UpsertRequest struct {
@@ -884,6 +959,17 @@ func (req *UpsertRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 	return fillUpsert(enc, spaceNo, req.tuple, req.ops)
 }
 
+// Context sets a passed context to the request.
+//
+// Pay attention that when using context with request objects,
+// the timeout option for Connection does not affect the lifetime
+// of the request. For those purposes use context.WithTimeout() as
+// the root context.
+func (req *UpsertRequest) Context(ctx context.Context) *UpsertRequest {
+	req.ctx = ctx
+	return req
+}
+
 // CallRequest helps you to create a call request object for execution
 // by a Connection.
 type CallRequest struct {
@@ -913,6 +999,17 @@ func (req *CallRequest) Args(args interface{}) *CallRequest {
 // Body fills an encoder with the call request body.
 func (req *CallRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 	return fillCall(enc, req.function, req.args)
+}
+
+// Context sets a passed context to the request.
+//
+// Pay attention that when using context with request objects,
+// the timeout option for Connection does not affect the lifetime
+// of the request. For those purposes use context.WithTimeout() as
+// the root context.
+func (req *CallRequest) Context(ctx context.Context) *CallRequest {
+	req.ctx = ctx
+	return req
 }
 
 // NewCall16Request returns a new empty Call16Request. It uses request code for
@@ -961,6 +1058,17 @@ func (req *EvalRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 	return fillEval(enc, req.expr, req.args)
 }
 
+// Context sets a passed context to the request.
+//
+// Pay attention that when using context with request objects,
+// the timeout option for Connection does not affect the lifetime
+// of the request. For those purposes use context.WithTimeout() as
+// the root context.
+func (req *EvalRequest) Context(ctx context.Context) *EvalRequest {
+	req.ctx = ctx
+	return req
+}
+
 // ExecuteRequest helps you to create an execute request object for execution
 // by a Connection.
 type ExecuteRequest struct {
@@ -988,4 +1096,15 @@ func (req *ExecuteRequest) Args(args interface{}) *ExecuteRequest {
 // Body fills an encoder with the execute request body.
 func (req *ExecuteRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 	return fillExecute(enc, req.expr, req.args)
+}
+
+// Context sets a passed context to the request.
+//
+// Pay attention that when using context with request objects,
+// the timeout option for Connection does not affect the lifetime
+// of the request. For those purposes use context.WithTimeout() as
+// the root context.
+func (req *ExecuteRequest) Context(ctx context.Context) *ExecuteRequest {
+	req.ctx = ctx
+	return req
 }
