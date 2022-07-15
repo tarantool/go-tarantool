@@ -1,10 +1,12 @@
 package tarantool_test
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
 	"reflect"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -100,16 +102,45 @@ func BenchmarkClientSerialRequestObject(b *testing.B) {
 	if err != nil {
 		b.Error(err)
 	}
+	req := NewSelectRequest(spaceNo).
+		Index(indexNo).
+		Offset(0).
+		Limit(1).
+		Iterator(IterEq).
+		Key([]interface{}{uint(1111)})
 
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		_, err := conn.Do(req).Get()
+		if err != nil {
+			b.Error(err)
+		}
+	}
+}
+
+func BenchmarkClientSerialRequestObjectWithContext(b *testing.B) {
+	var err error
+
+	conn := test_helpers.ConnectWithValidation(b, server, opts)
+	defer conn.Close()
+
+	_, err = conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
+	if err != nil {
+		b.Error(err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
 		req := NewSelectRequest(spaceNo).
 			Index(indexNo).
-			Offset(0).
 			Limit(1).
 			Iterator(IterEq).
-			Key([]interface{}{uint(1111)})
+			Key([]interface{}{uint(1111)}).
+			Context(ctx)
 		_, err := conn.Do(req).Get()
 		if err != nil {
 			b.Error(err)
@@ -340,6 +371,131 @@ func BenchmarkClientParallel(b *testing.B) {
 			}
 		}
 	})
+}
+
+func benchmarkClientParallelRequestObject(multiplier int, b *testing.B) {
+	conn := test_helpers.ConnectWithValidation(b, server, opts)
+	defer conn.Close()
+
+	_, err := conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
+	if err != nil {
+		b.Fatal("No connection available")
+	}
+
+	req := NewSelectRequest(spaceNo).
+		Index(indexNo).
+		Limit(1).
+		Iterator(IterEq).
+		Key([]interface{}{uint(1111)})
+
+	b.SetParallelism(multiplier)
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			_ = conn.Do(req)
+			_, err := conn.Do(req).Get()
+			if err != nil {
+				b.Error(err)
+			}
+		}
+	})
+}
+
+func benchmarkClientParallelRequestObjectWithContext(multiplier int, b *testing.B) {
+	conn := test_helpers.ConnectWithValidation(b, server, opts)
+	defer conn.Close()
+
+	_, err := conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
+	if err != nil {
+		b.Fatal("No connection available")
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	req := NewSelectRequest(spaceNo).
+		Index(indexNo).
+		Limit(1).
+		Iterator(IterEq).
+		Key([]interface{}{uint(1111)}).
+		Context(ctx)
+
+	b.SetParallelism(multiplier)
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			_ = conn.Do(req)
+			_, err := conn.Do(req).Get()
+			if err != nil {
+				b.Error(err)
+			}
+		}
+	})
+}
+
+func benchmarkClientParallelRequestObjectMixed(multiplier int, b *testing.B) {
+	conn := test_helpers.ConnectWithValidation(b, server, opts)
+	defer conn.Close()
+
+	_, err := conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
+	if err != nil {
+		b.Fatal("No connection available")
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	req := NewSelectRequest(spaceNo).
+		Index(indexNo).
+		Limit(1).
+		Iterator(IterEq).
+		Key([]interface{}{uint(1111)})
+
+	reqWithCtx := NewSelectRequest(spaceNo).
+		Index(indexNo).
+		Limit(1).
+		Iterator(IterEq).
+		Key([]interface{}{uint(1111)}).
+		Context(ctx)
+
+	b.SetParallelism(multiplier)
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			_ = conn.Do(req)
+			_, err := conn.Do(reqWithCtx).Get()
+			if err != nil {
+				b.Error(err)
+			}
+		}
+	})
+}
+
+func BenchmarkClientParallelRequestObject(b *testing.B) {
+	multipliers := []int{10, 50, 500, 1000}
+	conn := test_helpers.ConnectWithValidation(b, server, opts)
+	defer conn.Close()
+
+	_, err := conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
+	if err != nil {
+		b.Fatal("No connection available")
+	}
+
+	for _, m := range multipliers {
+		goroutinesNum := runtime.GOMAXPROCS(0) * m
+
+		b.Run(fmt.Sprintf("Plain        %d goroutines", goroutinesNum), func(b *testing.B) {
+			benchmarkClientParallelRequestObject(m, b)
+		})
+
+		b.Run(fmt.Sprintf("With Context %d goroutines", goroutinesNum), func(b *testing.B) {
+			benchmarkClientParallelRequestObjectWithContext(m, b)
+		})
+
+		b.Run(fmt.Sprintf("Mixed        %d goroutines", goroutinesNum), func(b *testing.B) {
+			benchmarkClientParallelRequestObjectMixed(m, b)
+		})
+	}
 }
 
 func BenchmarkClientParallelMassive(b *testing.B) {
@@ -2078,6 +2234,59 @@ func TestClientRequestObjects(t *testing.T) {
 	}
 	if resp.SQLInfo.AffectedCount != 1 {
 		t.Errorf("Incorrect count of dropped spaces: %d", resp.SQLInfo.AffectedCount)
+	}
+}
+
+func TestClientRequestObjectsWithNilContext(t *testing.T) {
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	defer conn.Close()
+	req := NewPingRequest().Context(nil) //nolint
+	resp, err := conn.Do(req).Get()
+	if err != nil {
+		t.Fatalf("Failed to Ping: %s", err.Error())
+	}
+	if resp == nil {
+		t.Fatalf("Response is nil after Ping")
+	}
+	if len(resp.Data) != 0 {
+		t.Errorf("Response Body len != 0")
+	}
+}
+
+func TestClientRequestObjectsWithPassedCanceledContext(t *testing.T) {
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	defer conn.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	req := NewPingRequest().Context(ctx)
+	cancel()
+	resp, err := conn.Do(req).Get()
+	if err.Error() != "context is done" {
+		t.Fatalf("Failed to catch an error from done context")
+	}
+	if resp != nil {
+		t.Fatalf("Response is not nil after the occured error")
+	}
+}
+
+func TestClientRequestObjectsWithContext(t *testing.T) {
+	var err error
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	defer conn.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	req := NewPingRequest().Context(ctx)
+	fut := conn.Do(req)
+	cancel()
+	resp, err := fut.Get()
+	if resp != nil {
+		t.Fatalf("response must be nil")
+	}
+	if err == nil {
+		t.Fatalf("catched nil error")
+	}
+	if err.Error() != "context is done" {
+		t.Fatalf("wrong error catched: %v", err)
 	}
 }
 

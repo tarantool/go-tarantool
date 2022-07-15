@@ -1,6 +1,7 @@
 package tarantool_test
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -690,4 +691,34 @@ func ExampleConnection_NewPrepared() {
 	if err != nil {
 		fmt.Printf("Failed to prepare")
 	}
+}
+
+// To pass contexts to request objects, use the Context() method.
+// Pay attention that when using context with request objects,
+// the timeout option for Connection will not affect the lifetime
+// of the request. For those purposes use context.WithTimeout() as
+// the root context.
+func ExamplePingRequest_Context() {
+	conn := example_connect()
+	defer conn.Close()
+
+	timeout := time.Nanosecond
+
+	// this way you may set the common timeout for requests with context
+	rootCtx, cancelRoot := context.WithTimeout(context.Background(), timeout)
+	defer cancelRoot()
+
+	// this context will be canceled with the root after commonTimeout
+	ctx, cancel := context.WithCancel(rootCtx)
+	defer cancel()
+
+	req := tarantool.NewPingRequest().Context(ctx)
+
+	// Ping a Tarantool instance to check connection.
+	resp, err := conn.Do(req).Get()
+	fmt.Println("Ping Resp", resp)
+	fmt.Println("Ping Error", err)
+	// Output:
+	// Ping Resp <nil>
+	// Ping Error context is done
 }
