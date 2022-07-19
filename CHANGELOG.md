@@ -32,6 +32,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 - Build with OpenSSL < 1.1.1 (#194)
 - Add `ExecuteAsync` and `ExecuteTyped` to common connector interface (#62)
+- Race conditions in methods of `Future` type (#195)
 
 ## [1.6.0] - 2022-06-01
 

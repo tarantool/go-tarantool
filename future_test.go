@@ -233,3 +233,26 @@ func TestFutureGetIteratorError(t *testing.T) {
 		}
 	}
 }
+
+func TestFutureSetStateRaceCondition(t *testing.T) {
+	err := errors.New("any error")
+	resp := &Response{}
+	respAppend := &Response{}
+
+	for i := 0; i < 1000; i++ {
+		fut := NewFuture()
+		for j := 0; j < 9; j++ {
+			go func(opt int) {
+				if opt%3 == 0 {
+					fut.AppendPush(respAppend)
+				} else if opt%3 == 1 {
+					fut.SetError(err)
+				} else {
+					fut.SetResponse(resp)
+				}
+			}(j)
+		}
+	}
+	// It may be false-positive, but very rarely - it's ok for such very
+	// simple race conditions tests.
+}
