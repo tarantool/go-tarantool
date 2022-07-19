@@ -949,11 +949,12 @@ func (conn *Connection) peekFuture(reqid uint32) (fut *Future) {
 	defer shard.rmut.Unlock()
 
 	if conn.opts.Timeout > 0 {
-		fut = conn.getFutureImp(reqid, true)
-		pair := &shard.requests[pos]
-		*pair.last = fut
-		pair.last = &fut.next
-		fut.timeout = time.Since(epoch) + conn.opts.Timeout
+		if fut = conn.getFutureImp(reqid, true); fut != nil {
+			pair := &shard.requests[pos]
+			*pair.last = fut
+			pair.last = &fut.next
+			fut.timeout = time.Since(epoch) + conn.opts.Timeout
+		}
 	} else {
 		fut = conn.getFutureImp(reqid, false)
 	}
