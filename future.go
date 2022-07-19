@@ -129,25 +129,27 @@ func NewFuture() (fut *Future) {
 // AppendPush appends the push response to the future.
 // Note: it works only before SetResponse() or SetError()
 func (fut *Future) AppendPush(resp *Response) {
+	fut.mutex.Lock()
+	defer fut.mutex.Unlock()
+
 	if fut.isDone() {
 		return
 	}
 	resp.Code = PushCode
-	fut.mutex.Lock()
 	fut.pushes = append(fut.pushes, resp)
-	fut.mutex.Unlock()
 
 	fut.ready <- struct{}{}
 }
 
 // SetResponse sets a response for the future and finishes the future.
 func (fut *Future) SetResponse(resp *Response) {
+	fut.mutex.Lock()
+	defer fut.mutex.Unlock()
+
 	if fut.isDone() {
 		return
 	}
-	fut.mutex.Lock()
 	fut.resp = resp
-	fut.mutex.Unlock()
 
 	close(fut.ready)
 	close(fut.done)
@@ -155,12 +157,13 @@ func (fut *Future) SetResponse(resp *Response) {
 
 // SetError sets an error for the future and finishes the future.
 func (fut *Future) SetError(err error) {
+	fut.mutex.Lock()
+	defer fut.mutex.Unlock()
+
 	if fut.isDone() {
 		return
 	}
-	fut.mutex.Lock()
 	fut.err = err
-	fut.mutex.Unlock()
 
 	close(fut.ready)
 	close(fut.done)
