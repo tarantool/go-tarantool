@@ -20,6 +20,26 @@ type Prepared struct {
 	Conn        *Connection
 }
 
+func fillPrepare(enc *msgpack.Encoder, expr string) error {
+	enc.EncodeMapLen(1)
+	enc.EncodeUint64(KeySQLText)
+	return enc.EncodeString(expr)
+}
+
+func fillUnprepare(enc *msgpack.Encoder, stmt Prepared) error {
+	enc.EncodeMapLen(1)
+	enc.EncodeUint64(KeyStmtID)
+	return enc.EncodeUint64(uint64(stmt.StatementID))
+}
+
+func fillExecutePrepared(enc *msgpack.Encoder, stmt Prepared, args interface{}) error {
+	enc.EncodeMapLen(2)
+	enc.EncodeUint64(KeyStmtID)
+	enc.EncodeUint64(uint64(stmt.StatementID))
+	enc.EncodeUint64(KeySQLBind)
+	return encodeSQLBind(enc, args)
+}
+
 // NewPreparedFromResponse constructs a Prepared object.
 func NewPreparedFromResponse(conn *Connection, resp *Response) (*Prepared, error) {
 	if resp == nil {
@@ -149,24 +169,4 @@ func (req *ExecutePreparedRequest) Body(res SchemaResolver, enc *msgpack.Encoder
 func (req *ExecutePreparedRequest) Context(ctx context.Context) *ExecutePreparedRequest {
 	req.ctx = ctx
 	return req
-}
-
-func fillPrepare(enc *msgpack.Encoder, expr string) error {
-	enc.EncodeMapLen(1)
-	enc.EncodeUint64(KeySQLText)
-	return enc.EncodeString(expr)
-}
-
-func fillUnprepare(enc *msgpack.Encoder, stmt Prepared) error {
-	enc.EncodeMapLen(1)
-	enc.EncodeUint64(KeyStmtID)
-	return enc.EncodeUint64(uint64(stmt.StatementID))
-}
-
-func fillExecutePrepared(enc *msgpack.Encoder, stmt Prepared, args interface{}) error {
-	enc.EncodeMapLen(2)
-	enc.EncodeUint64(KeyStmtID)
-	enc.EncodeUint64(uint64(stmt.StatementID))
-	enc.EncodeUint64(KeySQLBind)
-	return encodeSQLBind(enc, args)
 }
