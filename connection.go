@@ -197,7 +197,6 @@ type connShard struct {
 	bufmut          sync.Mutex
 	buf             smallWBuf
 	enc             *msgpack.Encoder
-	_pad            [16]uint64 //nolint: unused,structcheck
 }
 
 // Greeting is a message sent by Tarantool on connect.
