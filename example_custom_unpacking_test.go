@@ -118,8 +118,8 @@ func Example_customUnpacking() {
 	fmt.Println("Tuples (tuples2):", tuples2)
 
 	// Call a function "func_name" returning a table of custom tuples.
-	var tuples3 [][]Tuple3
-	err = conn.Call17Typed("func_name", []interface{}{}, &tuples3)
+	var tuples3 []Tuple3
+	err = conn.Call16Typed("func_name", []interface{}{}, &tuples3)
 	if err != nil {
 		log.Fatalf("Failed to CallTyped: %s", err.Error())
 		return
@@ -131,6 +131,6 @@ func Example_customUnpacking() {
 	// Code 0
 	// Tuples (tuples1) [{777 orig [{lol  1} {wut  3}]}]
 	// Tuples (tuples2): [{{} 777 orig [{lol  1} {wut  3}]}]
-	// Tuples (tuples3): [[{{} 221  [{Moscow  34} {Minsk  23} {Kiev  31}]}]]
+	// Tuples (tuples3): [{{} 221  [{Moscow  34} {Minsk  23} {Kiev  31}]}]
 
 }

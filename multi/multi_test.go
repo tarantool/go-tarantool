@@ -206,15 +206,22 @@ func TestRefresh(t *testing.T) {
 		t.Errorf("Expect connection to exist")
 	}
 
-	_, err := multiConn.Call17(multiConn.opts.NodesGetFunctionName, []interface{}{})
+	_, err := multiConn.Call16(multiConn.opts.NodesGetFunctionName, []interface{}{})
 	if err != nil {
 		t.Error("Expect to get data after reconnect")
 	}
 }
 
 func TestCall17(t *testing.T) {
+	isLess, err := test_helpers.IsTarantoolVersionLess(1, 7, 2)
+	if err != nil {
+		t.Fatalf("Failed to extract Tarantool version: %s", err)
+	}
+	if isLess {
+		t.Skip("Skipping test for Tarantool without Call17 support")
+	}
+
 	var resp *tarantool.Response
-	var err error
 
 	multiConn, err := Connect([]string{server1, server2}, connOpts)
 	if err != nil {

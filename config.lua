@@ -4,23 +4,33 @@ box.cfg{
     work_dir = os.getenv("TEST_TNT_WORK_DIR"),
 }
 
+local major = tonumber(string.sub(_TARANTOOL, 1, 1))
+local minor = tonumber(string.sub(_TARANTOOL, 3, 3))
+
+local num_type = "unsigned"
+local string_type = "string"
+if major == 1 and minor == 6 then
+    num_type = "NUM"
+    string_type = "STR"
+    box.schema.func.create('func_name')
+end
+
 box.once("init", function()
     local s = box.schema.space.create('test', {
         id = 517,
         if_not_exists = true,
     })
-    s:create_index('primary', {type = 'tree', parts = {1, 'uint'}, if_not_exists = true})
-
+    s:create_index('primary', {type = 'tree', parts = {1, num_type}, if_not_exists = true})
     local sp = box.schema.space.create('SQL_TEST', {
         id = 519,
         if_not_exists = true,
         format = {
-            {name = "NAME0", type = "unsigned"},
-            {name = "NAME1", type = "string"},
-            {name = "NAME2", type = "string"},
+            {name = "NAME0", type = num_type},
+            {name = "NAME1", type = string_type},
+            {name = "NAME2", type = string_type},
         }
     })
-    sp:create_index('primary', {type = 'tree', parts = {1, 'uint'}, if_not_exists = true})
+    sp:create_index('primary', {type = 'tree', parts = {1, num_type}, if_not_exists = true})
     sp:insert{1, "test", "test"}
 
     local st = box.schema.space.create('schematest', {
@@ -29,17 +39,17 @@ box.once("init", function()
         if_not_exists = true,
         field_count = 7,
         format = {
-            {name = "name0", type = "unsigned"},
-            {name = "name1", type = "unsigned"},
-            {name = "name2", type = "string"},
-            {name = "name3", type = "unsigned"},
-            {name = "name4", type = "unsigned"},
-            {name = "name5", type = "string"},
+            {name = "name0", type = num_type},
+            {name = "name1", type = num_type},
+            {name = "name2", type = string_type},
+            {name = "name3", type = num_type},
+            {name = "name4", type = num_type},
+            {name = "name5", type = string_type},
         },
     })
     st:create_index('primary', {
         type = 'hash',
-        parts = {1, 'uint'},
+        parts = {1, num_type},
         unique = true,
         if_not_exists = true,
     })
@@ -47,7 +57,7 @@ box.once("init", function()
         id = 3,
         type = 'tree',
         unique = false,
-        parts = { 2, 'uint', 3, 'string' },
+        parts = { 2, num_type, 3, string_type },
         if_not_exists = true,
     })
     st:truncate()
@@ -58,13 +68,14 @@ box.once("init", function()
         if_not_exists = true,
         field_count = 3,
         format = {
-            {name = "id", type = "unsigned"},
-            {name = "name", type = "string"},
+            {name = "id", type = num_type},
+            {name = "name", type = string_type},
             {name = "arr1", type = "array"},
         },
     })
-    s2:create_index('primary', {type = 'tree', unique = true, parts = {1, 'unsigned'}, if_not_exists = true})
-    s2:create_index('secondary', {id = 5, type = 'tree', unique = false, parts = {2, 'string'}, if_not_exists = true})
+    s2:create_index('primary', {type = 'tree', unique = true, parts = {1, num_type}, if_not_exists = true})
+    s2:create_index('secondary', {id = 5, type = 'tree', unique = false, parts = {2, string_type},
+                                  if_not_exists = true})
     local arr_data = {}
     for i = 1,100 do
         arr_data[i] = i
@@ -84,13 +95,18 @@ box.once("init", function()
     -- auth testing: access control
     box.schema.user.create('test', {password = 'test'})
     box.schema.user.grant('test', 'execute', 'universe')
+    if major == 1 and minor == 6 then
+        box.schema.user.grant('test', 'execute', 'function', 'func_name')
+    end
     box.schema.user.grant('test', 'read,write', 'space', 'test')
     box.schema.user.grant('test', 'read,write', 'space', 'schematest')
     box.schema.user.grant('test', 'read,write', 'space', 'test_perf')
 
     -- grants for sql tests
-    box.schema.user.grant('test', 'create,read,write,drop,alter', 'space')
-    box.schema.user.grant('test', 'create', 'sequence')
+    if major >= 2 then
+        box.schema.user.grant('test', 'create,read,write,drop,alter', 'space')
+        box.schema.user.grant('test', 'create', 'sequence')
+    end
 end)
 
 local function func_name()

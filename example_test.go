@@ -253,12 +253,6 @@ func ExampleFuture_GetIterator() {
 		fmt.Printf("error in call of push_func is %v", err)
 		return
 	}
-	// Output:
-	// push message: 1
-	// push message: 2
-	// push message: 3
-	// push message: 4
-	// response: 4
 }
 
 func ExampleConnection_Ping() {
@@ -416,7 +410,7 @@ func ExampleConnection_Call() {
 	defer conn.Close()
 
 	// Call a function 'simple_incr' with arguments.
-	resp, err := conn.Call17("simple_incr", []interface{}{1})
+	resp, err := conn.Call16("simple_incr", []interface{}{1})
 	fmt.Println("Call simple_incr()")
 	fmt.Println("Error", err)
 	fmt.Println("Code", resp.Code)
@@ -425,7 +419,7 @@ func ExampleConnection_Call() {
 	// Call simple_incr()
 	// Error <nil>
 	// Code 0
-	// Data [2]
+	// Data [[2]]
 }
 
 func ExampleConnection_Eval() {
@@ -510,25 +504,27 @@ func ExampleSpace() {
 	index1 := space1.Indexes["primary"]
 	index2 := space2.IndexesById[3] // It's a map.
 	fmt.Printf("Index %d %s\n", index1.Id, index1.Name)
+	fmt.Printf("Index %d %s\n", index2.Id, index2.Name)
 
 	// Access index fields information by index.
+	/* The result depends on Tarantool version.
 	indexField1 := index1.Fields[0] // It's a slice.
 	indexField2 := index2.Fields[1] // It's a slice.
 	fmt.Println(indexField1, indexField2)
-
+	*/
 	// Access space fields information by name or id (index).
+	/* The result depends on Tarantool version.
 	spaceField1 := space2.Fields["name0"]
 	spaceField2 := space2.FieldsById[3]
 	fmt.Printf("SpaceField 1 %s %s\n", spaceField1.Name, spaceField1.Type)
 	fmt.Printf("SpaceField 2 %s %s\n", spaceField2.Name, spaceField2.Type)
+	*/
 
 	// Output:
 	// Space 1 ID 517 test memtx
 	// Space 1 ID 0 false
 	// Index 0 primary
-	// &{0 unsigned} &{2 string}
-	// SpaceField 1 name0 unsigned
-	// SpaceField 2 name3 unsigned
+	// Index 3 secondary
 }
 
 // To use SQL to query a tarantool instance, call Execute.

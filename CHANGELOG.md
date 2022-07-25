@@ -35,6 +35,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 - Add `ExecuteAsync` and `ExecuteTyped` to common connector interface (#62)
 - Race conditions in methods of `Future` type (#195)
 - Usage of nil pointer in Connection.peekFuture (#195)
+- Tests with Tarantool 1.6 (#198)
 
 ## [1.6.0] - 2022-06-01
 

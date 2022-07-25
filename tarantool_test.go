@@ -20,6 +20,8 @@ import (
 	"gopkg.in/vmihailenco/msgpack.v2"
 )
 
+var isCall17Supported = false
+
 type Member struct {
 	Name  string
 	Nonce string
@@ -975,12 +977,14 @@ func TestClient(t *testing.T) {
 		t.Errorf("result is not {{1}} : %v", resp.Data)
 	}
 
-	resp, err = conn.Call17("simple_incr", []interface{}{1})
-	if err != nil {
-		t.Errorf("Failed to use Call")
-	}
-	if resp.Data[0].(uint64) != 2 {
-		t.Errorf("result is not {{1}} : %v", resp.Data)
+	if isCall17Supported {
+		resp, err = conn.Call17("simple_incr", []interface{}{1})
+		if err != nil {
+			t.Errorf("Failed to use Call")
+		}
+		if resp.Data[0].(uint64) != 2 {
+			t.Errorf("result is not {{1}} : %v", resp.Data)
+		}
 	}
 
 	// Eval
@@ -1001,6 +1005,14 @@ func TestClient(t *testing.T) {
 }
 
 func TestClientSessionPush(t *testing.T) {
+	isLess, err := test_helpers.IsTarantoolVersionLess(1, 10, 0)
+	if err != nil {
+		t.Fatalf("Could not check the Tarantool version")
+	}
+	if isLess {
+		t.Skip("Skipping test for Tarantool without box.session.push() support")
+	}
+
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
@@ -1633,6 +1645,17 @@ func TestNewPreparedFromResponse(t *testing.T) {
 func TestSchema(t *testing.T) {
 	var err error
 
+	num_type := "unsigned"
+	string_type := "string"
+	isLess, err := test_helpers.IsTarantoolVersionLess(1, 7, 0)
+	if err != nil {
+		t.Fatalf("Could not check the Tarantool version")
+	}
+	if isLess {
+		num_type = "NUM"
+		string_type = "STR"
+	}
+
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
@@ -1707,13 +1730,13 @@ func TestSchema(t *testing.T) {
 	if field1.Name != "name1" {
 		t.Errorf("field 1 has incorrect Name")
 	}
-	if field1.Type != "unsigned" {
+	if field1.Type != num_type {
 		t.Errorf("field 1 has incorrect Type")
 	}
 	if field2.Name != "name2" {
 		t.Errorf("field 2 has incorrect Name")
 	}
-	if field2.Type != "string" {
+	if field2.Type != string_type {
 		t.Errorf("field 2 has incorrect Type")
 	}
 
@@ -1773,7 +1796,7 @@ func TestSchema(t *testing.T) {
 	if ifield1.Id != 1 || ifield2.Id != 2 {
 		t.Errorf("index field has incorrect Id")
 	}
-	if (ifield1.Type != "num" && ifield1.Type != "unsigned") || (ifield2.Type != "STR" && ifield2.Type != "string") {
+	if (ifield1.Type != "NUM" && ifield1.Type != "unsigned") || (ifield2.Type != "STR" && ifield2.Type != "string") {
 		t.Errorf("index field has incorrect Type '%s'", ifield2.Type)
 	}
 
@@ -2025,34 +2048,41 @@ func TestClientRequestObjects(t *testing.T) {
 		}
 	}
 
-	// Update without operations.
-	req = NewUpdateRequest(spaceName).
-		Index(indexName).
-		Key([]interface{}{uint(1010)})
-	resp, err = conn.Do(req).Get()
+	isEmptyUpdateUnsupported, err := test_helpers.IsTarantoolVersionLess(1, 7, 0)
 	if err != nil {
-		t.Errorf("Failed to Update: %s", err.Error())
+		t.Fatalf("Could not check the Tarantool version")
 	}
-	if resp == nil {
-		t.Fatalf("Response is nil after Update")
-	}
-	if resp.Data == nil {
-		t.Fatalf("Response data is nil after Update")
-	}
-	if len(resp.Data) != 1 {
-		t.Fatalf("Response Data len != 1")
-	}
-	if tpl, ok := resp.Data[0].([]interface{}); !ok {
-		t.Errorf("Unexpected body of Update")
-	} else {
-		if id, ok := tpl[0].(uint64); !ok || id != 1010 {
-			t.Errorf("Unexpected body of Update (0)")
+
+	// Update without operations.
+	if !isEmptyUpdateUnsupported {
+		req = NewUpdateRequest(spaceName).
+			Index(indexName).
+			Key([]interface{}{uint(1010)})
+		resp, err = conn.Do(req).Get()
+		if err != nil {
+			t.Errorf("Failed to Update: %s", err.Error())
 		}
-		if h, ok := tpl[1].(string); !ok || h != "val 1010" {
-			t.Errorf("Unexpected body of Update (1)")
+		if resp == nil {
+			t.Fatalf("Response is nil after Update")
 		}
-		if h, ok := tpl[2].(string); !ok || h != "bla" {
-			t.Errorf("Unexpected body of Update (2)")
+		if resp.Data == nil {
+			t.Fatalf("Response data is nil after Update")
+		}
+		if len(resp.Data) != 1 {
+			t.Fatalf("Response Data len != 1")
+		}
+		if tpl, ok := resp.Data[0].([]interface{}); !ok {
+			t.Errorf("Unexpected body of Update")
+		} else {
+			if id, ok := tpl[0].(uint64); !ok || id != 1010 {
+				t.Errorf("Unexpected body of Update (0)")
+			}
+			if h, ok := tpl[1].(string); !ok || h != "val 1010" {
+				t.Errorf("Unexpected body of Update (1)")
+			}
+			if h, ok := tpl[2].(string); !ok || h != "bla" {
+				t.Errorf("Unexpected body of Update (2)")
+			}
 		}
 	}
 
@@ -2089,20 +2119,22 @@ func TestClientRequestObjects(t *testing.T) {
 	}
 
 	// Upsert without operations.
-	req = NewUpsertRequest(spaceNo).
-		Tuple([]interface{}{uint(1010), "hi", "hi"})
-	resp, err = conn.Do(req).Get()
-	if err != nil {
-		t.Errorf("Failed to Upsert (update): %s", err.Error())
-	}
-	if resp == nil {
-		t.Fatalf("Response is nil after Upsert (update)")
-	}
-	if resp.Data == nil {
-		t.Fatalf("Response data is nil after Upsert")
-	}
-	if len(resp.Data) != 0 {
-		t.Fatalf("Response Data len != 0")
+	if !isEmptyUpdateUnsupported {
+		req = NewUpsertRequest(spaceNo).
+			Tuple([]interface{}{uint(1010), "hi", "hi"})
+		resp, err = conn.Do(req).Get()
+		if err != nil {
+			t.Errorf("Failed to Upsert (update): %s", err.Error())
+		}
+		if resp == nil {
+			t.Fatalf("Response is nil after Upsert (update)")
+		}
+		if resp.Data == nil {
+			t.Fatalf("Response data is nil after Upsert")
+		}
+		if len(resp.Data) != 0 {
+			t.Fatalf("Response Data len != 0")
+		}
 	}
 
 	// Upsert.
@@ -2165,13 +2197,15 @@ func TestClientRequestObjects(t *testing.T) {
 	}
 
 	// Call17
-	req = NewCall17Request("simple_incr").Args([]interface{}{1})
-	resp, err = conn.Do(req).Get()
-	if err != nil {
-		t.Errorf("Failed to use Call17")
-	}
-	if resp.Data[0].(uint64) != 2 {
-		t.Errorf("result is not {{1}} : %v", resp.Data)
+	if isCall17Supported {
+		req = NewCall17Request("simple_incr").Args([]interface{}{1})
+		resp, err = conn.Do(req).Get()
+		if err != nil {
+			t.Errorf("Failed to use Call17")
+		}
+		if resp.Data[0].(uint64) != 2 {
+			t.Errorf("result is not {{1}} : %v", resp.Data)
+		}
 	}
 
 	// Eval
@@ -2325,6 +2359,13 @@ func TestComplexStructs(t *testing.T) {
 // is a separate function, see
 // https://stackoverflow.com/questions/27629380/how-to-exit-a-go-program-honoring-deferred-calls
 func runTestMain(m *testing.M) int {
+	isLess, err := test_helpers.IsTarantoolVersionLess(1, 7, 2)
+	if err != nil {
+		log.Fatalf("Could not check the Tarantool version")
+		return 1
+	}
+	isCall17Supported = !isLess
+
 	inst, err := test_helpers.StartTarantool(test_helpers.StartOpts{
 		InitScript:   "config.lua",
 		Listen:       server,
