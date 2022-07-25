@@ -1375,6 +1375,16 @@ func TestDoWithStrangerConn(t *testing.T) {
 // is a separate function, see
 // https://stackoverflow.com/questions/27629380/how-to-exit-a-go-program-honoring-deferred-calls
 func runTestMain(m *testing.M) int {
+	isLess, err := test_helpers.IsTarantoolVersionLess(1, 7, 4)
+	if err != nil {
+		log.Fatalf("Failed to extract Tarantool version: %s", err)
+	}
+
+	if isLess {
+		log.Println("Skipping connection pool tests...")
+		return 0
+	}
+
 	initScript := "config.lua"
 	waitStart := 100 * time.Millisecond
 	var connectRetry uint = 3
@@ -1383,7 +1393,6 @@ func runTestMain(m *testing.M) int {
 		"work_dir1", "work_dir2",
 		"work_dir3", "work_dir4",
 		"work_dir5"}
-	var err error
 
 	instances, err = test_helpers.StartTarantoolInstances(servers, workDirs, test_helpers.StartOpts{
 		InitScript:   initScript,

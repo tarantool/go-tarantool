@@ -745,6 +745,16 @@ func TestUtube_Put(t *testing.T) {
 // is a separate function, see
 // https://stackoverflow.com/questions/27629380/how-to-exit-a-go-program-honoring-deferred-calls
 func runTestMain(m *testing.M) int {
+	isLess, err := test_helpers.IsTarantoolVersionLess(1, 7, 4)
+	if err != nil {
+		log.Fatalf("Failed to extract Tarantool version: %s", err)
+	}
+
+	if isLess {
+		log.Println("Skipping queue tests...")
+		return 0
+	}
+
 	inst, err := test_helpers.StartTarantool(test_helpers.StartOpts{
 		InitScript:   "config.lua",
 		Listen:       server,
