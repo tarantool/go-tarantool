@@ -187,7 +187,7 @@ func (connMulti *ConnectionMulti) checker() {
 				continue
 			}
 			var resp [][]string
-			err := connMulti.Call17Typed(connMulti.opts.NodesGetFunctionName, []interface{}{}, &resp)
+			err := connMulti.Call16Typed(connMulti.opts.NodesGetFunctionName, []interface{}{}, &resp)
 			if err != nil {
 				continue
 			}
