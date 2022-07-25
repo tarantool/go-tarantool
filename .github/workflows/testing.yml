@@ -29,6 +29,7 @@ jobs:
         golang:
           - 1.13
         tarantool:
+          - '1.6.9'
           - '1.10'
           - '2.8'
           - '2.10'
@@ -44,12 +45,50 @@ jobs:
             golang: 1.18
             coveralls: false
 
+    env:
+      TNT_BUILD_INSTALL_PATH: /home/runner/tnt-install
+
     steps:
       - name: Clone the connector
         uses: actions/checkout@v2
 
+      - name: Cache Tarantool build
+        if: matrix.tarantool == '1.6.9'
+        id: cache-tnt-build
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.TNT_BUILD_INSTALL_PATH }}
+          key: cache-tnt-${{ matrix.tarantool }}
+      - name: Clone Tarantool ${{ matrix.tarantool }}
+        if: matrix.tarantool == '1.6.9' && steps.cache-tnt-build.outputs.cache-hit != 'true'
+        uses: actions/checkout@v3
+        with:
+          repository: tarantool/tarantool
+          ref: ${{ matrix.tarantool }}
+          path: tarantool
+          fetch-depth: 0
+          submodules: true
+
+      - name: Build Tarantool ${{ matrix.tarantool }}
+        if: matrix.tarantool == '1.6.9' && steps.cache-tnt-build.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get -y install git build-essential cmake make zlib1g-dev \
+            libreadline-dev libncurses5-dev libssl-dev \
+            libunwind-dev libicu-dev python3 python3-yaml \
+            python3-six python3-gevent
+          cd ${GITHUB_WORKSPACE}/tarantool
+          mkdir build && cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release
+          make
+          make DESTDIR=${TNT_BUILD_INSTALL_PATH} install
+
+      - name: Setup Tarantool ${{ matrix.tarantool }} from a custom build
+        if: matrix.tarantool == '1.6.9'
+        run: |
+          sudo cp -rvP ${TNT_BUILD_INSTALL_PATH}/usr/local/* /usr/local/
+
       - name: Setup Tarantool ${{ matrix.tarantool }}
-        if: matrix.tarantool != '2.x-latest'
+        if: matrix.tarantool != '2.x-latest' && matrix.tarantool != '1.6.9'
         uses: tarantool/setup-tarantool@v1
         with:
           tarantool-version: ${{ matrix.tarantool }}
@@ -66,12 +105,14 @@ jobs:
           go-version: ${{ matrix.golang }}
 
       - name: Install test dependencies
+        if: matrix.tarantool != '1.6.9'
         run: make deps
 
       - name: Run regression tests
         run: make test
 
       - name: Run tests with call_17
+        if: matrix.tarantool != '1.6.9'
         run: make test TAGS="go_tarantool_call_17"
 
       - name: Run fuzzing tests
