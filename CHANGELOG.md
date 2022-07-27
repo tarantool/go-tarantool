@@ -10,6 +10,14 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [1.7.0] - 2022-08-02
+
+### Added
+
 - SSL support (#155)
 - IPROTO_PUSH messages support (#67)
 - Public API with request object types (#126)
@@ -18,11 +26,11 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 - Prepared SQL statements (#117)
 - Context support for request objects (#48)
 - Streams and interactive transactions support (#101)
+- `Call16` method, support build tag `go_tarantool_call_17` to choose
+  default behavior for `Call` method as Call17 (#125)
 
 ### Changed
 
-- Add `Call16` method, support build tag `go_tarantool_call_17`
-  to choose behavior for `Call` method (#125)
 - `IPROTO_*` constants that identify requests renamed from `<Name>Request` to
   `<Name>RequestCode` (#126)
 
@@ -32,10 +40,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Fixed
 
-- Build with OpenSSL < 1.1.1 (#194)
 - Add `ExecuteAsync` and `ExecuteTyped` to common connector interface (#62)
-- Race conditions in methods of `Future` type (#195)
-- Usage of nil pointer in Connection.peekFuture (#195)
 
 ## [1.6.0] - 2022-06-01
 
