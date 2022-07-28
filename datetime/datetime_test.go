@@ -14,6 +14,8 @@ import (
 	"github.com/tarantool/go-tarantool/test_helpers"
 )
 
+var noTimezoneLoc = time.FixedZone(NoTimezone, 0)
+
 var lesserBoundaryTimes = []time.Time{
 	time.Date(-5879610, 06, 22, 0, 0, 1, 0, time.UTC),
 	time.Date(-5879610, 06, 22, 0, 0, 0, 1, time.UTC),
@@ -73,6 +75,128 @@ func assertDatetimeIsEqual(t *testing.T, tuples []interface{}, tm time.Time) {
 	}
 }
 
+func TestTimezonesIndexMapping(t *testing.T) {
+	for _, index := range TimezoneToIndex {
+		if _, ok := IndexToTimezone[index]; !ok {
+			t.Errorf("Index %d not found", index)
+		}
+	}
+}
+
+func TestTimezonesZonesMapping(t *testing.T) {
+	for _, zone := range IndexToTimezone {
+		if _, ok := TimezoneToIndex[zone]; !ok {
+			t.Errorf("Zone %s not found", zone)
+		}
+	}
+}
+
+func TestInvalidTimezone(t *testing.T) {
+	invalidLoc := time.FixedZone("AnyInvalid", 0)
+	tm, err := time.Parse(time.RFC3339, "2010-08-12T11:39:14Z")
+	if err != nil {
+		t.Fatalf("Time parse failed: %s", err)
+	}
+	tm = tm.In(invalidLoc)
+	dt, err := NewDatetime(tm)
+	if err == nil {
+		t.Fatalf("Unexpected success: %v", dt)
+	}
+	if err.Error() != "unknown timezone AnyInvalid with offset 0" {
+		t.Fatalf("Unexpected error: %s", err.Error())
+	}
+}
+
+func TestInvalidOffset(t *testing.T) {
+	tests := []struct {
+		ok     bool
+		offset int
+	}{
+		{ok: true, offset: -12 * 60 * 60},
+		{ok: true, offset: -12*60*60 + 1},
+		{ok: true, offset: 14*60*60 - 1},
+		{ok: true, offset: 14 * 60 * 60},
+		{ok: false, offset: -12*60*60 - 1},
+		{ok: false, offset: 14*60*60 + 1},
+	}
+
+	for _, testcase := range tests {
+		name := ""
+		if testcase.ok {
+			name = fmt.Sprintf("in_boundary_%d", testcase.offset)
+		} else {
+			name = fmt.Sprintf("out_of_boundary_%d", testcase.offset)
+		}
+		t.Run(name, func(t *testing.T) {
+			loc := time.FixedZone("MSK", testcase.offset)
+			tm, err := time.Parse(time.RFC3339, "2010-08-12T11:39:14Z")
+			if err != nil {
+				t.Fatalf("Time parse failed: %s", err)
+			}
+			tm = tm.In(loc)
+			dt, err := NewDatetime(tm)
+			if testcase.ok && err != nil {
+				t.Fatalf("Unexpected error: %s", err.Error())
+			}
+			if !testcase.ok && err == nil {
+				t.Fatalf("Unexpected success: %v", dt)
+			}
+			if testcase.ok && isDatetimeSupported {
+				conn := test_helpers.ConnectWithValidation(t, server, opts)
+				defer conn.Close()
+
+				tupleInsertSelectDelete(t, conn, tm)
+			}
+		})
+	}
+}
+
+func TestCustomTimezone(t *testing.T) {
+	skipIfDatetimeUnsupported(t)
+
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	defer conn.Close()
+
+	customZone := "Europe/Moscow"
+	customOffset := 180 * 60
+
+	customLoc := time.FixedZone(customZone, customOffset)
+	tm, err := time.Parse(time.RFC3339, "2010-08-12T11:44:14Z")
+	if err != nil {
+		t.Fatalf("Time parse failed: %s", err)
+	}
+	tm = tm.In(customLoc)
+	dt, err := NewDatetime(tm)
+	if err != nil {
+		t.Fatalf("Unable to create datetime: %s", err.Error())
+	}
+
+	resp, err := conn.Replace(spaceTuple1, []interface{}{dt, "payload"})
+	if err != nil {
+		t.Fatalf("Datetime replace failed %s", err.Error())
+	}
+	assertDatetimeIsEqual(t, resp.Data, tm)
+
+	tpl := resp.Data[0].([]interface{})
+	if respDt, ok := toDatetime(tpl[0]); ok {
+		zone, offset := respDt.ToTime().Zone()
+		if zone != customZone {
+			t.Fatalf("Expected zone %s instead of %s", customZone, zone)
+		}
+		if offset != customOffset {
+			t.Fatalf("Expected offset %d instead of %d", customOffset, offset)
+		}
+
+		_, err = conn.Delete(spaceTuple1, 0, []interface{}{dt})
+		if err != nil {
+			t.Fatalf("Datetime delete failed: %s", err.Error())
+		}
+	} else {
+		t.Fatalf("Datetime doesn't match")
+	}
+
+}
+
 func tupleInsertSelectDelete(t *testing.T, conn *Connection, tm time.Time) {
 	t.Helper()
 
@@ -111,61 +235,65 @@ func tupleInsertSelectDelete(t *testing.T, conn *Connection, tm time.Time) {
 }
 
 var datetimeSample = []struct {
+	fmt   string
 	dt    string
 	mpBuf string // MessagePack buffer.
 }{
-	{"2012-01-31T23:59:59.000000010Z", "d8047f80284f000000000a00000000000000"},
-	{"1970-01-01T00:00:00.000000010Z", "d80400000000000000000a00000000000000"},
-	{"2010-08-12T11:39:14Z", "d70462dd634c00000000"},
-	{"1984-03-24T18:04:05Z", "d7041530c31a00000000"},
-	{"2010-01-12T00:00:00Z", "d70480bb4b4b00000000"},
-	{"1970-01-01T00:00:00Z", "d7040000000000000000"},
-	{"1970-01-01T00:00:00.123456789Z", "d804000000000000000015cd5b0700000000"},
-	{"1970-01-01T00:00:00.12345678Z", "d80400000000000000000ccd5b0700000000"},
-	{"1970-01-01T00:00:00.1234567Z", "d8040000000000000000bccc5b0700000000"},
-	{"1970-01-01T00:00:00.123456Z", "d804000000000000000000ca5b0700000000"},
-	{"1970-01-01T00:00:00.12345Z", "d804000000000000000090b25b0700000000"},
-	{"1970-01-01T00:00:00.1234Z", "d804000000000000000040ef5a0700000000"},
-	{"1970-01-01T00:00:00.123Z", "d8040000000000000000c0d4540700000000"},
-	{"1970-01-01T00:00:00.12Z", "d8040000000000000000000e270700000000"},
-	{"1970-01-01T00:00:00.1Z", "d804000000000000000000e1f50500000000"},
-	{"1970-01-01T00:00:00.01Z", "d80400000000000000008096980000000000"},
-	{"1970-01-01T00:00:00.001Z", "d804000000000000000040420f0000000000"},
-	{"1970-01-01T00:00:00.0001Z", "d8040000000000000000a086010000000000"},
-	{"1970-01-01T00:00:00.00001Z", "d80400000000000000001027000000000000"},
-	{"1970-01-01T00:00:00.000001Z", "d8040000000000000000e803000000000000"},
-	{"1970-01-01T00:00:00.0000001Z", "d80400000000000000006400000000000000"},
-	{"1970-01-01T00:00:00.00000001Z", "d80400000000000000000a00000000000000"},
-	{"1970-01-01T00:00:00.000000001Z", "d80400000000000000000100000000000000"},
-	{"1970-01-01T00:00:00.000000009Z", "d80400000000000000000900000000000000"},
-	{"1970-01-01T00:00:00.00000009Z", "d80400000000000000005a00000000000000"},
-	{"1970-01-01T00:00:00.0000009Z", "d80400000000000000008403000000000000"},
-	{"1970-01-01T00:00:00.000009Z", "d80400000000000000002823000000000000"},
-	{"1970-01-01T00:00:00.00009Z", "d8040000000000000000905f010000000000"},
-	{"1970-01-01T00:00:00.0009Z", "d8040000000000000000a0bb0d0000000000"},
-	{"1970-01-01T00:00:00.009Z", "d80400000000000000004054890000000000"},
-	{"1970-01-01T00:00:00.09Z", "d8040000000000000000804a5d0500000000"},
-	{"1970-01-01T00:00:00.9Z", "d804000000000000000000e9a43500000000"},
-	{"1970-01-01T00:00:00.99Z", "d80400000000000000008033023b00000000"},
-	{"1970-01-01T00:00:00.999Z", "d8040000000000000000c0878b3b00000000"},
-	{"1970-01-01T00:00:00.9999Z", "d80400000000000000006043993b00000000"},
-	{"1970-01-01T00:00:00.99999Z", "d8040000000000000000f0a29a3b00000000"},
-	{"1970-01-01T00:00:00.999999Z", "d804000000000000000018c69a3b00000000"},
-	{"1970-01-01T00:00:00.9999999Z", "d80400000000000000009cc99a3b00000000"},
-	{"1970-01-01T00:00:00.99999999Z", "d8040000000000000000f6c99a3b00000000"},
-	{"1970-01-01T00:00:00.999999999Z", "d8040000000000000000ffc99a3b00000000"},
-	{"1970-01-01T00:00:00.0Z", "d7040000000000000000"},
-	{"1970-01-01T00:00:00.00Z", "d7040000000000000000"},
-	{"1970-01-01T00:00:00.000Z", "d7040000000000000000"},
-	{"1970-01-01T00:00:00.0000Z", "d7040000000000000000"},
-	{"1970-01-01T00:00:00.00000Z", "d7040000000000000000"},
-	{"1970-01-01T00:00:00.000000Z", "d7040000000000000000"},
-	{"1970-01-01T00:00:00.0000000Z", "d7040000000000000000"},
-	{"1970-01-01T00:00:00.00000000Z", "d7040000000000000000"},
-	{"1970-01-01T00:00:00.000000000Z", "d7040000000000000000"},
-	{"1973-11-29T21:33:09Z", "d70415cd5b0700000000"},
-	{"2013-10-28T17:51:56Z", "d7043ca46e5200000000"},
-	{"9999-12-31T23:59:59Z", "d7047f41f4ff3a000000"},
+	/* Cases for base encoding without a timezone. */
+	{time.RFC3339, "2012-01-31T23:59:59.000000010Z", "d8047f80284f000000000a00000000000000"},
+	{time.RFC3339, "1970-01-01T00:00:00.000000010Z", "d80400000000000000000a00000000000000"},
+	{time.RFC3339, "2010-08-12T11:39:14Z", "d70462dd634c00000000"},
+	{time.RFC3339, "1984-03-24T18:04:05Z", "d7041530c31a00000000"},
+	{time.RFC3339, "2010-01-12T00:00:00Z", "d70480bb4b4b00000000"},
+	{time.RFC3339, "1970-01-01T00:00:00Z", "d7040000000000000000"},
+	{time.RFC3339, "1970-01-01T00:00:00.123456789Z", "d804000000000000000015cd5b0700000000"},
+	{time.RFC3339, "1970-01-01T00:00:00.12345678Z", "d80400000000000000000ccd5b0700000000"},
+	{time.RFC3339, "1970-01-01T00:00:00.1234567Z", "d8040000000000000000bccc5b0700000000"},
+	{time.RFC3339, "1970-01-01T00:00:00.123456Z", "d804000000000000000000ca5b0700000000"},
+	{time.RFC3339, "1970-01-01T00:00:00.12345Z", "d804000000000000000090b25b0700000000"},
+	{time.RFC3339, "1970-01-01T00:00:00.1234Z", "d804000000000000000040ef5a0700000000"},
+	{time.RFC3339, "1970-01-01T00:00:00.123Z", "d8040000000000000000c0d4540700000000"},
+	{time.RFC3339, "1970-01-01T00:00:00.12Z", "d8040000000000000000000e270700000000"},
+	{time.RFC3339, "1970-01-01T00:00:00.1Z", "d804000000000000000000e1f50500000000"},
+	{time.RFC3339, "1970-01-01T00:00:00.01Z", "d80400000000000000008096980000000000"},
+	{time.RFC3339, "1970-01-01T00:00:00.001Z", "d804000000000000000040420f0000000000"},
+	{time.RFC3339, "1970-01-01T00:00:00.0001Z", "d8040000000000000000a086010000000000"},
+	{time.RFC3339, "1970-01-01T00:00:00.00001Z", "d80400000000000000001027000000000000"},
+	{time.RFC3339, "1970-01-01T00:00:00.000001Z", "d8040000000000000000e803000000000000"},
+	{time.RFC3339, "1970-01-01T00:00:00.0000001Z", "d80400000000000000006400000000000000"},
+	{time.RFC3339, "1970-01-01T00:00:00.00000001Z", "d80400000000000000000a00000000000000"},
+	{time.RFC3339, "1970-01-01T00:00:00.000000001Z", "d80400000000000000000100000000000000"},
+	{time.RFC3339, "1970-01-01T00:00:00.000000009Z", "d80400000000000000000900000000000000"},
+	{time.RFC3339, "1970-01-01T00:00:00.00000009Z", "d80400000000000000005a00000000000000"},
+	{time.RFC3339, "1970-01-01T00:00:00.0000009Z", "d80400000000000000008403000000000000"},
+	{time.RFC3339, "1970-01-01T00:00:00.000009Z", "d80400000000000000002823000000000000"},
+	{time.RFC3339, "1970-01-01T00:00:00.00009Z", "d8040000000000000000905f010000000000"},
+	{time.RFC3339, "1970-01-01T00:00:00.0009Z", "d8040000000000000000a0bb0d0000000000"},
+	{time.RFC3339, "1970-01-01T00:00:00.009Z", "d80400000000000000004054890000000000"},
+	{time.RFC3339, "1970-01-01T00:00:00.09Z", "d8040000000000000000804a5d0500000000"},
+	{time.RFC3339, "1970-01-01T00:00:00.9Z", "d804000000000000000000e9a43500000000"},
+	{time.RFC3339, "1970-01-01T00:00:00.99Z", "d80400000000000000008033023b00000000"},
+	{time.RFC3339, "1970-01-01T00:00:00.999Z", "d8040000000000000000c0878b3b00000000"},
+	{time.RFC3339, "1970-01-01T00:00:00.9999Z", "d80400000000000000006043993b00000000"},
+	{time.RFC3339, "1970-01-01T00:00:00.99999Z", "d8040000000000000000f0a29a3b00000000"},
+	{time.RFC3339, "1970-01-01T00:00:00.999999Z", "d804000000000000000018c69a3b00000000"},
+	{time.RFC3339, "1970-01-01T00:00:00.9999999Z", "d80400000000000000009cc99a3b00000000"},
+	{time.RFC3339, "1970-01-01T00:00:00.99999999Z", "d8040000000000000000f6c99a3b00000000"},
+	{time.RFC3339, "1970-01-01T00:00:00.999999999Z", "d8040000000000000000ffc99a3b00000000"},
+	{time.RFC3339, "1970-01-01T00:00:00.0Z", "d7040000000000000000"},
+	{time.RFC3339, "1970-01-01T00:00:00.00Z", "d7040000000000000000"},
+	{time.RFC3339, "1970-01-01T00:00:00.000Z", "d7040000000000000000"},
+	{time.RFC3339, "1970-01-01T00:00:00.0000Z", "d7040000000000000000"},
+	{time.RFC3339, "1970-01-01T00:00:00.00000Z", "d7040000000000000000"},
+	{time.RFC3339, "1970-01-01T00:00:00.000000Z", "d7040000000000000000"},
+	{time.RFC3339, "1970-01-01T00:00:00.0000000Z", "d7040000000000000000"},
+	{time.RFC3339, "1970-01-01T00:00:00.00000000Z", "d7040000000000000000"},
+	{time.RFC3339, "1970-01-01T00:00:00.000000000Z", "d7040000000000000000"},
+	{time.RFC3339, "1973-11-29T21:33:09Z", "d70415cd5b0700000000"},
+	{time.RFC3339, "2013-10-28T17:51:56Z", "d7043ca46e5200000000"},
+	{time.RFC3339, "9999-12-31T23:59:59Z", "d7047f41f4ff3a000000"},
+	/* Cases for encoding with a timezone. */
+	{time.RFC3339 + " MST", "2006-01-02T15:04:00+03:00 MSK", "d804b016b9430000000000000000b400ee00"},
 }
 
 func TestDatetimeInsertSelectDelete(t *testing.T) {
@@ -176,7 +304,10 @@ func TestDatetimeInsertSelectDelete(t *testing.T) {
 
 	for _, testcase := range datetimeSample {
 		t.Run(testcase.dt, func(t *testing.T) {
-			tm, err := time.Parse(time.RFC3339, testcase.dt)
+			tm, err := time.Parse(testcase.fmt, testcase.dt)
+			if testcase.fmt == time.RFC3339 {
+				tm = tm.In(noTimezoneLoc)
+			}
 			if err != nil {
 				t.Fatalf("Time (%s) parse failed: %s", testcase.dt, err)
 			}
@@ -519,7 +650,10 @@ func TestCustomEncodeDecodeTuple5(t *testing.T) {
 func TestMPEncode(t *testing.T) {
 	for _, testcase := range datetimeSample {
 		t.Run(testcase.dt, func(t *testing.T) {
-			tm, err := time.Parse(time.RFC3339, testcase.dt)
+			tm, err := time.Parse(testcase.fmt, testcase.dt)
+			if testcase.fmt == time.RFC3339 {
+				tm = tm.In(noTimezoneLoc)
+			}
 			if err != nil {
 				t.Fatalf("Time (%s) parse failed: %s", testcase.dt, err)
 			}
@@ -533,7 +667,7 @@ func TestMPEncode(t *testing.T) {
 			}
 			refBuf, _ := hex.DecodeString(testcase.mpBuf)
 			if reflect.DeepEqual(buf, refBuf) != true {
-				t.Fatalf("Failed to encode datetime '%s', actual %v, expected %v",
+				t.Fatalf("Failed to encode datetime '%s', actual %x, expected %x",
 					testcase.dt,
 					buf,
 					refBuf)
@@ -545,7 +679,10 @@ func TestMPEncode(t *testing.T) {
 func TestMPDecode(t *testing.T) {
 	for _, testcase := range datetimeSample {
 		t.Run(testcase.dt, func(t *testing.T) {
-			tm, err := time.Parse(time.RFC3339, testcase.dt)
+			tm, err := time.Parse(testcase.fmt, testcase.dt)
+			if testcase.fmt == time.RFC3339 {
+				tm = tm.In(noTimezoneLoc)
+			}
 			if err != nil {
 				t.Fatalf("Time (%s) parse failed: %s", testcase.dt, err)
 			}
@@ -562,6 +699,35 @@ func TestMPDecode(t *testing.T) {
 					v.ToTime())
 			}
 		})
+	}
+}
+
+func TestUnmarshalMsgpackInvalidLength(t *testing.T) {
+	var v Datetime
+
+	err := v.UnmarshalMsgpack([]byte{0x04})
+	if err == nil {
+		t.Fatalf("Unexpected success %v", v)
+	}
+	if err.Error() != "invalid data length: got 1, wanted 8 or 16" {
+		t.Fatalf("Unexpected error: %s", err.Error())
+	}
+}
+
+func TestUnmarshalMsgpackInvalidZone(t *testing.T) {
+	var v Datetime
+
+	// The original value from datetimeSample array:
+	// {time.RFC3339 + " MST",
+	//  "2006-01-02T15:04:00+03:00 MSK",
+	//  "d804b016b9430000000000000000b400ee00"}
+	buf, _ := hex.DecodeString("b016b9430000000000000000b400ee01")
+	err := v.UnmarshalMsgpack(buf)
+	if err == nil {
+		t.Fatalf("Unexpected success %v", v)
+	}
+	if err.Error() != "unknown timezone index 494" {
+		t.Fatalf("Unexpected error: %s", err.Error())
 	}
 }
 

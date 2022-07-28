@@ -79,3 +79,24 @@ func Example() {
 	fmt.Printf("Code: %d\n", resp.Code)
 	fmt.Printf("Data: %v\n", respDt.ToTime())
 }
+
+// Example demonstrates how to create a datetime for Tarantool without UTC
+// timezone in datetime.
+func ExampleNewDatetime_noTimezone() {
+	var datetime = "2013-10-28T17:51:56.000000009Z"
+	tm, err := time.Parse(time.RFC3339, datetime)
+	if err != nil {
+		fmt.Printf("Error in time.Parse() is %v", err)
+		return
+	}
+
+	tm = tm.In(time.FixedZone(NoTimezone, 0))
+
+	dt, err := NewDatetime(tm)
+	if err != nil {
+		fmt.Printf("Unable to create Datetime from %s: %s", tm, err)
+		return
+	}
+
+	fmt.Printf("Time value: %v\n", dt.ToTime())
+}
