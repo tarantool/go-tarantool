@@ -47,13 +47,11 @@ type datetime struct {
 	// Nanoseconds, fractional part of seconds. Tarantool uses int32_t, see
 	// a definition in src/lib/core/datetime.h.
 	nsec int32
-	// Timezone offset in minutes from UTC (not implemented in Tarantool,
-	// see gh-163). Tarantool uses a int16_t type, see a structure
-	// definition in src/lib/core/datetime.h.
+	// Timezone offset in minutes from UTC. Tarantool uses a int16_t type,
+	// see a structure definition in src/lib/core/datetime.h.
 	tzOffset int16
-	// Olson timezone id (not implemented in Tarantool, see gh-163).
-	// Tarantool uses a int16_t type, see a structure definition in
-	// src/lib/core/datetime.h.
+	// Olson timezone id. Tarantool uses a int16_t type, see a structure
+	// definition in src/lib/core/datetime.h.
 	tzIndex int16
 }
 
@@ -79,14 +77,42 @@ type Datetime struct {
 	time time.Time
 }
 
+const (
+	// NoTimezone allows to create a datetime without UTC timezone for
+	// Tarantool. The problem is that Golang by default creates a time value
+	// with UTC timezone. So it is a way to create a datetime without timezone.
+	NoTimezone = ""
+)
+
+var noTimezoneLoc = time.FixedZone(NoTimezone, 0)
+
+const (
+	offsetMin = -12 * 60 * 60
+	offsetMax = 14 * 60 * 60
+)
+
 // NewDatetime returns a pointer to a new datetime.Datetime that contains a
-// specified time.Time. It may returns an error if the Time value is out of
-// supported range: [-5879610-06-22T00:00Z .. 5879611-07-11T00:00Z]
+// specified time.Time. It may return an error if the Time value is out of
+// supported range: [-5879610-06-22T00:00Z .. 5879611-07-11T00:00Z] or
+// an invalid timezone or offset value is out of supported range:
+// [-12 * 60 * 60, 14 * 60 * 60].
 func NewDatetime(t time.Time) (*Datetime, error) {
 	seconds := t.Unix()
 
 	if seconds < minSeconds || seconds > maxSeconds {
 		return nil, fmt.Errorf("time %s is out of supported range", t)
+	}
+
+	zone, offset := t.Zone()
+	if zone != NoTimezone {
+		if _, ok := timezoneToIndex[zone]; !ok {
+			return nil, fmt.Errorf("unknown timezone %s with offset %d",
+				zone, offset)
+		}
+	}
+	if offset < offsetMin || offset > offsetMax {
+		return nil, fmt.Errorf("offset must be between %d and %d hours",
+			offsetMin, offsetMax)
 	}
 
 	dt := new(Datetime)
@@ -105,8 +131,14 @@ func (dtime *Datetime) MarshalMsgpack() ([]byte, error) {
 	var dt datetime
 	dt.seconds = tm.Unix()
 	dt.nsec = int32(tm.Nanosecond())
-	dt.tzIndex = 0  // It is not implemented, see gh-163.
-	dt.tzOffset = 0 // It is not implemented, see gh-163.
+
+	zone, offset := tm.Zone()
+	if zone != NoTimezone {
+		// The zone value already checked in NewDatetime() or
+		// UnmarshalMsgpack() calls.
+		dt.tzIndex = int16(timezoneToIndex[zone])
+	}
+	dt.tzOffset = int16(offset / 60)
 
 	var bytesSize = secondsSize
 	if dt.nsec != 0 || dt.tzOffset != 0 || dt.tzIndex != 0 {
@@ -140,7 +172,23 @@ func (tm *Datetime) UnmarshalMsgpack(b []byte) error {
 		dt.tzIndex = int16(binary.LittleEndian.Uint16(b[secondsSize+nsecSize+tzOffsetSize:]))
 	}
 
-	tt := time.Unix(dt.seconds, int64(dt.nsec)).UTC()
+	tt := time.Unix(dt.seconds, int64(dt.nsec))
+
+	loc := noTimezoneLoc
+	if dt.tzIndex != 0 || dt.tzOffset != 0 {
+		zone := NoTimezone
+		offset := int(dt.tzOffset) * 60
+
+		if dt.tzIndex != 0 {
+			if _, ok := indexToTimezone[int(dt.tzIndex)]; !ok {
+				return fmt.Errorf("unknown timezone index %d", dt.tzIndex)
+			}
+			zone = indexToTimezone[int(dt.tzIndex)]
+		}
+		loc = time.FixedZone(zone, offset)
+	}
+	tt = tt.In(loc)
+
 	dtp, err := NewDatetime(tt)
 	if dtp != nil {
 		*tm = *dtp

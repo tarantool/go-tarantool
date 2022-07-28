@@ -24,6 +24,10 @@ clean:
 deps: clean
 	( cd ./queue; tarantoolctl rocks install queue 1.1.0 )
 
+.PHONY: datetime-timezones
+datetime-timezones:
+	(cd ./datetime; ./gen-timezones.sh)
+
 .PHONY: format
 format:
 	goimports -l -w .
