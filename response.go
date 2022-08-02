@@ -2,8 +2,6 @@ package tarantool
 
 import (
 	"fmt"
-
-	"gopkg.in/vmihailenco/msgpack.v2"
 )
 
 type Response struct {
@@ -31,7 +29,7 @@ type SQLInfo struct {
 	InfoAutoincrementIds []uint64
 }
 
-func (meta *ColumnMetaData) DecodeMsgpack(d *msgpack.Decoder) error {
+func (meta *ColumnMetaData) DecodeMsgpack(d *decoder) error {
 	var err error
 	var l int
 	if l, err = d.DecodeMapLen(); err != nil {
@@ -69,7 +67,7 @@ func (meta *ColumnMetaData) DecodeMsgpack(d *msgpack.Decoder) error {
 	return nil
 }
 
-func (info *SQLInfo) DecodeMsgpack(d *msgpack.Decoder) error {
+func (info *SQLInfo) DecodeMsgpack(d *decoder) error {
 	var err error
 	var l int
 	if l, err = d.DecodeMapLen(); err != nil {
@@ -99,7 +97,7 @@ func (info *SQLInfo) DecodeMsgpack(d *msgpack.Decoder) error {
 	return nil
 }
 
-func (resp *Response) smallInt(d *msgpack.Decoder) (i int, err error) {
+func (resp *Response) smallInt(d *decoder) (i int, err error) {
 	b, err := resp.buf.ReadByte()
 	if err != nil {
 		return
@@ -111,7 +109,7 @@ func (resp *Response) smallInt(d *msgpack.Decoder) (i int, err error) {
 	return d.DecodeInt()
 }
 
-func (resp *Response) decodeHeader(d *msgpack.Decoder) (err error) {
+func (resp *Response) decodeHeader(d *decoder) (err error) {
 	var l int
 	d.Reset(&resp.buf)
 	if l, err = d.DecodeMapLen(); err != nil {
@@ -148,7 +146,9 @@ func (resp *Response) decodeBody() (err error) {
 	if resp.buf.Len() > 2 {
 		var l int
 		var stmtID, bindCount uint64
-		d := msgpack.NewDecoder(&resp.buf)
+
+		d := newDecoder(&resp.buf)
+
 		if l, err = d.DecodeMapLen(); err != nil {
 			return err
 		}
@@ -212,7 +212,7 @@ func (resp *Response) decodeBody() (err error) {
 func (resp *Response) decodeBodyTyped(res interface{}) (err error) {
 	if resp.buf.Len() > 0 {
 		var l int
-		d := msgpack.NewDecoder(&resp.buf)
+		d := newDecoder(&resp.buf)
 		if l, err = d.DecodeMapLen(); err != nil {
 			return err
 		}

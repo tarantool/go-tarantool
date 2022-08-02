@@ -6,11 +6,9 @@ import (
 	"reflect"
 	"strings"
 	"sync"
-
-	"gopkg.in/vmihailenco/msgpack.v2"
 )
 
-func fillSearch(enc *msgpack.Encoder, spaceNo, indexNo uint32, key interface{}) error {
+func fillSearch(enc *encoder, spaceNo, indexNo uint32, key interface{}) error {
 	enc.EncodeUint(KeySpaceNo)
 	enc.EncodeUint(uint(spaceNo))
 	enc.EncodeUint(KeyIndexNo)
@@ -19,7 +17,7 @@ func fillSearch(enc *msgpack.Encoder, spaceNo, indexNo uint32, key interface{}) 
 	return enc.Encode(key)
 }
 
-func fillIterator(enc *msgpack.Encoder, offset, limit, iterator uint32) {
+func fillIterator(enc *encoder, offset, limit, iterator uint32) {
 	enc.EncodeUint(KeyIterator)
 	enc.EncodeUint(uint(iterator))
 	enc.EncodeUint(KeyOffset)
@@ -28,7 +26,7 @@ func fillIterator(enc *msgpack.Encoder, offset, limit, iterator uint32) {
 	enc.EncodeUint(uint(limit))
 }
 
-func fillInsert(enc *msgpack.Encoder, spaceNo uint32, tuple interface{}) error {
+func fillInsert(enc *encoder, spaceNo uint32, tuple interface{}) error {
 	enc.EncodeMapLen(2)
 	enc.EncodeUint(KeySpaceNo)
 	enc.EncodeUint(uint(spaceNo))
@@ -36,13 +34,13 @@ func fillInsert(enc *msgpack.Encoder, spaceNo uint32, tuple interface{}) error {
 	return enc.Encode(tuple)
 }
 
-func fillSelect(enc *msgpack.Encoder, spaceNo, indexNo, offset, limit, iterator uint32, key interface{}) error {
+func fillSelect(enc *encoder, spaceNo, indexNo, offset, limit, iterator uint32, key interface{}) error {
 	enc.EncodeMapLen(6)
 	fillIterator(enc, offset, limit, iterator)
 	return fillSearch(enc, spaceNo, indexNo, key)
 }
 
-func fillUpdate(enc *msgpack.Encoder, spaceNo, indexNo uint32, key, ops interface{}) error {
+func fillUpdate(enc *encoder, spaceNo, indexNo uint32, key, ops interface{}) error {
 	enc.EncodeMapLen(4)
 	if err := fillSearch(enc, spaceNo, indexNo, key); err != nil {
 		return err
@@ -51,7 +49,7 @@ func fillUpdate(enc *msgpack.Encoder, spaceNo, indexNo uint32, key, ops interfac
 	return enc.Encode(ops)
 }
 
-func fillUpsert(enc *msgpack.Encoder, spaceNo uint32, tuple, ops interface{}) error {
+func fillUpsert(enc *encoder, spaceNo uint32, tuple, ops interface{}) error {
 	enc.EncodeMapLen(3)
 	enc.EncodeUint(KeySpaceNo)
 	enc.EncodeUint(uint(spaceNo))
@@ -63,12 +61,12 @@ func fillUpsert(enc *msgpack.Encoder, spaceNo uint32, tuple, ops interface{}) er
 	return enc.Encode(ops)
 }
 
-func fillDelete(enc *msgpack.Encoder, spaceNo, indexNo uint32, key interface{}) error {
+func fillDelete(enc *encoder, spaceNo, indexNo uint32, key interface{}) error {
 	enc.EncodeMapLen(3)
 	return fillSearch(enc, spaceNo, indexNo, key)
 }
 
-func fillCall(enc *msgpack.Encoder, functionName string, args interface{}) error {
+func fillCall(enc *encoder, functionName string, args interface{}) error {
 	enc.EncodeMapLen(2)
 	enc.EncodeUint(KeyFunctionName)
 	enc.EncodeString(functionName)
@@ -76,7 +74,7 @@ func fillCall(enc *msgpack.Encoder, functionName string, args interface{}) error
 	return enc.Encode(args)
 }
 
-func fillEval(enc *msgpack.Encoder, expr string, args interface{}) error {
+func fillEval(enc *encoder, expr string, args interface{}) error {
 	enc.EncodeMapLen(2)
 	enc.EncodeUint(KeyExpression)
 	enc.EncodeString(expr)
@@ -84,7 +82,7 @@ func fillEval(enc *msgpack.Encoder, expr string, args interface{}) error {
 	return enc.Encode(args)
 }
 
-func fillExecute(enc *msgpack.Encoder, expr string, args interface{}) error {
+func fillExecute(enc *encoder, expr string, args interface{}) error {
 	enc.EncodeMapLen(2)
 	enc.EncodeUint(KeySQLText)
 	enc.EncodeString(expr)
@@ -92,7 +90,7 @@ func fillExecute(enc *msgpack.Encoder, expr string, args interface{}) error {
 	return encodeSQLBind(enc, args)
 }
 
-func fillPing(enc *msgpack.Encoder) error {
+func fillPing(enc *encoder) error {
 	return enc.EncodeMapLen(0)
 }
 
@@ -197,7 +195,7 @@ type single struct {
 	found bool
 }
 
-func (s *single) DecodeMsgpack(d *msgpack.Decoder) error {
+func (s *single) DecodeMsgpack(d *decoder) error {
 	var err error
 	var len int
 	if len, err = d.DecodeArrayLen(); err != nil {
@@ -404,7 +402,7 @@ type KeyValueBind struct {
 // to avoid extra allocations in heap by calling strings.ToLower()
 var lowerCaseNames sync.Map
 
-func encodeSQLBind(enc *msgpack.Encoder, from interface{}) error {
+func encodeSQLBind(enc *encoder, from interface{}) error {
 	// internal function for encoding single map in msgpack
 	encodeKeyInterface := func(key string, val interface{}) error {
 		if err := enc.EncodeMapLen(1); err != nil {
@@ -537,7 +535,7 @@ type Request interface {
 	// Code returns a IPROTO code for the request.
 	Code() int32
 	// Body fills an encoder with a request body.
-	Body(resolver SchemaResolver, enc *msgpack.Encoder) error
+	Body(resolver SchemaResolver, enc *encoder) error
 	// Ctx returns a context of the request.
 	Ctx() context.Context
 }
@@ -597,7 +595,7 @@ func newAuthRequest(user, scramble string) *authRequest {
 }
 
 // Body fills an encoder with the auth request body.
-func (req *authRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
+func (req *authRequest) Body(res SchemaResolver, enc *encoder) error {
 	return enc.Encode(map[uint32]interface{}{
 		KeyUserName: req.user,
 		KeyTuple:    []interface{}{string("chap-sha1"), string(req.scramble)},
@@ -618,7 +616,7 @@ func NewPingRequest() *PingRequest {
 }
 
 // Body fills an encoder with the ping request body.
-func (req *PingRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
+func (req *PingRequest) Body(res SchemaResolver, enc *encoder) error {
 	return fillPing(enc)
 }
 
@@ -694,7 +692,7 @@ func (req *SelectRequest) Key(key interface{}) *SelectRequest {
 }
 
 // Body fills an encoder with the select request body.
-func (req *SelectRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
+func (req *SelectRequest) Body(res SchemaResolver, enc *encoder) error {
 	spaceNo, indexNo, err := res.ResolveSpaceIndex(req.space, req.index)
 	if err != nil {
 		return err
@@ -738,7 +736,7 @@ func (req *InsertRequest) Tuple(tuple interface{}) *InsertRequest {
 }
 
 // Body fills an encoder with the insert request body.
-func (req *InsertRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
+func (req *InsertRequest) Body(res SchemaResolver, enc *encoder) error {
 	spaceNo, _, err := res.ResolveSpaceIndex(req.space, nil)
 	if err != nil {
 		return err
@@ -782,7 +780,7 @@ func (req *ReplaceRequest) Tuple(tuple interface{}) *ReplaceRequest {
 }
 
 // Body fills an encoder with the replace request body.
-func (req *ReplaceRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
+func (req *ReplaceRequest) Body(res SchemaResolver, enc *encoder) error {
 	spaceNo, _, err := res.ResolveSpaceIndex(req.space, nil)
 	if err != nil {
 		return err
@@ -833,7 +831,7 @@ func (req *DeleteRequest) Key(key interface{}) *DeleteRequest {
 }
 
 // Body fills an encoder with the delete request body.
-func (req *DeleteRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
+func (req *DeleteRequest) Body(res SchemaResolver, enc *encoder) error {
 	spaceNo, indexNo, err := res.ResolveSpaceIndex(req.space, req.index)
 	if err != nil {
 		return err
@@ -895,7 +893,7 @@ func (req *UpdateRequest) Operations(ops *Operations) *UpdateRequest {
 }
 
 // Body fills an encoder with the update request body.
-func (req *UpdateRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
+func (req *UpdateRequest) Body(res SchemaResolver, enc *encoder) error {
 	spaceNo, indexNo, err := res.ResolveSpaceIndex(req.space, req.index)
 	if err != nil {
 		return err
@@ -950,7 +948,7 @@ func (req *UpsertRequest) Operations(ops *Operations) *UpsertRequest {
 }
 
 // Body fills an encoder with the upsert request body.
-func (req *UpsertRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
+func (req *UpsertRequest) Body(res SchemaResolver, enc *encoder) error {
 	spaceNo, _, err := res.ResolveSpaceIndex(req.space, nil)
 	if err != nil {
 		return err
@@ -997,7 +995,7 @@ func (req *CallRequest) Args(args interface{}) *CallRequest {
 }
 
 // Body fills an encoder with the call request body.
-func (req *CallRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
+func (req *CallRequest) Body(res SchemaResolver, enc *encoder) error {
 	return fillCall(enc, req.function, req.args)
 }
 
@@ -1054,7 +1052,7 @@ func (req *EvalRequest) Args(args interface{}) *EvalRequest {
 }
 
 // Body fills an encoder with the eval request body.
-func (req *EvalRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
+func (req *EvalRequest) Body(res SchemaResolver, enc *encoder) error {
 	return fillEval(enc, req.expr, req.args)
 }
 
@@ -1094,7 +1092,7 @@ func (req *ExecuteRequest) Args(args interface{}) *ExecuteRequest {
 }
 
 // Body fills an encoder with the execute request body.
-func (req *ExecuteRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
+func (req *ExecuteRequest) Body(res SchemaResolver, enc *encoder) error {
 	return fillExecute(enc, req.expr, req.args)
 }
 

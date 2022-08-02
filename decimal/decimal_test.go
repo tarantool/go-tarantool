@@ -13,7 +13,6 @@ import (
 	. "github.com/tarantool/go-tarantool"
 	. "github.com/tarantool/go-tarantool/decimal"
 	"github.com/tarantool/go-tarantool/test_helpers"
-	"gopkg.in/vmihailenco/msgpack.v2"
 )
 
 var isDecimalSupported = false
@@ -40,14 +39,14 @@ type TupleDecimal struct {
 	number Decimal
 }
 
-func (t *TupleDecimal) EncodeMsgpack(e *msgpack.Encoder) error {
+func (t *TupleDecimal) EncodeMsgpack(e *encoder) error {
 	if err := e.EncodeArrayLen(1); err != nil {
 		return err
 	}
 	return e.EncodeValue(reflect.ValueOf(&t.number))
 }
 
-func (t *TupleDecimal) DecodeMsgpack(d *msgpack.Decoder) error {
+func (t *TupleDecimal) DecodeMsgpack(d *decoder) error {
 	var err error
 	var l int
 	if l, err = d.DecodeArrayLen(); err != nil {
@@ -144,11 +143,11 @@ func TestMPEncodeDecode(t *testing.T) {
 			}
 			var buf []byte
 			tuple := TupleDecimal{number: *decNum}
-			if buf, err = msgpack.Marshal(&tuple); err != nil {
+			if buf, err = marshal(&tuple); err != nil {
 				t.Fatalf("Failed to encode decimal number '%s' to a MessagePack buffer: %s", testcase.numString, err)
 			}
 			var v TupleDecimal
-			if err = msgpack.Unmarshal(buf, &v); err != nil {
+			if err = unmarshal(buf, &v); err != nil {
 				t.Fatalf("Failed to decode MessagePack buffer '%x' to a decimal number: %s", buf, err)
 			}
 			if !decNum.Equal(v.number.Decimal) {
@@ -247,7 +246,7 @@ func TestEncodeMaxNumber(t *testing.T) {
 	referenceErrMsg := "msgpack: decimal number is bigger than maximum supported number (10^38 - 1)"
 	decNum := decimal.New(1, DecimalPrecision) // // 10^DecimalPrecision
 	tuple := TupleDecimal{number: *NewDecimal(decNum)}
-	_, err := msgpack.Marshal(&tuple)
+	_, err := marshal(&tuple)
 	if err == nil {
 		t.Fatalf("It is possible to encode a number unsupported by Tarantool")
 	}
@@ -261,7 +260,7 @@ func TestEncodeMinNumber(t *testing.T) {
 	two := decimal.NewFromInt(2)
 	decNum := decimal.New(1, DecimalPrecision).Neg().Sub(two) // -10^DecimalPrecision - 2
 	tuple := TupleDecimal{number: *NewDecimal(decNum)}
-	_, err := msgpack.Marshal(&tuple)
+	_, err := marshal(&tuple)
 	if err == nil {
 		t.Fatalf("It is possible to encode a number unsupported by Tarantool")
 	}
@@ -280,10 +279,10 @@ func benchmarkMPEncodeDecode(b *testing.B, src decimal.Decimal, dst interface{})
 	var err error
 	for i := 0; i < b.N; i++ {
 		tuple := TupleDecimal{number: *NewDecimal(src)}
-		if buf, err = msgpack.Marshal(&tuple); err != nil {
+		if buf, err = marshal(&tuple); err != nil {
 			b.Fatal(err)
 		}
-		if err = msgpack.Unmarshal(buf, &v); err != nil {
+		if err = unmarshal(buf, &v); err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -310,7 +309,7 @@ func BenchmarkMPEncodeDecimal(b *testing.B) {
 			}
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				msgpack.Marshal(decNum)
+				marshal(decNum)
 			}
 		})
 	}
@@ -324,13 +323,13 @@ func BenchmarkMPDecodeDecimal(b *testing.B) {
 				b.Fatal(err)
 			}
 			var buf []byte
-			if buf, err = msgpack.Marshal(decNum); err != nil {
+			if buf, err = marshal(decNum); err != nil {
 				b.Fatal(err)
 			}
 			b.ResetTimer()
 			var v TupleDecimal
 			for i := 0; i < b.N; i++ {
-				msgpack.Unmarshal(buf, &v)
+				unmarshal(buf, &v)
 			}
 
 		})
@@ -417,7 +416,7 @@ func TestMPEncode(t *testing.T) {
 			if err != nil {
 				t.Fatalf("NewDecimalFromString() failed: %s", err.Error())
 			}
-			buf, err := msgpack.Marshal(dec)
+			buf, err := marshal(dec)
 			if err != nil {
 				t.Fatalf("Marshalling failed: %s", err.Error())
 			}
@@ -442,7 +441,7 @@ func TestMPDecode(t *testing.T) {
 				t.Fatalf("hex.DecodeString() failed: %s", err)
 			}
 			var v interface{}
-			err = msgpack.Unmarshal(mpBuf, &v)
+			err = unmarshal(mpBuf, &v)
 			if err != nil {
 				t.Fatalf("Unmarshalling failed: %s", err.Error())
 			}

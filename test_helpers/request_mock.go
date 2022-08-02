@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/tarantool/go-tarantool"
-	"gopkg.in/vmihailenco/msgpack.v2"
 )
 
 type StrangerRequest struct {
@@ -18,7 +17,7 @@ func (sr *StrangerRequest) Code() int32 {
 	return 0
 }
 
-func (sr *StrangerRequest) Body(resolver tarantool.SchemaResolver, enc *msgpack.Encoder) error {
+func (sr *StrangerRequest) Body(resolver tarantool.SchemaResolver, enc *encoder) error {
 	return nil
 }
 

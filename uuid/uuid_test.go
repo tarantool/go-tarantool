@@ -11,7 +11,6 @@ import (
 	. "github.com/tarantool/go-tarantool"
 	"github.com/tarantool/go-tarantool/test_helpers"
 	_ "github.com/tarantool/go-tarantool/uuid"
-	"gopkg.in/vmihailenco/msgpack.v2"
 )
 
 // There is no way to skip tests in testing.M,
@@ -33,7 +32,7 @@ type TupleUUID struct {
 	id uuid.UUID
 }
 
-func (t *TupleUUID) DecodeMsgpack(d *msgpack.Decoder) error {
+func (t *TupleUUID) DecodeMsgpack(d *decoder) error {
 	var err error
 	var l int
 	if l, err = d.DecodeArrayLen(); err != nil {

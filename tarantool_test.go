@@ -17,7 +17,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	. "github.com/tarantool/go-tarantool"
 	"github.com/tarantool/go-tarantool/test_helpers"
-	"gopkg.in/vmihailenco/msgpack.v2"
 )
 
 type Member struct {
@@ -26,7 +25,7 @@ type Member struct {
 	Val   uint
 }
 
-func (m *Member) EncodeMsgpack(e *msgpack.Encoder) error {
+func (m *Member) EncodeMsgpack(e *encoder) error {
 	if err := e.EncodeArrayLen(2); err != nil {
 		return err
 	}
@@ -39,7 +38,7 @@ func (m *Member) EncodeMsgpack(e *msgpack.Encoder) error {
 	return nil
 }
 
-func (m *Member) DecodeMsgpack(d *msgpack.Decoder) error {
+func (m *Member) DecodeMsgpack(d *decoder) error {
 	var err error
 	var l int
 	if l, err = d.DecodeArrayLen(); err != nil {

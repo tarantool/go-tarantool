@@ -2,8 +2,6 @@ package queue
 
 import (
 	"fmt"
-
-	msgpack "gopkg.in/vmihailenco/msgpack.v2"
 )
 
 // Task represents a task from Tarantool queue's tube.
@@ -14,7 +12,7 @@ type Task struct {
 	q      *queue
 }
 
-func (t *Task) DecodeMsgpack(d *msgpack.Decoder) error {
+func (t *Task) DecodeMsgpack(d *decoder) error {
 	var err error
 	var l int
 	if l, err = d.DecodeArrayLen(); err != nil {

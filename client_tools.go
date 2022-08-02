@@ -1,16 +1,12 @@
 package tarantool
 
-import (
-	"gopkg.in/vmihailenco/msgpack.v2"
-)
-
 // IntKey is utility type for passing integer key to Select*, Update* and Delete*.
 // It serializes to array with single integer element.
 type IntKey struct {
 	I int
 }
 
-func (k IntKey) EncodeMsgpack(enc *msgpack.Encoder) error {
+func (k IntKey) EncodeMsgpack(enc *encoder) error {
 	enc.EncodeArrayLen(1)
 	enc.EncodeInt(k.I)
 	return nil
@@ -22,7 +18,7 @@ type UintKey struct {
 	I uint
 }
 
-func (k UintKey) EncodeMsgpack(enc *msgpack.Encoder) error {
+func (k UintKey) EncodeMsgpack(enc *encoder) error {
 	enc.EncodeArrayLen(1)
 	enc.EncodeUint(k.I)
 	return nil
@@ -34,7 +30,7 @@ type StringKey struct {
 	S string
 }
 
-func (k StringKey) EncodeMsgpack(enc *msgpack.Encoder) error {
+func (k StringKey) EncodeMsgpack(enc *encoder) error {
 	enc.EncodeArrayLen(1)
 	enc.EncodeString(k.S)
 	return nil
@@ -46,7 +42,7 @@ type IntIntKey struct {
 	I1, I2 int
 }
 
-func (k IntIntKey) EncodeMsgpack(enc *msgpack.Encoder) error {
+func (k IntIntKey) EncodeMsgpack(enc *encoder) error {
 	enc.EncodeArrayLen(2)
 	enc.EncodeInt(k.I1)
 	enc.EncodeInt(k.I2)
@@ -60,7 +56,7 @@ type Op struct {
 	Arg   interface{}
 }
 
-func (o Op) EncodeMsgpack(enc *msgpack.Encoder) error {
+func (o Op) EncodeMsgpack(enc *encoder) error {
 	enc.EncodeArrayLen(3)
 	enc.EncodeString(o.Op)
 	enc.EncodeInt(o.Field)
@@ -148,7 +144,7 @@ type OpSplice struct {
 	Replace string
 }
 
-func (o OpSplice) EncodeMsgpack(enc *msgpack.Encoder) error {
+func (o OpSplice) EncodeMsgpack(enc *encoder) error {
 	enc.EncodeArrayLen(5)
 	enc.EncodeString(o.Op)
 	enc.EncodeInt(o.Field)
