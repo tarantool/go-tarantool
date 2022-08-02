@@ -19,7 +19,6 @@ import (
 	"fmt"
 
 	"github.com/shopspring/decimal"
-	"gopkg.in/vmihailenco/msgpack.v2"
 )
 
 // Decimal numbers have 38 digits of precision, that is, the total
@@ -55,9 +54,6 @@ func NewDecimalFromString(src string) (result *Decimal, err error) {
 	result = NewDecimal(dec)
 	return
 }
-
-var _ msgpack.Marshaler = (*Decimal)(nil)
-var _ msgpack.Unmarshaler = (*Decimal)(nil)
 
 func (decNum *Decimal) MarshalMsgpack() ([]byte, error) {
 	one := decimal.NewFromInt(1)
@@ -98,8 +94,4 @@ func (decNum *Decimal) UnmarshalMsgpack(b []byte) error {
 	}
 
 	return nil
-}
-
-func init() {
-	msgpack.RegisterExt(decimalExtID, &Decimal{})
 }

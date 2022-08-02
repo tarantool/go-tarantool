@@ -18,13 +18,12 @@ import (
 	"reflect"
 
 	"github.com/google/uuid"
-	"gopkg.in/vmihailenco/msgpack.v2"
 )
 
 // UUID external type.
 const UUID_extId = 2
 
-func encodeUUID(e *msgpack.Encoder, v reflect.Value) error {
+func encodeUUID(e *encoder, v reflect.Value) error {
 	id := v.Interface().(uuid.UUID)
 
 	bytes, err := id.MarshalBinary()
@@ -40,7 +39,7 @@ func encodeUUID(e *msgpack.Encoder, v reflect.Value) error {
 	return nil
 }
 
-func decodeUUID(d *msgpack.Decoder, v reflect.Value) error {
+func decodeUUID(d *decoder, v reflect.Value) error {
 	var bytesCount int = 16
 	bytes := make([]byte, bytesCount)
 
@@ -59,9 +58,4 @@ func decodeUUID(d *msgpack.Decoder, v reflect.Value) error {
 
 	v.Set(reflect.ValueOf(id))
 	return nil
-}
-
-func init() {
-	msgpack.Register(reflect.TypeOf((*uuid.UUID)(nil)).Elem(), encodeUUID, decodeUUID)
-	msgpack.RegisterExt(UUID_extId, (*uuid.UUID)(nil))
 }

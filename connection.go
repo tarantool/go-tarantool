@@ -15,8 +15,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"gopkg.in/vmihailenco/msgpack.v2"
 )
 
 const requestsMap = 128
@@ -142,7 +140,7 @@ type Connection struct {
 	rlimit  chan struct{}
 	opts    Opts
 	state   uint32
-	dec     *msgpack.Decoder
+	dec     *decoder
 	lenbuf  [PacketLengthBytes]byte
 
 	lastStreamId uint64
@@ -199,7 +197,7 @@ type connShard struct {
 	requestsWithCtx [requestsMap]futureList
 	bufmut          sync.Mutex
 	buf             smallWBuf
-	enc             *msgpack.Encoder
+	enc             *encoder
 }
 
 // Greeting is a message sent by Tarantool on connect.
@@ -320,7 +318,7 @@ func Connect(addr string, opts Opts) (conn *Connection, err error) {
 		Greeting:         &Greeting{},
 		control:          make(chan struct{}),
 		opts:             opts,
-		dec:              msgpack.NewDecoder(&smallBuf{}),
+		dec:              newDecoder(&smallBuf{}),
 	}
 	maxprocs := uint32(runtime.GOMAXPROCS(-1))
 	if conn.opts.Concurrency == 0 || conn.opts.Concurrency > maxprocs*128 {
@@ -531,7 +529,7 @@ func (conn *Connection) dial() (err error) {
 	return
 }
 
-func pack(h *smallWBuf, enc *msgpack.Encoder, reqid uint32,
+func pack(h *smallWBuf, enc *encoder, reqid uint32,
 	req Request, streamId uint64, res SchemaResolver) (err error) {
 	hl := h.Len()
 
@@ -569,7 +567,7 @@ func pack(h *smallWBuf, enc *msgpack.Encoder, reqid uint32,
 func (conn *Connection) writeAuthRequest(w *bufio.Writer, scramble []byte) (err error) {
 	var packet smallWBuf
 	req := newAuthRequest(conn.opts.User, string(scramble))
-	err = pack(&packet, msgpack.NewEncoder(&packet), 0, req, ignoreStreamId, conn.Schema)
+	err = pack(&packet, newEncoder(&packet), 0, req, ignoreStreamId, conn.Schema)
 
 	if err != nil {
 		return errors.New("auth: pack error " + err.Error())
@@ -916,7 +914,7 @@ func (conn *Connection) putFuture(fut *Future, req Request, streamId uint64) {
 	firstWritten := shard.buf.Len() == 0
 	if shard.buf.Cap() == 0 {
 		shard.buf.b = make([]byte, 0, 128)
-		shard.enc = msgpack.NewEncoder(&shard.buf)
+		shard.enc = newEncoder(&shard.buf)
 	}
 	blen := shard.buf.Len()
 	reqid := fut.requestId

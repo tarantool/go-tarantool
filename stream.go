@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"time"
-
-	"gopkg.in/vmihailenco/msgpack.v2"
 )
 
 type TxnIsolationLevel uint
@@ -29,7 +27,7 @@ type Stream struct {
 	Conn *Connection
 }
 
-func fillBegin(enc *msgpack.Encoder, txnIsolation TxnIsolationLevel, timeout time.Duration) error {
+func fillBegin(enc *encoder, txnIsolation TxnIsolationLevel, timeout time.Duration) error {
 	hasTimeout := timeout > 0
 	hasIsolationLevel := txnIsolation != DefaultIsolationLevel
 	mapLen := 0
@@ -72,11 +70,11 @@ func fillBegin(enc *msgpack.Encoder, txnIsolation TxnIsolationLevel, timeout tim
 	return err
 }
 
-func fillCommit(enc *msgpack.Encoder) error {
+func fillCommit(enc *encoder) error {
 	return enc.EncodeMapLen(0)
 }
 
-func fillRollback(enc *msgpack.Encoder) error {
+func fillRollback(enc *encoder) error {
 	return enc.EncodeMapLen(0)
 }
 
@@ -111,7 +109,7 @@ func (req *BeginRequest) Timeout(timeout time.Duration) *BeginRequest {
 }
 
 // Body fills an encoder with the begin request body.
-func (req *BeginRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
+func (req *BeginRequest) Body(res SchemaResolver, enc *encoder) error {
 	return fillBegin(enc, req.txnIsolation, req.timeout)
 }
 
@@ -141,7 +139,7 @@ func NewCommitRequest() *CommitRequest {
 }
 
 // Body fills an encoder with the commit request body.
-func (req *CommitRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
+func (req *CommitRequest) Body(res SchemaResolver, enc *encoder) error {
 	return fillCommit(enc)
 }
 
@@ -171,7 +169,7 @@ func NewRollbackRequest() *RollbackRequest {
 }
 
 // Body fills an encoder with the rollback request body.
-func (req *RollbackRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
+func (req *RollbackRequest) Body(res SchemaResolver, enc *encoder) error {
 	return fillRollback(enc)
 }
 

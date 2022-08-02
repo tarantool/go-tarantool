@@ -11,7 +11,6 @@ import (
 	. "github.com/tarantool/go-tarantool"
 	"github.com/tarantool/go-tarantool/queue"
 	"github.com/tarantool/go-tarantool/test_helpers"
-	"gopkg.in/vmihailenco/msgpack.v2"
 )
 
 var server = "127.0.0.1:3013"
@@ -183,7 +182,7 @@ type customData struct {
 	customField string
 }
 
-func (c *customData) DecodeMsgpack(d *msgpack.Decoder) error {
+func (c *customData) DecodeMsgpack(d *decoder) error {
 	var err error
 	var l int
 	if l, err = d.DecodeArrayLen(); err != nil {
@@ -198,7 +197,7 @@ func (c *customData) DecodeMsgpack(d *msgpack.Decoder) error {
 	return nil
 }
 
-func (c *customData) EncodeMsgpack(e *msgpack.Encoder) error {
+func (c *customData) EncodeMsgpack(e *encoder) error {
 	if err := e.EncodeArrayLen(1); err != nil {
 		return err
 	}

@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/tarantool/go-tarantool"
-	msgpack "gopkg.in/vmihailenco/msgpack.v2"
 )
 
 // Queue is a handle to Tarantool queue's tube.
@@ -336,7 +335,7 @@ type queueData struct {
 	result interface{}
 }
 
-func (qd *queueData) DecodeMsgpack(d *msgpack.Decoder) error {
+func (qd *queueData) DecodeMsgpack(d *decoder) error {
 	var err error
 	var l int
 	if l, err = d.DecodeArrayLen(); err != nil {

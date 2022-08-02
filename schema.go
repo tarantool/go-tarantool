@@ -3,8 +3,6 @@ package tarantool
 import (
 	"errors"
 	"fmt"
-	"gopkg.in/vmihailenco/msgpack.v2"
-	msgpcode "gopkg.in/vmihailenco/msgpack.v2/codes"
 )
 
 //nolint: varcheck,deadcode
@@ -51,27 +49,7 @@ type Space struct {
 	IndexesById map[uint32]*Index
 }
 
-func isUint(code byte) bool {
-	return code == msgpcode.Uint8 || code == msgpcode.Uint16 ||
-		code == msgpcode.Uint32 || code == msgpcode.Uint64 ||
-		msgpcode.IsFixedNum(code)
-}
-
-func isMap(code byte) bool {
-	return code == msgpcode.Map16 || code == msgpcode.Map32 || msgpcode.IsFixedMap(code)
-}
-
-func isArray(code byte) bool {
-	return code == msgpcode.Array16 || code == msgpcode.Array32 ||
-		msgpcode.IsFixedArray(code)
-}
-
-func isString(code byte) bool {
-	return msgpcode.IsFixedString(code) || code == msgpcode.Str8 ||
-		code == msgpcode.Str16 || code == msgpcode.Str32
-}
-
-func (space *Space) DecodeMsgpack(d *msgpack.Decoder) error {
+func (space *Space) DecodeMsgpack(d *decoder) error {
 	arrayLen, err := d.DecodeArrayLen()
 	if err != nil {
 		return err
@@ -96,13 +74,13 @@ func (space *Space) DecodeMsgpack(d *msgpack.Decoder) error {
 		if err != nil {
 			return err
 		}
-		if isString(code) {
+		if msgpackIsString(code) {
 			val, err := d.DecodeString()
 			if err != nil {
 				return err
 			}
 			space.Temporary = val == "temporary"
-		} else if isMap(code) {
+		} else if msgpackIsMap(code) {
 			mapLen, err := d.DecodeMapLen()
 			if err != nil {
 				return err
@@ -156,7 +134,7 @@ type Field struct {
 	Type string
 }
 
-func (field *Field) DecodeMsgpack(d *msgpack.Decoder) error {
+func (field *Field) DecodeMsgpack(d *decoder) error {
 	l, err := d.DecodeMapLen()
 	if err != nil {
 		return err
@@ -194,7 +172,7 @@ type Index struct {
 	Fields  []*IndexField
 }
 
-func (index *Index) DecodeMsgpack(d *msgpack.Decoder) error {
+func (index *Index) DecodeMsgpack(d *decoder) error {
 	_, err := d.DecodeArrayLen()
 	if err != nil {
 		return err
@@ -218,7 +196,7 @@ func (index *Index) DecodeMsgpack(d *msgpack.Decoder) error {
 		return err
 	}
 
-	if isUint(code) {
+	if msgpackIsUint(code) {
 		optsUint64, err := d.DecodeUint64()
 		if err != nil {
 			return nil
@@ -241,7 +219,7 @@ func (index *Index) DecodeMsgpack(d *msgpack.Decoder) error {
 		return err
 	}
 
-	if isUint(code) {
+	if msgpackIsUint(code) {
 		fieldCount, err := d.DecodeUint64()
 		if err != nil {
 			return err
@@ -270,13 +248,13 @@ type IndexField struct {
 	Type string
 }
 
-func (indexField *IndexField) DecodeMsgpack(d *msgpack.Decoder) error {
+func (indexField *IndexField) DecodeMsgpack(d *decoder) error {
 	code, err := d.PeekCode()
 	if err != nil {
 		return err
 	}
 
-	if isMap(code) {
+	if msgpackIsMap(code) {
 		mapLen, err := d.DecodeMapLen()
 		if err != nil {
 			return err
@@ -302,7 +280,7 @@ func (indexField *IndexField) DecodeMsgpack(d *msgpack.Decoder) error {
 			}
 		}
 		return nil
-	} else if isArray(code) {
+	} else if msgpackIsArray(code) {
 		arrayLen, err := d.DecodeArrayLen()
 		if err != nil {
 			return err

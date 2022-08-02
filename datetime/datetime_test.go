@@ -12,7 +12,6 @@ import (
 	. "github.com/tarantool/go-tarantool"
 	. "github.com/tarantool/go-tarantool/datetime"
 	"github.com/tarantool/go-tarantool/test_helpers"
-	"gopkg.in/vmihailenco/msgpack.v2"
 )
 
 var lesserBoundaryTimes = []time.Time{
@@ -270,7 +269,7 @@ type Tuple1 struct {
 	Datetime Datetime
 }
 
-func (t *Tuple1) EncodeMsgpack(e *msgpack.Encoder) error {
+func (t *Tuple1) EncodeMsgpack(e *encoder) error {
 	if err := e.EncodeArrayLen(2); err != nil {
 		return err
 	}
@@ -280,7 +279,7 @@ func (t *Tuple1) EncodeMsgpack(e *msgpack.Encoder) error {
 	return nil
 }
 
-func (t *Tuple1) DecodeMsgpack(d *msgpack.Decoder) error {
+func (t *Tuple1) DecodeMsgpack(d *decoder) error {
 	var err error
 	var l int
 	if l, err = d.DecodeArrayLen(); err != nil {
@@ -296,7 +295,7 @@ func (t *Tuple1) DecodeMsgpack(d *msgpack.Decoder) error {
 	return nil
 }
 
-func (ev *Event) EncodeMsgpack(e *msgpack.Encoder) error {
+func (ev *Event) EncodeMsgpack(e *encoder) error {
 	if err := e.EncodeArrayLen(2); err != nil {
 		return err
 	}
@@ -309,7 +308,7 @@ func (ev *Event) EncodeMsgpack(e *msgpack.Encoder) error {
 	return nil
 }
 
-func (ev *Event) DecodeMsgpack(d *msgpack.Decoder) error {
+func (ev *Event) DecodeMsgpack(d *decoder) error {
 	var err error
 	var l int
 	if l, err = d.DecodeArrayLen(); err != nil {
@@ -329,7 +328,7 @@ func (ev *Event) DecodeMsgpack(d *msgpack.Decoder) error {
 	return nil
 }
 
-func (c *Tuple2) EncodeMsgpack(e *msgpack.Encoder) error {
+func (c *Tuple2) EncodeMsgpack(e *encoder) error {
 	if err := e.EncodeArrayLen(3); err != nil {
 		return err
 	}
@@ -343,7 +342,7 @@ func (c *Tuple2) EncodeMsgpack(e *msgpack.Encoder) error {
 	return nil
 }
 
-func (c *Tuple2) DecodeMsgpack(d *msgpack.Decoder) error {
+func (c *Tuple2) DecodeMsgpack(d *decoder) error {
 	var err error
 	var l int
 	if l, err = d.DecodeArrayLen(); err != nil {
@@ -525,7 +524,7 @@ func TestMPEncode(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Unable to create Datetime from %s: %s", tm, err)
 			}
-			buf, err := msgpack.Marshal(dt)
+			buf, err := marshal(dt)
 			if err != nil {
 				t.Fatalf("Marshalling failed: %s", err.Error())
 			}
@@ -549,7 +548,7 @@ func TestMPDecode(t *testing.T) {
 			}
 			buf, _ := hex.DecodeString(testcase.mpBuf)
 			var v Datetime
-			err = msgpack.Unmarshal(buf, &v)
+			err = unmarshal(buf, &v)
 			if err != nil {
 				t.Fatalf("Unmarshalling failed: %s", err.Error())
 			}

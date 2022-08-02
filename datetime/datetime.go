@@ -13,8 +13,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"time"
-
-	"gopkg.in/vmihailenco/msgpack.v2"
 )
 
 // Datetime MessagePack serialization schema is an MP_EXT extension, which
@@ -101,9 +99,6 @@ func (dtime *Datetime) ToTime() time.Time {
 	return dtime.time
 }
 
-var _ msgpack.Marshaler = (*Datetime)(nil)
-var _ msgpack.Unmarshaler = (*Datetime)(nil)
-
 func (dtime *Datetime) MarshalMsgpack() ([]byte, error) {
 	tm := dtime.ToTime()
 
@@ -151,8 +146,4 @@ func (tm *Datetime) UnmarshalMsgpack(b []byte) error {
 		*tm = *dtp
 	}
 	return err
-}
-
-func init() {
-	msgpack.RegisterExt(datetime_extId, &Datetime{})
 }
