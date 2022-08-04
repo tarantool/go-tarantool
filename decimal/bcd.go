@@ -1,3 +1,5 @@
+package decimal
+
 // Package decimal implements methods to encode and decode BCD.
 //
 // BCD (Binary-Coded Decimal) is a sequence of bytes representing decimal
@@ -26,21 +28,20 @@
 //
 // The decimal -12.34 will be encoded as 0xd6, 0x01, 0x02, 0x01, 0x23, 0x4d:
 //
-// | MP_EXT (fixext 4) | MP_DECIMAL | scale |  1   |  2,3 |  4 (minus) |
-// |        0xd6       |    0x01    | 0x02  | 0x01 | 0x23 | 0x4d       |
+//  | MP_EXT (fixext 4) | MP_DECIMAL | scale |  1   |  2,3 |  4 (minus) |
+//  |        0xd6       |    0x01    | 0x02  | 0x01 | 0x23 | 0x4d       |
 //
 // The decimal 0.000000000000000000000000000000000010 will be encoded as
 // 0xc7, 0x03, 0x01, 0x24, 0x01, 0x0c:
 //
-// | MP_EXT (ext 8) | length | MP_DECIMAL | scale |  1   | 0 (plus) |
-// |      0xc7      |  0x03  |    0x01    | 0x24  | 0x01 | 0x0c     |
+//  | MP_EXT (ext 8) | length | MP_DECIMAL | scale |  1   | 0 (plus) |
+//  |      0xc7      |  0x03  |    0x01    | 0x24  | 0x01 | 0x0c     |
 //
 // See also:
 //
 // * MessagePack extensions https://www.tarantool.io/en/doc/latest/dev_guide/internals/msgpack_extensions/
 //
 // * An implementation in C language https://github.com/tarantool/decNumber/blob/master/decPacked.c
-package decimal
 
 import (
 	"fmt"

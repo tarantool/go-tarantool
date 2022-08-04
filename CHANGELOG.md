@@ -18,6 +18,8 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Fixed
 
+- Markdown of documentation for the decimal subpackage (#201)
+
 ## [1.7.0] - 2022-08-02
 
 ### Added
