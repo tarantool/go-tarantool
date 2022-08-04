@@ -55,6 +55,7 @@ func NewDecimalFromString(src string) (result *Decimal, err error) {
 	return
 }
 
+// MarshalMsgpack serializes the Decimal into a MessagePack representation.
 func (decNum *Decimal) MarshalMsgpack() ([]byte, error) {
 	one := decimal.NewFromInt(1)
 	maxSupportedDecimal := decimal.New(1, DecimalPrecision).Sub(one) // 10^DecimalPrecision - 1
@@ -74,15 +75,17 @@ func (decNum *Decimal) MarshalMsgpack() ([]byte, error) {
 	return bcdBuf, nil
 }
 
-// Decimal values can be encoded to fixext MessagePack, where buffer
-// has a fixed length encoded by first byte, and ext MessagePack, where
-// buffer length is not fixed and encoded by a number in a separate
-// field:
-//
-// +--------+-------------------+------------+===============+
-// | MP_EXT | length (optional) | MP_DECIMAL | PackedDecimal |
-// +--------+-------------------+------------+===============+
+// UnmarshalMsgpack deserializes a Decimal value from a MessagePack
+// representation.
 func (decNum *Decimal) UnmarshalMsgpack(b []byte) error {
+	// Decimal values can be encoded to fixext MessagePack, where buffer
+	// has a fixed length encoded by first byte, and ext MessagePack, where
+	// buffer length is not fixed and encoded by a number in a separate
+	// field:
+	//
+	//  +--------+-------------------+------------+===============+
+	//  | MP_EXT | length (optional) | MP_DECIMAL | PackedDecimal |
+	//  +--------+-------------------+------------+===============+
 	digits, err := decodeStringFromBCD(b)
 	if err != nil {
 		return fmt.Errorf("msgpack: can't decode string from BCD buffer (%x): %w", b, err)
