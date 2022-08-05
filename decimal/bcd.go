@@ -9,15 +9,15 @@
 // The first byte of the BCD array contains the first digit of the number,
 // represented as follows:
 //
-//     |  4 bits           |  4 bits           |
-//        = 0x                = the 1st digit
+//	|  4 bits           |  4 bits           |
+//	   = 0x                = the 1st digit
 //
 // (The first nibble contains 0 if the decimal number has an even number of
 // digits). The last byte of the BCD array contains the last digit of the
 // number and the final nibble, represented as follows:
 //
-//     |  4 bits           |  4 bits           |
-//        = the last digit    = nibble
+//	|  4 bits           |  4 bits           |
+//	   = the last digit    = nibble
 //
 // The final nibble represents the number's sign: 0x0a, 0x0c, 0x0e, 0x0f stand
 // for plus, 0x0b and 0x0d stand for minus.

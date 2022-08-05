@@ -17,18 +17,18 @@ Mode parameter:
 
 - PREFER_RW (prefer write only instance (master)) - if there is one, otherwise fallback to a read only one (replica).
 
-   Request   Default mode
- ---------- --------------
- | call    | no default  |
- | eval    | no default  |
- | ping    | no default  |
- | insert  | RW          |
- | delete  | RW          |
- | replace | RW          |
- | update  | RW          |
- | upsert  | RW          |
- | select  | ANY         |
- | get     | ANY         |
+	  Request   Default mode
+	---------- --------------
+	| call    | no default  |
+	| eval    | no default  |
+	| ping    | no default  |
+	| insert  | RW          |
+	| delete  | RW          |
+	| replace | RW          |
+	| update  | RW          |
+	| upsert  | RW          |
+	| select  | ANY         |
+	| get     | ANY         |
 */
 const (
 	ANY = iota
