@@ -100,3 +100,138 @@ func ExampleNewDatetime_noTimezone() {
 
 	fmt.Printf("Time value: %v\n", dt.ToTime())
 }
+
+// ExampleDatetime_Interval demonstrates how to get an Interval value between
+// two Datetime values.
+func ExampleDatetime_Interval() {
+	var first = "2013-01-31T17:51:56.000000009Z"
+	var second = "2015-03-20T17:50:56.000000009Z"
+
+	tmFirst, err := time.Parse(time.RFC3339, first)
+	if err != nil {
+		fmt.Printf("Error in time.Parse() is %v", err)
+		return
+	}
+	tmSecond, err := time.Parse(time.RFC3339, second)
+	if err != nil {
+		fmt.Printf("Error in time.Parse() is %v", err)
+		return
+	}
+
+	dtFirst, err := NewDatetime(tmFirst)
+	if err != nil {
+		fmt.Printf("Unable to create Datetime from %s: %s", tmFirst, err)
+		return
+	}
+	dtSecond, err := NewDatetime(tmSecond)
+	if err != nil {
+		fmt.Printf("Unable to create Datetime from %s: %s", tmSecond, err)
+		return
+	}
+
+	ival := dtFirst.Interval(dtSecond)
+	fmt.Printf("%v", ival)
+	// Output:
+	// {2 2 0 -11 0 -1 0 0 0}
+}
+
+// ExampleDatetime_Add demonstrates how to add an Interval to a Datetime value.
+func ExampleDatetime_Add() {
+	var datetime = "2013-01-31T17:51:56.000000009Z"
+	tm, err := time.Parse(time.RFC3339, datetime)
+	if err != nil {
+		fmt.Printf("Error in time.Parse() is %s", err)
+		return
+	}
+	dt, err := NewDatetime(tm)
+	if err != nil {
+		fmt.Printf("Unable to create Datetime from %s: %s", tm, err)
+		return
+	}
+
+	newdt, err := dt.Add(Interval{
+		Year:   1,
+		Month:  1,
+		Sec:    333,
+		Adjust: LastAdjust,
+	})
+	if err != nil {
+		fmt.Printf("Unable to add to Datetime: %s", err)
+		return
+	}
+
+	fmt.Printf("New time: %s\n", newdt.ToTime().String())
+	// Output:
+	// New time: 2014-02-28 17:57:29.000000009 +0000 UTC
+}
+
+// ExampleDatetime_Sub demonstrates how to subtract an Interval from a
+// Datetime value.
+func ExampleDatetime_Sub() {
+	var datetime = "2013-01-31T17:51:56.000000009Z"
+	tm, err := time.Parse(time.RFC3339, datetime)
+	if err != nil {
+		fmt.Printf("Error in time.Parse() is %s", err)
+		return
+	}
+	dt, err := NewDatetime(tm)
+	if err != nil {
+		fmt.Printf("Unable to create Datetime from %s: %s", tm, err)
+		return
+	}
+
+	newdt, err := dt.Sub(Interval{
+		Year:   1,
+		Month:  1,
+		Sec:    333,
+		Adjust: LastAdjust,
+	})
+	if err != nil {
+		fmt.Printf("Unable to sub from Datetime: %s", err)
+		return
+	}
+
+	fmt.Printf("New time: %s\n", newdt.ToTime().String())
+	// Output:
+	// New time: 2011-12-31 17:46:23.000000009 +0000 UTC
+}
+
+// ExampleInterval_Add demonstrates how to add two intervals.
+func ExampleInterval_Add() {
+	orig := Interval{
+		Year:   1,
+		Month:  2,
+		Week:   3,
+		Sec:    10,
+		Adjust: ExcessAdjust,
+	}
+	ival := orig.Add(Interval{
+		Year:   10,
+		Min:    30,
+		Adjust: LastAdjust,
+	})
+
+	fmt.Printf("%v", ival)
+	// Output:
+	// {11 2 3 0 0 30 10 0 1}
+}
+
+// ExampleInterval_Sub demonstrates how to subtract two intervals.
+func ExampleInterval_Sub() {
+	orig := Interval{
+		Year:   1,
+		Month:  2,
+		Week:   3,
+		Sec:    10,
+		Adjust: ExcessAdjust,
+	}
+	ival := orig.Sub(Interval{
+		Year:   10,
+		Min:    30,
+		Adjust: LastAdjust,
+	})
+
+	fmt.Printf("%v", ival)
+	// Output:
+	// {-9 2 3 0 0 -30 10 0 1}
+}

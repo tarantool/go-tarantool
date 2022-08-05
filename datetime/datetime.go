@@ -120,6 +120,104 @@ func NewDatetime(t time.Time) (*Datetime, error) {
 	return dt, nil
 }
 
+func intervalFromDatetime(dtime *Datetime) (ival Interval) {
+	ival.Year = int64(dtime.time.Year())
+	ival.Month = int64(dtime.time.Month())
+	ival.Day = int64(dtime.time.Day())
+	ival.Hour = int64(dtime.time.Hour())
+	ival.Min = int64(dtime.time.Minute())
+	ival.Sec = int64(dtime.time.Second())
+	ival.Nsec = int64(dtime.time.Nanosecond())
+	ival.Adjust = NoneAdjust
+
+	return ival
+}
+
+func daysInMonth(year int64, month int64) int64 {
+	if month == 12 {
+		year++
+		month = 1
+	} else {
+		month += 1
+	}
+
+	// We use the fact that time.Date accepts values outside their usual
+	// ranges - the values are normalized during the conversion.
+	//
+	// So we got a day (year, month - 1, last day of the month) before
+	// (year, month, 1) because we pass (year, month, 0).
+	return int64(time.Date(int(year), time.Month(month), 0, 0, 0, 0, 0, time.UTC).Day())
+}
+
+// C imlementation:
+// https://github.com/tarantool/c-dt/blob/cec6acebb54d9e73ea0b99c63898732abd7683a6/dt_arithmetic.c#L74-L98
+func addMonth(ival *Interval, delta int64, adjust Adjust) {
+	oldYear := ival.Year
+	oldMonth := ival.Month
+
+	ival.Month += delta
+	if ival.Month < 1 || ival.Month > 12 {
+		ival.Year += ival.Month / 12
+		ival.Month %= 12
+		if ival.Month < 1 {
+			ival.Year--
+			ival.Month += 12
+		}
+	}
+	if adjust == ExcessAdjust || ival.Day < 28 {
+		return
+	}
+
+	dim := daysInMonth(ival.Year, ival.Month)
+	if ival.Day > dim || (adjust == LastAdjust && ival.Day == daysInMonth(oldYear, oldMonth)) {
+		ival.Day = dim
+	}
+}
+
+func (dtime *Datetime) add(ival Interval, positive bool) (*Datetime, error) {
+	newVal := intervalFromDatetime(dtime)
+
+	var direction int64
+	if positive {
+		direction = 1
+	} else {
+		direction = -1
+	}
+
+	addMonth(&newVal, direction*ival.Year*12+direction*ival.Month, ival.Adjust)
+	newVal.Day += direction * 7 * ival.Week
+	newVal.Day += direction * ival.Day
+	newVal.Hour += direction * ival.Hour
+	newVal.Min += direction * ival.Min
+	newVal.Sec += direction * ival.Sec
+	newVal.Nsec += direction * ival.Nsec
+
+	tm := time.Date(int(newVal.Year), time.Month(newVal.Month),
+		int(newVal.Day), int(newVal.Hour), int(newVal.Min),
+		int(newVal.Sec), int(newVal.Nsec), dtime.time.Location())
+
+	return NewDatetime(tm)
+}
+
+// Add creates a new Datetime as addition of the Datetime and Interval. It may
+// return an error if a new Datetime is out of supported range.
+func (dtime *Datetime) Add(ival Interval) (*Datetime, error) {
+	return dtime.add(ival, true)
+}
+
+// Sub creates a new Datetime as subtraction of the Datetime and Interval. It
+// may return an error if a new Datetime is out of supported range.
+func (dtime *Datetime) Sub(ival Interval) (*Datetime, error) {
+	return dtime.add(ival, false)
+}
+
+// Interval returns an Interval value to a next Datetime value.
+func (dtime *Datetime) Interval(next *Datetime) Interval {
+	curIval := intervalFromDatetime(dtime)
+	nextIval := intervalFromDatetime(next)
+	return nextIval.Sub(curIval)
+}
+
 // ToTime returns a time.Time that Datetime contains.
 func (dtime *Datetime) ToTime() time.Time {
 	return dtime.time
