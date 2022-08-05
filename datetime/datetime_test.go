@@ -54,6 +54,354 @@ func skipIfDatetimeUnsupported(t *testing.T) {
 	}
 }
 
+func TestDatetimeAdd(t *testing.T) {
+	tm := time.Unix(0, 0).UTC()
+	dt, err := NewDatetime(tm)
+	if err != nil {
+		t.Fatalf("Unexpected error: %s", err.Error())
+	}
+
+	newdt, err := dt.Add(Interval{
+		Year:  1,
+		Month: -3,
+		Week:  3,
+		Day:   4,
+		Hour:  -5,
+		Min:   5,
+		Sec:   6,
+		Nsec:  -3,
+	})
+	if err != nil {
+		t.Fatalf("Unexpected error: %s", err.Error())
+	}
+
+	expected := "1970-10-25 19:05:05.999999997 +0000 UTC"
+	if newdt.ToTime().String() != expected {
+		t.Fatalf("Unexpected result: %s, expected: %s", newdt.ToTime().String(), expected)
+	}
+}
+
+func TestDatetimeAddAdjust(t *testing.T) {
+	/*
+	 How-to test in Tarantool:
+	 > date = require("datetime")
+	 > date.parse("2012-12-31T00:00:00Z") + {month = -1, adjust = "excess"}
+	*/
+	cases := []struct {
+		year   int64
+		month  int64
+		adjust Adjust
+		date   string
+		want   string
+	}{
+		{
+			year:   0,
+			month:  1,
+			adjust: NoneAdjust,
+			date:   "2013-02-28T00:00:00Z",
+			want:   "2013-03-28T00:00:00Z",
+		},
+		{
+			year:   0,
+			month:  1,
+			adjust: LastAdjust,
+			date:   "2013-02-28T00:00:00Z",
+			want:   "2013-03-31T00:00:00Z",
+		},
+		{
+			year:   0,
+			month:  1,
+			adjust: ExcessAdjust,
+			date:   "2013-02-28T00:00:00Z",
+			want:   "2013-03-28T00:00:00Z",
+		},
+		{
+			year:   0,
+			month:  1,
+			adjust: NoneAdjust,
+			date:   "2013-01-31T00:00:00Z",
+			want:   "2013-02-28T00:00:00Z",
+		},
+		{
+			year:   0,
+			month:  1,
+			adjust: LastAdjust,
+			date:   "2013-01-31T00:00:00Z",
+			want:   "2013-02-28T00:00:00Z",
+		},
+		{
+			year:   0,
+			month:  1,
+			adjust: ExcessAdjust,
+			date:   "2013-01-31T00:00:00Z",
+			want:   "2013-03-03T00:00:00Z",
+		},
+		{
+			year:   2,
+			month:  2,
+			adjust: NoneAdjust,
+			date:   "2011-12-31T00:00:00Z",
+			want:   "2014-02-28T00:00:00Z",
+		},
+		{
+			year:   2,
+			month:  2,
+			adjust: LastAdjust,
+			date:   "2011-12-31T00:00:00Z",
+			want:   "2014-02-28T00:00:00Z",
+		},
+		{
+			year:   2,
+			month:  2,
+			adjust: ExcessAdjust,
+			date:   "2011-12-31T00:00:00Z",
+			want:   "2014-03-03T00:00:00Z",
+		},
+		{
+			year:   0,
+			month:  -1,
+			adjust: NoneAdjust,
+			date:   "2013-02-28T00:00:00Z",
+			want:   "2013-01-28T00:00:00Z",
+		},
+		{
+			year:   0,
+			month:  -1,
+			adjust: LastAdjust,
+			date:   "2013-02-28T00:00:00Z",
+			want:   "2013-01-31T00:00:00Z",
+		},
+		{
+			year:   0,
+			month:  -1,
+			adjust: ExcessAdjust,
+			date:   "2013-02-28T00:00:00Z",
+			want:   "2013-01-28T00:00:00Z",
+		},
+		{
+			year:   0,
+			month:  -1,
+			adjust: NoneAdjust,
+			date:   "2012-12-31T00:00:00Z",
+			want:   "2012-11-30T00:00:00Z",
+		},
+		{
+			year:   0,
+			month:  -1,
+			adjust: LastAdjust,
+			date:   "2012-12-31T00:00:00Z",
+			want:   "2012-11-30T00:00:00Z",
+		},
+		{
+			year:   0,
+			month:  -1,
+			adjust: ExcessAdjust,
+			date:   "2012-12-31T00:00:00Z",
+			want:   "2012-12-01T00:00:00Z",
+		},
+		{
+			year:   -2,
+			month:  -2,
+			adjust: NoneAdjust,
+			date:   "2011-01-31T00:00:00Z",
+			want:   "2008-11-30T00:00:00Z",
+		},
+		{
+			year:   -2,
+			month:  -2,
+			adjust: LastAdjust,
+			date:   "2011-12-31T00:00:00Z",
+			want:   "2009-10-31T00:00:00Z",
+		},
+		{
+			year:   -2,
+			month:  -2,
+			adjust: ExcessAdjust,
+			date:   "2011-12-31T00:00:00Z",
+			want:   "2009-10-31T00:00:00Z",
+		},
+	}
+
+	for _, tc := range cases {
+		tm, err := time.Parse(time.RFC3339, tc.date)
+		if err != nil {
+			t.Fatalf("Unexpected error: %s", err.Error())
+		}
+		dt, err := NewDatetime(tm)
+		if err != nil {
+			t.Fatalf("Unexpected error: %s", err.Error())
+		}
+		t.Run(fmt.Sprintf("%d_%d_%d_%s", tc.year, tc.month, tc.adjust, tc.date),
+			func(t *testing.T) {
+				newdt, err := dt.Add(Interval{
+					Year:   tc.year,
+					Month:  tc.month,
+					Adjust: tc.adjust,
+				})
+				if err != nil {
+					t.Fatalf("Unable to add: %s", err.Error())
+				}
+				if newdt == nil {
+					t.Fatalf("Unexpected nil value")
+				}
+				res := newdt.ToTime().Format(time.RFC3339)
+				if res != tc.want {
+					t.Fatalf("Unexpected result %s, expected %s", res, tc.want)
+				}
+			})
+	}
+}
+
+func TestDatetimeAddSubSymmetric(t *testing.T) {
+	tm := time.Unix(0, 0).UTC()
+	dt, err := NewDatetime(tm)
+	if err != nil {
+		t.Fatalf("Unexpected error: %s", err.Error())
+	}
+
+	newdtadd, err := dt.Add(Interval{
+		Year:  1,
+		Month: -3,
+		Week:  3,
+		Day:   4,
+		Hour:  -5,
+		Min:   5,
+		Sec:   6,
+		Nsec:  -3,
+	})
+	if err != nil {
+		t.Fatalf("Unexpected error: %s", err.Error())
+	}
+
+	newdtsub, err := dt.Sub(Interval{
+		Year:  -1,
+		Month: 3,
+		Week:  -3,
+		Day:   -4,
+		Hour:  5,
+		Min:   -5,
+		Sec:   -6,
+		Nsec:  3,
+	})
+	if err != nil {
+		t.Fatalf("Unexpected error: %s", err.Error())
+	}
+
+	expected := "1970-10-25 19:05:05.999999997 +0000 UTC"
+	addstr := newdtadd.ToTime().String()
+	substr := newdtsub.ToTime().String()
+
+	if addstr != expected {
+		t.Fatalf("Unexpected Add result: %s, expected: %s", addstr, expected)
+	}
+	if substr != expected {
+		t.Fatalf("Unexpected Sub result: %s, expected: %s", substr, expected)
+	}
+}
+
+// We have a separate test for accurate Datetime boundaries.
+func TestDatetimeAddOutOfRange(t *testing.T) {
+	tm := time.Unix(0, 0).UTC()
+	dt, err := NewDatetime(tm)
+	if err != nil {
+		t.Fatalf("Unexpected error: %s", err.Error())
+	}
+
+	newdt, err := dt.Add(Interval{Year: 1000000000})
+	if err == nil {
+		t.Fatalf("Unexpected success: %v", newdt)
+	}
+	expected := "time 1000001970-01-01 00:00:00 +0000 UTC is out of supported range"
+	if err.Error() != expected {
+		t.Fatalf("Unexpected error: %s", err.Error())
+	}
+	if newdt != nil {
+		t.Fatalf("Unexpected result: %v", newdt)
+	}
+}
+
+func TestDatetimeInterval(t *testing.T) {
+	var first = "2015-03-20T17:50:56.000000009Z"
+	var second = "2013-01-31T17:51:56.000000009Z"
+
+	tmFirst, err := time.Parse(time.RFC3339, first)
+	if err != nil {
+		t.Fatalf("Error in time.Parse(): %s", err)
+	}
+	tmSecond, err := time.Parse(time.RFC3339, second)
+	if err != nil {
+		t.Fatalf("Error in time.Parse(): %s", err)
+	}
+
+	dtFirst, err := NewDatetime(tmFirst)
+	if err != nil {
+		t.Fatalf("Unable to create Datetime from %s: %s", tmFirst, err)
+	}
+	dtSecond, err := NewDatetime(tmSecond)
+	if err != nil {
+		t.Fatalf("Unable to create Datetime from %s: %s", tmSecond, err)
+	}
+
+	ivalFirst := dtFirst.Interval(dtSecond)
+	ivalSecond := dtSecond.Interval(dtFirst)
+
+	expectedFirst := Interval{-2, -2, 0, 11, 0, 1, 0, 0, NoneAdjust}
+	expectedSecond := Interval{2, 2, 0, -11, 0, -1, 0, 0, NoneAdjust}
+
+	if !reflect.DeepEqual(ivalFirst, expectedFirst) {
+		t.Errorf("Unexpected interval %v, expected %v", ivalFirst, expectedFirst)
+	}
+	if !reflect.DeepEqual(ivalSecond, expectedSecond) {
+		t.Errorf("Unexpected interval %v, expected %v", ivalFirst, expectedSecond)
+	}
+}
+
+func TestDatetimeTarantoolInterval(t *testing.T) {
+	skipIfDatetimeUnsupported(t)
+
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	defer conn.Close()
+
+	dates := []string{
+		"2015-03-20T17:50:56.000000009+01:00",
+		"2015-12-21T17:50:53Z",
+		"2010-02-24T23:03:56.0000013-04:00",
+		"1980-03-28T13:18:39.000099Z",
+		"2025-08-01T00:00:00.000000003+11:00",
+		"2020-01-01T01:01:01+11:30",
+	}
+	datetimes := []*Datetime{}
+	for _, date := range dates {
+		tm, err := time.Parse(time.RFC3339, date)
+		if err != nil {
+			t.Fatalf("Error in time.Parse(%s): %s", date, err)
+		}
+		dt, err := NewDatetime(tm)
+		if err != nil {
+			t.Fatalf("Error in NewDatetime(%s): %s", tm, err)
+		}
+		datetimes = append(datetimes, dt)
+	}
+
+	for _, dti := range datetimes {
+		for _, dtj := range datetimes {
+			t.Run(fmt.Sprintf("%s_to_%s", dti.ToTime(), dtj.ToTime()),
+				func(t *testing.T) {
+					resp, err := conn.Call17("call_datetime_interval",
+						[]interface{}{dti, dtj})
+					if err != nil {
+						t.Fatalf("Unable to call call_datetime_interval: %s", err)
+					}
+					ival := dti.Interval(dtj)
+					ret := resp.Data[0].(Interval)
+					if !reflect.DeepEqual(ival, ret) {
+						t.Fatalf("%v != %v", ival, ret)
+					}
+				})
+		}
+	}
+}
+
 // Expect that first element of tuple is time.Time. Compare extracted actual
 // and expected datetime values.
 func assertDatetimeIsEqual(t *testing.T, tuples []interface{}, tm time.Time) {

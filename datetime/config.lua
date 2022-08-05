@@ -61,6 +61,16 @@ local function call_datetime_testdata()
 end
 rawset(_G, 'call_datetime_testdata', call_datetime_testdata)
 
+local function call_interval_testdata(interval)
+    return interval
+end
+rawset(_G, 'call_interval_testdata', call_interval_testdata)
+
+local function call_datetime_interval(dtleft, dtright)
+    return dtright - dtleft
+end
+rawset(_G, 'call_datetime_interval', call_datetime_interval)
+
 -- Set listen only when every other thing is configured.
 box.cfg{
     listen = os.getenv("TEST_TNT_LISTEN"),

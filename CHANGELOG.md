@@ -12,6 +12,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 - Optional msgpack.v5 usage (#124)
 - TZ support for datetime (#163)
+- Interval support for datetime (#165)
 
 ### Changed
 
