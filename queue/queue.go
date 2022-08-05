@@ -3,7 +3,7 @@
 //
 // Since: 1.5.
 //
-// See also
+// # See also
 //
 // * Tarantool queue module https://github.com/tarantool/queue
 package queue

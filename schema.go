@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-//nolint: varcheck,deadcode
+// nolint: varcheck,deadcode
 const (
 	maxSchemas             = 10000
 	spaceSpId              = 280

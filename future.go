@@ -210,10 +210,9 @@ func (fut *Future) GetTyped(result interface{}) error {
 // and a response. Push messages and the response will contain deserialized
 // result in Data field as for the Get() function.
 //
-// See also
+// # See also
 //
 // * box.session.push() https://www.tarantool.io/en/doc/latest/reference/reference_lua/box_session/push/
-//
 func (fut *Future) GetIterator() (it TimeoutResponseIterator) {
 	futit := &asyncResponseIterator{
 		fut: fut,

@@ -4,7 +4,7 @@
 //
 // Since: 1.6.0.
 //
-// See also
+// # See also
 //
 // * Tarantool commit with UUID support https://github.com/tarantool/tarantool/commit/d68fc29246714eee505bc9bbcd84a02de17972c5
 //

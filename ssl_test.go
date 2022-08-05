@@ -198,20 +198,20 @@ type test struct {
 }
 
 /*
-	Requirements from Tarantool Enterprise Edition manual:
-	https://www.tarantool.io/ru/enterprise_doc/security/#configuration
+Requirements from Tarantool Enterprise Edition manual:
+https://www.tarantool.io/ru/enterprise_doc/security/#configuration
 
-	For a server:
-	KeyFile - mandatory
-	CertFile - mandatory
-	CaFile - optional
-	Ciphers - optional
+For a server:
+KeyFile - mandatory
+CertFile - mandatory
+CaFile - optional
+Ciphers - optional
 
-	For a client:
-	KeyFile - optional, mandatory if server.CaFile set
-	CertFile - optional, mandatory if server.CaFile set
-	CaFile - optional,
-	Ciphers - optional
+For a client:
+KeyFile - optional, mandatory if server.CaFile set
+CertFile - optional, mandatory if server.CaFile set
+CaFile - optional,
+Ciphers - optional
 */
 var tests = []test{
 	{
