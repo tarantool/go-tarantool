@@ -286,7 +286,7 @@ func (t *Tuple1) DecodeMsgpack(d *decoder) error {
 		return err
 	}
 	if l != 1 {
-		return fmt.Errorf("array len doesn't match: %d", l)
+		return fmt.Errorf("Array len doesn't match: %d", l)
 	}
 	err = d.Decode(&t.Datetime)
 	if err != nil {
@@ -315,7 +315,7 @@ func (ev *Event) DecodeMsgpack(d *decoder) error {
 		return err
 	}
 	if l != 2 {
-		return fmt.Errorf("array len doesn't match: %d", l)
+		return fmt.Errorf("Array len doesn't match: %d", l)
 	}
 	if ev.Location, err = d.DecodeString(); err != nil {
 		return err
@@ -326,7 +326,7 @@ func (ev *Event) DecodeMsgpack(d *decoder) error {
 	}
 	var ok bool
 	if ev.Datetime, ok = toDatetime(res); !ok {
-		return fmt.Errorf("datetime doesn't match")
+		return fmt.Errorf("Datetime doesn't match")
 	}
 	return nil
 }
@@ -352,7 +352,7 @@ func (c *Tuple2) DecodeMsgpack(d *decoder) error {
 		return err
 	}
 	if l != 3 {
-		return fmt.Errorf("array len doesn't match: %d", l)
+		return fmt.Errorf("Array len doesn't match: %d", l)
 	}
 	if c.Cid, err = d.DecodeUint(); err != nil {
 		return err
