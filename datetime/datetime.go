@@ -86,7 +86,7 @@ func NewDatetime(t time.Time) (*Datetime, error) {
 	seconds := t.Unix()
 
 	if seconds < minSeconds || seconds > maxSeconds {
-		return nil, fmt.Errorf("Time %s is out of supported range.", t)
+		return nil, fmt.Errorf("time %s is out of supported range", t)
 	}
 
 	dt := new(Datetime)
