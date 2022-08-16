@@ -25,11 +25,11 @@ var (
 	ErrWrongCheckTimeout = errors.New("wrong check timeout, must be greater than 0")
 	ErrNoConnection      = errors.New("no active connections")
 	ErrTooManyArgs       = errors.New("too many arguments")
-	ErrIncorrectResponse = errors.New("Incorrect response format")
-	ErrIncorrectStatus   = errors.New("Incorrect instance status: status should be `running`")
-	ErrNoRwInstance      = errors.New("Can't find rw instance in pool")
-	ErrNoRoInstance      = errors.New("Can't find ro instance in pool")
-	ErrNoHealthyInstance = errors.New("Can't find healthy instance in pool")
+	ErrIncorrectResponse = errors.New("incorrect response format")
+	ErrIncorrectStatus   = errors.New("incorrect instance status: status should be `running`")
+	ErrNoRwInstance      = errors.New("can't find rw instance in pool")
+	ErrNoRoInstance      = errors.New("can't find ro instance in pool")
+	ErrNoHealthyInstance = errors.New("can't find healthy instance in pool")
 )
 
 /*

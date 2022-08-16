@@ -254,7 +254,7 @@ func ExampleConnectionPool_SelectAsync_err() {
 	fmt.Println("Future", 0, "Error", err)
 
 	// Output:
-	// Future 0 Error Can't find rw instance in pool
+	// Future 0 Error can't find rw instance in pool
 }
 
 func ExampleConnectionPool_Ping() {

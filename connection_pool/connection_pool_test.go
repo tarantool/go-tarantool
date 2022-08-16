@@ -431,7 +431,7 @@ func TestRoundRobinStrategy_NoReplica(t *testing.T) {
 	// RO
 	_, err = connPool.Eval("return box.cfg.listen", []interface{}{}, connection_pool.RO)
 	require.NotNilf(t, err, "expected to fail after Eval, but error is nil")
-	require.Equal(t, "Can't find ro instance in pool", err.Error())
+	require.Equal(t, "can't find ro instance in pool", err.Error())
 
 	// ANY
 	args := test_helpers.ListenOnInstanceArgs{
@@ -502,7 +502,7 @@ func TestRoundRobinStrategy_NoMaster(t *testing.T) {
 	// RW
 	_, err = connPool.Eval("return box.cfg.listen", []interface{}{}, connection_pool.RW)
 	require.NotNilf(t, err, "expected to fail after Eval, but error is nil")
-	require.Equal(t, "Can't find rw instance in pool", err.Error())
+	require.Equal(t, "can't find rw instance in pool", err.Error())
 
 	// ANY
 	args := test_helpers.ListenOnInstanceArgs{
