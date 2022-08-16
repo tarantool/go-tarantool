@@ -2,6 +2,7 @@ package queue
 
 import (
 	"fmt"
+	"time"
 )
 
 // Task represents a task from Tarantool queue's tube.
@@ -52,6 +53,11 @@ func (t *Task) Data() interface{} {
 // Status is a getter for task status.
 func (t *Task) Status() string {
 	return t.status
+}
+
+// Touch increases ttr of running task.
+func (t *Task) Touch(increment time.Duration) error {
+	return t.accept(t.q._touch(t.id, increment))
 }
 
 // Ack signals about task completion.
