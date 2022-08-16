@@ -10,6 +10,8 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Added
 
+- Support queue 1.2.0 (#177)
+
 ### Changed
 
 ### Fixed

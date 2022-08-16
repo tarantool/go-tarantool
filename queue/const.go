@@ -16,3 +16,22 @@ const (
 	UTUBE     queueType = "utube"
 	UTUBE_TTL queueType = "utubettl"
 )
+
+type State int
+
+const (
+	UnknownState State = iota
+	InitState
+	StartupState
+	RunningState
+	EndingState
+	WaitingState
+)
+
+var strToState = map[string]State{
+	"INIT":    InitState,
+	"STARTUP": StartupState,
+	"RUNNING": RunningState,
+	"ENDING":  EndingState,
+	"WAITING": WaitingState,
+}
