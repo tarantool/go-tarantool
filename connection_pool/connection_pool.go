@@ -591,17 +591,6 @@ func (connPool *ConnectionPool) getConnectionRole(conn *tarantool.Connection) (R
 		return unknown, ErrIncorrectStatus
 	}
 
-	resp, err = conn.Call17("box.info", []interface{}{})
-	if err != nil {
-		return unknown, err
-	}
-	if resp == nil {
-		return unknown, ErrIncorrectResponse
-	}
-	if len(resp.Data) < 1 {
-		return unknown, ErrIncorrectResponse
-	}
-
 	replicaRole, ok := resp.Data[0].(map[interface{}]interface{})["ro"]
 	if !ok {
 		return unknown, ErrIncorrectResponse
