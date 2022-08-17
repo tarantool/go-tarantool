@@ -154,12 +154,19 @@ func (connPool *ConnectionPool) Close() []error {
 	close(connPool.control)
 	connPool.state = connClosed
 
-	rwErrs := connPool.rwPool.CloseConns()
-	roErrs := connPool.roPool.CloseConns()
+	errs := make([]error, 0, len(connPool.addrs))
 
-	allErrs := append(rwErrs, roErrs...)
+	for _, addr := range connPool.addrs {
+		if conn := connPool.anyPool.DeleteConnByAddr(addr); conn != nil {
+			if err := conn.Close(); err != nil {
+				errs = append(errs, err)
+			}
+		}
+		connPool.rwPool.DeleteConnByAddr(addr)
+		connPool.roPool.DeleteConnByAddr(addr)
+	}
 
-	return allErrs
+	return errs
 }
 
 // GetAddrs gets addresses of connections in pool.
