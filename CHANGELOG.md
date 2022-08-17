@@ -10,6 +10,14 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [1.8.0] - 2022-08-17
+
+### Added
+
 - Optional msgpack.v5 usage (#124)
 - TZ support for datetime (#163)
 - Interval support for datetime (#165)
