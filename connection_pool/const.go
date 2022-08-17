@@ -34,11 +34,3 @@ const (
 	MasterRole              // The instance is read-write mode.
 	ReplicaRole             // The instance is in read-only mode.
 )
-
-type State uint32
-
-// pool state
-const (
-	connConnected = iota
-	connClosed
-)
