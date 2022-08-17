@@ -60,19 +60,6 @@ func (r *RoundRobinStrategy) IsEmpty() bool {
 	return r.size == 0
 }
 
-func (r *RoundRobinStrategy) CloseConns() []error {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
-
-	errs := make([]error, len(r.conns))
-
-	for i, conn := range r.conns {
-		errs[i] = conn.Close()
-	}
-
-	return errs
-}
-
 func (r *RoundRobinStrategy) GetNextConnection() *tarantool.Connection {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
