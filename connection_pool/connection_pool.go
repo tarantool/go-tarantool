@@ -14,7 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"sync/atomic"
+	"sync"
 	"time"
 
 	"github.com/tarantool/go-tarantool"
@@ -69,12 +69,13 @@ type ConnectionPool struct {
 	connOpts tarantool.Opts
 	opts     OptsPool
 
-	notify  chan tarantool.ConnEvent
-	state   State
-	control chan struct{}
-	roPool  *RoundRobinStrategy
-	rwPool  *RoundRobinStrategy
-	anyPool *RoundRobinStrategy
+	notify     chan tarantool.ConnEvent
+	state      state
+	control    chan struct{}
+	roPool     *RoundRobinStrategy
+	rwPool     *RoundRobinStrategy
+	anyPool    *RoundRobinStrategy
+	poolsMutex sync.RWMutex
 }
 
 // ConnectWithOpts creates pool for instances with addresses addrs
@@ -100,6 +101,7 @@ func ConnectWithOpts(addrs []string, connOpts tarantool.Opts, opts OptsPool) (co
 		connOpts: connOpts,
 		opts:     opts,
 		notify:   notify,
+		state:    unknownState,
 		control:  make(chan struct{}),
 		rwPool:   rwPool,
 		roPool:   roPool,
@@ -109,10 +111,12 @@ func ConnectWithOpts(addrs []string, connOpts tarantool.Opts, opts OptsPool) (co
 
 	somebodyAlive := connPool.fillPools()
 	if !somebodyAlive {
-		connPool.Close()
+		connPool.state.set(closedState)
+		connPool.closeImpl()
 		return nil, ErrNoConnection
 	}
 
+	connPool.state.set(connectedState)
 	go connPool.checker()
 
 	return connPool, nil
@@ -128,7 +132,10 @@ func Connect(addrs []string, connOpts tarantool.Opts) (connPool *ConnectionPool,
 
 // ConnectedNow gets connected status of pool.
 func (connPool *ConnectionPool) ConnectedNow(mode Mode) (bool, error) {
-	if connPool.getState() != connConnected {
+	connPool.poolsMutex.RLock()
+	defer connPool.poolsMutex.RUnlock()
+
+	if connPool.state.get() != connectedState {
 		return false, nil
 	}
 	switch mode {
@@ -157,10 +164,8 @@ func (connPool *ConnectionPool) ConfiguredTimeout(mode Mode) (time.Duration, err
 	return conn.ConfiguredTimeout(), nil
 }
 
-// Close closes connections in pool.
-func (connPool *ConnectionPool) Close() []error {
+func (connPool *ConnectionPool) closeImpl() []error {
 	close(connPool.control)
-	connPool.state = connClosed
 
 	errs := make([]error, 0, len(connPool.addrs))
 
@@ -177,6 +182,17 @@ func (connPool *ConnectionPool) Close() []error {
 	return errs
 }
 
+// Close closes connections in pool.
+func (connPool *ConnectionPool) Close() []error {
+	if connPool.state.cas(connectedState, closedState) {
+		connPool.poolsMutex.Lock()
+		defer connPool.poolsMutex.Unlock()
+
+		return connPool.closeImpl()
+	}
+	return nil
+}
+
 // GetAddrs gets addresses of connections in pool.
 func (connPool *ConnectionPool) GetAddrs() []string {
 	cpy := make([]string, len(connPool.addrs))
@@ -187,6 +203,13 @@ func (connPool *ConnectionPool) GetAddrs() []string {
 // GetPoolInfo gets information of connections (connected status, ro/rw role).
 func (connPool *ConnectionPool) GetPoolInfo() map[string]*ConnectionInfo {
 	info := make(map[string]*ConnectionInfo)
+
+	connPool.poolsMutex.RLock()
+	defer connPool.poolsMutex.RUnlock()
+
+	if connPool.state.get() != connectedState {
+		return info
+	}
 
 	for _, addr := range connPool.addrs {
 		conn, role := connPool.getConnectionFromPool(addr)
@@ -638,11 +661,9 @@ func (connPool *ConnectionPool) getConnectionFromPool(addr string) (*tarantool.C
 func (connPool *ConnectionPool) deleteConnectionFromPool(addr string) {
 	_ = connPool.anyPool.DeleteConnByAddr(addr)
 	conn := connPool.rwPool.DeleteConnByAddr(addr)
-	if conn != nil {
-		return
+	if conn == nil {
+		connPool.roPool.DeleteConnByAddr(addr)
 	}
-
-	connPool.roPool.DeleteConnByAddr(addr)
 }
 
 func (connPool *ConnectionPool) setConnectionToPool(addr string, conn *tarantool.Connection) error {
@@ -689,32 +710,30 @@ func (connPool *ConnectionPool) refreshConnection(addr string) {
 }
 
 func (connPool *ConnectionPool) checker() {
-
 	timer := time.NewTicker(connPool.opts.CheckTimeout)
 	defer timer.Stop()
 
-	for connPool.getState() != connClosed {
+	for connPool.state.get() != closedState {
 		select {
 		case <-connPool.control:
 			return
 		case e := <-connPool.notify:
-			if connPool.getState() == connClosed {
-				return
-			}
-			if e.Conn.ClosedNow() {
+			connPool.poolsMutex.Lock()
+			if connPool.state.get() == connectedState && e.Conn.ClosedNow() {
 				connPool.deleteConnectionFromPool(e.Conn.Addr())
 			}
+			connPool.poolsMutex.Unlock()
 		case <-timer.C:
-			for _, addr := range connPool.addrs {
-				if connPool.getState() == connClosed {
-					return
+			connPool.poolsMutex.Lock()
+			if connPool.state.get() == connectedState {
+				for _, addr := range connPool.addrs {
+					// Reopen connection
+					// Relocate connection between subpools
+					// if ro/rw was updated
+					connPool.refreshConnection(addr)
 				}
-
-				// Reopen connection
-				// Relocate connection between subpools
-				// if ro/rw was updated
-				connPool.refreshConnection(addr)
 			}
+			connPool.poolsMutex.Unlock()
 		}
 	}
 }
@@ -722,6 +741,8 @@ func (connPool *ConnectionPool) checker() {
 func (connPool *ConnectionPool) fillPools() bool {
 	somebodyAlive := false
 
+	// It is called before checker() goroutine and before closeImpl() may be
+	// called so we don't expect concurrency issues here.
 	for _, addr := range connPool.addrs {
 		conn, err := tarantool.Connect(addr, connPool.connOpts)
 		if err != nil {
@@ -738,10 +759,6 @@ func (connPool *ConnectionPool) fillPools() bool {
 	}
 
 	return somebodyAlive
-}
-
-func (connPool *ConnectionPool) getState() uint32 {
-	return atomic.LoadUint32((*uint32)(&connPool.state))
 }
 
 func (connPool *ConnectionPool) getNextConnection(mode Mode) (*tarantool.Connection, error) {

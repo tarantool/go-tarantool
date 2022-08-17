@@ -22,6 +22,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 - Segmentation faults in ConnectionPool requests after disconnect (#208)
 - Addresses in ConnectionPool may be changed from an external code (#208)
 - ConnectionPool recreates connections too often (#208)
+- A connection is still opened after ConnectionPool.Close() (#208)
 
 ## [1.8.0] - 2022-08-17
 
