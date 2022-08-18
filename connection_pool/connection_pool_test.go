@@ -1295,7 +1295,7 @@ func TestNewPrepared(t *testing.T) {
 	stmt, err := connPool.NewPrepared("SELECT NAME0, NAME1 FROM SQL_TEST WHERE NAME0=:id AND NAME1=:name;", connection_pool.RO)
 	require.Nilf(t, err, "fail to prepare statement: %v", err)
 
-	if connPool.GetPoolInfo()[stmt.Conn.Addr()].ConnRole != connection_pool.RO {
+	if connPool.GetPoolInfo()[stmt.Conn.Addr()].ConnRole != connection_pool.ReplicaRole {
 		t.Errorf("wrong role for the statement's connection")
 	}
 
