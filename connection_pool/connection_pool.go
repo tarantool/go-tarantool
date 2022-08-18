@@ -558,6 +558,15 @@ func (connPool *ConnectionPool) NewStream(userMode Mode) (*tarantool.Stream, err
 	return conn.NewStream()
 }
 
+// NewPrepared passes a sql statement to Tarantool for preparation synchronously.
+func (connPool *ConnectionPool) NewPrepared(expr string, userMode Mode) (*tarantool.Prepared, error) {
+	conn, err := connPool.getNextConnection(userMode)
+	if err != nil {
+		return nil, err
+	}
+	return conn.NewPrepared(expr)
+}
+
 //
 // private
 //
@@ -811,13 +820,4 @@ func newErrorFuture(err error) *tarantool.Future {
 	fut := tarantool.NewFuture()
 	fut.SetError(err)
 	return fut
-}
-
-// NewPrepared passes a sql statement to Tarantool for preparation synchronously.
-func (connPool *ConnectionPool) NewPrepared(expr string, userMode Mode) (*tarantool.Prepared, error) {
-	conn, err := connPool.getNextConnection(userMode)
-	if err != nil {
-		return nil, err
-	}
-	return conn.NewPrepared(expr)
 }
