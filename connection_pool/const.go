@@ -1,21 +1,7 @@
 package connection_pool
 
-type Mode uint32
-type Role uint32
-type State uint32
-
 /*
-Mode parameter:
-
-- ANY (use any instance) - the request can be executed on any instance (master or replica).
-
-- RW (writeable instance (master)) - the request can only be executed on master.
-
-- RO (read only instance (replica)) - the request can only be executed on replica.
-
-- PREFER_RO (prefer read only instance (replica)) - if there is one, otherwise fallback to a writeable one (master).
-
-- PREFER_RW (prefer write only instance (master)) - if there is one, otherwise fallback to a read only one (replica).
+Default mode for each request table:
 
 	  Request   Default mode
 	---------- --------------
@@ -30,13 +16,17 @@ Mode parameter:
 	| select  | ANY         |
 	| get     | ANY         |
 */
+type Mode uint32
+
 const (
-	ANY = iota
-	RW
-	RO
-	PreferRW
-	PreferRO
+	ANY      Mode = iota // The request can be executed on any instance (master or replica).
+	RW                   // The request can only be executed on master.
+	RO                   // The request can only be executed on replica.
+	PreferRW             // If there is one, otherwise fallback to a writeable one (master).
+	PreferRO             // If there is one, otherwise fallback to a read only one (replica).
 )
+
+type Role uint32
 
 // master/replica role
 const (
@@ -44,6 +34,8 @@ const (
 	master
 	replica
 )
+
+type State uint32
 
 // pool state
 const (
