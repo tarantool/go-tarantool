@@ -574,50 +574,48 @@ func (connPool *ConnectionPool) NewPrepared(expr string, userMode Mode) (*tarant
 func (connPool *ConnectionPool) getConnectionRole(conn *tarantool.Connection) (Role, error) {
 	resp, err := conn.Call17("box.info", []interface{}{})
 	if err != nil {
-		return unknown, err
+		return UnknownRole, err
 	}
 	if resp == nil {
-		return unknown, ErrIncorrectResponse
+		return UnknownRole, ErrIncorrectResponse
 	}
 	if len(resp.Data) < 1 {
-		return unknown, ErrIncorrectResponse
+		return UnknownRole, ErrIncorrectResponse
 	}
 
 	instanceStatus, ok := resp.Data[0].(map[interface{}]interface{})["status"]
 	if !ok {
-		return unknown, ErrIncorrectResponse
+		return UnknownRole, ErrIncorrectResponse
 	}
 	if instanceStatus != "running" {
-		return unknown, ErrIncorrectStatus
+		return UnknownRole, ErrIncorrectStatus
 	}
 
 	replicaRole, ok := resp.Data[0].(map[interface{}]interface{})["ro"]
 	if !ok {
-		return unknown, ErrIncorrectResponse
+		return UnknownRole, ErrIncorrectResponse
 	}
 
 	switch replicaRole {
 	case false:
-		return master, nil
+		return MasterRole, nil
 	case true:
-		return replica, nil
+		return ReplicaRole, nil
 	}
 
-	return unknown, nil
+	return UnknownRole, nil
 }
 
 func (connPool *ConnectionPool) getConnectionFromPool(addr string) (*tarantool.Connection, Role) {
-	conn := connPool.rwPool.GetConnByAddr(addr)
-	if conn != nil {
-		return conn, master
+	if conn := connPool.rwPool.GetConnByAddr(addr); conn != nil {
+		return conn, MasterRole
 	}
 
-	conn = connPool.roPool.GetConnByAddr(addr)
-	if conn != nil {
-		return conn, replica
+	if conn := connPool.roPool.GetConnByAddr(addr); conn != nil {
+		return conn, ReplicaRole
 	}
 
-	return connPool.anyPool.GetConnByAddr(addr), unknown
+	return connPool.anyPool.GetConnByAddr(addr), UnknownRole
 }
 
 func (connPool *ConnectionPool) deleteConnectionFromPool(addr string) {
@@ -639,9 +637,9 @@ func (connPool *ConnectionPool) setConnectionToPool(addr string, conn *tarantool
 	connPool.anyPool.AddConn(addr, conn)
 
 	switch role {
-	case master:
+	case MasterRole:
 		connPool.rwPool.AddConn(addr, conn)
-	case replica:
+	case ReplicaRole:
 		connPool.roPool.AddConn(addr, conn)
 	}
 

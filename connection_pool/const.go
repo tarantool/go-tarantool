@@ -26,13 +26,13 @@ const (
 	PreferRO             // If there is one, otherwise fallback to a read only one (replica).
 )
 
+// Role describes a role of an instance by its mode.
 type Role uint32
 
-// master/replica role
 const (
-	unknown = iota
-	master
-	replica
+	UnknownRole Role = iota // A connection pool failed to discover mode of the instance.
+	MasterRole              // The instance is read-write mode.
+	ReplicaRole             // The instance is in read-only mode.
 )
 
 type State uint32

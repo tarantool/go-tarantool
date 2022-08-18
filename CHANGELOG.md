@@ -17,6 +17,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 ### Fixed
 
 - Mode type description in the connection_pool subpackage (#208)
+- Missed Role type constants in the connection_pool subpackage (#208)
 
 ## [1.8.0] - 2022-08-17
 
