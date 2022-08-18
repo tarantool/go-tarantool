@@ -52,4 +52,20 @@ func TestRoundRobinAddDuplicateDelete(t *testing.T) {
 	}
 }
 
+func TestRoundRobinGetNextConnection(t *testing.T) {
+	rr := NewEmptyRoundRobin(10)
 
+	addrs := []string{validAddr1, validAddr2}
+	conns := []*tarantool.Connection{&tarantool.Connection{}, &tarantool.Connection{}}
+
+	for i, addr := range addrs {
+		rr.AddConn(addr, conns[i])
+	}
+
+	expectedConns := []*tarantool.Connection{conns[0], conns[1], conns[0], conns[1]}
+	for i, expected := range expectedConns {
+		if rr.GetNextConnection() != expected {
+			t.Errorf("Unexpected connection on %d call", i)
+		}
+	}
+}

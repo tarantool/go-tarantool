@@ -130,13 +130,20 @@ func (connPool *ConnectionPool) ConnectedNow(mode Mode) (bool, error) {
 	if connPool.getState() != connConnected {
 		return false, nil
 	}
-
-	conn, err := connPool.getNextConnection(mode)
-	if err != nil || conn == nil {
-		return false, err
+	switch mode {
+	case ANY:
+		return !connPool.anyPool.IsEmpty(), nil
+	case RW:
+		return !connPool.rwPool.IsEmpty(), nil
+	case RO:
+		return !connPool.roPool.IsEmpty(), nil
+	case PreferRW:
+		fallthrough
+	case PreferRO:
+		return !connPool.rwPool.IsEmpty() || !connPool.roPool.IsEmpty(), nil
+	default:
+		return false, ErrNoHealthyInstance
 	}
-
-	return conn.ConnectedNow(), nil
 }
 
 // ConfiguredTimeout gets timeout of current connection.
@@ -751,49 +758,34 @@ func (connPool *ConnectionPool) getNextConnection(mode Mode) (*tarantool.Connect
 
 	switch mode {
 	case ANY:
-		if connPool.anyPool.IsEmpty() {
-			return nil, ErrNoHealthyInstance
+		if next := connPool.anyPool.GetNextConnection(); next != nil {
+			return next, nil
 		}
-
-		return connPool.anyPool.GetNextConnection(), nil
-
 	case RW:
-		if connPool.rwPool.IsEmpty() {
-			return nil, ErrNoRwInstance
+		if next := connPool.rwPool.GetNextConnection(); next != nil {
+			return next, nil
 		}
-
-		return connPool.rwPool.GetNextConnection(), nil
-
+		return nil, ErrNoRwInstance
 	case RO:
-		if connPool.roPool.IsEmpty() {
-			return nil, ErrNoRoInstance
+		if next := connPool.roPool.GetNextConnection(); next != nil {
+			return next, nil
 		}
-
-		return connPool.roPool.GetNextConnection(), nil
-
+		return nil, ErrNoRoInstance
 	case PreferRW:
-		if !connPool.rwPool.IsEmpty() {
-			return connPool.rwPool.GetNextConnection(), nil
+		if next := connPool.rwPool.GetNextConnection(); next != nil {
+			return next, nil
 		}
-
-		if !connPool.roPool.IsEmpty() {
-			return connPool.roPool.GetNextConnection(), nil
+		if next := connPool.roPool.GetNextConnection(); next != nil {
+			return next, nil
 		}
-
-		return nil, ErrNoHealthyInstance
-
 	case PreferRO:
-		if !connPool.roPool.IsEmpty() {
-			return connPool.roPool.GetNextConnection(), nil
+		if next := connPool.roPool.GetNextConnection(); next != nil {
+			return next, nil
 		}
-
-		if !connPool.rwPool.IsEmpty() {
-			return connPool.rwPool.GetNextConnection(), nil
+		if next := connPool.rwPool.GetNextConnection(); next != nil {
+			return next, nil
 		}
-
-		return nil, ErrNoHealthyInstance
 	}
-
 	return nil, ErrNoHealthyInstance
 }
 
