@@ -96,7 +96,7 @@ func ConnectWithOpts(addrs []string, connOpts tarantool.Opts, opts OptsPool) (co
 	anyPool := NewEmptyRoundRobin(size)
 
 	connPool = &ConnectionPool{
-		addrs:    addrs,
+		addrs:    make([]string, len(addrs)),
 		connOpts: connOpts,
 		opts:     opts,
 		notify:   notify,
@@ -105,6 +105,7 @@ func ConnectWithOpts(addrs []string, connOpts tarantool.Opts, opts OptsPool) (co
 		roPool:   roPool,
 		anyPool:  anyPool,
 	}
+	copy(connPool.addrs, addrs)
 
 	somebodyAlive := connPool.fillPools()
 	if !somebodyAlive {
@@ -178,7 +179,9 @@ func (connPool *ConnectionPool) Close() []error {
 
 // GetAddrs gets addresses of connections in pool.
 func (connPool *ConnectionPool) GetAddrs() []string {
-	return connPool.addrs
+	cpy := make([]string, len(connPool.addrs))
+	copy(cpy, connPool.addrs)
+	return cpy
 }
 
 // GetPoolInfo gets information of connections (connected status, ro/rw role).
