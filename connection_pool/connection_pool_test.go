@@ -208,6 +208,42 @@ func TestClose(t *testing.T) {
 	require.Nil(t, err)
 }
 
+func TestRequestOnClosed(t *testing.T) {
+	server1 := servers[0]
+	server2 := servers[1]
+
+	connPool, err := connection_pool.Connect([]string{server1, server2}, connOpts)
+	require.Nilf(t, err, "failed to connect")
+	require.NotNilf(t, connPool, "conn is nil after Connect")
+
+	defer connPool.Close()
+
+	test_helpers.StopTarantoolWithCleanup(instances[0])
+	test_helpers.StopTarantoolWithCleanup(instances[1])
+
+	args := test_helpers.CheckStatusesArgs{
+		ConnPool:           connPool,
+		Mode:               connection_pool.ANY,
+		Servers:            []string{server1, server2},
+		ExpectedPoolStatus: false,
+		ExpectedStatuses: map[string]bool{
+			server1: false,
+			server2: false,
+		},
+	}
+	err = test_helpers.Retry(test_helpers.CheckPoolStatuses, args, defaultCountRetry, defaultTimeoutRetry)
+	require.Nil(t, err)
+
+	_, err = connPool.Ping(connection_pool.ANY)
+	require.NotNilf(t, err, "err is nil after Ping")
+
+	err = test_helpers.RestartTarantool(&instances[0])
+	require.Nilf(t, err, "failed to restart tarantool")
+
+	err = test_helpers.RestartTarantool(&instances[1])
+	require.Nilf(t, err, "failed to restart tarantool")
+}
+
 func TestCall17(t *testing.T) {
 	roles := []bool{false, true, false, false, true}
 

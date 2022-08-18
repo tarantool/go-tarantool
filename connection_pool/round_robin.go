@@ -2,17 +2,16 @@ package connection_pool
 
 import (
 	"sync"
-	"sync/atomic"
 
 	"github.com/tarantool/go-tarantool"
 )
 
 type RoundRobinStrategy struct {
 	conns       []*tarantool.Connection
-	indexByAddr map[string]int
+	indexByAddr map[string]uint
 	mutex       sync.RWMutex
-	size        int
-	current     uint64
+	size        uint
+	current     uint
 }
 
 func (r *RoundRobinStrategy) GetConnByAddr(addr string) *tarantool.Connection {
@@ -66,29 +65,18 @@ func (r *RoundRobinStrategy) GetNextConnection() *tarantool.Connection {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
 
-	// We want to iterate through the elements in a circular order
-	// so the first element in cycle is connections[next]
-	// and the last one is connections[next + length].
-	next := r.nextIndex()
-	cycleLen := len(r.conns) + next
-	for i := next; i < cycleLen; i++ {
-		idx := i % len(r.conns)
-		if r.conns[idx].ConnectedNow() {
-			if i != next {
-				atomic.StoreUint64(&r.current, uint64(idx))
-			}
-			return r.conns[idx]
-		}
+	if r.size == 0 {
+		return nil
 	}
-
-	return nil
+	return r.conns[r.nextIndex()]
 }
 
 func NewEmptyRoundRobin(size int) *RoundRobinStrategy {
 	return &RoundRobinStrategy{
 		conns:       make([]*tarantool.Connection, 0, size),
-		indexByAddr: make(map[string]int),
+		indexByAddr: make(map[string]uint),
 		size:        0,
+		current:     0,
 	}
 }
 
@@ -105,6 +93,8 @@ func (r *RoundRobinStrategy) AddConn(addr string, conn *tarantool.Connection) {
 	}
 }
 
-func (r *RoundRobinStrategy) nextIndex() int {
-	return int(atomic.AddUint64(&r.current, uint64(1)) % uint64(len(r.conns)))
+func (r *RoundRobinStrategy) nextIndex() uint {
+	ret := r.current % r.size
+	r.current++
+	return ret
 }
