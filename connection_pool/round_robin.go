@@ -46,8 +46,10 @@ func (r *RoundRobinStrategy) DeleteConnByAddr(addr string) *tarantool.Connection
 	r.conns = append(r.conns[:index], r.conns[index+1:]...)
 	r.size -= 1
 
-	for index, conn := range r.conns {
-		r.indexByAddr[conn.Addr()] = index
+	for k, v := range r.indexByAddr {
+		if v > index {
+			r.indexByAddr[k] = v - 1
+		}
 	}
 
 	return conn
@@ -94,9 +96,13 @@ func (r *RoundRobinStrategy) AddConn(addr string, conn *tarantool.Connection) {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
-	r.conns = append(r.conns, conn)
-	r.indexByAddr[addr] = r.size
-	r.size += 1
+	if idx, ok := r.indexByAddr[addr]; ok {
+		r.conns[idx] = conn
+	} else {
+		r.conns = append(r.conns, conn)
+		r.indexByAddr[addr] = r.size
+		r.size += 1
+	}
 }
 
 func (r *RoundRobinStrategy) nextIndex() int {
