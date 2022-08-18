@@ -702,20 +702,7 @@ func (connPool *ConnectionPool) checker() {
 				return
 			}
 			if e.Conn.ClosedNow() {
-				addr := e.Conn.Addr()
-				if conn, _ := connPool.getConnectionFromPool(addr); conn == nil {
-					continue
-				}
-				conn, _ := tarantool.Connect(addr, connPool.connOpts)
-				if conn != nil {
-					err := connPool.setConnectionToPool(addr, conn)
-					if err != nil {
-						conn.Close()
-						log.Printf("tarantool: storing connection to %s failed: %s\n", addr, err.Error())
-					}
-				} else {
-					connPool.deleteConnectionFromPool(addr)
-				}
+				connPool.deleteConnectionFromPool(e.Conn.Addr())
 			}
 		case <-timer.C:
 			for _, addr := range connPool.addrs {
