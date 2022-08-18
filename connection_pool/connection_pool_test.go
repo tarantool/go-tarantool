@@ -244,6 +244,25 @@ func TestRequestOnClosed(t *testing.T) {
 	require.Nilf(t, err, "failed to restart tarantool")
 }
 
+func TestGetPoolInfo(t *testing.T) {
+	server1 := servers[0]
+	server2 := servers[1]
+
+	srvs := []string{server1, server2}
+	expected := []string{server1, server2}
+	connPool, err := connection_pool.Connect(srvs, connOpts)
+	require.Nilf(t, err, "failed to connect")
+	require.NotNilf(t, connPool, "conn is nil after Connect")
+
+	defer connPool.Close()
+
+	srvs[0] = "x"
+	connPool.GetAddrs()[1] = "y"
+	for i, addr := range connPool.GetAddrs() {
+		require.Equal(t, expected[i], addr)
+	}
+}
+
 func TestCall17(t *testing.T) {
 	roles := []bool{false, true, false, false, true}
 

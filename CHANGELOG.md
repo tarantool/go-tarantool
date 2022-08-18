@@ -20,6 +20,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 - Missed Role type constants in the connection_pool subpackage (#208)
 - ConnectionPool does not close UnknownRole connections (#208)
 - Segmentation faults in ConnectionPool requests after disconnect (#208)
+- Addresses in ConnectionPool may be changed from an external code (#208)
 
 ## [1.8.0] - 2022-08-17
 
