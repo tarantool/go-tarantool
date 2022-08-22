@@ -6,6 +6,7 @@ import (
 	"os"
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -231,6 +232,249 @@ func TestClose(t *testing.T) {
 
 	err = test_helpers.Retry(test_helpers.CheckPoolStatuses, args, defaultCountRetry, defaultTimeoutRetry)
 	require.Nil(t, err)
+}
+
+type testHandler struct {
+	discovered, deactivated int
+	errs                    []error
+	mutex                   sync.Mutex
+}
+
+func (h *testHandler) addErr(err error) {
+	h.errs = append(h.errs, err)
+}
+
+func (h *testHandler) Discovered(conn *tarantool.Connection,
+	role connection_pool.Role) error {
+	h.mutex.Lock()
+	defer h.mutex.Unlock()
+
+	h.discovered++
+
+	if conn == nil {
+		h.addErr(fmt.Errorf("discovered conn == nil"))
+		return nil
+	}
+
+	// discovered < 3 - initial open of connections
+	// discovered >= 3 - update a connection after a role update
+	addr := conn.Addr()
+	if addr == servers[0] {
+		if h.discovered < 3 && role != connection_pool.MasterRole {
+			h.addErr(fmt.Errorf("unexpected init role %d for addr %s", role, addr))
+		}
+		if h.discovered >= 3 && role != connection_pool.ReplicaRole {
+			h.addErr(fmt.Errorf("unexpected updated role %d for addr %s", role, addr))
+		}
+	} else if addr == servers[1] {
+		if h.discovered >= 3 {
+			h.addErr(fmt.Errorf("unexpected discovery for addr %s", addr))
+		}
+		if role != connection_pool.ReplicaRole {
+			h.addErr(fmt.Errorf("unexpected role %d for addr %s", role, addr))
+		}
+	} else {
+		h.addErr(fmt.Errorf("unexpected discovered addr %s", addr))
+	}
+
+	return nil
+}
+
+func (h *testHandler) Deactivated(conn *tarantool.Connection,
+	role connection_pool.Role) error {
+	h.mutex.Lock()
+	defer h.mutex.Unlock()
+
+	h.deactivated++
+
+	if conn == nil {
+		h.addErr(fmt.Errorf("removed conn == nil"))
+		return nil
+	}
+
+	addr := conn.Addr()
+	if h.deactivated == 1 && addr == servers[0] {
+		// A first close is a role update.
+		if role != connection_pool.MasterRole {
+			h.addErr(fmt.Errorf("unexpected removed role %d for addr %s", role, addr))
+		}
+		return nil
+	}
+
+	if addr == servers[0] || addr == servers[1] {
+		// Close.
+		if role != connection_pool.ReplicaRole {
+			h.addErr(fmt.Errorf("unexpected removed role %d for addr %s", role, addr))
+		}
+	} else {
+		h.addErr(fmt.Errorf("unexpected removed addr %s", addr))
+	}
+
+	return nil
+}
+
+func TestConnectionHandlerOpenUpdateClose(t *testing.T) {
+	poolServers := []string{servers[0], servers[1]}
+	roles := []bool{false, true}
+
+	err := test_helpers.SetClusterRO(poolServers, connOpts, roles)
+	require.Nilf(t, err, "fail to set roles for cluster")
+
+	h := &testHandler{}
+	poolOpts := connection_pool.OptsPool{
+		CheckTimeout:      100 * time.Microsecond,
+		ConnectionHandler: h,
+	}
+	pool, err := connection_pool.ConnectWithOpts(poolServers, connOpts, poolOpts)
+	require.Nilf(t, err, "failed to connect")
+	require.NotNilf(t, pool, "conn is nil after Connect")
+
+	_, err = pool.Call17("box.cfg", []interface{}{map[string]bool{
+		"read_only": true,
+	}}, connection_pool.RW)
+	require.Nilf(t, err, "failed to make ro")
+
+	for i := 0; i < 100; i++ {
+		// Wait for read_only update, it should report about close connection
+		// with old role.
+		if h.deactivated >= 1 {
+			break
+		}
+		time.Sleep(poolOpts.CheckTimeout)
+	}
+	require.Equalf(t, h.deactivated, 1, "updated not reported as deactivated")
+	require.Equalf(t, h.discovered, 3, "updated not reported as discovered")
+
+	pool.Close()
+
+	for i := 0; i < 100; i++ {
+		// Wait for close of all connections.
+		if h.deactivated >= 3 {
+			break
+		}
+		time.Sleep(poolOpts.CheckTimeout)
+	}
+
+	for _, err := range h.errs {
+		t.Errorf("Unexpected error: %s", err)
+	}
+	connected, err := pool.ConnectedNow(connection_pool.ANY)
+	require.Nilf(t, err, "failed to get connected state")
+	require.Falsef(t, connected, "connection pool still be connected")
+	require.Equalf(t, len(poolServers)+1, h.discovered, "unexpected discovered count")
+	require.Equalf(t, len(poolServers)+1, h.deactivated, "unexpected deactivated count")
+}
+
+type testAddErrorHandler struct {
+	discovered, deactivated int
+}
+
+func (h *testAddErrorHandler) Discovered(conn *tarantool.Connection,
+	role connection_pool.Role) error {
+	h.discovered++
+	return fmt.Errorf("any error")
+}
+
+func (h *testAddErrorHandler) Deactivated(conn *tarantool.Connection,
+	role connection_pool.Role) error {
+	h.deactivated++
+	return nil
+}
+
+func TestConnectionHandlerOpenError(t *testing.T) {
+	poolServers := []string{servers[0], servers[1]}
+
+	h := &testAddErrorHandler{}
+	poolOpts := connection_pool.OptsPool{
+		CheckTimeout:      100 * time.Microsecond,
+		ConnectionHandler: h,
+	}
+	connPool, err := connection_pool.ConnectWithOpts(poolServers, connOpts, poolOpts)
+	if err == nil {
+		defer connPool.Close()
+	}
+	require.NotNilf(t, err, "success to connect")
+	require.Equalf(t, 2, h.discovered, "unexpected discovered count")
+	require.Equalf(t, 0, h.deactivated, "unexpected deactivated count")
+}
+
+type testUpdateErrorHandler struct {
+	discovered, deactivated int
+	mutex                   sync.Mutex
+}
+
+func (h *testUpdateErrorHandler) Discovered(conn *tarantool.Connection,
+	role connection_pool.Role) error {
+	h.mutex.Lock()
+	defer h.mutex.Unlock()
+
+	h.discovered++
+
+	if h.deactivated != 0 {
+		// Don't add a connection into a pool again after it was deleted.
+		return fmt.Errorf("any error")
+	}
+	return nil
+}
+
+func (h *testUpdateErrorHandler) Deactivated(conn *tarantool.Connection,
+	role connection_pool.Role) error {
+	h.mutex.Lock()
+	defer h.mutex.Unlock()
+
+	h.deactivated++
+	return nil
+}
+
+func TestConnectionHandlerUpdateError(t *testing.T) {
+	poolServers := []string{servers[0], servers[1]}
+	roles := []bool{false, false}
+
+	err := test_helpers.SetClusterRO(poolServers, connOpts, roles)
+	require.Nilf(t, err, "fail to set roles for cluster")
+
+	h := &testUpdateErrorHandler{}
+	poolOpts := connection_pool.OptsPool{
+		CheckTimeout:      100 * time.Microsecond,
+		ConnectionHandler: h,
+	}
+	connPool, err := connection_pool.ConnectWithOpts(poolServers, connOpts, poolOpts)
+	require.Nilf(t, err, "failed to connect")
+	require.NotNilf(t, connPool, "conn is nil after Connect")
+	defer connPool.Close()
+
+	connected, err := connPool.ConnectedNow(connection_pool.ANY)
+	require.Nilf(t, err, "failed to get ConnectedNow()")
+	require.Truef(t, connected, "should be connected")
+
+	for i := 0; i < len(poolServers); i++ {
+		_, err = connPool.Call17("box.cfg", []interface{}{map[string]bool{
+			"read_only": true,
+		}}, connection_pool.RW)
+		require.Nilf(t, err, "failed to make ro")
+	}
+
+	for i := 0; i < 100; i++ {
+		// Wait for updates done.
+		connected, err = connPool.ConnectedNow(connection_pool.ANY)
+		if !connected || err != nil {
+			break
+		}
+		time.Sleep(poolOpts.CheckTimeout)
+	}
+	connected, err = connPool.ConnectedNow(connection_pool.ANY)
+
+	require.Nilf(t, err, "failed to get ConnectedNow()")
+	require.Falsef(t, connected, "should not be any active connection")
+
+	connPool.Close()
+
+	connected, err = connPool.ConnectedNow(connection_pool.ANY)
+
+	require.Nilf(t, err, "failed to get ConnectedNow()")
+	require.Falsef(t, connected, "should be deactivated")
+	require.GreaterOrEqualf(t, h.discovered, h.deactivated, "discovered < deactivated")
+	require.Nilf(t, err, "failed to get ConnectedNow()")
 }
 
 func TestRequestOnClosed(t *testing.T) {
