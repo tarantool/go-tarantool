@@ -32,17 +32,39 @@ var (
 	ErrNoHealthyInstance = errors.New("can't find healthy instance in pool")
 )
 
-/*
-Additional options (configurable via ConnectWithOpts):
+// ConnectionHandler provides callbacks for components interested in handling
+// changes of connections in a ConnectionPool.
+type ConnectionHandler interface {
+	// Discovered is called when a connection with a role has been detected
+	// (for the first time or when a role of a connection has been changed),
+	// but is not yet available to send requests. It allows for a client to
+	// initialize the connection before using it in a pool.
+	//
+	// The client code may cancel adding a connection to the pool. The client
+	// need to return an error from the Discovered call for that. In this case
+	// the pool will close connection and will try to reopen it later.
+	Discovered(conn *tarantool.Connection, role Role) error
+	// Deactivated is called when a connection with a role has become
+	// unavaileble to send requests. It happens if the connection is closed or
+	// the connection role is switched.
+	//
+	// So if a connection switches a role, a pool calls:
+	// Deactivated() + Discovered().
+	//
+	// Deactivated will not be called if a previous Discovered() call returns
+	// an error. Because in this case, the connection does not become available
+	// for sending requests.
+	Deactivated(conn *tarantool.Connection, role Role) error
+}
 
-- CheckTimeout - time interval to check for connection timeout and try to switch connection.
-*/
+// OptsPool provides additional options (configurable via ConnectWithOpts).
 type OptsPool struct {
-	// timeout for timer to reopen connections
-	// that have been closed by some events and
-	// to relocate connection between subpools
-	// if ro/rw role has been updated
+	// Timeout for timer to reopen connections that have been closed by some
+	// events and to relocate connection between subpools if ro/rw role has
+	// been updated.
 	CheckTimeout time.Duration
+	// ConnectionHandler provides an ability to handle connection updates.
+	ConnectionHandler ConnectionHandler
 }
 
 /*
@@ -69,13 +91,19 @@ type ConnectionPool struct {
 	connOpts tarantool.Opts
 	opts     OptsPool
 
-	notify     chan tarantool.ConnEvent
 	state      state
-	control    chan struct{}
+	done       chan struct{}
 	roPool     *RoundRobinStrategy
 	rwPool     *RoundRobinStrategy
 	anyPool    *RoundRobinStrategy
 	poolsMutex sync.RWMutex
+}
+
+type connState struct {
+	addr   string
+	notify chan tarantool.ConnEvent
+	conn   *tarantool.Connection
+	role   Role
 }
 
 // ConnectWithOpts creates pool for instances with addresses addrs
@@ -88,9 +116,6 @@ func ConnectWithOpts(addrs []string, connOpts tarantool.Opts, opts OptsPool) (co
 		return nil, ErrWrongCheckTimeout
 	}
 
-	notify := make(chan tarantool.ConnEvent, 10*len(addrs)) // x10 to accept disconnected and closed event (with a margin)
-	connOpts.Notify = notify
-
 	size := len(addrs)
 	rwPool := NewEmptyRoundRobin(size)
 	roPool := NewEmptyRoundRobin(size)
@@ -100,9 +125,8 @@ func ConnectWithOpts(addrs []string, connOpts tarantool.Opts, opts OptsPool) (co
 		addrs:    make([]string, 0, len(addrs)),
 		connOpts: connOpts,
 		opts:     opts,
-		notify:   notify,
 		state:    unknownState,
-		control:  make(chan struct{}),
+		done:     make(chan struct{}),
 		rwPool:   rwPool,
 		roPool:   roPool,
 		anyPool:  anyPool,
@@ -116,15 +140,21 @@ func ConnectWithOpts(addrs []string, connOpts tarantool.Opts, opts OptsPool) (co
 		}
 	}
 
-	somebodyAlive := connPool.fillPools()
+	states, somebodyAlive := connPool.fillPools()
 	if !somebodyAlive {
 		connPool.state.set(closedState)
 		connPool.closeImpl()
+		for _, s := range states {
+			close(s.notify)
+		}
 		return nil, ErrNoConnection
 	}
 
 	connPool.state.set(connectedState)
-	go connPool.checker()
+
+	for _, s := range states {
+		go connPool.checker(s)
+	}
 
 	return connPool, nil
 }
@@ -172,8 +202,6 @@ func (connPool *ConnectionPool) ConfiguredTimeout(mode Mode) (time.Duration, err
 }
 
 func (connPool *ConnectionPool) closeImpl() []error {
-	close(connPool.control)
-
 	errs := make([]error, 0, len(connPool.addrs))
 
 	for _, addr := range connPool.addrs {
@@ -181,11 +209,18 @@ func (connPool *ConnectionPool) closeImpl() []error {
 			if err := conn.Close(); err != nil {
 				errs = append(errs, err)
 			}
+
+			role := UnknownRole
+			if conn := connPool.rwPool.DeleteConnByAddr(addr); conn != nil {
+				role = MasterRole
+			} else if conn := connPool.roPool.DeleteConnByAddr(addr); conn != nil {
+				role = ReplicaRole
+			}
+			connPool.handlerDeactivated(conn, role)
 		}
-		connPool.rwPool.DeleteConnByAddr(addr)
-		connPool.roPool.DeleteConnByAddr(addr)
 	}
 
+	close(connPool.done)
 	return errs
 }
 
@@ -665,19 +700,17 @@ func (connPool *ConnectionPool) getConnectionFromPool(addr string) (*tarantool.C
 	return connPool.anyPool.GetConnByAddr(addr), UnknownRole
 }
 
-func (connPool *ConnectionPool) deleteConnectionFromPool(addr string) {
-	_ = connPool.anyPool.DeleteConnByAddr(addr)
-	conn := connPool.rwPool.DeleteConnByAddr(addr)
-	if conn == nil {
+func (connPool *ConnectionPool) deleteConnection(addr string) {
+	if conn := connPool.anyPool.DeleteConnByAddr(addr); conn != nil {
+		if conn := connPool.rwPool.DeleteConnByAddr(addr); conn != nil {
+			return
+		}
 		connPool.roPool.DeleteConnByAddr(addr)
 	}
 }
 
-func (connPool *ConnectionPool) setConnectionToPool(addr string, conn *tarantool.Connection) error {
-	role, err := connPool.getConnectionRole(conn)
-	if err != nil {
-		return err
-	}
+func (connPool *ConnectionPool) addConnection(addr string,
+	conn *tarantool.Connection, role Role) {
 
 	connPool.anyPool.AddConn(addr, conn)
 
@@ -687,85 +720,226 @@ func (connPool *ConnectionPool) setConnectionToPool(addr string, conn *tarantool
 	case ReplicaRole:
 		connPool.roPool.AddConn(addr, conn)
 	}
-
-	return nil
 }
 
-func (connPool *ConnectionPool) refreshConnection(addr string) {
-	if conn, oldRole := connPool.getConnectionFromPool(addr); conn != nil {
-		if !conn.ClosedNow() {
-			curRole, _ := connPool.getConnectionRole(conn)
-			if oldRole != curRole {
-				connPool.deleteConnectionFromPool(addr)
-				err := connPool.setConnectionToPool(addr, conn)
-				if err != nil {
-					conn.Close()
-					log.Printf("tarantool: storing connection to %s failed: %s\n", addr, err.Error())
-				}
-			}
-		}
-	} else {
-		conn, _ := tarantool.Connect(addr, connPool.connOpts)
-		if conn != nil {
-			err := connPool.setConnectionToPool(addr, conn)
-			if err != nil {
-				conn.Close()
-				log.Printf("tarantool: storing connection to %s failed: %s\n", addr, err.Error())
-			}
-		}
+func (connPool *ConnectionPool) handlerDiscovered(conn *tarantool.Connection,
+	role Role) bool {
+	var err error
+	if connPool.opts.ConnectionHandler != nil {
+		err = connPool.opts.ConnectionHandler.Discovered(conn, role)
+	}
+
+	if err != nil {
+		addr := conn.Addr()
+		log.Printf("tarantool: storing connection to %s canceled: %s\n", addr, err)
+		return false
+	}
+	return true
+}
+
+func (connPool *ConnectionPool) handlerDeactivated(conn *tarantool.Connection,
+	role Role) {
+	var err error
+	if connPool.opts.ConnectionHandler != nil {
+		err = connPool.opts.ConnectionHandler.Deactivated(conn, role)
+	}
+
+	if err != nil {
+		addr := conn.Addr()
+		log.Printf("tarantool: deactivating connection to %s by user failed: %s\n", addr, err)
 	}
 }
 
-func (connPool *ConnectionPool) checker() {
-	timer := time.NewTicker(connPool.opts.CheckTimeout)
-	defer timer.Stop()
-
-	for connPool.state.get() != closedState {
-		select {
-		case <-connPool.control:
-			return
-		case e := <-connPool.notify:
-			connPool.poolsMutex.Lock()
-			if connPool.state.get() == connectedState && e.Conn.ClosedNow() {
-				connPool.deleteConnectionFromPool(e.Conn.Addr())
-			}
-			connPool.poolsMutex.Unlock()
-		case <-timer.C:
-			connPool.poolsMutex.Lock()
-			if connPool.state.get() == connectedState {
-				for _, addr := range connPool.addrs {
-					// Reopen connection
-					// Relocate connection between subpools
-					// if ro/rw was updated
-					connPool.refreshConnection(addr)
-				}
-			}
-			connPool.poolsMutex.Unlock()
-		}
-	}
-}
-
-func (connPool *ConnectionPool) fillPools() bool {
+func (connPool *ConnectionPool) fillPools() ([]connState, bool) {
+	states := make([]connState, len(connPool.addrs))
 	somebodyAlive := false
 
-	// It is called before checker() goroutine and before closeImpl() may be
+	// It is called before checker() goroutines and before closeImpl() may be
 	// called so we don't expect concurrency issues here.
-	for _, addr := range connPool.addrs {
-		conn, err := tarantool.Connect(addr, connPool.connOpts)
+	for i, addr := range connPool.addrs {
+		states[i] = connState{
+			addr:   addr,
+			notify: make(chan tarantool.ConnEvent, 10),
+			conn:   nil,
+			role:   UnknownRole,
+		}
+		connOpts := connPool.connOpts
+		connOpts.Notify = states[i].notify
+
+		conn, err := tarantool.Connect(addr, connOpts)
 		if err != nil {
 			log.Printf("tarantool: connect to %s failed: %s\n", addr, err.Error())
 		} else if conn != nil {
-			err = connPool.setConnectionToPool(addr, conn)
+			role, err := connPool.getConnectionRole(conn)
 			if err != nil {
 				conn.Close()
-				log.Printf("tarantool: storing connection to %s failed: %s\n", addr, err.Error())
-			} else if conn.ConnectedNow() {
-				somebodyAlive = true
+				log.Printf("tarantool: storing connection to %s failed: %s\n", addr, err)
+				continue
+			}
+
+			if connPool.handlerDiscovered(conn, role) {
+				connPool.addConnection(addr, conn, role)
+
+				if conn.ConnectedNow() {
+					states[i].conn = conn
+					states[i].role = role
+					somebodyAlive = true
+				} else {
+					connPool.deleteConnection(addr)
+					conn.Close()
+					connPool.handlerDeactivated(conn, role)
+				}
+			} else {
+				conn.Close()
 			}
 		}
 	}
 
-	return somebodyAlive
+	return states, somebodyAlive
+}
+
+func (pool *ConnectionPool) updateConnection(s connState) connState {
+	pool.poolsMutex.Lock()
+
+	if pool.state.get() != connectedState {
+		pool.poolsMutex.Unlock()
+		return s
+	}
+
+	if role, err := pool.getConnectionRole(s.conn); err == nil {
+		if s.role != role {
+			pool.deleteConnection(s.addr)
+			pool.poolsMutex.Unlock()
+
+			pool.handlerDeactivated(s.conn, s.role)
+			opened := pool.handlerDiscovered(s.conn, role)
+			if !opened {
+				s.conn.Close()
+				s.conn = nil
+				s.role = UnknownRole
+				return s
+			}
+
+			pool.poolsMutex.Lock()
+			if pool.state.get() != connectedState {
+				pool.poolsMutex.Unlock()
+
+				s.conn.Close()
+				pool.handlerDeactivated(s.conn, role)
+				s.conn = nil
+				s.role = UnknownRole
+				return s
+			}
+
+			pool.addConnection(s.addr, s.conn, role)
+			s.role = role
+		}
+	}
+
+	pool.poolsMutex.Unlock()
+	return s
+}
+
+func (pool *ConnectionPool) tryConnect(s connState) connState {
+	pool.poolsMutex.Lock()
+
+	if pool.state.get() != connectedState {
+		pool.poolsMutex.Unlock()
+		return s
+	}
+
+	s.conn = nil
+	s.role = UnknownRole
+
+	connOpts := pool.connOpts
+	connOpts.Notify = s.notify
+	conn, _ := tarantool.Connect(s.addr, connOpts)
+	if conn != nil {
+		role, err := pool.getConnectionRole(conn)
+		pool.poolsMutex.Unlock()
+
+		if err != nil {
+			conn.Close()
+			log.Printf("tarantool: storing connection to %s failed: %s\n", s.addr, err)
+			return s
+		}
+
+		opened := pool.handlerDiscovered(conn, role)
+		if !opened {
+			conn.Close()
+			return s
+		}
+
+		pool.poolsMutex.Lock()
+		if pool.state.get() != connectedState {
+			pool.poolsMutex.Unlock()
+			conn.Close()
+			pool.handlerDeactivated(conn, role)
+			return s
+		}
+
+		pool.addConnection(s.addr, conn, role)
+		s.conn = conn
+		s.role = role
+	}
+
+	pool.poolsMutex.Unlock()
+	return s
+}
+
+func (pool *ConnectionPool) reconnect(s connState) connState {
+	pool.poolsMutex.Lock()
+
+	if pool.state.get() != connectedState {
+		pool.poolsMutex.Unlock()
+		return s
+	}
+
+	pool.deleteConnection(s.addr)
+	pool.poolsMutex.Unlock()
+
+	pool.handlerDeactivated(s.conn, s.role)
+	s.conn = nil
+	s.role = UnknownRole
+
+	return pool.tryConnect(s)
+}
+
+func (pool *ConnectionPool) checker(s connState) {
+	timer := time.NewTicker(pool.opts.CheckTimeout)
+	defer timer.Stop()
+
+	for {
+		select {
+		case <-pool.done:
+			close(s.notify)
+			return
+		case <-s.notify:
+			if s.conn != nil && s.conn.ClosedNow() {
+				pool.poolsMutex.Lock()
+				if pool.state.get() == connectedState {
+					pool.deleteConnection(s.addr)
+					pool.poolsMutex.Unlock()
+					pool.handlerDeactivated(s.conn, s.role)
+					s.conn = nil
+					s.role = UnknownRole
+				} else {
+					pool.poolsMutex.Unlock()
+				}
+			}
+		case <-timer.C:
+			// Reopen connection
+			// Relocate connection between subpools
+			// if ro/rw was updated
+			if s.conn == nil {
+				s = pool.tryConnect(s)
+			} else if !s.conn.ClosedNow() {
+				s = pool.updateConnection(s)
+			} else {
+				s = pool.reconnect(s)
+			}
+		}
+	}
 }
 
 func (connPool *ConnectionPool) getNextConnection(mode Mode) (*tarantool.Connection, error) {
