@@ -642,6 +642,67 @@ func TestEval(t *testing.T) {
 	require.Falsef(t, val, "expected `false` with mode `RW`")
 }
 
+type Member struct {
+	id  uint
+	val string
+}
+
+func (m *Member) DecodeMsgpack(d *decoder) error {
+	var err error
+	var l int
+	if l, err = d.DecodeArrayLen(); err != nil {
+		return err
+	}
+	if l != 2 {
+		return fmt.Errorf("array len doesn't match: %d", l)
+	}
+	if m.id, err = d.DecodeUint(); err != nil {
+		return err
+	}
+	if m.val, err = d.DecodeString(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func TestExecute(t *testing.T) {
+	test_helpers.SkipIfSQLUnsupported(t)
+
+	roles := []bool{false, true, false, false, true}
+
+	err := test_helpers.SetClusterRO(servers, connOpts, roles)
+	require.Nilf(t, err, "fail to set roles for cluster")
+
+	connPool, err := connection_pool.Connect(servers, connOpts)
+	require.Nilf(t, err, "failed to connect")
+	require.NotNilf(t, connPool, "conn is nil after Connect")
+
+	defer connPool.Close()
+
+	request := "SELECT NAME0, NAME1 FROM SQL_TEST WHERE NAME0 == 1;"
+	// Execute
+	resp, err := connPool.Execute(request, []interface{}{}, connection_pool.ANY)
+	require.Nilf(t, err, "failed to Execute")
+	require.NotNilf(t, resp, "response is nil after Execute")
+	require.GreaterOrEqualf(t, len(resp.Data), 1, "response.Data is empty after Execute")
+	require.Equalf(t, len(resp.Data[0].([]interface{})), 2, "unexpected response")
+
+	// ExecuteTyped
+	mem := []Member{}
+	info, _, err := connPool.ExecuteTyped(request, []interface{}{}, &mem, connection_pool.ANY)
+	require.Nilf(t, err, "failed to ExecuteTyped")
+	require.Equalf(t, info.AffectedCount, uint64(0), "unexpected info.AffectedCount")
+	require.Equalf(t, len(mem), 1, "wrong count of results")
+
+	// ExecuteAsync
+	fut := connPool.ExecuteAsync(request, []interface{}{}, connection_pool.ANY)
+	resp, err = fut.Get()
+	require.Nilf(t, err, "failed to ExecuteAsync")
+	require.NotNilf(t, resp, "response is nil after ExecuteAsync")
+	require.GreaterOrEqualf(t, len(resp.Data), 1, "response.Data is empty after ExecuteAsync")
+	require.Equalf(t, len(resp.Data[0].([]interface{})), 2, "unexpected response")
+}
+
 func TestRoundRobinStrategy(t *testing.T) {
 	roles := []bool{false, true, false, false, true}
 

@@ -385,6 +385,16 @@ func (connPool *ConnectionPool) Eval(expr string, args interface{}, userMode Mod
 	return conn.Eval(expr, args)
 }
 
+// Execute passes sql expression to Tarantool for execution.
+func (connPool *ConnectionPool) Execute(expr string, args interface{}, userMode Mode) (resp *tarantool.Response, err error) {
+	conn, err := connPool.getNextConnection(userMode)
+	if err != nil {
+		return nil, err
+	}
+
+	return conn.Execute(expr, args)
+}
+
 // GetTyped performs select (with limit = 1 and offset = 0)
 // to box space and fills typed result.
 func (connPool *ConnectionPool) GetTyped(space, index interface{}, key interface{}, result interface{}, userMode ...Mode) (err error) {
@@ -493,6 +503,16 @@ func (connPool *ConnectionPool) EvalTyped(expr string, args interface{}, result 
 	}
 
 	return conn.EvalTyped(expr, args, result)
+}
+
+// ExecuteTyped passes sql expression to Tarantool for execution.
+func (connPool *ConnectionPool) ExecuteTyped(expr string, args interface{}, result interface{}, userMode Mode) (tarantool.SQLInfo, []tarantool.ColumnMetaData, error) {
+	conn, err := connPool.getNextConnection(userMode)
+	if err != nil {
+		return tarantool.SQLInfo{}, nil, err
+	}
+
+	return conn.ExecuteTyped(expr, args, result)
 }
 
 // SelectAsync sends select request to Tarantool and returns Future.
@@ -605,6 +625,17 @@ func (connPool *ConnectionPool) EvalAsync(expr string, args interface{}, userMod
 	}
 
 	return conn.EvalAsync(expr, args)
+}
+
+// ExecuteAsync sends sql expression to Tarantool for execution and returns
+// Future.
+func (connPool *ConnectionPool) ExecuteAsync(expr string, args interface{}, userMode Mode) *tarantool.Future {
+	conn, err := connPool.getNextConnection(userMode)
+	if err != nil {
+		return newErrorFuture(err)
+	}
+
+	return conn.ExecuteAsync(expr, args)
 }
 
 // Do sends the request and returns a future.
