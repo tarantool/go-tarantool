@@ -14,6 +14,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 - ConnectionHandler interface for handling changes of connections in
   ConnectionPool (#178)
 - Execute, ExecuteTyped and ExecuteAsync methods to ConnectionPool (#176)
+- ConnectorAdapter type to use ConnectionPool as Connector interface (#176)
 
 ### Changed
 

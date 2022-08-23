@@ -834,3 +834,24 @@ func ExampleBeginRequest_TxnIsolation() {
 	}
 	fmt.Printf("Select after Rollback: response is %#v\n", resp.Data)
 }
+
+func ExampleConnectorAdapter() {
+	pool, err := examplePool(testRoles)
+	if err != nil {
+		fmt.Println(err)
+	}
+	defer pool.Close()
+
+	adapter := connection_pool.NewConnectorAdapter(pool, connection_pool.RW)
+	var connector tarantool.Connector = adapter
+
+	// Ping an RW instance to check connection.
+	resp, err := connector.Ping()
+	fmt.Println("Ping Code", resp.Code)
+	fmt.Println("Ping Data", resp.Data)
+	fmt.Println("Ping Error", err)
+	// Output:
+	// Ping Code 0
+	// Ping Data []
+	// Ping Error <nil>
+}
