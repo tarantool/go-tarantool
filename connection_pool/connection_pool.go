@@ -99,6 +99,8 @@ type ConnectionPool struct {
 	poolsMutex sync.RWMutex
 }
 
+var _ Pooler = (*ConnectionPool)(nil)
+
 type connState struct {
 	addr   string
 	notify chan tarantool.ConnEvent
