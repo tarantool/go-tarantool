@@ -7,6 +7,7 @@ Default mode for each request table:
 	---------- --------------
 	| call    | no default  |
 	| eval    | no default  |
+	| execute | no default  |
 	| ping    | no default  |
 	| insert  | RW          |
 	| delete  | RW          |
