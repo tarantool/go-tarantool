@@ -67,8 +67,9 @@ type StartOpts struct {
 	// WaitStart is a time to wait before starting to ping tarantool.
 	WaitStart time.Duration
 
-	// ConnectRetry is a count of attempts to ping tarantool.
-	ConnectRetry uint
+	// ConnectRetry is a count of retry attempts to ping tarantool. If the
+	// value < 0 then there will be no ping tarantool at all.
+	ConnectRetry int
 
 	// RetryTimeout is a time between tarantool ping retries.
 	RetryTimeout time.Duration
@@ -240,7 +241,7 @@ func StartTarantool(startOpts StartOpts) (TarantoolInstance, error) {
 		Ssl:        startOpts.ClientSsl,
 	}
 
-	var i uint
+	var i int
 	var server string
 	if startOpts.ClientServer != "" {
 		server = startOpts.ClientServer
