@@ -14,6 +14,13 @@ import (
 )
 
 var server = "127.0.0.1:3013"
+var serversPool = []string{
+	"127.0.0.1:3014",
+	"127.0.0.1:3015",
+}
+
+var instances []test_helpers.TarantoolInstance
+
 var opts = Opts{
 	Timeout: 2500 * time.Millisecond,
 	User:    "test",
@@ -890,7 +897,7 @@ func TestTask_Touch(t *testing.T) {
 // https://stackoverflow.com/questions/27629380/how-to-exit-a-go-program-honoring-deferred-calls
 func runTestMain(m *testing.M) int {
 	inst, err := test_helpers.StartTarantool(test_helpers.StartOpts{
-		InitScript:   "config.lua",
+		InitScript:   "testdata/config.lua",
 		Listen:       server,
 		WorkDir:      "work_dir",
 		User:         opts.User,
@@ -899,12 +906,40 @@ func runTestMain(m *testing.M) int {
 		ConnectRetry: 3,
 		RetryTimeout: 500 * time.Millisecond,
 	})
-	defer test_helpers.StopTarantoolWithCleanup(inst)
 
 	if err != nil {
 		log.Fatalf("Failed to prepare test tarantool: %s", err)
 	}
 
+	defer test_helpers.StopTarantoolWithCleanup(inst)
+
+	workDirs := []string{"work_dir1", "work_dir2"}
+	poolOpts := test_helpers.StartOpts{
+		InitScript:   "testdata/pool.lua",
+		User:         opts.User,
+		Pass:         opts.Pass,
+		WaitStart:    3 * time.Second, // replication_timeout * 3
+		ConnectRetry: -1,
+	}
+	instances, err = test_helpers.StartTarantoolInstances(serversPool, workDirs, poolOpts)
+
+	if err != nil {
+		log.Fatalf("Failed to prepare test tarantool pool: %s", err)
+	}
+
+	defer test_helpers.StopTarantoolInstances(instances)
+
+	roles := []bool{false, true}
+	connOpts := Opts{
+		Timeout: 500 * time.Millisecond,
+		User:    "test",
+		Pass:    "test",
+	}
+	err = test_helpers.SetClusterRO(serversPool, connOpts, roles)
+
+	if err != nil {
+		log.Fatalf("Failed to set roles in tarantool pool: %s", err)
+	}
 	return m.Run()
 }
 

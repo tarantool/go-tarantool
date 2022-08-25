@@ -2056,7 +2056,7 @@ func TestStream_TxnIsolationLevel(t *testing.T) {
 func runTestMain(m *testing.M) int {
 	initScript := "config.lua"
 	waitStart := 100 * time.Millisecond
-	var connectRetry uint = 3
+	connectRetry := 3
 	retryTimeout := 500 * time.Millisecond
 	workDirs := []string{
 		"work_dir1", "work_dir2",

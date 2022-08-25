@@ -15,6 +15,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
   ConnectionPool (#178)
 - Execute, ExecuteTyped and ExecuteAsync methods to ConnectionPool (#176)
 - ConnectorAdapter type to use ConnectionPool as Connector interface (#176)
+- An example how to use queue and connection_pool subpackages together (#176)
 
 ### Changed
 
