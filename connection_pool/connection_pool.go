@@ -97,7 +97,7 @@ func ConnectWithOpts(addrs []string, connOpts tarantool.Opts, opts OptsPool) (co
 	anyPool := NewEmptyRoundRobin(size)
 
 	connPool = &ConnectionPool{
-		addrs:    make([]string, len(addrs)),
+		addrs:    make([]string, 0, len(addrs)),
 		connOpts: connOpts,
 		opts:     opts,
 		notify:   notify,
@@ -107,7 +107,14 @@ func ConnectWithOpts(addrs []string, connOpts tarantool.Opts, opts OptsPool) (co
 		roPool:   roPool,
 		anyPool:  anyPool,
 	}
-	copy(connPool.addrs, addrs)
+
+	m := make(map[string]bool)
+	for _, addr := range addrs {
+		if _, ok := m[addr]; !ok {
+			m[addr] = true
+			connPool.addrs = append(connPool.addrs, addr)
+		}
+	}
 
 	somebodyAlive := connPool.fillPools()
 	if !somebodyAlive {

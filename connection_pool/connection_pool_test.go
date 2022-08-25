@@ -80,6 +80,31 @@ func TestConnSuccessfully(t *testing.T) {
 	require.Nil(t, err)
 }
 
+func TestConnSuccessfullyDuplicates(t *testing.T) {
+	server := servers[0]
+	connPool, err := connection_pool.Connect([]string{server, server, server, server}, connOpts)
+	require.Nilf(t, err, "failed to connect")
+	require.NotNilf(t, connPool, "conn is nil after Connect")
+
+	defer connPool.Close()
+
+	args := test_helpers.CheckStatusesArgs{
+		ConnPool:           connPool,
+		Mode:               connection_pool.ANY,
+		Servers:            []string{server},
+		ExpectedPoolStatus: true,
+		ExpectedStatuses: map[string]bool{
+			server: true,
+		},
+	}
+
+	err = test_helpers.CheckPoolStatuses(args)
+	require.Nil(t, err)
+
+	addrs := connPool.GetAddrs()
+	require.Equalf(t, []string{server}, addrs, "should be only one address")
+}
+
 func TestReconnect(t *testing.T) {
 	server := servers[0]
 
