@@ -144,6 +144,9 @@ func (resp *Response) decodeHeader(d *decoder) (err error) {
 
 func (resp *Response) decodeBody() (err error) {
 	if resp.buf.Len() > 2 {
+		offset := resp.buf.Offset()
+		defer resp.buf.Seek(offset)
+
 		var l int
 		var stmtID, bindCount uint64
 
@@ -211,6 +214,9 @@ func (resp *Response) decodeBody() (err error) {
 
 func (resp *Response) decodeBodyTyped(res interface{}) (err error) {
 	if resp.buf.Len() > 0 {
+		offset := resp.buf.Offset()
+		defer resp.buf.Seek(offset)
+
 		var l int
 		d := newDecoder(&resp.buf)
 		if l, err = d.DecodeMapLen(); err != nil {

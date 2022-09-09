@@ -25,6 +25,8 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 - Addresses in ConnectionPool may be changed from an external code (#208)
 - ConnectionPool recreates connections too often (#208)
 - A connection is still opened after ConnectionPool.Close() (#208)
+- Future.GetTyped() after Future.Get() does not decode response
+  correctly (#213)
 
 ## [1.8.0] - 2022-08-17
 

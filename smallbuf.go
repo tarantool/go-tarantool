@@ -51,6 +51,21 @@ func (s *smallBuf) Bytes() []byte {
 	return nil
 }
 
+func (s *smallBuf) Offset() int {
+	return s.p
+}
+
+func (s *smallBuf) Seek(offset int) error {
+	if offset < 0 {
+		return errors.New("too small offset")
+	}
+	if offset > len(s.b) {
+		return errors.New("too big offset")
+	}
+	s.p = offset
+	return nil
+}
+
 type smallWBuf struct {
 	b   []byte
 	sum uint
