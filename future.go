@@ -184,9 +184,6 @@ func (fut *Future) Get() (*Response, error) {
 		return fut.resp, fut.err
 	}
 	err := fut.resp.decodeBody()
-	if err != nil {
-		fut.err = err
-	}
 	return fut.resp, err
 }
 
@@ -200,9 +197,6 @@ func (fut *Future) GetTyped(result interface{}) error {
 		return fut.err
 	}
 	err := fut.resp.decodeBodyTyped(result)
-	if err != nil {
-		fut.err = err
-	}
 	return err
 }
 

@@ -721,6 +721,81 @@ func BenchmarkSQLSerial(b *testing.B) {
 	}
 }
 
+func TestFutureMultipleGetGetTyped(t *testing.T) {
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	defer conn.Close()
+
+	fut := conn.Call17Async("simple_concat", []interface{}{"1"})
+
+	for i := 0; i < 30; i++ {
+		// [0, 10) fut.Get()
+		// [10, 20) fut.GetTyped()
+		// [20, 30) Mix
+		get := false
+		if (i < 10) || (i >= 20 && i%2 == 0) {
+			get = true
+		}
+
+		if get {
+			resp, err := fut.Get()
+			if err != nil {
+				t.Errorf("Failed to call Get(): %s", err)
+			}
+			if val, ok := resp.Data[0].(string); !ok || val != "11" {
+				t.Errorf("Wrong Get() result: %v", resp.Data)
+			}
+		} else {
+			tpl := struct {
+				Val string
+			}{}
+			err := fut.GetTyped(&tpl)
+			if err != nil {
+				t.Errorf("Failed to call GetTyped(): %s", err)
+			}
+			if tpl.Val != "11" {
+				t.Errorf("Wrong GetTyped() result: %v", tpl)
+			}
+		}
+	}
+}
+
+func TestFutureMultipleGetWithError(t *testing.T) {
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	defer conn.Close()
+
+	fut := conn.Call17Async("non_exist", []interface{}{"1"})
+
+	for i := 0; i < 2; i++ {
+		if _, err := fut.Get(); err == nil {
+			t.Fatalf("An error expected")
+		}
+	}
+}
+
+func TestFutureMultipleGetTypedWithError(t *testing.T) {
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	defer conn.Close()
+
+	fut := conn.Call17Async("simple_concat", []interface{}{"1"})
+
+	wrongTpl := struct {
+		Val int
+	}{}
+	goodTpl := struct {
+		Val string
+	}{}
+
+	if err := fut.GetTyped(&wrongTpl); err == nil {
+		t.Fatalf("An error expected")
+	}
+	if err := fut.GetTyped(&goodTpl); err != nil {
+		t.Fatalf("Unexpected error: %s", err)
+	}
+	if goodTpl.Val != "11" {
+		t.Fatalf("Wrong result: %s", goodTpl.Val)
+	}
+}
+
 ///////////////////
 
 func TestClient(t *testing.T) {
@@ -1069,7 +1144,7 @@ func TestClientSessionPush(t *testing.T) {
 	} else if len(resp.Data) < 1 {
 		t.Errorf("Response.Data is empty after Call17Async")
 	} else if val, err := convertUint64(resp.Data[0]); err != nil || val != pushMax {
-		t.Errorf("result is not {{1}} : %v", resp.Data)
+		t.Errorf("Result is not %d: %v", pushMax, resp.Data)
 	}
 
 	// It will will be iterated with a timeout.
@@ -1103,7 +1178,7 @@ func TestClientSessionPush(t *testing.T) {
 			} else {
 				respCnt += 1
 				if val, err := convertUint64(resp.Data[0]); err != nil || val != pushMax {
-					t.Errorf("result is not {{1}} : %v", resp.Data)
+					t.Errorf("Result is not %d: %v", pushMax, resp.Data)
 				}
 			}
 		}
@@ -1118,6 +1193,26 @@ func TestClientSessionPush(t *testing.T) {
 
 		if respCnt != 1 {
 			t.Errorf("Expect %d responses but got %d", 1, respCnt)
+		}
+	}
+
+	// We can collect original responses after iterations.
+	for _, fut := range []*Future{fut0, fut1, fut2} {
+		resp, err := fut.Get()
+		if err != nil {
+			t.Errorf("Unable to call fut.Get(): %s", err)
+		} else if val, err := convertUint64(resp.Data[0]); err != nil || val != pushMax {
+			t.Errorf("Result is not %d: %v", pushMax, resp.Data)
+		}
+
+		tpl := struct {
+			Val int
+		}{}
+		err = fut.GetTyped(&tpl)
+		if err != nil {
+			t.Errorf("Unable to call fut.GetTyped(): %s", err)
+		} else if tpl.Val != pushMax {
+			t.Errorf("Result is not %d: %d", pushMax, tpl.Val)
 		}
 	}
 }
