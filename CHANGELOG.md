@@ -18,6 +18,8 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Changed
 
+- Bump queue package version to 1.2.1 (#176)
+
 ### Fixed
 
 - Mode type description in the connection_pool subpackage (#208)

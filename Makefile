@@ -22,7 +22,7 @@ clean:
 
 .PHONY: deps
 deps: clean
-	( cd ./queue; tarantoolctl rocks install queue 1.2.0 )
+	( cd ./queue; tarantoolctl rocks install queue 1.2.1 )
 
 .PHONY: datetime-timezones
 datetime-timezones:
