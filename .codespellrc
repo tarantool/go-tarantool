@@ -1,0 +1,5 @@
+[codespell]
+skip = */testdata,./LICENSE,./datetime/timezones.go
+ignore-words-list = ro,gost,warmup
+count =
+quiet-level = 3
