@@ -34,6 +34,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
   correctly (#213)
 - Decimal package use a test function GetNumberLength instead of a
   package-level function getNumberLength (#219)
+- Datetime location after encode + decode is unequal (#217)
 
 ## [1.8.0] - 2022-08-17
 

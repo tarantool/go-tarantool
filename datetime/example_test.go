@@ -80,6 +80,22 @@ func Example() {
 	fmt.Printf("Data: %v\n", respDt.ToTime())
 }
 
+// ExampleNewDatetime_localUnsupported demonstrates that "Local" location is
+// unsupported.
+func ExampleNewDatetime_localUnsupported() {
+	tm := time.Now().Local()
+	loc := tm.Location()
+	fmt.Println("Location:", loc)
+	if _, err := NewDatetime(tm); err != nil {
+		fmt.Printf("Could not create a Datetime with %s location.\n", loc)
+	} else {
+		fmt.Printf("A Datetime with %s location created.\n", loc)
+	}
+	// Output:
+	// Location: Local
+	// Could not create a Datetime with Local location.
+}
+
 // Example demonstrates how to create a datetime for Tarantool without UTC
 // timezone in datetime.
 func ExampleNewDatetime_noTimezone() {
@@ -163,6 +179,42 @@ func ExampleDatetime_Add() {
 	fmt.Printf("New time: %s\n", newdt.ToTime().String())
 	// Output:
 	// New time: 2014-02-28 17:57:29.000000009 +0000 UTC
+}
+
+// ExampleDatetime_Add_dst demonstrates how to add an Interval to a
+// Datetime value with a DST location.
+func ExampleDatetime_Add_dst() {
+	loc, err := time.LoadLocation("Europe/Moscow")
+	if err != nil {
+		fmt.Printf("Unable to load location: %s", err)
+		return
+	}
+	tm := time.Date(2008, 1, 1, 1, 1, 1, 1, loc)
+	dt, err := NewDatetime(tm)
+	if err != nil {
+		fmt.Printf("Unable to create Datetime: %s", err)
+		return
+	}
+
+	fmt.Printf("Datetime time:\n")
+	fmt.Printf("%s\n", dt.ToTime())
+	fmt.Printf("Datetime time + 6 month:\n")
+	fmt.Printf("%s\n", dt.ToTime().AddDate(0, 6, 0))
+	dt, err = dt.Add(Interval{Month: 6})
+	if err != nil {
+		fmt.Printf("Unable to add 6 month: %s", err)
+		return
+	}
+	fmt.Printf("Datetime + 6 month time:\n")
+	fmt.Printf("%s\n", dt.ToTime())
+
+	// Output:
+	// Datetime time:
+	// 2008-01-01 01:01:01.000000001 +0300 MSK
+	// Datetime time + 6 month:
+	// 2008-07-01 01:01:01.000000001 +0400 MSD
+	// Datetime + 6 month time:
+	// 2008-07-01 01:01:01.000000001 +0400 MSD
 }
 
 // ExampleDatetime_Sub demonstrates how to subtract an Interval from a
