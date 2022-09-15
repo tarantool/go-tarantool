@@ -96,6 +96,9 @@ const (
 // supported range: [-5879610-06-22T00:00Z .. 5879611-07-11T00:00Z] or
 // an invalid timezone or offset value is out of supported range:
 // [-12 * 60 * 60, 14 * 60 * 60].
+//
+// NOTE: Tarantool's datetime.tz value is picked from t.Location().String().
+// "Local" location is unsupported, see ExampleNewDatetime_localUnsupported.
 func NewDatetime(t time.Time) (*Datetime, error) {
 	seconds := t.Unix()
 
@@ -103,13 +106,15 @@ func NewDatetime(t time.Time) (*Datetime, error) {
 		return nil, fmt.Errorf("time %s is out of supported range", t)
 	}
 
-	zone, offset := t.Zone()
+	zone := t.Location().String()
+	_, offset := t.Zone()
 	if zone != NoTimezone {
 		if _, ok := timezoneToIndex[zone]; !ok {
 			return nil, fmt.Errorf("unknown timezone %s with offset %d",
 				zone, offset)
 		}
 	}
+
 	if offset < offsetMin || offset > offsetMax {
 		return nil, fmt.Errorf("offset must be between %d and %d hours",
 			offsetMin, offsetMax)
@@ -219,6 +224,13 @@ func (dtime *Datetime) Interval(next *Datetime) Interval {
 }
 
 // ToTime returns a time.Time that Datetime contains.
+//
+// If a Datetime created from time.Time value then an original location is used
+// for the time value.
+//
+// If a Datetime created via unmarshaling Tarantool's datetime then we try to
+// create a location with time.LoadLocation() first. In case of failure, we use
+// a location created with time.FixedZone().
 func (dtime *Datetime) ToTime() time.Time {
 	return dtime.time
 }
@@ -230,7 +242,8 @@ func (dtime *Datetime) MarshalMsgpack() ([]byte, error) {
 	dt.seconds = tm.Unix()
 	dt.nsec = int32(tm.Nanosecond())
 
-	zone, offset := tm.Zone()
+	zone := tm.Location().String()
+	_, offset := tm.Zone()
 	if zone != NoTimezone {
 		// The zone value already checked in NewDatetime() or
 		// UnmarshalMsgpack() calls.
@@ -283,7 +296,17 @@ func (tm *Datetime) UnmarshalMsgpack(b []byte) error {
 			}
 			zone = indexToTimezone[int(dt.tzIndex)]
 		}
-		loc = time.FixedZone(zone, offset)
+		if zone != NoTimezone {
+			if loadLoc, err := time.LoadLocation(zone); err == nil {
+				loc = loadLoc
+			} else {
+				// Unable to load location.
+				loc = time.FixedZone(zone, offset)
+			}
+		} else {
+			// Only offset.
+			loc = time.FixedZone(zone, offset)
+		}
 	}
 	tt = tt.In(loc)
 
