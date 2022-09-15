@@ -48,3 +48,18 @@ jobs:
           # cause those comments get rendered in documentation by godoc.
           # See https://github.com/tarantool/go-tarantool/pull/160#discussion_r858608221
           args: -E goimports -D errcheck
+
+  codespell:
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'push' ||
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name != github.repository
+    steps:
+      - uses: actions/checkout@master
+
+      - name: Install codespell
+        run: pip3 install codespell
+
+      - name: Run codespell
+        run: make codespell
