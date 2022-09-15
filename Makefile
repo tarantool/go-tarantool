@@ -134,3 +134,8 @@ fuzzing:
 	@echo "Running fuzzing tests"
 	go clean -testcache
 	go test -tags "$(TAGS)" ./... -run=^Fuzz -v -p 1
+
+.PHONY: codespell
+codespell:
+	@echo "Running codespell"
+	codespell
