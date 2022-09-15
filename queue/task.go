@@ -79,7 +79,7 @@ func (t *Task) Bury() error {
 }
 
 // Release returns task back in the queue without making it complete.
-// In outher words, this worker failed to complete the task, and
+// In other words, this worker failed to complete the task, and
 // it, so other worker could try to do that again.
 func (t *Task) Release() error {
 	return t.accept(t.q._release(t.id, Opts{}))

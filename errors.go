@@ -25,7 +25,7 @@ func (clierr ClientError) Error() string {
 	return fmt.Sprintf("%s (0x%x)", clierr.Msg, clierr.Code)
 }
 
-// Temporary returns true if next attempt to perform request may succeeed.
+// Temporary returns true if next attempt to perform request may succeeded.
 //
 // Currently it returns true when:
 //

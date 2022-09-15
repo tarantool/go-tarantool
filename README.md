@@ -176,7 +176,7 @@ There are also changes in the logic that can lead to errors in the old code,
 `msgpack.v5` some functions for the logic tuning were added (see
 [UseLooseInterfaceDecoding](https://pkg.go.dev/github.com/vmihailenco/msgpack/v5#Decoder.UseLooseInterfaceDecoding), [UseCompactInts](https://pkg.go.dev/github.com/vmihailenco/msgpack/v5#Encoder.UseCompactInts) etc), it is still impossible
 to achieve full compliance of behavior between `msgpack.v5` and `msgpack.v2`. So
-we don't go this way. We use standart settings if it possible.
+we don't go this way. We use standard settings if it possible.
 
 ## Contributing
 

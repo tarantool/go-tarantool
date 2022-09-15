@@ -149,7 +149,7 @@ func daysInMonth(year int64, month int64) int64 {
 	return int64(time.Date(int(year), time.Month(month), 0, 0, 0, 0, 0, time.UTC).Day())
 }
 
-// C imlementation:
+// C implementation:
 // https://github.com/tarantool/c-dt/blob/cec6acebb54d9e73ea0b99c63898732abd7683a6/dt_arithmetic.c#L74-L98
 func addMonth(ival *Interval, delta int64, adjust Adjust) {
 	oldYear := ival.Year

@@ -88,7 +88,7 @@ CI and documentation.
 
 - Handle everything with `go test` (#115)
 - Use plain package instead of module for UUID submodule (#134)
-- Reset buffer if its average use size smaller than quater of capacity (#95)
+- Reset buffer if its average use size smaller than quarter of capacity (#95)
 - Update API documentation: comments and examples (#123)
 
 ### Fixed

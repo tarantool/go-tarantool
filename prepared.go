@@ -41,7 +41,7 @@ func fillExecutePrepared(enc *encoder, stmt Prepared, args interface{}) error {
 // NewPreparedFromResponse constructs a Prepared object.
 func NewPreparedFromResponse(conn *Connection, resp *Response) (*Prepared, error) {
 	if resp == nil {
-		return nil, fmt.Errorf("pased nil response")
+		return nil, fmt.Errorf("passed nil response")
 	}
 	if resp.Data == nil {
 		return nil, fmt.Errorf("response Data is nil")
