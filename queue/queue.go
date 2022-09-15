@@ -205,7 +205,7 @@ func (q *queue) Cfg(opts CfgOpts) error {
 	return err
 }
 
-// Exists checks existance of a tube.
+// Exists checks existence of a tube.
 func (q *queue) Exists() (bool, error) {
 	cmd := "local name = ... ; return queue.tube[name] ~= nil"
 	resp, err := q.conn.Eval(cmd, []string{q.name})

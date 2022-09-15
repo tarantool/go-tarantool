@@ -1686,10 +1686,10 @@ func TestDoWithStrangerConn(t *testing.T) {
 
 	_, err = connPool.Do(req, connection_pool.ANY).Get()
 	if err == nil {
-		t.Fatalf("nil error catched")
+		t.Fatalf("nil error caught")
 	}
 	if err.Error() != expectedErr.Error() {
-		t.Fatalf("Unexpected error catched")
+		t.Fatalf("Unexpected error caught")
 	}
 }
 

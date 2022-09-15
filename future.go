@@ -172,7 +172,7 @@ func (fut *Future) SetError(err error) {
 // Get waits for Future to be filled and returns Response and error.
 //
 // Response will contain deserialized result in Data field.
-// It will be []interface{}, so if you want more performace, use GetTyped method.
+// It will be []interface{}, so if you want more performance, use GetTyped method.
 //
 // Note: Response could be equal to nil if ClientError is returned in error.
 //
@@ -226,7 +226,7 @@ func init() {
 	close(closedChan)
 }
 
-// WaitChan returns channel which becomes closed when response arrived or error occured.
+// WaitChan returns channel which becomes closed when response arrived or error occurred.
 func (fut *Future) WaitChan() <-chan struct{} {
 	if fut.done == nil {
 		return closedChan

@@ -336,7 +336,7 @@ func TestFifoQueue_TakeTyped(t *testing.T) {
 	} else {
 		typedData, ok := task.Data().(*customData)
 		if !ok {
-			t.Errorf("Task data after put has diferent type. %#v != %#v", task.Data(), putData)
+			t.Errorf("Task data after put has different type. %#v != %#v", task.Data(), putData)
 		}
 		if *typedData != *putData {
 			t.Errorf("Task data after put not equal with example. %s != %s", task.Data(), putData)
@@ -353,7 +353,7 @@ func TestFifoQueue_TakeTyped(t *testing.T) {
 	} else {
 		typedData, ok := task.Data().(*customData)
 		if !ok {
-			t.Errorf("Task data after put has diferent type. %#v != %#v", task.Data(), putData)
+			t.Errorf("Task data after put has different type. %#v != %#v", task.Data(), putData)
 		}
 		if *typedData != *putData {
 			t.Errorf("Task data after take not equal with example. %#v != %#v", task.Data(), putData)

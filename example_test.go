@@ -264,7 +264,7 @@ func ExampleCommitRequest() {
 	fmt.Printf("Insert in stream: response is %#v\n", resp.Code)
 
 	// Select not related to the transaction
-	// while transaction is not commited
+	// while transaction is not committed
 	// result of select is empty
 	selectReq := tarantool.NewSelectRequest(spaceNo).
 		Index(indexNo).
@@ -340,7 +340,7 @@ func ExampleRollbackRequest() {
 	fmt.Printf("Insert in stream: response is %#v\n", resp.Code)
 
 	// Select not related to the transaction
-	// while transaction is not commited
+	// while transaction is not committed
 	// result of select is empty
 	selectReq := tarantool.NewSelectRequest(spaceNo).
 		Index(indexNo).
@@ -418,7 +418,7 @@ func ExampleBeginRequest_TxnIsolation() {
 	fmt.Printf("Insert in stream: response is %#v\n", resp.Code)
 
 	// Select not related to the transaction
-	// while transaction is not commited
+	// while transaction is not committed
 	// result of select is empty
 	selectReq := tarantool.NewSelectRequest(spaceNo).
 		Index(indexNo).

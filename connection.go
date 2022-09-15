@@ -240,7 +240,7 @@ type Opts struct {
 	// See RLimitAction for possible actions when RateLimit.reached.
 	RateLimit uint
 	// RLimitAction tells what to do when RateLimit reached:
-	//   RLimitDrop - immediatly abort request,
+	//   RLimitDrop - immediately abort request,
 	//   RLimitWait - wait during timeout period for some request to be answered.
 	//                If no request answered during timeout period, this request
 	//                is aborted.
@@ -249,7 +249,7 @@ type Opts struct {
 	RLimitAction uint
 	// Concurrency is amount of separate mutexes for request
 	// queues and buffers inside of connection.
-	// It is rounded upto nearest power of 2.
+	// It is rounded up to nearest power of 2.
 	// By default it is runtime.GOMAXPROCS(-1) * 4
 	Concurrency uint32
 	// SkipSchema disables schema loading. Without disabling schema loading,
@@ -273,7 +273,7 @@ type Opts struct {
 type SslOpts struct {
 	// KeyFile is a path to a private SSL key file.
 	KeyFile string
-	// CertFile is a path to an SSL sertificate file.
+	// CertFile is a path to an SSL certificate file.
 	CertFile string
 	// CaFile is a path to a trusted certificate authorities (CA) file.
 	CaFile string
@@ -1060,7 +1060,7 @@ func (conn *Connection) read(r io.Reader) (response []byte, err error) {
 		return
 	}
 	if conn.lenbuf[0] != 0xce {
-		err = errors.New("Wrong reponse header")
+		err = errors.New("Wrong response header")
 		return
 	}
 	length = (int(conn.lenbuf[1]) << 24) +

@@ -106,14 +106,14 @@ func TestReconnect(t *testing.T) {
 		t.Errorf("conn has incorrect addr: %s after disconnect server1", multiConn.getCurrentConnection().Addr())
 	}
 	if !multiConn.ConnectedNow() {
-		t.Errorf("incorrect multiConn status after reconecting")
+		t.Errorf("incorrect multiConn status after reconnecting")
 	}
 
 	timer = time.NewTimer(100 * time.Millisecond)
 	<-timer.C
 	conn, _ = multiConn.getConnectionFromPool(server1)
 	if !conn.ConnectedNow() {
-		t.Errorf("incorrect conn status after reconecting")
+		t.Errorf("incorrect conn status after reconnecting")
 	}
 }
 
@@ -139,15 +139,15 @@ func TestDisconnectAll(t *testing.T) {
 	timer = time.NewTimer(100 * time.Millisecond)
 	<-timer.C
 	if !multiConn.ConnectedNow() {
-		t.Errorf("incorrect multiConn status after reconecting")
+		t.Errorf("incorrect multiConn status after reconnecting")
 	}
 	conn, _ = multiConn.getConnectionFromPool(server1)
 	if !conn.ConnectedNow() {
-		t.Errorf("incorrect server1 conn status after reconecting")
+		t.Errorf("incorrect server1 conn status after reconnecting")
 	}
 	conn, _ = multiConn.getConnectionFromPool(server2)
 	if !conn.ConnectedNow() {
-		t.Errorf("incorrect server2 conn status after reconecting")
+		t.Errorf("incorrect server2 conn status after reconnecting")
 	}
 }
 
@@ -314,10 +314,10 @@ func TestDoWithStrangerConn(t *testing.T) {
 
 	_, err = multiConn.Do(req).Get()
 	if err == nil {
-		t.Fatalf("nil error catched")
+		t.Fatalf("nil error caught")
 	}
 	if err.Error() != expectedErr.Error() {
-		t.Fatalf("Unexpected error catched")
+		t.Fatalf("Unexpected error caught")
 	}
 }
 

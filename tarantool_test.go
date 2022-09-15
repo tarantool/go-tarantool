@@ -1626,16 +1626,16 @@ func TestConnection_DoWithStrangerConn(t *testing.T) {
 
 	_, err := conn1.Do(req).Get()
 	if err == nil {
-		t.Fatalf("nil error catched")
+		t.Fatalf("nil error caught")
 	}
 	if err.Error() != expectedErr.Error() {
-		t.Fatalf("Unexpected error catched")
+		t.Fatalf("Unexpected error caught")
 	}
 }
 
 func TestNewPreparedFromResponse(t *testing.T) {
 	var (
-		ErrNilResponsePassed = fmt.Errorf("pased nil response")
+		ErrNilResponsePassed = fmt.Errorf("passed nil response")
 		ErrNilResponseData   = fmt.Errorf("response Data is nil")
 		ErrWrongDataFormat   = fmt.Errorf("response Data format is wrong")
 	)
@@ -2293,7 +2293,7 @@ func TestClientRequestObjectsWithPassedCanceledContext(t *testing.T) {
 		t.Fatalf("Failed to catch an error from done context")
 	}
 	if resp != nil {
-		t.Fatalf("Response is not nil after the occured error")
+		t.Fatalf("Response is not nil after the occurred error")
 	}
 }
 
@@ -2311,10 +2311,10 @@ func TestClientRequestObjectsWithContext(t *testing.T) {
 		t.Fatalf("response must be nil")
 	}
 	if err == nil {
-		t.Fatalf("catched nil error")
+		t.Fatalf("caught nil error")
 	}
 	if err.Error() != "context is done" {
-		t.Fatalf("wrong error catched: %v", err)
+		t.Fatalf("wrong error caught: %v", err)
 	}
 }
 

@@ -70,7 +70,7 @@ func assertBodyCall(t testing.TB, requests []Request, errorMsg string) {
 			t.Errorf(errBegin+"error %q", err.Error())
 		}
 		if err == nil && errorMsg != "" {
-			t.Errorf(errBegin+"result, expexted error %q", errorMsg)
+			t.Errorf(errBegin+"result, expected error %q", errorMsg)
 		}
 	}
 }
