@@ -117,7 +117,7 @@ func encodeStringToBCD(buf string) ([]byte, error) {
 	// number of digits. Therefore highNibble is false when decimal number
 	// is even.
 	highNibble := true
-	l := GetNumberLength(buf)
+	l := getNumberLength(buf)
 	if l%2 == 0 {
 		highNibble = false
 	}
