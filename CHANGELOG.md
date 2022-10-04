@@ -10,16 +10,24 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Added
 
-- Support queue 1.2.0 (#177)
+### Changed
+
+### Fixed
+
+## [1.9.0] - 2022-11-02
+
+The release adds support for the latest version of the
+[queue package](https://github.com/tarantool/queue) with master-replica
+switching.
+
+### Added
+
+- Support the queue 1.2.1 (#177)
 - ConnectionHandler interface for handling changes of connections in
   ConnectionPool (#178)
 - Execute, ExecuteTyped and ExecuteAsync methods to ConnectionPool (#176)
 - ConnectorAdapter type to use ConnectionPool as Connector interface (#176)
 - An example how to use queue and connection_pool subpackages together (#176)
-
-### Changed
-
-- Bump queue package version to 1.2.1 (#176)
 
 ### Fixed
 
