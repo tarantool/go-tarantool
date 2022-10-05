@@ -41,6 +41,8 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ## [1.8.0] - 2022-08-17
 
+The minor release with time zones and interval support for datetime.
+
 ### Added
 
 - Optional msgpack.v5 usage (#124)
@@ -54,6 +56,11 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 - Markdown of documentation for the decimal subpackage (#201)
 
 ## [1.7.0] - 2022-08-02
+
+This release adds a number of features. The extending of the public API has
+become possible with a new way of creating requests. New types of requests are
+created via chain calls. Streams, context and prepared statements support are
+based on this idea.
 
 ### Added
 
