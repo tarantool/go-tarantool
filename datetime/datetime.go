@@ -220,6 +220,9 @@ func (dtime *Datetime) Sub(ival Interval) (*Datetime, error) {
 func (dtime *Datetime) Interval(next *Datetime) Interval {
 	curIval := intervalFromDatetime(dtime)
 	nextIval := intervalFromDatetime(next)
+	_, curOffset := dtime.time.Zone()
+	_, nextOffset := next.time.Zone()
+	curIval.Min -= int64(curOffset-nextOffset) / 60
 	return nextIval.Sub(curIval)
 }
 

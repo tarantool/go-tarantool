@@ -321,8 +321,8 @@ func TestDatetimeAddOutOfRange(t *testing.T) {
 }
 
 func TestDatetimeInterval(t *testing.T) {
-	var first = "2015-03-20T17:50:56.000000009Z"
-	var second = "2013-01-31T17:51:56.000000009Z"
+	var first = "2015-03-20T17:50:56.000000009+02:00"
+	var second = "2013-01-31T11:51:58.00000009+01:00"
 
 	tmFirst, err := time.Parse(time.RFC3339, first)
 	if err != nil {
@@ -345,14 +345,23 @@ func TestDatetimeInterval(t *testing.T) {
 	ivalFirst := dtFirst.Interval(dtSecond)
 	ivalSecond := dtSecond.Interval(dtFirst)
 
-	expectedFirst := Interval{-2, -2, 0, 11, 0, 1, 0, 0, NoneAdjust}
-	expectedSecond := Interval{2, 2, 0, -11, 0, -1, 0, 0, NoneAdjust}
+	expectedFirst := Interval{-2, -2, 0, 11, -6, 61, 2, 81, NoneAdjust}
+	expectedSecond := Interval{2, 2, 0, -11, 6, -61, -2, -81, NoneAdjust}
 
 	if !reflect.DeepEqual(ivalFirst, expectedFirst) {
 		t.Errorf("Unexpected interval %v, expected %v", ivalFirst, expectedFirst)
 	}
 	if !reflect.DeepEqual(ivalSecond, expectedSecond) {
-		t.Errorf("Unexpected interval %v, expected %v", ivalFirst, expectedSecond)
+		t.Errorf("Unexpected interval %v, expected %v", ivalSecond, expectedSecond)
+	}
+
+	dtFirst, err = dtFirst.Add(ivalFirst)
+	if err != nil {
+		t.Fatalf("Unable to add an interval: %s", err)
+	}
+	if !dtFirst.ToTime().Equal(dtSecond.ToTime()) {
+		t.Errorf("Incorrect add an interval result: %s, expected %s",
+			dtFirst.ToTime(), dtSecond.ToTime())
 	}
 }
 
@@ -363,12 +372,20 @@ func TestDatetimeTarantoolInterval(t *testing.T) {
 	defer conn.Close()
 
 	dates := []string{
-		"2015-03-20T17:50:56.000000009+01:00",
+		// We could return tests with timezones after a release with a fix of
+		// the bug:
+		// https://github.com/tarantool/tarantool/issues/7698
+		//
+		// "2010-02-24T23:03:56.0000013-04:00",
+		// "2015-03-20T17:50:56.000000009+01:00",
+		// "2020-01-01T01:01:01+11:30",
+		// "2025-08-01T00:00:00.000000003+11:00",
+		"2010-02-24T23:03:56.0000013Z",
+		"2015-03-20T17:50:56.000000009Z",
+		"2020-01-01T01:01:01Z",
+		"2025-08-01T00:00:00.000000003Z",
 		"2015-12-21T17:50:53Z",
-		"2010-02-24T23:03:56.0000013-04:00",
 		"1980-03-28T13:18:39.000099Z",
-		"2025-08-01T00:00:00.000000003+11:00",
-		"2020-01-01T01:01:01+11:30",
 	}
 	datetimes := []*Datetime{}
 	for _, date := range dates {
