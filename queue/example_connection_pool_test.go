@@ -3,6 +3,7 @@ package queue_test
 import (
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -22,6 +23,7 @@ type QueueConnectionHandler struct {
 	err           error
 	mutex         sync.Mutex
 	masterUpdated chan struct{}
+	masterCnt     int32
 }
 
 // QueueConnectionHandler implements the ConnectionHandler interface.
@@ -87,6 +89,7 @@ func (h *QueueConnectionHandler) Discovered(conn *tarantool.Connection,
 		}
 	}
 
+	atomic.AddInt32(&h.masterCnt, 1)
 	fmt.Printf("Master %s is ready to work!\n", conn.Addr())
 
 	return nil
@@ -95,6 +98,9 @@ func (h *QueueConnectionHandler) Discovered(conn *tarantool.Connection,
 // Deactivated doesn't do anything useful for the example.
 func (h *QueueConnectionHandler) Deactivated(conn *tarantool.Connection,
 	role connection_pool.Role) error {
+	if role == connection_pool.MasterRole {
+		atomic.AddInt32(&h.masterCnt, -1)
+	}
 	return nil
 }
 
@@ -184,8 +190,18 @@ func Example_connectionPool() {
 		return
 	}
 
+	for i := 0; i < 2 && atomic.LoadInt32(&h.masterCnt) != 1; i++ {
+		// The pool does not immediately detect role switching. It may happen
+		// that requests will be sent to RO instances. In that case q.Take()
+		// method will return a nil value.
+		//
+		// We need to make the example test output deterministic so we need to
+		// avoid it here. But in real life, you need to take this into account.
+		time.Sleep(poolOpts.CheckTimeout)
+	}
+
 	// Take a data from the new master instance.
-	task, err := q.TakeTimeout(1 * time.Second)
+	task, err := q.Take()
 	if err != nil {
 		fmt.Println("Unable to got task:", err)
 	} else if task == nil {
