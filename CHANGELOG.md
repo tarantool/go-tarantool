@@ -37,6 +37,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 - Datetime location after encode + decode is unequal (#217)
 - Wrong interval arithmetic with timezones (#221)
 - Invalid MsgPack if STREAM_ID > 127 (#224)
+- queue.Take() returns an invalid task (#222)
 
 ## [1.8.0] - 2022-08-17
 
