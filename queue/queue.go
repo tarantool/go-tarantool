@@ -467,6 +467,14 @@ func (qd *queueData) DecodeMsgpack(d *decoder) error {
 	}
 
 	qd.task = &Task{data: qd.result, q: qd.q}
-	d.Decode(&qd.task)
+	if err = d.Decode(&qd.task); err != nil {
+		return err
+	}
+
+	if qd.task.Data() == nil {
+		// It may happen if the decoder has a code.Nil value inside. As a
+		// result, the task will not be decoded.
+		qd.task = nil
+	}
 	return nil
 }

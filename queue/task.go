@@ -29,13 +29,9 @@ func (t *Task) DecodeMsgpack(d *decoder) error {
 		return err
 	}
 	if t.data != nil {
-		if err = d.Decode(t.data); err != nil {
-			return fmt.Errorf("fffuuuu: %s", err)
-		}
-	} else {
-		if t.data, err = d.DecodeInterface(); err != nil {
-			return err
-		}
+		d.Decode(t.data)
+	} else if t.data, err = d.DecodeInterface(); err != nil {
+		return err
 	}
 	return nil
 }
