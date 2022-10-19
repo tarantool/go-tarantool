@@ -6,10 +6,12 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"net"
 	"runtime"
 	"sync"
@@ -531,23 +533,38 @@ func (conn *Connection) dial() (err error) {
 
 func pack(h *smallWBuf, enc *encoder, reqid uint32,
 	req Request, streamId uint64, res SchemaResolver) (err error) {
+	const uint32Code = 0xce
+	const uint64Code = 0xcf
+	const streamBytesLenUint64 = 10
+	const streamBytesLenUint32 = 6
+
 	hl := h.Len()
 
+	var streamBytesLen = 0
+	var streamBytes [streamBytesLenUint64]byte
 	hMapLen := byte(0x82) // 2 element map.
 	if streamId != ignoreStreamId {
 		hMapLen = byte(0x83) // 3 element map.
+		streamBytes[0] = KeyStreamId
+		if streamId > math.MaxUint32 {
+			streamBytesLen = streamBytesLenUint64
+			streamBytes[1] = uint64Code
+			binary.BigEndian.PutUint64(streamBytes[2:], streamId)
+		} else {
+			streamBytesLen = streamBytesLenUint32
+			streamBytes[1] = uint32Code
+			binary.BigEndian.PutUint32(streamBytes[2:], uint32(streamId))
+		}
 	}
-	hBytes := []byte{
-		0xce, 0, 0, 0, 0, // Length.
+
+	hBytes := append([]byte{
+		uint32Code, 0, 0, 0, 0, // Length.
 		hMapLen,
 		KeyCode, byte(req.Code()), // Request code.
-		KeySync, 0xce,
+		KeySync, uint32Code,
 		byte(reqid >> 24), byte(reqid >> 16),
 		byte(reqid >> 8), byte(reqid),
-	}
-	if streamId != ignoreStreamId {
-		hBytes = append(hBytes, KeyStreamId, byte(streamId))
-	}
+	}, streamBytes[:streamBytesLen]...)
 
 	h.Write(hBytes)
 

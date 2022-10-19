@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math"
 	"os"
 	"reflect"
 	"runtime"
@@ -2439,6 +2440,38 @@ func TestComplexStructs(t *testing.T) {
 	if tuple.Cid != tuples[0].Cid || len(tuple.Members) != len(tuples[0].Members) || tuple.Members[1].Name != tuples[0].Members[1].Name {
 		t.Errorf("Failed to selectTyped: incorrect data")
 		return
+	}
+}
+
+func TestStream_IdValues(t *testing.T) {
+	test_helpers.SkipIfStreamsUnsupported(t)
+
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	defer conn.Close()
+
+	cases := []uint64{
+		1,
+		128,
+		math.MaxUint8,
+		math.MaxUint8 + 1,
+		math.MaxUint16,
+		math.MaxUint16 + 1,
+		math.MaxUint32,
+		math.MaxUint32 + 1,
+		math.MaxUint64,
+	}
+
+	stream, _ := conn.NewStream()
+	req := NewPingRequest()
+
+	for _, id := range cases {
+		t.Run(fmt.Sprintf("%d", id), func(t *testing.T) {
+			stream.Id = id
+			_, err := stream.Do(req).Get()
+			if err != nil {
+				t.Fatalf("Failed to Ping: %s", err.Error())
+			}
+		})
 	}
 }
 
