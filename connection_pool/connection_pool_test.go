@@ -337,7 +337,7 @@ func TestConnectionHandlerOpenUpdateClose(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		// Wait for read_only update, it should report about close connection
 		// with old role.
-		if h.deactivated >= 1 {
+		if h.discovered >= 3 {
 			break
 		}
 		time.Sleep(poolOpts.CheckTimeout)
