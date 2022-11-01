@@ -1,7 +1,7 @@
 package tarantool
 
-// IntKey is utility type for passing integer key to Select*, Update* and Delete*.
-// It serializes to array with single integer element.
+// IntKey is utility type for passing integer key to Select*, Update*,
+// Delete* and GetTyped. It serializes to array with single integer element.
 type IntKey struct {
 	I int
 }
@@ -12,8 +12,9 @@ func (k IntKey) EncodeMsgpack(enc *encoder) error {
 	return nil
 }
 
-// UintKey is utility type for passing unsigned integer key to Select*, Update* and Delete*.
-// It serializes to array with single integer element.
+// UintKey is utility type for passing unsigned integer key to Select*,
+// Update*, Delete* and GetTyped. It serializes to array with single unsigned
+// integer element.
 type UintKey struct {
 	I uint
 }
@@ -24,8 +25,8 @@ func (k UintKey) EncodeMsgpack(enc *encoder) error {
 	return nil
 }
 
-// UintKey is utility type for passing string key to Select*, Update* and Delete*.
-// It serializes to array with single string element.
+// StringKey is utility type for passing string key to Select*, Update*,
+// Delete* and GetTyped. It serializes to array with single string element.
 type StringKey struct {
 	S string
 }
@@ -36,8 +37,8 @@ func (k StringKey) EncodeMsgpack(enc *encoder) error {
 	return nil
 }
 
-// IntIntKey is utility type for passing two integer keys to Select*, Update* and Delete*.
-// It serializes to array with two integer elements.
+// IntIntKey is utility type for passing two integer keys to Select*, Update*,
+// Delete* and GetTyped. It serializes to array with two integer elements.
 type IntIntKey struct {
 	I1, I2 int
 }

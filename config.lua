@@ -45,8 +45,28 @@ box.once("init", function()
         if_not_exists = true
     })
 
-    local s = box.schema.space.create('SQL_TEST', {
+    local s = box.schema.space.create('teststring', {
         id = 518,
+        if_not_exists = true,
+    })
+    s:create_index('primary', {
+        type = 'tree',
+        parts = {1, 'string'},
+        if_not_exists = true
+    })
+
+    local s = box.schema.space.create('testintint', {
+        id = 519,
+        if_not_exists = true,
+    })
+    s:create_index('primary', {
+        type = 'tree',
+        parts = {1, 'int', 2, 'int'},
+        if_not_exists = true
+    })
+
+    local s = box.schema.space.create('SQL_TEST', {
+        id = 520,
         if_not_exists = true,
         format = {
             {name = "NAME0", type = "unsigned"},
@@ -62,7 +82,7 @@ box.once("init", function()
     s:insert{1, "test", "test"}
 
     local s = box.schema.space.create('test_perf', {
-        id = 519,
+        id = 521,
         temporary = true,
         if_not_exists = true,
         field_count = 3,

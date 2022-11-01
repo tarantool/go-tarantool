@@ -127,6 +127,98 @@ func ExampleConnection_SelectAsync() {
 	// Future 2 Data [[18 val 18 bla]]
 }
 
+func ExampleConnection_GetTyped() {
+	conn := example_connect()
+	defer conn.Close()
+
+	const space = "test"
+	const index = "primary"
+	conn.Replace(space, []interface{}{uint(1111), "hello", "world"})
+
+	var t Tuple
+	err := conn.GetTyped(space, index, []interface{}{1111}, &t)
+	fmt.Println("Error", err)
+	fmt.Println("Data", t)
+	// Output:
+	// Error <nil>
+	// Data {{} 1111 hello world}
+}
+
+func ExampleIntKey() {
+	conn := example_connect()
+	defer conn.Close()
+
+	const space = "test"
+	const index = "primary"
+	conn.Replace(space, []interface{}{int(1111), "hello", "world"})
+
+	var t Tuple
+	err := conn.GetTyped(space, index, tarantool.IntKey{1111}, &t)
+	fmt.Println("Error", err)
+	fmt.Println("Data", t)
+	// Output:
+	// Error <nil>
+	// Data {{} 1111 hello world}
+}
+
+func ExampleUintKey() {
+	conn := example_connect()
+	defer conn.Close()
+
+	const space = "test"
+	const index = "primary"
+	conn.Replace(space, []interface{}{uint(1111), "hello", "world"})
+
+	var t Tuple
+	err := conn.GetTyped(space, index, tarantool.UintKey{1111}, &t)
+	fmt.Println("Error", err)
+	fmt.Println("Data", t)
+	// Output:
+	// Error <nil>
+	// Data {{} 1111 hello world}
+}
+
+func ExampleStringKey() {
+	conn := example_connect()
+	defer conn.Close()
+
+	const space = "teststring"
+	const index = "primary"
+	conn.Replace(space, []interface{}{"any", []byte{0x01, 0x02}})
+
+	t := struct {
+		Key   string
+		Value []byte
+	}{}
+	err := conn.GetTyped(space, index, tarantool.StringKey{"any"}, &t)
+	fmt.Println("Error", err)
+	fmt.Println("Data", t)
+	// Output:
+	// Error <nil>
+	// Data {any [1 2]}
+}
+
+func ExampleIntIntKey() {
+	conn := example_connect()
+	defer conn.Close()
+
+	const space = "testintint"
+	const index = "primary"
+	conn.Replace(space, []interface{}{1, 2, "foo"})
+
+	t := struct {
+		Key1  int
+		Key2  int
+		Value string
+	}{}
+	err := conn.GetTyped(space, index, tarantool.IntIntKey{1, 2}, &t)
+	fmt.Println("Error", err)
+	fmt.Println("Data", t)
+	// Output:
+	// Error <nil>
+	// Data {1 2 foo}
+}
+
 func ExampleSelectRequest() {
 	conn := example_connect()
 	defer conn.Close()
