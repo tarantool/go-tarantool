@@ -205,8 +205,7 @@ func BenchmarkClientSerialSQL(b *testing.B) {
 	conn := test_helpers.ConnectWithValidation(b, server, opts)
 	defer conn.Close()
 
-	spaceNo := 519
-	_, err := conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
+	_, err := conn.Replace("SQL_TEST", []interface{}{uint(1111), "hello", "world"})
 	if err != nil {
 		b.Errorf("Failed to replace: %s", err)
 	}
@@ -227,8 +226,7 @@ func BenchmarkClientSerialSQLPrepared(b *testing.B) {
 	conn := test_helpers.ConnectWithValidation(b, server, opts)
 	defer conn.Close()
 
-	spaceNo := 519
-	_, err := conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
+	_, err := conn.Replace("SQL_TEST", []interface{}{uint(1111), "hello", "world"})
 	if err != nil {
 		b.Errorf("Failed to replace: %s", err)
 	}
@@ -601,7 +599,6 @@ func BenchmarkClientParallelMassiveUntyped(b *testing.B) {
 func BenchmarkClientReplaceParallel(b *testing.B) {
 	conn := test_helpers.ConnectWithValidation(b, server, opts)
 	defer conn.Close()
-	spaceNo = 520
 
 	rSpaceNo, _, err := conn.Schema.ResolveSpaceIndex("test_perf", "secondary")
 	if err != nil {
@@ -647,8 +644,7 @@ func BenchmarkClientParallelSQL(b *testing.B) {
 	conn := test_helpers.ConnectWithValidation(b, server, opts)
 	defer conn.Close()
 
-	spaceNo := 519
-	_, err := conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
+	_, err := conn.Replace("SQL_TEST", []interface{}{uint(1111), "hello", "world"})
 	if err != nil {
 		b.Errorf("No connection available")
 	}
@@ -671,8 +667,7 @@ func BenchmarkClientParallelSQLPrepared(b *testing.B) {
 	conn := test_helpers.ConnectWithValidation(b, server, opts)
 	defer conn.Close()
 
-	spaceNo := 519
-	_, err := conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
+	_, err := conn.Replace("SQL_TEST", []interface{}{uint(1111), "hello", "world"})
 	if err != nil {
 		b.Errorf("No connection available")
 	}
@@ -706,8 +701,7 @@ func BenchmarkSQLSerial(b *testing.B) {
 	conn := test_helpers.ConnectWithValidation(b, server, opts)
 	defer conn.Close()
 
-	spaceNo := 519
-	_, err := conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
+	_, err := conn.Replace("SQL_TEST", []interface{}{uint(1111), "hello", "world"})
 	if err != nil {
 		b.Errorf("Failed to replace: %s", err)
 	}

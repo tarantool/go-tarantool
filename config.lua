@@ -6,24 +6,6 @@ box.cfg{
 }
 
 box.once("init", function()
-    local s = box.schema.space.create('test', {
-        id = 517,
-        if_not_exists = true,
-    })
-    s:create_index('primary', {type = 'tree', parts = {1, 'uint'}, if_not_exists = true})
-
-    local sp = box.schema.space.create('SQL_TEST', {
-        id = 519,
-        if_not_exists = true,
-        format = {
-            {name = "NAME0", type = "unsigned"},
-            {name = "NAME1", type = "string"},
-            {name = "NAME2", type = "string"},
-        }
-    })
-    sp:create_index('primary', {type = 'tree', parts = {1, 'uint'}, if_not_exists = true})
-    sp:insert{1, "test", "test"}
-
     local st = box.schema.space.create('schematest', {
         id = 516,
         temporary = true,
@@ -53,8 +35,34 @@ box.once("init", function()
     })
     st:truncate()
 
-    local s2 = box.schema.space.create('test_perf', {
-        id = 520,
+    local s = box.schema.space.create('test', {
+        id = 517,
+        if_not_exists = true,
+    })
+    s:create_index('primary', {
+        type = 'tree',
+        parts = {1, 'uint'},
+        if_not_exists = true
+    })
+
+    local s = box.schema.space.create('SQL_TEST', {
+        id = 518,
+        if_not_exists = true,
+        format = {
+            {name = "NAME0", type = "unsigned"},
+            {name = "NAME1", type = "string"},
+            {name = "NAME2", type = "string"},
+        }
+    })
+    s:create_index('primary', {
+        type = 'tree',
+        parts = {1, 'uint'},
+        if_not_exists = true
+    })
+    s:insert{1, "test", "test"}
+
+    local s = box.schema.space.create('test_perf', {
+        id = 519,
         temporary = true,
         if_not_exists = true,
         field_count = 3,
@@ -64,14 +72,24 @@ box.once("init", function()
             {name = "arr1", type = "array"},
         },
     })
-    s2:create_index('primary', {type = 'tree', unique = true, parts = {1, 'unsigned'}, if_not_exists = true})
-    s2:create_index('secondary', {id = 5, type = 'tree', unique = false, parts = {2, 'string'}, if_not_exists = true})
+    s:create_index('primary', {
+        type = 'tree',
+        unique = true,
+        parts = {1, 'unsigned'},
+        if_not_exists = true
+    })
+    s:create_index('secondary', {
+        id = 5, type = 'tree',
+        unique = false,
+        parts = {2, 'string'},
+        if_not_exists = true
+    })
     local arr_data = {}
     for i = 1,100 do
         arr_data[i] = i
     end
     for i = 1,1000 do
-        s2:insert{
+        s:insert{
             i,
             'test_name',
             arr_data,
