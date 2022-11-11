@@ -35,7 +35,7 @@ const (
 	KeyExpression   = 0x27
 	KeyDefTuple     = 0x28
 	KeyData         = 0x30
-	KeyError        = 0x31
+	KeyError24      = 0x31
 	KeyMetaData     = 0x32
 	KeyBindCount    = 0x34
 	KeySQLText      = 0x40

@@ -172,7 +172,7 @@ func (resp *Response) decodeBody() (err error) {
 				if resp.Data, ok = res.([]interface{}); !ok {
 					return fmt.Errorf("result is not array: %v", res)
 				}
-			case KeyError:
+			case KeyError24:
 				if resp.Error, err = d.DecodeString(); err != nil {
 					return err
 				}
@@ -262,7 +262,7 @@ func (resp *Response) decodeBodyTyped(res interface{}) (err error) {
 				if err = d.Decode(res); err != nil {
 					return err
 				}
-			case KeyError:
+			case KeyError24:
 				if resp.Error, err = d.DecodeString(); err != nil {
 					return err
 				}
