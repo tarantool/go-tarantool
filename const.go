@@ -18,6 +18,7 @@ const (
 	RollbackRequestCode  = 16
 	PingRequestCode      = 64
 	SubscribeRequestCode = 66
+	IdRequestCode        = 73
 
 	KeyCode         = 0x00
 	KeySync         = 0x01
@@ -41,6 +42,8 @@ const (
 	KeySQLBind      = 0x41
 	KeySQLInfo      = 0x42
 	KeyStmtID       = 0x43
+	KeyVersion      = 0x54
+	KeyFeatures     = 0x55
 	KeyTimeout      = 0x56
 	KeyTxnIsolation = 0x59
 

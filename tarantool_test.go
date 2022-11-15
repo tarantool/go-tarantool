@@ -20,6 +20,17 @@ import (
 	"github.com/tarantool/go-tarantool/test_helpers"
 )
 
+var startOpts test_helpers.StartOpts = test_helpers.StartOpts{
+	InitScript:   "config.lua",
+	Listen:       server,
+	WorkDir:      "work_dir",
+	User:         opts.User,
+	Pass:         opts.Pass,
+	WaitStart:    100 * time.Millisecond,
+	ConnectRetry: 3,
+	RetryTimeout: 500 * time.Millisecond,
+}
+
 type Member struct {
 	Name  string
 	Nonce string
@@ -2830,6 +2841,313 @@ func TestStream_DoWithClosedConn(t *testing.T) {
 	}
 }
 
+func TestConnectionProtocolInfoSupported(t *testing.T) {
+	test_helpers.SkipIfIdUnsupported(t)
+
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	defer conn.Close()
+
+	// First Tarantool protocol version (1, StreamsFeature and TransactionsFeature)
+	// was introduced between 2.10.0-beta1 and 2.10.0-beta2.
+	// Versions 2 (ErrorExtensionFeature) and 3 (WatchersFeature) were also
+	// introduced between 2.10.0-beta1 and 2.10.0-beta2. Version 4
+	// (PaginationFeature) was introduced in master 948e5cd (possible 2.10.5 or
+	// 2.11.0). So each release Tarantool >= 2.10 (same as each Tarantool with
+	// id support) has protocol version >= 3 and first four features.
+	tarantool210ProtocolInfo := ProtocolInfo{
+		Version: ProtocolVersion(3),
+		Features: []ProtocolFeature{
+			StreamsFeature,
+			TransactionsFeature,
+			ErrorExtensionFeature,
+			WatchersFeature,
+		},
+	}
+
+	clientProtocolInfo := conn.ClientProtocolInfo()
+	require.Equal(t,
+		clientProtocolInfo,
+		ProtocolInfo{
+			Version:  ProtocolVersion(4),
+			Features: []ProtocolFeature{StreamsFeature, TransactionsFeature},
+		})
+
+	serverProtocolInfo := conn.ServerProtocolInfo()
+	require.GreaterOrEqual(t,
+		serverProtocolInfo.Version,
+		tarantool210ProtocolInfo.Version)
+	require.Subset(t,
+		serverProtocolInfo.Features,
+		tarantool210ProtocolInfo.Features)
+}
+
+func TestClientIdRequestObject(t *testing.T) {
+	test_helpers.SkipIfIdUnsupported(t)
+
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	defer conn.Close()
+
+	tarantool210ProtocolInfo := ProtocolInfo{
+		Version: ProtocolVersion(3),
+		Features: []ProtocolFeature{
+			StreamsFeature,
+			TransactionsFeature,
+			ErrorExtensionFeature,
+			WatchersFeature,
+		},
+	}
+
+	req := NewIdRequest(ProtocolInfo{
+		Version:  ProtocolVersion(1),
+		Features: []ProtocolFeature{StreamsFeature},
+	})
+	resp, err := conn.Do(req).Get()
+	require.Nilf(t, err, "No errors on Id request execution")
+	require.NotNilf(t, resp, "Response not empty")
+	require.NotNilf(t, resp.Data, "Response data not empty")
+	require.Equal(t, len(resp.Data), 1, "Response data contains exactly one object")
+
+	serverProtocolInfo, ok := resp.Data[0].(ProtocolInfo)
+	require.Truef(t, ok, "Response Data object is an ProtocolInfo object")
+	require.GreaterOrEqual(t,
+		serverProtocolInfo.Version,
+		tarantool210ProtocolInfo.Version)
+	require.Subset(t,
+		serverProtocolInfo.Features,
+		tarantool210ProtocolInfo.Features)
+}
+
+func TestClientIdRequestObjectWithNilContext(t *testing.T) {
+	test_helpers.SkipIfIdUnsupported(t)
+
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	defer conn.Close()
+
+	tarantool210ProtocolInfo := ProtocolInfo{
+		Version: ProtocolVersion(3),
+		Features: []ProtocolFeature{
+			StreamsFeature,
+			TransactionsFeature,
+			ErrorExtensionFeature,
+			WatchersFeature,
+		},
+	}
+
+	req := NewIdRequest(ProtocolInfo{
+		Version:  ProtocolVersion(1),
+		Features: []ProtocolFeature{StreamsFeature},
+	}).Context(nil) //nolint
+	resp, err := conn.Do(req).Get()
+	require.Nilf(t, err, "No errors on Id request execution")
+	require.NotNilf(t, resp, "Response not empty")
+	require.NotNilf(t, resp.Data, "Response data not empty")
+	require.Equal(t, len(resp.Data), 1, "Response data contains exactly one object")
+
+	serverProtocolInfo, ok := resp.Data[0].(ProtocolInfo)
+	require.Truef(t, ok, "Response Data object is an ProtocolInfo object")
+	require.GreaterOrEqual(t,
+		serverProtocolInfo.Version,
+		tarantool210ProtocolInfo.Version)
+	require.Subset(t,
+		serverProtocolInfo.Features,
+		tarantool210ProtocolInfo.Features)
+}
+
+func TestClientIdRequestObjectWithPassedCanceledContext(t *testing.T) {
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	defer conn.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	req := NewIdRequest(ProtocolInfo{
+		Version:  ProtocolVersion(1),
+		Features: []ProtocolFeature{StreamsFeature},
+	}).Context(ctx) //nolint
+	cancel()
+	resp, err := conn.Do(req).Get()
+	require.Nilf(t, resp, "Response is empty")
+	require.NotNilf(t, err, "Error is not empty")
+	require.Equal(t, err.Error(), "context is done")
+}
+
+func TestClientIdRequestObjectWithContext(t *testing.T) {
+	var err error
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	defer conn.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	req := NewIdRequest(ProtocolInfo{
+		Version:  ProtocolVersion(1),
+		Features: []ProtocolFeature{StreamsFeature},
+	}).Context(ctx) //nolint
+	fut := conn.Do(req)
+	cancel()
+	resp, err := fut.Get()
+	require.Nilf(t, resp, "Response is empty")
+	require.NotNilf(t, err, "Error is not empty")
+	require.Equal(t, err.Error(), "context is done")
+}
+
+func TestConnectionProtocolInfoUnsupported(t *testing.T) {
+	test_helpers.SkipIfIdSupported(t)
+
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	defer conn.Close()
+
+	clientProtocolInfo := conn.ClientProtocolInfo()
+	require.Equal(t,
+		clientProtocolInfo,
+		ProtocolInfo{
+			Version:  ProtocolVersion(4),
+			Features: []ProtocolFeature{StreamsFeature, TransactionsFeature},
+		})
+
+	serverProtocolInfo := conn.ServerProtocolInfo()
+	require.Equal(t, serverProtocolInfo, ProtocolInfo{})
+}
+
+func TestConnectionClientFeaturesUmmutable(t *testing.T) {
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	defer conn.Close()
+
+	info := conn.ClientProtocolInfo()
+	infoOrig := info.Clone()
+	info.Features[0] = ProtocolFeature(15532)
+
+	require.Equal(t, conn.ClientProtocolInfo(), infoOrig)
+	require.NotEqual(t, conn.ClientProtocolInfo(), info)
+}
+
+func TestConnectionServerFeaturesUmmutable(t *testing.T) {
+	test_helpers.SkipIfIdUnsupported(t)
+
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	defer conn.Close()
+
+	info := conn.ServerProtocolInfo()
+	infoOrig := info.Clone()
+	info.Features[0] = ProtocolFeature(15532)
+
+	require.Equal(t, conn.ServerProtocolInfo(), infoOrig)
+	require.NotEqual(t, conn.ServerProtocolInfo(), info)
+}
+
+func TestConnectionProtocolVersionRequirementSuccess(t *testing.T) {
+	test_helpers.SkipIfIdUnsupported(t)
+
+	connOpts := opts.Clone()
+	connOpts.RequiredProtocolInfo = ProtocolInfo{
+		Version: ProtocolVersion(3),
+	}
+
+	conn, err := Connect(server, connOpts)
+
+	require.Nilf(t, err, "No errors on connect")
+	require.NotNilf(t, conn, "Connect success")
+
+	conn.Close()
+}
+
+func TestConnectionProtocolVersionRequirementFail(t *testing.T) {
+	test_helpers.SkipIfIdSupported(t)
+
+	connOpts := opts.Clone()
+	connOpts.RequiredProtocolInfo = ProtocolInfo{
+		Version: ProtocolVersion(3),
+	}
+
+	conn, err := Connect(server, connOpts)
+
+	require.Nilf(t, conn, "Connect fail")
+	require.NotNilf(t, err, "Got error on connect")
+	require.Contains(t, err.Error(), "identify: protocol version 3 is not supported")
+}
+
+func TestConnectionProtocolFeatureRequirementSuccess(t *testing.T) {
+	test_helpers.SkipIfIdUnsupported(t)
+
+	connOpts := opts.Clone()
+	connOpts.RequiredProtocolInfo = ProtocolInfo{
+		Features: []ProtocolFeature{TransactionsFeature},
+	}
+
+	conn, err := Connect(server, connOpts)
+
+	require.NotNilf(t, conn, "Connect success")
+	require.Nilf(t, err, "No errors on connect")
+
+	conn.Close()
+}
+
+func TestConnectionProtocolFeatureRequirementFail(t *testing.T) {
+	test_helpers.SkipIfIdSupported(t)
+
+	connOpts := opts.Clone()
+	connOpts.RequiredProtocolInfo = ProtocolInfo{
+		Features: []ProtocolFeature{TransactionsFeature},
+	}
+
+	conn, err := Connect(server, connOpts)
+
+	require.Nilf(t, conn, "Connect fail")
+	require.NotNilf(t, err, "Got error on connect")
+	require.Contains(t, err.Error(), "identify: protocol feature TransactionsFeature is not supported")
+}
+
+func TestConnectionProtocolFeatureRequirementManyFail(t *testing.T) {
+	test_helpers.SkipIfIdSupported(t)
+
+	connOpts := opts.Clone()
+	connOpts.RequiredProtocolInfo = ProtocolInfo{
+		Features: []ProtocolFeature{TransactionsFeature, ProtocolFeature(15532)},
+	}
+
+	conn, err := Connect(server, connOpts)
+
+	require.Nilf(t, conn, "Connect fail")
+	require.NotNilf(t, err, "Got error on connect")
+	require.Contains(t,
+		err.Error(),
+		"identify: protocol features TransactionsFeature, Unknown feature (code 15532) are not supported")
+}
+
+func TestConnectionFeatureOptsImmutable(t *testing.T) {
+	test_helpers.SkipIfIdUnsupported(t)
+
+	restartOpts := startOpts
+	restartOpts.Listen = "127.0.0.1:3014"
+	inst, err := test_helpers.StartTarantool(restartOpts)
+	defer test_helpers.StopTarantoolWithCleanup(inst)
+
+	if err != nil {
+		log.Fatalf("Failed to prepare test tarantool: %s", err)
+	}
+
+	retries := uint(10)
+	timeout := 100 * time.Millisecond
+
+	connOpts := opts.Clone()
+	connOpts.Reconnect = timeout
+	connOpts.MaxReconnects = retries
+	connOpts.RequiredProtocolInfo = ProtocolInfo{
+		Features: []ProtocolFeature{TransactionsFeature},
+	}
+
+	// Connect with valid opts
+	conn := test_helpers.ConnectWithValidation(t, server, connOpts)
+	defer conn.Close()
+
+	// Change opts outside
+	connOpts.RequiredProtocolInfo.Features[0] = ProtocolFeature(15532)
+
+	// Trigger reconnect with opts re-check
+	test_helpers.StopTarantool(inst)
+	err = test_helpers.RestartTarantool(&inst)
+	require.Nilf(t, err, "Failed to restart tarantool")
+
+	connected := test_helpers.WaitUntilReconnected(conn, retries, timeout)
+	require.True(t, connected, "Reconnect success")
+}
+
 // runTestMain is a body of TestMain function
 // (see https://pkg.go.dev/testing#hdr-Main).
 // Using defer + os.Exit is not works so TestMain body
@@ -2842,17 +3160,9 @@ func runTestMain(m *testing.M) int {
 		log.Fatalf("Could not check the Tarantool version")
 	}
 
-	inst, err := test_helpers.StartTarantool(test_helpers.StartOpts{
-		InitScript:         "config.lua",
-		Listen:             server,
-		WorkDir:            "work_dir",
-		User:               opts.User,
-		Pass:               opts.Pass,
-		WaitStart:          100 * time.Millisecond,
-		ConnectRetry:       3,
-		RetryTimeout:       500 * time.Millisecond,
-		MemtxUseMvccEngine: !isStreamUnsupported,
-	})
+	startOpts.MemtxUseMvccEngine = !isStreamUnsupported
+
+	inst, err := test_helpers.StartTarantool(startOpts)
 	defer test_helpers.StopTarantoolWithCleanup(inst)
 
 	if err != nil {

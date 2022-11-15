@@ -14,6 +14,7 @@ import (
 	"math"
 	"net"
 	"runtime"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -146,6 +147,8 @@ type Connection struct {
 	lenbuf  [PacketLengthBytes]byte
 
 	lastStreamId uint64
+
+	serverProtocolInfo ProtocolInfo
 }
 
 var _ = Connector(&Connection{}) // Check compatibility with connector interface.
@@ -269,6 +272,10 @@ type Opts struct {
 	Transport string
 	// SslOpts is used only if the Transport == 'ssl' is set.
 	Ssl SslOpts
+	// RequiredProtocolInfo contains minimal protocol version and
+	// list of protocol features that should be supported by
+	// Tarantool server. By default there are no restrictions.
+	RequiredProtocolInfo ProtocolInfo
 }
 
 // SslOpts is a way to configure ssl transport.
@@ -294,8 +301,11 @@ type SslOpts struct {
 }
 
 // Clone returns a copy of the Opts object.
+// Any changes in copy RequiredProtocolInfo will not affect the original
+// RequiredProtocolInfo value.
 func (opts Opts) Clone() Opts {
 	optsCopy := opts
+	optsCopy.RequiredProtocolInfo = opts.RequiredProtocolInfo.Clone()
 
 	return optsCopy
 }
@@ -509,6 +519,18 @@ func (conn *Connection) dial() (err error) {
 	conn.Greeting.Version = bytes.NewBuffer(greeting[:64]).String()
 	conn.Greeting.auth = bytes.NewBuffer(greeting[64:108]).String()
 
+	// IPROTO_ID requests can be processed without authentication.
+	// https://www.tarantool.io/en/doc/latest/dev_guide/internals/iproto/requests/#iproto-id
+	if err = conn.identify(w, r); err != nil {
+		connection.Close()
+		return err
+	}
+
+	if err = checkProtocolInfo(opts.RequiredProtocolInfo, conn.serverProtocolInfo); err != nil {
+		connection.Close()
+		return fmt.Errorf("identify: %w", err)
+	}
+
 	// Auth
 	if opts.User != "" {
 		scr, err := scramble(conn.Greeting.auth, opts.Pass)
@@ -615,6 +637,17 @@ func (conn *Connection) writeAuthRequest(w *bufio.Writer, scramble []byte) error
 	return nil
 }
 
+func (conn *Connection) writeIdRequest(w *bufio.Writer, protocolInfo ProtocolInfo) error {
+	req := NewIdRequest(protocolInfo)
+
+	err := conn.writeRequest(w, req)
+	if err != nil {
+		return fmt.Errorf("identify: %w", err)
+	}
+
+	return nil
+}
+
 func (conn *Connection) readResponse(r io.Reader) (Response, error) {
 	respBytes, err := conn.read(r)
 	if err != nil {
@@ -645,6 +678,15 @@ func (conn *Connection) readAuthResponse(r io.Reader) error {
 	}
 
 	return nil
+}
+
+func (conn *Connection) readIdResponse(r io.Reader) (Response, error) {
+	resp, err := conn.readResponse(r)
+	if err != nil {
+		return resp, fmt.Errorf("identify: %w", err)
+	}
+
+	return resp, nil
 }
 
 func (conn *Connection) createConnection(reconnect bool) (err error) {
@@ -1189,4 +1231,90 @@ func (conn *Connection) NewStream() (*Stream, error) {
 		Id:   next,
 		Conn: conn,
 	}, nil
+}
+
+// checkProtocolInfo checks that expected protocol version is
+// and protocol features are supported.
+func checkProtocolInfo(expected ProtocolInfo, actual ProtocolInfo) error {
+	var found bool
+	var missingFeatures []ProtocolFeature
+
+	if expected.Version > actual.Version {
+		return fmt.Errorf("protocol version %d is not supported", expected.Version)
+	}
+
+	// It seems that iterating over a small list is way faster
+	// than building a map: https://stackoverflow.com/a/52710077/11646599
+	for _, expectedFeature := range expected.Features {
+		found = false
+		for _, actualFeature := range actual.Features {
+			if expectedFeature == actualFeature {
+				found = true
+			}
+		}
+		if !found {
+			missingFeatures = append(missingFeatures, expectedFeature)
+		}
+	}
+
+	if len(missingFeatures) == 1 {
+		return fmt.Errorf("protocol feature %s is not supported", missingFeatures[0])
+	}
+
+	if len(missingFeatures) > 1 {
+		var sarr []string
+		for _, missingFeature := range missingFeatures {
+			sarr = append(sarr, missingFeature.String())
+		}
+		return fmt.Errorf("protocol features %s are not supported", strings.Join(sarr, ", "))
+	}
+
+	return nil
+}
+
+// identify sends info about client protocol, receives info
+// about server protocol in response and stores it in the connection.
+func (conn *Connection) identify(w *bufio.Writer, r *bufio.Reader) error {
+	var ok bool
+
+	werr := conn.writeIdRequest(w, clientProtocolInfo)
+	if werr != nil {
+		return werr
+	}
+
+	resp, rerr := conn.readIdResponse(r)
+	if rerr != nil {
+		if resp.Code == ErrUnknownRequestType {
+			// IPROTO_ID requests are not supported by server.
+			return nil
+		}
+
+		return rerr
+	}
+
+	if len(resp.Data) == 0 {
+		return fmt.Errorf("identify: unexpected response: no data")
+	}
+
+	conn.serverProtocolInfo, ok = resp.Data[0].(ProtocolInfo)
+	if !ok {
+		return fmt.Errorf("identify: unexpected response: wrong data")
+	}
+
+	return nil
+}
+
+// ServerProtocolVersion returns protocol version and protocol features
+// supported by connected Tarantool server. Beware that values might be
+// outdated if connection is in a disconnected state.
+// Since 1.10.0
+func (conn *Connection) ServerProtocolInfo() ProtocolInfo {
+	return conn.serverProtocolInfo.Clone()
+}
+
+// ClientProtocolVersion returns protocol version and protocol features
+// supported by Go connection client.
+// Since 1.10.0
+func (conn *Connection) ClientProtocolInfo() ProtocolInfo {
+	return clientProtocolInfo.Clone()
 }

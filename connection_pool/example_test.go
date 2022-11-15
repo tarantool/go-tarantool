@@ -19,7 +19,7 @@ type Tuple struct {
 
 var testRoles = []bool{true, true, false, true, true}
 
-func examplePool(roles []bool) (*connection_pool.ConnectionPool, error) {
+func examplePool(roles []bool, connOpts tarantool.Opts) (*connection_pool.ConnectionPool, error) {
 	err := test_helpers.SetClusterRO(servers, connOpts, roles)
 	if err != nil {
 		return nil, fmt.Errorf("ConnectionPool is not established")
@@ -33,7 +33,7 @@ func examplePool(roles []bool) (*connection_pool.ConnectionPool, error) {
 }
 
 func ExampleConnectionPool_Select() {
-	pool, err := examplePool(testRoles)
+	pool, err := examplePool(testRoles, connOpts)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -94,7 +94,7 @@ func ExampleConnectionPool_Select() {
 }
 
 func ExampleConnectionPool_SelectTyped() {
-	pool, err := examplePool(testRoles)
+	pool, err := examplePool(testRoles, connOpts)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -156,7 +156,7 @@ func ExampleConnectionPool_SelectTyped() {
 }
 
 func ExampleConnectionPool_SelectAsync() {
-	pool, err := examplePool(testRoles)
+	pool, err := examplePool(testRoles, connOpts)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -239,7 +239,7 @@ func ExampleConnectionPool_SelectAsync() {
 
 func ExampleConnectionPool_SelectAsync_err() {
 	roles := []bool{true, true, true, true, true}
-	pool, err := examplePool(roles)
+	pool, err := examplePool(roles, connOpts)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -258,7 +258,7 @@ func ExampleConnectionPool_SelectAsync_err() {
 }
 
 func ExampleConnectionPool_Ping() {
-	pool, err := examplePool(testRoles)
+	pool, err := examplePool(testRoles, connOpts)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -276,7 +276,7 @@ func ExampleConnectionPool_Ping() {
 }
 
 func ExampleConnectionPool_Insert() {
-	pool, err := examplePool(testRoles)
+	pool, err := examplePool(testRoles, connOpts)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -325,7 +325,7 @@ func ExampleConnectionPool_Insert() {
 }
 
 func ExampleConnectionPool_Delete() {
-	pool, err := examplePool(testRoles)
+	pool, err := examplePool(testRoles, connOpts)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -377,7 +377,7 @@ func ExampleConnectionPool_Delete() {
 }
 
 func ExampleConnectionPool_Replace() {
-	pool, err := examplePool(testRoles)
+	pool, err := examplePool(testRoles, connOpts)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -448,7 +448,7 @@ func ExampleConnectionPool_Replace() {
 }
 
 func ExampleConnectionPool_Update() {
-	pool, err := examplePool(testRoles)
+	pool, err := examplePool(testRoles, connOpts)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -492,7 +492,7 @@ func ExampleConnectionPool_Update() {
 }
 
 func ExampleConnectionPool_Call() {
-	pool, err := examplePool(testRoles)
+	pool, err := examplePool(testRoles, connOpts)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -512,7 +512,7 @@ func ExampleConnectionPool_Call() {
 }
 
 func ExampleConnectionPool_Eval() {
-	pool, err := examplePool(testRoles)
+	pool, err := examplePool(testRoles, connOpts)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -532,7 +532,7 @@ func ExampleConnectionPool_Eval() {
 }
 
 func ExampleConnectionPool_Do() {
-	pool, err := examplePool(testRoles)
+	pool, err := examplePool(testRoles, connOpts)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -551,7 +551,7 @@ func ExampleConnectionPool_Do() {
 }
 
 func ExampleConnectionPool_NewPrepared() {
-	pool, err := examplePool(testRoles)
+	pool, err := examplePool(testRoles, connOpts)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -575,6 +575,21 @@ func ExampleConnectionPool_NewPrepared() {
 	}
 }
 
+func getTestTxnOpts() tarantool.Opts {
+	txnOpts := connOpts.Clone()
+
+	// Assert that server supports expected protocol features
+	txnOpts.RequiredProtocolInfo = tarantool.ProtocolInfo{
+		Version: tarantool.ProtocolVersion(1),
+		Features: []tarantool.ProtocolFeature{
+			tarantool.StreamsFeature,
+			tarantool.TransactionsFeature,
+		},
+	}
+
+	return txnOpts
+}
+
 func ExampleCommitRequest() {
 	var req tarantool.Request
 	var resp *tarantool.Response
@@ -586,7 +601,8 @@ func ExampleCommitRequest() {
 		return
 	}
 
-	pool, err := examplePool(testRoles)
+	txnOpts := getTestTxnOpts()
+	pool, err := examplePool(testRoles, txnOpts)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -672,8 +688,9 @@ func ExampleRollbackRequest() {
 		return
 	}
 
+	txnOpts := getTestTxnOpts()
 	// example pool has only one rw instance
-	pool, err := examplePool(testRoles)
+	pool, err := examplePool(testRoles, txnOpts)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -758,8 +775,9 @@ func ExampleBeginRequest_TxnIsolation() {
 		return
 	}
 
+	txnOpts := getTestTxnOpts()
 	// example pool has only one rw instance
-	pool, err := examplePool(testRoles)
+	pool, err := examplePool(testRoles, txnOpts)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -836,7 +854,7 @@ func ExampleBeginRequest_TxnIsolation() {
 }
 
 func ExampleConnectorAdapter() {
-	pool, err := examplePool(testRoles)
+	pool, err := examplePool(testRoles, connOpts)
 	if err != nil {
 		fmt.Println(err)
 	}
