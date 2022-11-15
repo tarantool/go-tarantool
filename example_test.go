@@ -18,7 +18,7 @@ type Tuple struct {
 	Name     string
 }
 
-func example_connect() *tarantool.Connection {
+func example_connect(opts tarantool.Opts) *tarantool.Connection {
 	conn, err := tarantool.Connect(server, opts)
 	if err != nil {
 		panic("Connection is not established: " + err.Error())
@@ -45,7 +45,7 @@ func ExampleSslOpts() {
 }
 
 func ExampleConnection_Select() {
-	conn := example_connect()
+	conn := example_connect(opts)
 	defer conn.Close()
 
 	conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
@@ -71,7 +71,7 @@ func ExampleConnection_Select() {
 }
 
 func ExampleConnection_SelectTyped() {
-	conn := example_connect()
+	conn := example_connect(opts)
 	defer conn.Close()
 	var res []Tuple
 
@@ -94,7 +94,7 @@ func ExampleConnection_SelectTyped() {
 }
 
 func ExampleConnection_SelectAsync() {
-	conn := example_connect()
+	conn := example_connect(opts)
 	defer conn.Close()
 	spaceNo := uint32(517)
 
@@ -128,7 +128,7 @@ func ExampleConnection_SelectAsync() {
 }
 
 func ExampleConnection_GetTyped() {
-	conn := example_connect()
+	conn := example_connect(opts)
 	defer conn.Close()
 
 	const space = "test"
@@ -145,7 +145,7 @@ func ExampleConnection_GetTyped() {
 }
 
 func ExampleIntKey() {
-	conn := example_connect()
+	conn := example_connect(opts)
 	defer conn.Close()
 
 	const space = "test"
@@ -162,7 +162,7 @@ func ExampleIntKey() {
 }
 
 func ExampleUintKey() {
-	conn := example_connect()
+	conn := example_connect(opts)
 	defer conn.Close()
 
 	const space = "test"
@@ -179,7 +179,7 @@ func ExampleUintKey() {
 }
 
 func ExampleStringKey() {
-	conn := example_connect()
+	conn := example_connect(opts)
 	defer conn.Close()
 
 	const space = "teststring"
@@ -199,7 +199,7 @@ func ExampleStringKey() {
 }
 
 func ExampleIntIntKey() {
-	conn := example_connect()
+	conn := example_connect(opts)
 	defer conn.Close()
 
 	const space = "testintint"
@@ -220,7 +220,7 @@ func ExampleIntIntKey() {
 }
 
 func ExampleSelectRequest() {
-	conn := example_connect()
+	conn := example_connect(opts)
 	defer conn.Close()
 
 	req := tarantool.NewSelectRequest(517).
@@ -250,7 +250,7 @@ func ExampleSelectRequest() {
 }
 
 func ExampleUpdateRequest() {
-	conn := example_connect()
+	conn := example_connect(opts)
 	defer conn.Close()
 
 	req := tarantool.NewUpdateRequest(517).
@@ -280,7 +280,7 @@ func ExampleUpdateRequest() {
 }
 
 func ExampleUpsertRequest() {
-	conn := example_connect()
+	conn := example_connect(opts)
 	defer conn.Close()
 
 	var req tarantool.Request
@@ -320,6 +320,33 @@ func ExampleUpsertRequest() {
 	// response is []interface {}{[]interface {}{0x459, "first", "updated"}}
 }
 
+func ExampleProtocolVersion() {
+	conn := example_connect(opts)
+	defer conn.Close()
+
+	clientProtocolInfo := conn.ClientProtocolInfo()
+	fmt.Println("Connector client protocol version:", clientProtocolInfo.Version)
+	fmt.Println("Connector client protocol features:", clientProtocolInfo.Features)
+	// Output:
+	// Connector client protocol version: 4
+	// Connector client protocol features: [StreamsFeature TransactionsFeature]
+}
+
+func getTestTxnOpts() tarantool.Opts {
+	txnOpts := opts.Clone()
+
+	// Assert that server supports expected protocol features
+	txnOpts.RequiredProtocolInfo = tarantool.ProtocolInfo{
+		Version: tarantool.ProtocolVersion(1),
+		Features: []tarantool.ProtocolFeature{
+			tarantool.StreamsFeature,
+			tarantool.TransactionsFeature,
+		},
+	}
+
+	return txnOpts
+}
+
 func ExampleCommitRequest() {
 	var req tarantool.Request
 	var resp *tarantool.Response
@@ -331,7 +358,8 @@ func ExampleCommitRequest() {
 		return
 	}
 
-	conn := example_connect()
+	txnOpts := getTestTxnOpts()
+	conn := example_connect(txnOpts)
 	defer conn.Close()
 
 	stream, _ := conn.NewStream()
@@ -407,7 +435,8 @@ func ExampleRollbackRequest() {
 		return
 	}
 
-	conn := example_connect()
+	txnOpts := getTestTxnOpts()
+	conn := example_connect(txnOpts)
 	defer conn.Close()
 
 	stream, _ := conn.NewStream()
@@ -483,7 +512,8 @@ func ExampleBeginRequest_TxnIsolation() {
 		return
 	}
 
-	conn := example_connect()
+	txnOpts := getTestTxnOpts()
+	conn := example_connect(txnOpts)
 	defer conn.Close()
 
 	stream, _ := conn.NewStream()
@@ -551,7 +581,7 @@ func ExampleBeginRequest_TxnIsolation() {
 }
 
 func ExampleFuture_GetIterator() {
-	conn := example_connect()
+	conn := example_connect(opts)
 	defer conn.Close()
 
 	const timeout = 3 * time.Second
@@ -584,7 +614,7 @@ func ExampleFuture_GetIterator() {
 }
 
 func ExampleConnection_Ping() {
-	conn := example_connect()
+	conn := example_connect(opts)
 	defer conn.Close()
 
 	// Ping a Tarantool instance to check connection.
@@ -599,7 +629,7 @@ func ExampleConnection_Ping() {
 }
 
 func ExampleConnection_Insert() {
-	conn := example_connect()
+	conn := example_connect(opts)
 	defer conn.Close()
 
 	// Insert a new tuple { 31, 1 }.
@@ -632,7 +662,7 @@ func ExampleConnection_Insert() {
 }
 
 func ExampleConnection_Delete() {
-	conn := example_connect()
+	conn := example_connect(opts)
 	defer conn.Close()
 
 	// Insert a new tuple { 35, 1 }.
@@ -665,7 +695,7 @@ func ExampleConnection_Delete() {
 }
 
 func ExampleConnection_Replace() {
-	conn := example_connect()
+	conn := example_connect(opts)
 	defer conn.Close()
 
 	// Insert a new tuple { 13, 1 }.
@@ -714,7 +744,7 @@ func ExampleConnection_Replace() {
 }
 
 func ExampleConnection_Update() {
-	conn := example_connect()
+	conn := example_connect(opts)
 	defer conn.Close()
 
 	// Insert a new tuple { 14, 1 }.
@@ -734,7 +764,7 @@ func ExampleConnection_Update() {
 }
 
 func ExampleConnection_Call() {
-	conn := example_connect()
+	conn := example_connect(opts)
 	defer conn.Close()
 
 	// Call a function 'simple_concat' with arguments.
@@ -751,7 +781,7 @@ func ExampleConnection_Call() {
 }
 
 func ExampleConnection_Eval() {
-	conn := example_connect()
+	conn := example_connect(opts)
 	defer conn.Close()
 
 	// Run raw Lua code.
@@ -788,7 +818,7 @@ func ExampleConnect() {
 
 // Example demonstrates how to retrieve information with space schema.
 func ExampleSchema() {
-	conn := example_connect()
+	conn := example_connect(opts)
 	defer conn.Close()
 
 	schema := conn.Schema
@@ -810,7 +840,7 @@ func ExampleSchema() {
 
 // Example demonstrates how to retrieve information with space schema.
 func ExampleSpace() {
-	conn := example_connect()
+	conn := example_connect(opts)
 	defer conn.Close()
 
 	// Save Schema to a local variable to avoid races
@@ -1021,7 +1051,7 @@ func ExampleConnection_NewPrepared() {
 // of the request. For those purposes use context.WithTimeout() as
 // the root context.
 func ExamplePingRequest_Context() {
-	conn := example_connect()
+	conn := example_connect(opts)
 	defer conn.Close()
 
 	timeout := time.Nanosecond

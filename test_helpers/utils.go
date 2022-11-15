@@ -2,6 +2,7 @@ package test_helpers
 
 import (
 	"testing"
+	"time"
 
 	"github.com/tarantool/go-tarantool"
 )
@@ -40,6 +41,26 @@ func DeleteRecordByKey(t *testing.T, conn tarantool.Connector,
 	}
 }
 
+// WaitUntilReconnected waits until connection is reestablished.
+// Returns false in case of connection is not in the connected state
+// after specified retries count, true otherwise.
+func WaitUntilReconnected(conn *tarantool.Connection, retries uint, timeout time.Duration) bool {
+	for i := uint(0); ; i++ {
+		connected := conn.ConnectedNow()
+		if connected {
+			return true
+		}
+
+		if i == retries {
+			break
+		}
+
+		time.Sleep(timeout)
+	}
+
+	return false
+}
+
 func SkipIfSQLUnsupported(t testing.TB) {
 	t.Helper()
 
@@ -64,5 +85,38 @@ func SkipIfStreamsUnsupported(t *testing.T) {
 
 	if isLess {
 		t.Skip("Skipping test for Tarantool without streams support")
+	}
+}
+
+// SkipIfIdUnsupported skips test run if Tarantool without
+// IPROTO_ID support is used.
+func SkipIfIdUnsupported(t *testing.T) {
+	t.Helper()
+
+	// Tarantool supports Id requests since version 2.10.0
+	isLess, err := IsTarantoolVersionLess(2, 10, 0)
+	if err != nil {
+		t.Fatalf("Could not check the Tarantool version")
+	}
+
+	if isLess {
+		t.Skip("Skipping test for Tarantool without id requests support")
+	}
+}
+
+// SkipIfIdSupported skips test run if Tarantool with
+// IPROTO_ID support is used. Skip is useful for tests validating
+// that protocol info is processed as expected even for pre-IPROTO_ID instances.
+func SkipIfIdSupported(t *testing.T) {
+	t.Helper()
+
+	// Tarantool supports Id requests since version 2.10.0
+	isLess, err := IsTarantoolVersionLess(2, 10, 0)
+	if err != nil {
+		t.Fatalf("Could not check the Tarantool version")
+	}
+
+	if !isLess {
+		t.Skip("Skipping test for Tarantool with non-zero protocol version and features")
 	}
 }

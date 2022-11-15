@@ -111,6 +111,12 @@ func RefImplRollbackBody(enc *encoder) error {
 	return fillRollback(enc)
 }
 
+// RefImplIdBody is reference implementation for filling of an id
+// request's body.
+func RefImplIdBody(enc *encoder, protocolInfo ProtocolInfo) error {
+	return fillId(enc, protocolInfo)
+}
+
 func NewEncoder(w io.Writer) *encoder {
 	return newEncoder(w)
 }
