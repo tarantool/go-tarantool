@@ -293,6 +293,13 @@ type SslOpts struct {
 	Ciphers string
 }
 
+// Clone returns a copy of the Opts object.
+func (opts Opts) Clone() Opts {
+	optsCopy := opts
+
+	return optsCopy
+}
+
 // Connect creates and configures a new Connection.
 //
 // Address could be specified in following ways:
@@ -319,7 +326,7 @@ func Connect(addr string, opts Opts) (conn *Connection, err error) {
 		contextRequestId: 1,
 		Greeting:         &Greeting{},
 		control:          make(chan struct{}),
-		opts:             opts,
+		opts:             opts.Clone(),
 		dec:              newDecoder(&smallBuf{}),
 	}
 	maxprocs := uint32(runtime.GOMAXPROCS(-1))
@@ -344,9 +351,9 @@ func Connect(addr string, opts Opts) (conn *Connection, err error) {
 		}
 	}
 
-	if opts.RateLimit > 0 {
-		conn.rlimit = make(chan struct{}, opts.RateLimit)
-		if opts.RLimitAction != RLimitDrop && opts.RLimitAction != RLimitWait {
+	if conn.opts.RateLimit > 0 {
+		conn.rlimit = make(chan struct{}, conn.opts.RateLimit)
+		if conn.opts.RLimitAction != RLimitDrop && conn.opts.RLimitAction != RLimitWait {
 			return nil, errors.New("RLimitAction should be specified to RLimitDone nor RLimitWait")
 		}
 	}

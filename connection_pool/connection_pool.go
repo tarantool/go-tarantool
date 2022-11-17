@@ -125,7 +125,7 @@ func ConnectWithOpts(addrs []string, connOpts tarantool.Opts, opts OptsPool) (co
 
 	connPool = &ConnectionPool{
 		addrs:    make([]string, 0, len(addrs)),
-		connOpts: connOpts,
+		connOpts: connOpts.Clone(),
 		opts:     opts,
 		state:    unknownState,
 		done:     make(chan struct{}),
