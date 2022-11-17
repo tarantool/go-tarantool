@@ -88,7 +88,7 @@ func ConnectWithOpts(addrs []string, connOpts tarantool.Opts, opts OptsMulti) (c
 	connOpts.Notify = notify
 	connMulti = &ConnectionMulti{
 		addrs:    addrs,
-		connOpts: connOpts,
+		connOpts: connOpts.Clone(),
 		opts:     opts,
 		notify:   notify,
 		control:  make(chan struct{}),
