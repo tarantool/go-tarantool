@@ -240,3 +240,176 @@ jobs:
 
       - name: Check workability of benchmark tests
         run: make bench-deps bench DURATION=1x COUNT=1
+
+  testing_mac_os:
+    # We want to run on external PRs, but not on our own internal
+    # PRs as they'll be run by the push to the branch.
+    #
+    # The main trick is described here:
+    # https://github.com/Dart-Code/Dart-Code/pull/2375
+    if: (github.event_name == 'push') ||
+      (github.event_name == 'pull_request' &&
+        github.event.pull_request.head.repo.full_name != github.repository) ||
+      (github.event_name == 'workflow_dispatch')
+
+    strategy:
+      fail-fast: false
+      matrix:
+        golang:
+          - 1.13
+        runs-on:
+          - macos-11
+          - macos-12
+        tarantool:
+          - brew
+          - 1.10.14
+
+    env:
+      # Make sense only for non-brew jobs.
+      #
+      # Set as absolute paths to avoid any possible confusion
+      # after changing a current directory.
+      T_VERSION: ${{ matrix.tarantool }}
+      T_SRCDIR: ${{ format('{0}/tarantool-{1}', github.workspace, matrix.tarantool) }}
+      T_TARDIR: ${{ format('{0}/tarantool-{1}-build', github.workspace, matrix.tarantool) }}
+      SRCDIR: ${{ format('{0}/{1}', github.workspace, github.repository) }}
+
+    runs-on: ${{ matrix.runs-on }}
+    steps:
+      - name: Clone the connector
+        uses: actions/checkout@v3
+        with:
+          path: ${{ env.SRCDIR }}
+
+      - name: Restore cache of tarantool ${{ env.T_VERSION }}
+        uses: actions/cache@v3
+        id: cache
+        with:
+          path: ${{ env.T_TARDIR }}
+          key: ${{ matrix.runs-on }}-${{ matrix.tarantool }}
+        if: matrix.tarantool != 'brew'
+
+      - name: Install latest tarantool from brew
+        run: brew install tarantool
+        if: matrix.tarantool == 'brew'
+
+      - name: Install tarantool build dependencies
+        run: brew install autoconf automake libtool openssl@1.1
+        if: matrix.tarantool != 'brew' && steps.cache.outputs.cache-hit != 'true'
+
+      - name: Clone tarantool ${{ env.T_VERSION }}
+        uses: actions/checkout@v3
+        with:
+          repository: tarantool/tarantool
+          ref: ${{ env.T_VERSION }}
+          path: ${{ env.T_TARDIR }}
+          submodules: true
+          # fetch-depth is 1 by default and it is okay for
+          # building from a tag. However we have master in
+          # the version list.
+          fetch-depth: 0
+        if: matrix.tarantool != 'brew' && steps.cache.outputs.cache-hit != 'true'
+
+      - name: Build tarantool ${{ env.T_VERSION }} from sources
+        run: |
+          cd "${T_TARDIR}"
+          # Set RelWithDebInfo just to disable -Werror.
+          #
+          # There are tarantool releases on which AppleClang
+          # complains about the problem that was fixed later in
+          # https://github.com/tarantool/tarantool/commit/7e8688ff8885cc7813d12225e03694eb8886de29
+          #
+          # Set OpenSSL root directory for linking tarantool with OpenSSL of version 1.1
+          # This is related to #49. There are too much deprecations which affect the build and tests.
+          # Must be revisited after fixing https://github.com/tarantool/tarantool/issues/6477
+          cmake . -DCMAKE_BUILD_TYPE=RelWithDebInfo -DENABLE_DIST=ON -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl@1.1 -DOPENSSL_LIBRARIES=/usr/local/opt/openssl@1.1/lib
+          # {{{ Workaround Mac OS build failure (gh-6076)
+          #
+          # https://github.com/tarantool/tarantool/issues/6076
+          #
+          # In brief: when "src/lib/small" is in include paths,
+          # `#include <version>` from inside Mac OS SDK headers
+          # attempts to include "src/lib/small/VERSION" as a
+          # header file that leads to a syntax error.
+          #
+          # It was fixed in the following commits:
+          #
+          # * 1.10.10-24-g7bce4abd1
+          # * 2.7.2-44-gbb1d32903
+          # * 2.8.1-56-ga6c29c5af
+          # * 2.9.0-84-gc5ae543f3
+          #
+          # However applying the workaround for all versions looks
+          # harmless.
+          #
+          # Added -f just in case: I guess we'll drop this useless
+          # obsoleted VERSION file from the git repository sooner
+          # or later.
+          rm -f src/lib/small/VERSION
+          # The same as above, but for the VERSION file generated
+          # by tarantool's CMake script.
+          rm VERSION
+          # }}} Workaround Mac OS build failure (gh-6076)
+          # Continue the build.
+          make -j$(sysctl -n hw.logicalcpu)
+          make install
+        if: matrix.tarantool != 'brew' && steps.cache.outputs.cache-hit != 'true'
+
+      - name: Install tarantool
+        run: |
+          cd "${T_TARDIR}"
+          make install
+        if: matrix.tarantool != 'brew' && steps.cache.outputs.cache-hit == 'true'
+
+      - name: Verify tarantool version
+        run: |
+          # Workaround https://github.com/tarantool/tarantool/issues/4983
+          # Workaround https://github.com/tarantool/tarantool/issues/5040
+          tarantool -e "require('fiber').sleep(0) assert(_TARANTOOL:startswith('${T_VERSION}'), _TARANTOOL) os.exit()"
+        if: matrix.tarantool != 'brew' && matrix.tarantool != 'master'
+
+      - name: Setup golang for the connector and tests
+        uses: actions/setup-go@v3
+        with:
+          go-version: ${{ matrix.golang }}
+
+      - name: Install test dependencies
+        run:  |
+          brew install luarocks
+          cd "${SRCDIR}"
+          make deps
+
+      - name: Run regression tests
+        run: |
+          cd "${SRCDIR}"
+          make test
+          make testrace
+
+      - name: Run regression tests with call_17
+        run: |
+          cd "${SRCDIR}"
+          make test TAGS="go_tarantool_call_17"
+          make testrace TAGS="go_tarantool_call_17"
+
+      - name: Run regression tests with msgpack.v5
+        run: |
+          cd "${SRCDIR}"
+          make test TAGS="go_tarantool_msgpack_v5"
+          make testrace TAGS="go_tarantool_msgpack_v5"
+
+      - name: Run regression tests with msgpack.v5 and call_17
+        run: |
+          cd "${SRCDIR}"
+          make test TAGS="go_tarantool_msgpack_v5,go_tarantool_call_17"
+          make testrace TAGS="go_tarantool_msgpack_v5,go_tarantool_call_17"
+
+      - name: Run fuzzing tests
+        if: ${{ matrix.fuzzing }}
+        run: |
+          cd "${SRCDIR}"
+          make fuzzing TAGS="go_tarantool_decimal_fuzzing"
+
+      - name: Check workability of benchmark tests
+        run: |
+          cd "${SRCDIR}"
+          make bench-deps bench DURATION=1x COUNT=1
