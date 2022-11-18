@@ -14,6 +14,9 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Fixed
 
+- Decimal package uses a test variable DecimalPrecision instead of a
+  package-level variable decimalPrecision (#233)
+
 ## [1.9.0] - 2022-11-02
 
 The release adds support for the latest version of the
@@ -40,7 +43,7 @@ switching.
 - A connection is still opened after ConnectionPool.Close() (#208)
 - Future.GetTyped() after Future.Get() does not decode response
   correctly (#213)
-- Decimal package use a test function GetNumberLength instead of a
+- Decimal package uses a test function GetNumberLength instead of a
   package-level function getNumberLength (#219)
 - Datetime location after encode + decode is unequal (#217)
 - Wrong interval arithmetic with timezones (#221)

@@ -58,13 +58,13 @@ func NewDecimalFromString(src string) (result *Decimal, err error) {
 // MarshalMsgpack serializes the Decimal into a MessagePack representation.
 func (decNum *Decimal) MarshalMsgpack() ([]byte, error) {
 	one := decimal.NewFromInt(1)
-	maxSupportedDecimal := decimal.New(1, DecimalPrecision).Sub(one) // 10^DecimalPrecision - 1
-	minSupportedDecimal := maxSupportedDecimal.Neg().Sub(one)        // -10^DecimalPrecision - 1
+	maxSupportedDecimal := decimal.New(1, decimalPrecision).Sub(one) // 10^decimalPrecision - 1
+	minSupportedDecimal := maxSupportedDecimal.Neg().Sub(one)        // -10^decimalPrecision - 1
 	if decNum.GreaterThan(maxSupportedDecimal) {
-		return nil, fmt.Errorf("msgpack: decimal number is bigger than maximum supported number (10^%d - 1)", DecimalPrecision)
+		return nil, fmt.Errorf("msgpack: decimal number is bigger than maximum supported number (10^%d - 1)", decimalPrecision)
 	}
 	if decNum.LessThan(minSupportedDecimal) {
-		return nil, fmt.Errorf("msgpack: decimal number is lesser than minimum supported number (-10^%d - 1)", DecimalPrecision)
+		return nil, fmt.Errorf("msgpack: decimal number is lesser than minimum supported number (-10^%d - 1)", decimalPrecision)
 	}
 
 	strBuf := decNum.String()
