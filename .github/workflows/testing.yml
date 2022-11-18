@@ -126,14 +126,16 @@ jobs:
 
     steps:
       - name: Clone the connector
+        # `ref` as merge request is needed for pull_request_target because this
+        # target runs in the context of the base commit of the pull request.
         uses: actions/checkout@v2
-        # This is needed for pull_request_target because this event runs in the
-        # context of the base commit of the pull request. It works fine for
-        # `push` and `workflow_dispatch` because the default behavior is used
-        # if `ref` and `repository` are empty.
+        if: github.event_name == 'pull_request_target'
         with:
-          ref: ${{github.event.pull_request.head.ref}}
-          repository: ${{github.event.pull_request.head.repo.full_name}}
+          ref: refs/pull/${{ github.event.pull_request.number }}/merge
+
+      - name: Clone the connector
+        if: github.event_name != 'pull_request_target'
+        uses: actions/checkout@v2
 
       - name: Setup Tarantool ${{ matrix.sdk-version }}
         run: |
