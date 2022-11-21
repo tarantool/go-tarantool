@@ -13,6 +13,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 - Support iproto feature discovery (#120)
 - Support errors extended information (#209)
 - Error type support in MessagePack (#209)
+- Event subscription support (#119)
 
 ### Changed
 

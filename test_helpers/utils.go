@@ -75,18 +75,54 @@ func SkipIfSQLUnsupported(t testing.TB) {
 	}
 }
 
-func SkipIfStreamsUnsupported(t *testing.T) {
+func skipIfLess(t *testing.T, feature string, major, minor, patch uint64) {
 	t.Helper()
 
-	// Tarantool supports streams and interactive transactions since version 2.10.0
-	isLess, err := IsTarantoolVersionLess(2, 10, 0)
+	isLess, err := IsTarantoolVersionLess(major, minor, patch)
 	if err != nil {
 		t.Fatalf("Could not check the Tarantool version")
 	}
 
 	if isLess {
-		t.Skip("Skipping test for Tarantool without streams support")
+		t.Skipf("Skipping test for Tarantool without %s support", feature)
 	}
+}
+
+func skipIfGreaterOrEqual(t *testing.T, feature string, major, minor, patch uint64) {
+	t.Helper()
+
+	isLess, err := IsTarantoolVersionLess(major, minor, patch)
+	if err != nil {
+		t.Fatalf("Could not check the Tarantool version")
+	}
+
+	if !isLess {
+		t.Skipf("Skipping test for Tarantool with %s support", feature)
+	}
+}
+
+// SkipOfStreamsUnsupported skips test run if Tarantool without streams
+// support is used.
+func SkipIfStreamsUnsupported(t *testing.T) {
+	t.Helper()
+
+	skipIfLess(t, "streams", 2, 10, 0)
+}
+
+// SkipOfStreamsUnsupported skips test run if Tarantool without watchers
+// support is used.
+func SkipIfWatchersUnsupported(t *testing.T) {
+	t.Helper()
+
+	skipIfLess(t, "watchers", 2, 10, 0)
+}
+
+// SkipIfWatchersSupported skips test run if Tarantool with watchers
+// support is used.
+func SkipIfWatchersSupported(t *testing.T) {
+	t.Helper()
+
+	skipIfGreaterOrEqual(t, "watchers", 2, 10, 0)
 }
 
 // SkipIfIdUnsupported skips test run if Tarantool without
@@ -94,15 +130,7 @@ func SkipIfStreamsUnsupported(t *testing.T) {
 func SkipIfIdUnsupported(t *testing.T) {
 	t.Helper()
 
-	// Tarantool supports Id requests since version 2.10.0
-	isLess, err := IsTarantoolVersionLess(2, 10, 0)
-	if err != nil {
-		t.Fatalf("Could not check the Tarantool version")
-	}
-
-	if isLess {
-		t.Skip("Skipping test for Tarantool without id requests support")
-	}
+	skipIfLess(t, "id requests", 2, 10, 0)
 }
 
 // SkipIfIdSupported skips test run if Tarantool with
@@ -111,15 +139,7 @@ func SkipIfIdUnsupported(t *testing.T) {
 func SkipIfIdSupported(t *testing.T) {
 	t.Helper()
 
-	// Tarantool supports Id requests since version 2.10.0
-	isLess, err := IsTarantoolVersionLess(2, 10, 0)
-	if err != nil {
-		t.Fatalf("Could not check the Tarantool version")
-	}
-
-	if !isLess {
-		t.Skip("Skipping test for Tarantool with non-zero protocol version and features")
-	}
+	skipIfGreaterOrEqual(t, "id requests", 2, 10, 0)
 }
 
 // CheckEqualBoxErrors checks equivalence of tarantool.BoxError objects.

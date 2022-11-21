@@ -17,6 +17,10 @@ func (sr *StrangerRequest) Code() int32 {
 	return 0
 }
 
+func (sr *StrangerRequest) Async() bool {
+	return false
+}
+
 func (sr *StrangerRequest) Body(resolver tarantool.SchemaResolver, enc *encoder) error {
 	return nil
 }

@@ -299,6 +299,14 @@ func (c *ConnectorAdapter) NewStream() (*tarantool.Stream, error) {
 	return c.pool.NewStream(c.mode)
 }
 
+// NewWatcher creates new Watcher object for the pool
+//
+// Since 1.10.0
+func (c *ConnectorAdapter) NewWatcher(key string,
+	callback tarantool.WatchCallback) (tarantool.Watcher, error) {
+	return c.pool.NewWatcher(key, callback, c.mode)
+}
+
 // Do performs a request asynchronously on the connection.
 func (c *ConnectorAdapter) Do(req tarantool.Request) *tarantool.Future {
 	return c.pool.Do(req, c.mode)

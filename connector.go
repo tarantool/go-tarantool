@@ -46,6 +46,7 @@ type Connector interface {
 
 	NewPrepared(expr string) (*Prepared, error)
 	NewStream() (*Stream, error)
+	NewWatcher(key string, callback WatchCallback) (Watcher, error)
 
 	Do(req Request) (fut *Future)
 }

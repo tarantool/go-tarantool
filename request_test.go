@@ -19,6 +19,7 @@ const invalidIndex = 2
 const validSpace = 1           // Any valid value != default.
 const validIndex = 3           // Any valid value != default.
 const validExpr = "any string" // We don't check the value here.
+const validKey = "foo"         // Any string.
 const defaultSpace = 0         // And valid too.
 const defaultIndex = 0         // And valid too.
 
@@ -183,11 +184,44 @@ func TestRequestsCodes(t *testing.T) {
 		{req: NewBeginRequest(), code: BeginRequestCode},
 		{req: NewCommitRequest(), code: CommitRequestCode},
 		{req: NewRollbackRequest(), code: RollbackRequestCode},
+		{req: NewBroadcastRequest(validKey), code: CallRequestCode},
 	}
 
 	for _, test := range tests {
 		if code := test.req.Code(); code != test.code {
 			t.Errorf("An invalid request code 0x%x, expected 0x%x", code, test.code)
+		}
+	}
+}
+
+func TestRequestsAsync(t *testing.T) {
+	tests := []struct {
+		req   Request
+		async bool
+	}{
+		{req: NewSelectRequest(validSpace), async: false},
+		{req: NewUpdateRequest(validSpace), async: false},
+		{req: NewUpsertRequest(validSpace), async: false},
+		{req: NewInsertRequest(validSpace), async: false},
+		{req: NewReplaceRequest(validSpace), async: false},
+		{req: NewDeleteRequest(validSpace), async: false},
+		{req: NewCall16Request(validExpr), async: false},
+		{req: NewCall17Request(validExpr), async: false},
+		{req: NewEvalRequest(validExpr), async: false},
+		{req: NewExecuteRequest(validExpr), async: false},
+		{req: NewPingRequest(), async: false},
+		{req: NewPrepareRequest(validExpr), async: false},
+		{req: NewUnprepareRequest(validStmt), async: false},
+		{req: NewExecutePreparedRequest(validStmt), async: false},
+		{req: NewBeginRequest(), async: false},
+		{req: NewCommitRequest(), async: false},
+		{req: NewRollbackRequest(), async: false},
+		{req: NewBroadcastRequest(validKey), async: false},
+	}
+
+	for _, test := range tests {
+		if async := test.req.Async(); async != test.async {
+			t.Errorf("An invalid async %t, expected %t", async, test.async)
 		}
 	}
 }
@@ -647,5 +681,36 @@ func TestRollbackRequestDefaultValues(t *testing.T) {
 	}
 
 	req := NewRollbackRequest()
+	assertBodyEqual(t, refBuf.Bytes(), req)
+}
+
+func TestBroadcastRequestDefaultValues(t *testing.T) {
+	var refBuf bytes.Buffer
+
+	refEnc := NewEncoder(&refBuf)
+	expectedArgs := []interface{}{validKey}
+	err := RefImplCallBody(refEnc, "box.broadcast", expectedArgs)
+	if err != nil {
+		t.Errorf("An unexpected RefImplCallBody() error: %q", err.Error())
+		return
+	}
+
+	req := NewBroadcastRequest(validKey)
+	assertBodyEqual(t, refBuf.Bytes(), req)
+}
+
+func TestBroadcastRequestSetters(t *testing.T) {
+	value := []interface{}{uint(34), int(12)}
+	var refBuf bytes.Buffer
+
+	refEnc := NewEncoder(&refBuf)
+	expectedArgs := []interface{}{validKey, value}
+	err := RefImplCallBody(refEnc, "box.broadcast", expectedArgs)
+	if err != nil {
+		t.Errorf("An unexpected RefImplCallBody() error: %q", err.Error())
+		return
+	}
+
+	req := NewBroadcastRequest(validKey).Value(value)
 	assertBodyEqual(t, refBuf.Bytes(), req)
 }
