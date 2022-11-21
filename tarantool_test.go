@@ -2873,6 +2873,7 @@ func TestConnectionProtocolInfoSupported(t *testing.T) {
 				StreamsFeature,
 				TransactionsFeature,
 				ErrorExtensionFeature,
+				WatchersFeature,
 			},
 		})
 
@@ -3006,6 +3007,7 @@ func TestConnectionProtocolInfoUnsupported(t *testing.T) {
 				StreamsFeature,
 				TransactionsFeature,
 				ErrorExtensionFeature,
+				WatchersFeature,
 			},
 		})
 
@@ -3251,6 +3253,385 @@ func TestErrorExtendedInfoFields(t *testing.T) {
 	// since they may differ between different Tarantool versions
 	// and editions.
 	test_helpers.CheckEqualBoxErrors(t, expected, *ttErr.ExtendedInfo)
+}
+
+func TestConnection_NewWatcher(t *testing.T) {
+	test_helpers.SkipIfWatchersUnsupported(t)
+
+	const key = "TestConnection_NewWatcher"
+	connOpts := opts.Clone()
+	connOpts.RequiredProtocolInfo.Features = []ProtocolFeature{
+		WatchersFeature,
+	}
+	conn := test_helpers.ConnectWithValidation(t, server, connOpts)
+	defer conn.Close()
+
+	events := make(chan WatchEvent)
+	defer close(events)
+
+	watcher, err := conn.NewWatcher(key, func(event WatchEvent) {
+		events <- event
+	})
+	if err != nil {
+		t.Fatalf("Failed to create a watch: %s", err)
+	}
+	defer watcher.Unregister()
+
+	select {
+	case event := <-events:
+		if event.Conn != conn {
+			t.Errorf("Unexpected event connection: %v", event.Conn)
+		}
+		if event.Key != key {
+			t.Errorf("Unexpected event key: %s", event.Key)
+		}
+		if event.Value != nil {
+			t.Errorf("Unexpected event value: %v", event.Value)
+		}
+	case <-time.After(time.Second):
+		t.Fatalf("Failed to get watch event.")
+	}
+}
+
+func TestConnection_NewWatcher_noWatchersFeature(t *testing.T) {
+	const key = "TestConnection_NewWatcher_noWatchersFeature"
+	connOpts := opts.Clone()
+	connOpts.RequiredProtocolInfo.Features = []ProtocolFeature{}
+	conn := test_helpers.ConnectWithValidation(t, server, connOpts)
+	defer conn.Close()
+
+	watcher, err := conn.NewWatcher(key, func(event WatchEvent) {})
+	require.Nilf(t, watcher, "watcher must not be created")
+	require.NotNilf(t, err, "an error is expected")
+	expected := "the feature WatchersFeature must be required by connection " +
+		"options to create a watcher"
+	require.Equal(t, expected, err.Error())
+}
+
+func TestConnection_NewWatcher_reconnect(t *testing.T) {
+	test_helpers.SkipIfWatchersUnsupported(t)
+
+	const key = "TestConnection_NewWatcher_reconnect"
+	const server = "127.0.0.1:3014"
+
+	inst, err := test_helpers.StartTarantool(test_helpers.StartOpts{
+		InitScript:   "config.lua",
+		Listen:       server,
+		WorkDir:      "work_dir",
+		User:         opts.User,
+		Pass:         opts.Pass,
+		WaitStart:    100 * time.Millisecond,
+		ConnectRetry: 3,
+		RetryTimeout: 500 * time.Millisecond,
+	})
+	defer test_helpers.StopTarantoolWithCleanup(inst)
+	if err != nil {
+		t.Fatalf("Unable to start Tarantool: %s", err)
+	}
+
+	reconnectOpts := opts
+	reconnectOpts.Reconnect = 100 * time.Millisecond
+	reconnectOpts.MaxReconnects = 10
+	reconnectOpts.RequiredProtocolInfo.Features = []ProtocolFeature{
+		WatchersFeature,
+	}
+	conn := test_helpers.ConnectWithValidation(t, server, reconnectOpts)
+	defer conn.Close()
+
+	events := make(chan WatchEvent)
+	defer close(events)
+	watcher, err := conn.NewWatcher(key, func(event WatchEvent) {
+		events <- event
+	})
+	if err != nil {
+		t.Fatalf("Failed to create a watch: %s", err)
+	}
+	defer watcher.Unregister()
+
+	<-events
+
+	test_helpers.StopTarantool(inst)
+	if err := test_helpers.RestartTarantool(&inst); err != nil {
+		t.Fatalf("Unable to restart Tarantool: %s", err)
+	}
+
+	maxTime := reconnectOpts.Reconnect * time.Duration(reconnectOpts.MaxReconnects)
+	select {
+	case <-events:
+	case <-time.After(maxTime):
+		t.Fatalf("Failed to get watch event.")
+	}
+}
+
+func TestBroadcastRequest(t *testing.T) {
+	test_helpers.SkipIfWatchersUnsupported(t)
+
+	const key = "TestBroadcastRequest"
+	const value = "bar"
+
+	connOpts := opts.Clone()
+	connOpts.RequiredProtocolInfo.Features = []ProtocolFeature{
+		WatchersFeature,
+	}
+	conn := test_helpers.ConnectWithValidation(t, server, connOpts)
+	defer conn.Close()
+
+	resp, err := conn.Do(NewBroadcastRequest(key).Value(value)).Get()
+	if err != nil {
+		t.Fatalf("Got broadcast error: %s", err)
+	}
+	if resp.Code != OkCode {
+		t.Errorf("Got unexpected broadcast response code: %d", resp.Code)
+	}
+	if !reflect.DeepEqual(resp.Data, []interface{}{}) {
+		t.Errorf("Got unexpected broadcast response data: %v", resp.Data)
+	}
+
+	events := make(chan WatchEvent)
+	defer close(events)
+
+	watcher, err := conn.NewWatcher(key, func(event WatchEvent) {
+		events <- event
+	})
+	if err != nil {
+		t.Fatalf("Failed to create a watch: %s", err)
+	}
+	defer watcher.Unregister()
+
+	select {
+	case event := <-events:
+		if event.Conn != conn {
+			t.Errorf("Unexpected event connection: %v", event.Conn)
+		}
+		if event.Key != key {
+			t.Errorf("Unexpected event key: %s", event.Key)
+		}
+		if event.Value != value {
+			t.Errorf("Unexpected event value: %v", event.Value)
+		}
+	case <-time.After(time.Second):
+		t.Fatalf("Failed to get watch event.")
+	}
+}
+
+func TestBroadcastRequest_multi(t *testing.T) {
+	test_helpers.SkipIfWatchersUnsupported(t)
+
+	const key = "TestBroadcastRequest_multi"
+
+	connOpts := opts.Clone()
+	connOpts.RequiredProtocolInfo.Features = []ProtocolFeature{
+		WatchersFeature,
+	}
+	conn := test_helpers.ConnectWithValidation(t, server, connOpts)
+	defer conn.Close()
+
+	events := make(chan WatchEvent)
+	defer close(events)
+
+	watcher, err := conn.NewWatcher(key, func(event WatchEvent) {
+		events <- event
+	})
+	if err != nil {
+		t.Fatalf("Failed to create a watch: %s", err)
+	}
+	defer watcher.Unregister()
+
+	<-events // Skip an initial event.
+	for i := 0; i < 10; i++ {
+		val := fmt.Sprintf("%d", i)
+		_, err := conn.Do(NewBroadcastRequest(key).Value(val)).Get()
+		if err != nil {
+			t.Fatalf("Failed to send a broadcast request: %s", err)
+		}
+		select {
+		case event := <-events:
+			if event.Conn != conn {
+				t.Errorf("Unexpected event connection: %v", event.Conn)
+			}
+			if event.Key != key {
+				t.Errorf("Unexpected event key: %s", event.Key)
+			}
+			if event.Value.(string) != val {
+				t.Errorf("Unexpected event value: %v", event.Value)
+			}
+		case <-time.After(time.Second):
+			t.Fatalf("Failed to get watch event %d", i)
+		}
+	}
+}
+
+func TestConnection_NewWatcher_multiOnKey(t *testing.T) {
+	test_helpers.SkipIfWatchersUnsupported(t)
+
+	const key = "TestConnection_NewWatcher_multiOnKey"
+	const value = "bar"
+
+	connOpts := opts.Clone()
+	connOpts.RequiredProtocolInfo.Features = []ProtocolFeature{
+		WatchersFeature,
+	}
+	conn := test_helpers.ConnectWithValidation(t, server, connOpts)
+	defer conn.Close()
+
+	events := []chan WatchEvent{
+		make(chan WatchEvent),
+		make(chan WatchEvent),
+	}
+	for _, ch := range events {
+		defer close(ch)
+	}
+
+	for _, ch := range events {
+		channel := ch
+		watcher, err := conn.NewWatcher(key, func(event WatchEvent) {
+			channel <- event
+		})
+		if err != nil {
+			t.Fatalf("Failed to create a watch: %s", err)
+		}
+		defer watcher.Unregister()
+	}
+
+	for i, ch := range events {
+		select {
+		case <-ch: // Skip an initial event.
+		case <-time.After(2 * time.Second):
+			t.Fatalf("Failed to skip watch event for %d callback", i)
+		}
+	}
+
+	_, err := conn.Do(NewBroadcastRequest(key).Value(value)).Get()
+	if err != nil {
+		t.Fatalf("Failed to send a broadcast request: %s", err)
+	}
+
+	for i, ch := range events {
+		select {
+		case event := <-ch:
+			if event.Conn != conn {
+				t.Errorf("Unexpected event connection: %v", event.Conn)
+			}
+			if event.Key != key {
+				t.Errorf("Unexpected event key: %s", event.Key)
+			}
+			if event.Value.(string) != value {
+				t.Errorf("Unexpected event value: %v", event.Value)
+			}
+		case <-time.After(2 * time.Second):
+			t.Fatalf("Failed to get watch event from callback %d", i)
+		}
+	}
+}
+
+func TestWatcher_Unregister(t *testing.T) {
+	test_helpers.SkipIfWatchersUnsupported(t)
+
+	const key = "TestWatcher_Unregister"
+	const value = "bar"
+
+	connOpts := opts.Clone()
+	connOpts.RequiredProtocolInfo.Features = []ProtocolFeature{
+		WatchersFeature,
+	}
+	conn := test_helpers.ConnectWithValidation(t, server, connOpts)
+	defer conn.Close()
+
+	events := make(chan WatchEvent)
+	defer close(events)
+	watcher, err := conn.NewWatcher(key, func(event WatchEvent) {
+		events <- event
+	})
+	if err != nil {
+		t.Fatalf("Failed to create a watch: %s", err)
+	}
+
+	<-events
+	watcher.Unregister()
+
+	_, err = conn.Do(NewBroadcastRequest(key).Value(value)).Get()
+	if err != nil {
+		t.Fatalf("Got broadcast error: %s", err)
+	}
+
+	select {
+	case event := <-events:
+		t.Fatalf("Get unexpected events: %v", event)
+	case <-time.After(time.Second):
+	}
+}
+
+func TestConnection_NewWatcher_concurrent(t *testing.T) {
+	test_helpers.SkipIfWatchersUnsupported(t)
+
+	const testConcurrency = 1000
+	const key = "TestConnection_NewWatcher_concurrent"
+	connOpts := opts.Clone()
+	connOpts.RequiredProtocolInfo.Features = []ProtocolFeature{
+		WatchersFeature,
+	}
+	conn := test_helpers.ConnectWithValidation(t, server, connOpts)
+	defer conn.Close()
+
+	var wg sync.WaitGroup
+	wg.Add(testConcurrency)
+
+	var ret error
+	for i := 0; i < testConcurrency; i++ {
+		go func(i int) {
+			defer wg.Done()
+
+			events := make(chan struct{})
+
+			watcher, err := conn.NewWatcher(key, func(event WatchEvent) {
+				close(events)
+			})
+			if err != nil {
+				ret = err
+			} else {
+				select {
+				case <-events:
+				case <-time.After(time.Second):
+					ret = fmt.Errorf("Unable to get an event %d", i)
+				}
+				watcher.Unregister()
+			}
+		}(i)
+	}
+	wg.Wait()
+
+	if ret != nil {
+		t.Fatalf("An error found: %s", ret)
+	}
+}
+
+func TestWatcher_Unregister_concurrent(t *testing.T) {
+	test_helpers.SkipIfWatchersUnsupported(t)
+
+	const testConcurrency = 1000
+	const key = "TestWatcher_Unregister_concurrent"
+	connOpts := opts.Clone()
+	connOpts.RequiredProtocolInfo.Features = []ProtocolFeature{
+		WatchersFeature,
+	}
+	conn := test_helpers.ConnectWithValidation(t, server, connOpts)
+	defer conn.Close()
+
+	watcher, err := conn.NewWatcher(key, func(event WatchEvent) {})
+	if err != nil {
+		t.Fatalf("Failed to create a watch: %s", err)
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(testConcurrency)
+
+	for i := 0; i < testConcurrency; i++ {
+		go func() {
+			defer wg.Done()
+			watcher.Unregister()
+		}()
+	}
+	wg.Wait()
 }
 
 // runTestMain is a body of TestMain function

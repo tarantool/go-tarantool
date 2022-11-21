@@ -19,6 +19,8 @@ const (
 	PingRequestCode      = 64
 	SubscribeRequestCode = 66
 	IdRequestCode        = 73
+	WatchRequestCode     = 74
+	UnwatchRequestCode   = 75
 
 	KeyCode         = 0x00
 	KeySync         = 0x01
@@ -46,6 +48,8 @@ const (
 	KeyVersion      = 0x54
 	KeyFeatures     = 0x55
 	KeyTimeout      = 0x56
+	KeyEvent        = 0x57
+	KeyEventData    = 0x58
 	KeyTxnIsolation = 0x59
 
 	KeyFieldName               = 0x00
@@ -74,6 +78,7 @@ const (
 	RLimitWait = 2
 
 	OkCode            = uint32(0)
+	EventCode         = uint32(0x4c)
 	PushCode          = uint32(0x80)
 	ErrorCodeBit      = 0x8000
 	PacketLengthBytes = 5

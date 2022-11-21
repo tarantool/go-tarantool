@@ -507,6 +507,16 @@ func (connMulti *ConnectionMulti) NewStream() (*tarantool.Stream, error) {
 	return connMulti.getCurrentConnection().NewStream()
 }
 
+// NewWatcher does not supported by the ConnectionMulti. The ConnectionMulti is
+// deprecated: use ConnectionPool instead.
+//
+// Since 1.10.0
+func (connMulti *ConnectionMulti) NewWatcher(key string,
+	callback tarantool.WatchCallback) (tarantool.Watcher, error) {
+	return nil, errors.New("ConnectionMulti is deprecated " +
+		"use ConnectionPool")
+}
+
 // Do sends the request and returns a future.
 func (connMulti *ConnectionMulti) Do(req tarantool.Request) *tarantool.Future {
 	if connectedReq, ok := req.(tarantool.ConnectedRequest); ok {

@@ -14,6 +14,15 @@ type RoundRobinStrategy struct {
 	current     uint
 }
 
+func NewEmptyRoundRobin(size int) *RoundRobinStrategy {
+	return &RoundRobinStrategy{
+		conns:       make([]*tarantool.Connection, 0, size),
+		indexByAddr: make(map[string]uint),
+		size:        0,
+		current:     0,
+	}
+}
+
 func (r *RoundRobinStrategy) GetConnByAddr(addr string) *tarantool.Connection {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
@@ -71,13 +80,14 @@ func (r *RoundRobinStrategy) GetNextConnection() *tarantool.Connection {
 	return r.conns[r.nextIndex()]
 }
 
-func NewEmptyRoundRobin(size int) *RoundRobinStrategy {
-	return &RoundRobinStrategy{
-		conns:       make([]*tarantool.Connection, 0, size),
-		indexByAddr: make(map[string]uint),
-		size:        0,
-		current:     0,
-	}
+func (r *RoundRobinStrategy) GetConnections() []*tarantool.Connection {
+	r.mutex.RLock()
+	defer r.mutex.RUnlock()
+
+	ret := make([]*tarantool.Connection, len(r.conns))
+	copy(ret, r.conns)
+
+	return ret
 }
 
 func (r *RoundRobinStrategy) AddConn(addr string, conn *tarantool.Connection) {

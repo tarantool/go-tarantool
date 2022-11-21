@@ -2048,6 +2048,327 @@ func TestStream_TxnIsolationLevel(t *testing.T) {
 	}
 }
 
+func TestConnectionPool_NewWatcher_noWatchersFeature(t *testing.T) {
+	const key = "TestConnectionPool_NewWatcher_noWatchersFeature"
+
+	roles := []bool{true, false, false, true, true}
+
+	opts := connOpts.Clone()
+	opts.RequiredProtocolInfo.Features = []tarantool.ProtocolFeature{}
+	err := test_helpers.SetClusterRO(servers, opts, roles)
+	require.Nilf(t, err, "fail to set roles for cluster")
+
+	pool, err := connection_pool.Connect(servers, opts)
+	require.Nilf(t, err, "failed to connect")
+	require.NotNilf(t, pool, "conn is nil after Connect")
+	defer pool.Close()
+
+	watcher, err := pool.NewWatcher(key,
+		func(event tarantool.WatchEvent) {}, connection_pool.ANY)
+	require.Nilf(t, watcher, "watcher must not be created")
+	require.NotNilf(t, err, "an error is expected")
+	expected := "the feature WatchersFeature must be required by connection " +
+		"options to create a watcher"
+	require.Equal(t, expected, err.Error())
+}
+
+func TestConnectionPool_NewWatcher_modes(t *testing.T) {
+	test_helpers.SkipIfWatchersUnsupported(t)
+
+	const key = "TestConnectionPool_NewWatcher_modes"
+
+	roles := []bool{true, false, false, true, true}
+
+	opts := connOpts.Clone()
+	opts.RequiredProtocolInfo.Features = []tarantool.ProtocolFeature{
+		tarantool.WatchersFeature,
+	}
+	err := test_helpers.SetClusterRO(servers, opts, roles)
+	require.Nilf(t, err, "fail to set roles for cluster")
+
+	pool, err := connection_pool.Connect(servers, opts)
+	require.Nilf(t, err, "failed to connect")
+	require.NotNilf(t, pool, "conn is nil after Connect")
+	defer pool.Close()
+
+	modes := []connection_pool.Mode{
+		connection_pool.ANY,
+		connection_pool.RW,
+		connection_pool.RO,
+		connection_pool.PreferRW,
+		connection_pool.PreferRO,
+	}
+	for _, mode := range modes {
+		t.Run(fmt.Sprintf("%d", mode), func(t *testing.T) {
+			expectedServers := []string{}
+			for i, server := range servers {
+				if roles[i] && mode == connection_pool.RW {
+					continue
+				} else if !roles[i] && mode == connection_pool.RO {
+					continue
+				}
+				expectedServers = append(expectedServers, server)
+			}
+
+			events := make(chan tarantool.WatchEvent, 1024)
+			defer close(events)
+
+			watcher, err := pool.NewWatcher(key, func(event tarantool.WatchEvent) {
+				require.Equal(t, key, event.Key)
+				require.Equal(t, nil, event.Value)
+				events <- event
+			}, mode)
+			require.Nilf(t, err, "failed to register a watcher")
+			defer watcher.Unregister()
+
+			testMap := make(map[string]int)
+
+			for i := 0; i < len(expectedServers); i++ {
+				select {
+				case event := <-events:
+					require.NotNil(t, event.Conn)
+					addr := event.Conn.Addr()
+					if val, ok := testMap[addr]; ok {
+						testMap[addr] = val + 1
+					} else {
+						testMap[addr] = 1
+					}
+				case <-time.After(time.Second):
+					t.Errorf("Failed to get a watch event.")
+					break
+				}
+			}
+
+			for _, server := range expectedServers {
+				if val, ok := testMap[server]; !ok {
+					t.Errorf("Server not found: %s", server)
+				} else if val != 1 {
+					t.Errorf("Too many events %d for server %s", val, server)
+				}
+			}
+		})
+	}
+}
+
+func TestConnectionPool_NewWatcher_update(t *testing.T) {
+	test_helpers.SkipIfWatchersUnsupported(t)
+
+	const key = "TestConnectionPool_NewWatcher_update"
+	const mode = connection_pool.RW
+	const initCnt = 2
+	roles := []bool{true, false, false, true, true}
+
+	opts := connOpts.Clone()
+	opts.RequiredProtocolInfo.Features = []tarantool.ProtocolFeature{
+		tarantool.WatchersFeature,
+	}
+	err := test_helpers.SetClusterRO(servers, opts, roles)
+	require.Nilf(t, err, "fail to set roles for cluster")
+
+	pool, err := connection_pool.Connect(servers, opts)
+	require.Nilf(t, err, "failed to connect")
+	require.NotNilf(t, pool, "conn is nil after Connect")
+	defer pool.Close()
+
+	events := make(chan tarantool.WatchEvent, 1024)
+	defer close(events)
+
+	watcher, err := pool.NewWatcher(key, func(event tarantool.WatchEvent) {
+		require.Equal(t, key, event.Key)
+		require.Equal(t, nil, event.Value)
+		events <- event
+	}, mode)
+	require.Nilf(t, err, "failed to create a watcher")
+	defer watcher.Unregister()
+
+	// Wait for all initial events.
+	testMap := make(map[string]int)
+	for i := 0; i < initCnt; i++ {
+		select {
+		case event := <-events:
+			require.NotNil(t, event.Conn)
+			addr := event.Conn.Addr()
+			if val, ok := testMap[addr]; ok {
+				testMap[addr] = val + 1
+			} else {
+				testMap[addr] = 1
+			}
+		case <-time.After(time.Second):
+			t.Errorf("Failed to get a watch init event.")
+			break
+		}
+	}
+
+	// Just invert roles for simplify the test.
+	for i, role := range roles {
+		roles[i] = !role
+	}
+	err = test_helpers.SetClusterRO(servers, connOpts, roles)
+	require.Nilf(t, err, "fail to set roles for cluster")
+
+	// Wait for all updated events.
+	for i := 0; i < len(servers)-initCnt; i++ {
+		select {
+		case event := <-events:
+			require.NotNil(t, event.Conn)
+			addr := event.Conn.Addr()
+			if val, ok := testMap[addr]; ok {
+				testMap[addr] = val + 1
+			} else {
+				testMap[addr] = 1
+			}
+		case <-time.After(time.Second):
+			t.Errorf("Failed to get a watch update event.")
+			break
+		}
+	}
+
+	// Check that all an event happen for an each connection.
+	for _, server := range servers {
+		if val, ok := testMap[server]; !ok {
+			t.Errorf("Server not found: %s", server)
+		} else {
+			require.Equal(t, val, 1, fmt.Sprintf("for server %s", server))
+		}
+	}
+}
+
+func TestWatcher_Unregister(t *testing.T) {
+	test_helpers.SkipIfWatchersUnsupported(t)
+
+	const key = "TestWatcher_Unregister"
+	const mode = connection_pool.RW
+	const expectedCnt = 2
+	roles := []bool{true, false, false, true, true}
+
+	opts := connOpts.Clone()
+	opts.RequiredProtocolInfo.Features = []tarantool.ProtocolFeature{
+		tarantool.WatchersFeature,
+	}
+	err := test_helpers.SetClusterRO(servers, opts, roles)
+	require.Nilf(t, err, "fail to set roles for cluster")
+
+	pool, err := connection_pool.Connect(servers, opts)
+	require.Nilf(t, err, "failed to connect")
+	require.NotNilf(t, pool, "conn is nil after Connect")
+	defer pool.Close()
+
+	events := make(chan tarantool.WatchEvent, 1024)
+	defer close(events)
+
+	watcher, err := pool.NewWatcher(key, func(event tarantool.WatchEvent) {
+		require.Equal(t, key, event.Key)
+		require.Equal(t, nil, event.Value)
+		events <- event
+	}, mode)
+	require.Nilf(t, err, "failed to create a watcher")
+
+	for i := 0; i < expectedCnt; i++ {
+		select {
+		case <-events:
+		case <-time.After(time.Second):
+			t.Fatalf("Failed to skip initial events.")
+		}
+	}
+	watcher.Unregister()
+
+	broadcast := tarantool.NewBroadcastRequest(key).Value("foo")
+	for i := 0; i < expectedCnt; i++ {
+		_, err := pool.Do(broadcast, mode).Get()
+		require.Nilf(t, err, "failed to send a broadcast request")
+	}
+
+	select {
+	case event := <-events:
+		t.Fatalf("Get unexpected event: %v", event)
+	case <-time.After(time.Second):
+	}
+
+	// Reset to the initial state.
+	broadcast = tarantool.NewBroadcastRequest(key)
+	for i := 0; i < expectedCnt; i++ {
+		_, err := pool.Do(broadcast, mode).Get()
+		require.Nilf(t, err, "failed to send a broadcast request")
+	}
+}
+
+func TestConnectionPool_NewWatcher_concurrent(t *testing.T) {
+	test_helpers.SkipIfWatchersUnsupported(t)
+
+	const testConcurrency = 1000
+	const key = "TestConnectionPool_NewWatcher_concurrent"
+
+	roles := []bool{true, false, false, true, true}
+
+	opts := connOpts.Clone()
+	opts.RequiredProtocolInfo.Features = []tarantool.ProtocolFeature{
+		tarantool.WatchersFeature,
+	}
+	err := test_helpers.SetClusterRO(servers, opts, roles)
+	require.Nilf(t, err, "fail to set roles for cluster")
+
+	pool, err := connection_pool.Connect(servers, opts)
+	require.Nilf(t, err, "failed to connect")
+	require.NotNilf(t, pool, "conn is nil after Connect")
+	defer pool.Close()
+
+	var wg sync.WaitGroup
+	wg.Add(testConcurrency)
+
+	mode := connection_pool.ANY
+	callback := func(event tarantool.WatchEvent) {}
+	for i := 0; i < testConcurrency; i++ {
+		go func(i int) {
+			defer wg.Done()
+
+			watcher, err := pool.NewWatcher(key, callback, mode)
+			if err != nil {
+				t.Errorf("Failed to create a watcher: %s", err)
+			} else {
+				watcher.Unregister()
+			}
+		}(i)
+	}
+	wg.Wait()
+}
+
+func TestWatcher_Unregister_concurrent(t *testing.T) {
+	test_helpers.SkipIfWatchersUnsupported(t)
+
+	const testConcurrency = 1000
+	const key = "TestWatcher_Unregister_concurrent"
+
+	roles := []bool{true, false, false, true, true}
+
+	opts := connOpts.Clone()
+	opts.RequiredProtocolInfo.Features = []tarantool.ProtocolFeature{
+		tarantool.WatchersFeature,
+	}
+	err := test_helpers.SetClusterRO(servers, opts, roles)
+	require.Nilf(t, err, "fail to set roles for cluster")
+
+	pool, err := connection_pool.Connect(servers, opts)
+	require.Nilf(t, err, "failed to connect")
+	require.NotNilf(t, pool, "conn is nil after Connect")
+	defer pool.Close()
+
+	mode := connection_pool.ANY
+	watcher, err := pool.NewWatcher(key, func(event tarantool.WatchEvent) {
+	}, mode)
+	require.Nilf(t, err, "failed to create a watcher")
+
+	var wg sync.WaitGroup
+	wg.Add(testConcurrency)
+
+	for i := 0; i < testConcurrency; i++ {
+		go func() {
+			defer wg.Done()
+			watcher.Unregister()
+		}()
+	}
+	wg.Wait()
+}
+
 // runTestMain is a body of TestMain function
 // (see https://pkg.go.dev/testing#hdr-Main).
 // Using defer + os.Exit is not works so TestMain body

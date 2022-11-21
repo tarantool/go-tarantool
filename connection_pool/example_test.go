@@ -575,6 +575,59 @@ func ExampleConnectionPool_NewPrepared() {
 	}
 }
 
+func ExampleConnectionPool_NewWatcher() {
+	const key = "foo"
+	const value = "bar"
+
+	opts := connOpts.Clone()
+	opts.RequiredProtocolInfo.Features = []tarantool.ProtocolFeature{
+		tarantool.WatchersFeature,
+	}
+
+	pool, err := examplePool(testRoles, connOpts)
+	if err != nil {
+		fmt.Println(err)
+	}
+	defer pool.Close()
+
+	callback := func(event tarantool.WatchEvent) {
+		fmt.Printf("event connection: %s\n", event.Conn.Addr())
+		fmt.Printf("event key: %s\n", event.Key)
+		fmt.Printf("event value: %v\n", event.Value)
+	}
+	mode := connection_pool.ANY
+	watcher, err := pool.NewWatcher(key, callback, mode)
+	if err != nil {
+		fmt.Printf("Unexpected error: %s\n", err)
+		return
+	}
+	defer watcher.Unregister()
+
+	pool.Do(tarantool.NewBroadcastRequest(key).Value(value), mode).Get()
+	time.Sleep(time.Second)
+}
+
+func ExampleConnectionPool_NewWatcher_noWatchersFeature() {
+	const key = "foo"
+
+	opts := connOpts.Clone()
+	opts.RequiredProtocolInfo.Features = []tarantool.ProtocolFeature{}
+
+	pool, err := examplePool(testRoles, connOpts)
+	if err != nil {
+		fmt.Println(err)
+	}
+	defer pool.Close()
+
+	callback := func(event tarantool.WatchEvent) {}
+	watcher, err := pool.NewWatcher(key, callback, connection_pool.ANY)
+	fmt.Println(watcher)
+	fmt.Println(err)
+	// Output:
+	// <nil>
+	// the feature WatchersFeature must be required by connection options to create a watcher
+}
+
 func getTestTxnOpts() tarantool.Opts {
 	txnOpts := connOpts.Clone()
 

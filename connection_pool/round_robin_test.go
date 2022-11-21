@@ -69,3 +69,22 @@ func TestRoundRobinGetNextConnection(t *testing.T) {
 		}
 	}
 }
+
+func TestRoundRobinStrategy_GetConnections(t *testing.T) {
+	rr := NewEmptyRoundRobin(10)
+
+	addrs := []string{validAddr1, validAddr2}
+	conns := []*tarantool.Connection{&tarantool.Connection{}, &tarantool.Connection{}}
+
+	for i, addr := range addrs {
+		rr.AddConn(addr, conns[i])
+	}
+
+	rr.GetConnections()[1] = conns[0] // GetConnections() returns a copy.
+	rrConns := rr.GetConnections()
+	for i, expected := range conns {
+		if expected != rrConns[i] {
+			t.Errorf("Unexpected connection on %d call", i)
+		}
+	}
+}

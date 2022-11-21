@@ -84,6 +84,8 @@ type Pooler interface {
 
 	NewPrepared(expr string, mode Mode) (*tarantool.Prepared, error)
 	NewStream(mode Mode) (*tarantool.Stream, error)
+	NewWatcher(key string, callback tarantool.WatchCallback,
+		mode Mode) (tarantool.Watcher, error)
 
 	Do(req tarantool.Request, mode Mode) (fut *tarantool.Future)
 }

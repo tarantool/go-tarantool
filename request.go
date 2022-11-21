@@ -538,6 +538,8 @@ type Request interface {
 	Body(resolver SchemaResolver, enc *encoder) error
 	// Ctx returns a context of the request.
 	Ctx() context.Context
+	// Async returns true if the request does not expect response.
+	Async() bool
 }
 
 // ConnectedRequest is an interface that provides the info about a Connection
@@ -550,12 +552,18 @@ type ConnectedRequest interface {
 
 type baseRequest struct {
 	requestCode int32
+	async       bool
 	ctx         context.Context
 }
 
 // Code returns a IPROTO code for the request.
 func (req *baseRequest) Code() int32 {
 	return req.requestCode
+}
+
+// Async returns true if the request does not require a response.
+func (req *baseRequest) Async() bool {
+	return req.async
 }
 
 // Ctx returns a context of the request.

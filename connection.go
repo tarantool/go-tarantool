@@ -54,6 +54,8 @@ const (
 	// LogUnexpectedResultId is logged when response with unknown id was received.
 	// Most probably it is due to request timeout.
 	LogUnexpectedResultId
+	// LogWatchEventReadFailed is logged when failed to read a watch event.
+	LogWatchEventReadFailed
 )
 
 // ConnEvent is sent throw Notify channel specified in Opts.
@@ -61,6 +63,12 @@ type ConnEvent struct {
 	Conn *Connection
 	Kind ConnEventKind
 	When time.Time
+}
+
+// A raw watch event.
+type connWatchEvent struct {
+	key   string
+	value interface{}
 }
 
 var epoch = time.Now()
@@ -84,6 +92,9 @@ func (d defaultLogger) Report(event ConnLogKind, conn *Connection, v ...interfac
 	case LogUnexpectedResultId:
 		resp := v[0].(*Response)
 		log.Printf("tarantool: connection %s got unexpected resultId (%d) in response", conn.addr, resp.RequestId)
+	case LogWatchEventReadFailed:
+		err := v[0].(error)
+		log.Printf("tarantool: unable to parse watch event: %s", err)
 	default:
 		args := append([]interface{}{"tarantool: unexpected event ", event, conn}, v...)
 		log.Print(args...)
@@ -149,6 +160,8 @@ type Connection struct {
 	lastStreamId uint64
 
 	serverProtocolInfo ProtocolInfo
+	// watchMap is a map of key -> chan watchState.
+	watchMap sync.Map
 }
 
 var _ = Connector(&Connection{}) // Check compatibility with connector interface.
@@ -531,7 +544,7 @@ func (conn *Connection) dial() (err error) {
 		return fmt.Errorf("identify: %w", err)
 	}
 
-	// Auth
+	// Auth.
 	if opts.User != "" {
 		scr, err := scramble(conn.Greeting.auth, opts.Pass)
 		if err != nil {
@@ -549,7 +562,30 @@ func (conn *Connection) dial() (err error) {
 		}
 	}
 
-	// Only if connected and authenticated.
+	// Watchers.
+	conn.watchMap.Range(func(key, value interface{}) bool {
+		st := value.(chan watchState)
+		state := <-st
+		if state.unready != nil {
+			return true
+		}
+
+		req := newWatchRequest(key.(string))
+		if err = conn.writeRequest(w, req); err != nil {
+			st <- state
+			return false
+		}
+		state.ack = true
+
+		st <- state
+		return true
+	})
+
+	if err != nil {
+		return fmt.Errorf("unable to register watch: %w", err)
+	}
+
+	// Only if connected and fully initialized.
 	conn.lockShards()
 	conn.c = connection
 	atomic.StoreUint32(&conn.state, connConnected)
@@ -843,7 +879,52 @@ func (conn *Connection) writer(w *bufio.Writer, c net.Conn) {
 	}
 }
 
+func readWatchEvent(reader io.Reader) (connWatchEvent, error) {
+	keyExist := false
+	event := connWatchEvent{}
+	d := newDecoder(reader)
+
+	l, err := d.DecodeMapLen()
+	if err != nil {
+		return event, err
+	}
+
+	for ; l > 0; l-- {
+		cd, err := d.DecodeInt()
+		if err != nil {
+			return event, err
+		}
+
+		switch cd {
+		case KeyEvent:
+			if event.key, err = d.DecodeString(); err != nil {
+				return event, err
+			}
+			keyExist = true
+		case KeyEventData:
+			if event.value, err = d.DecodeInterface(); err != nil {
+				return event, err
+			}
+		default:
+			if err = d.Skip(); err != nil {
+				return event, err
+			}
+		}
+	}
+
+	if !keyExist {
+		return event, errors.New("watch event does not have a key")
+	}
+
+	return event, nil
+}
+
 func (conn *Connection) reader(r *bufio.Reader, c net.Conn) {
+	events := make(chan connWatchEvent, 1024)
+	defer close(events)
+
+	go conn.eventer(events)
+
 	for atomic.LoadUint32(&conn.state) != connClosed {
 		respBytes, err := conn.read(r)
 		if err != nil {
@@ -858,7 +939,14 @@ func (conn *Connection) reader(r *bufio.Reader, c net.Conn) {
 		}
 
 		var fut *Future = nil
-		if resp.Code == PushCode {
+		if resp.Code == EventCode {
+			if event, err := readWatchEvent(&resp.buf); err == nil {
+				events <- event
+			} else {
+				conn.opts.Logger.Report(LogWatchEventReadFailed, conn, err)
+			}
+			continue
+		} else if resp.Code == PushCode {
 			if fut = conn.peekFuture(resp.RequestId); fut != nil {
 				fut.AppendPush(resp)
 			}
@@ -868,9 +956,35 @@ func (conn *Connection) reader(r *bufio.Reader, c net.Conn) {
 				conn.markDone(fut)
 			}
 		}
+
 		if fut == nil {
 			conn.opts.Logger.Report(LogUnexpectedResultId, conn, resp)
 		}
+	}
+}
+
+// eventer goroutine gets watch events and updates values for watchers.
+func (conn *Connection) eventer(events <-chan connWatchEvent) {
+	for event := range events {
+		if value, ok := conn.watchMap.Load(event.key); ok {
+			st := value.(chan watchState)
+			state := <-st
+			state.value = event.value
+			if state.version == math.MaxUint64 {
+				state.version = initWatchEventVersion + 1
+			} else {
+				state.version += 1
+			}
+			state.ack = false
+			if state.changed != nil {
+				close(state.changed)
+				state.changed = nil
+			}
+			st <- state
+		}
+		// It is possible to get IPROTO_EVENT after we already send
+		// IPROTO_UNWATCH due to processing on a Tarantool side or slow
+		// read from the network, so it looks like an expected behavior.
 	}
 }
 
@@ -1029,6 +1143,18 @@ func (conn *Connection) putFuture(fut *Future, req Request, streamId uint64) {
 		return
 	}
 	shard.bufmut.Unlock()
+
+	if req.Async() {
+		if fut = conn.fetchFuture(reqid); fut != nil {
+			resp := &Response{
+				RequestId: reqid,
+				Code:      OkCode,
+			}
+			fut.SetResponse(resp)
+			conn.markDone(fut)
+		}
+	}
+
 	if firstWritten {
 		conn.dirtyShard <- shardn
 	}
@@ -1230,6 +1356,228 @@ func (conn *Connection) NewStream() (*Stream, error) {
 	return &Stream{
 		Id:   next,
 		Conn: conn,
+	}, nil
+}
+
+// watchState is the current state of the watcher. See the idea at p. 70, 105:
+// https://drive.google.com/file/d/1nPdvhB0PutEJzdCq5ms6UI58dp50fcAN/view
+type watchState struct {
+	// value is a current value.
+	value interface{}
+	// version is a current version of the value. The only reason for uint64:
+	// go 1.13 has no math.Uint.
+	version uint64
+	// ack true if the acknowledge is already sent.
+	ack bool
+	// cnt is a count of active watchers for the key.
+	cnt int
+	// changed is a channel for broadcast the value changes.
+	changed chan struct{}
+	// unready channel exists if a state is not ready to work (subscription
+	// or unsubscription in progress).
+	unready chan struct{}
+}
+
+// initWatchEventVersion is an initial version until no events from Tarantool.
+const initWatchEventVersion uint64 = 0
+
+// connWatcher is an internal implementation of the Watcher interface.
+type connWatcher struct {
+	unregister sync.Once
+	// done is closed when the watcher is unregistered, but the watcher
+	// goroutine is not yet finished.
+	done chan struct{}
+	// finished is closed when the watcher is unregistered and the watcher
+	// goroutine is finished.
+	finished chan struct{}
+}
+
+// Unregister unregisters the connection watcher.
+func (w *connWatcher) Unregister() {
+	w.unregister.Do(func() {
+		close(w.done)
+	})
+	<-w.finished
+}
+
+// subscribeWatchChannel returns an existing one or a new watch state channel
+// for the key. It also increases a counter of active watchers for the channel.
+func subscribeWatchChannel(conn *Connection, key string) (chan watchState, error) {
+	var st chan watchState
+
+	for st == nil {
+		if val, ok := conn.watchMap.Load(key); !ok {
+			st = make(chan watchState, 1)
+			state := watchState{
+				value:   nil,
+				version: initWatchEventVersion,
+				ack:     false,
+				cnt:     0,
+				changed: nil,
+				unready: make(chan struct{}),
+			}
+			st <- state
+
+			if val, loaded := conn.watchMap.LoadOrStore(key, st); !loaded {
+				if _, err := conn.Do(newWatchRequest(key)).Get(); err != nil {
+					conn.watchMap.Delete(key)
+					close(state.unready)
+					return nil, err
+				}
+				// It is a successful subsctiption to a watch events by itself.
+				state = <-st
+				state.cnt = 1
+				close(state.unready)
+				state.unready = nil
+				st <- state
+				continue
+			} else {
+				close(state.unready)
+				close(st)
+				st = val.(chan watchState)
+			}
+		} else {
+			st = val.(chan watchState)
+		}
+
+		// It is an existing channel created outside. It may be in the
+		// unready state.
+		state := <-st
+		if state.unready == nil {
+			state.cnt += 1
+		}
+		st <- state
+
+		if state.unready != nil {
+			// Wait for an update and retry.
+			<-state.unready
+			st = nil
+		}
+	}
+
+	return st, nil
+}
+
+// NewWatcher creates a new Watcher object for the connection.
+//
+// You need to require WatchersFeature to use watchers, see examples for the
+// function.
+//
+// After watcher creation, the watcher callback is invoked for the first time.
+// In this case, the callback is triggered whether or not the key has already
+// been broadcast. All subsequent invocations are triggered with
+// box.broadcast() called on the remote host. If a watcher is subscribed for a
+// key that has not been broadcast yet, the callback is triggered only once,
+// after the registration of the watcher.
+//
+// The watcher callbacks are always invoked in a separate goroutine. A watcher
+// callback is never executed in parallel with itself, but they can be executed
+// in parallel to other watchers.
+//
+// If the key is updated while the watcher callback is running, the callback
+// will be invoked again with the latest value as soon as it returns.
+//
+// Watchers survive reconnection. All registered watchers are automatically
+// resubscribed when the connection is reestablished.
+//
+// Keep in mind that garbage collection of a watcher handle doesn’t lead to the
+// watcher’s destruction. In this case, the watcher remains registered. You
+// need to call Unregister() directly.
+//
+// Unregister() guarantees that there will be no the watcher's callback calls
+// after it, but Unregister() call from the callback leads to a deadlock.
+//
+// See:
+// https://www.tarantool.io/en/doc/latest/reference/reference_lua/box_events/#box-watchers
+//
+// Since 1.10.0
+func (conn *Connection) NewWatcher(key string, callback WatchCallback) (Watcher, error) {
+	// We need to check the feature because the IPROTO_WATCH request is
+	// asynchronous. We do not expect any response from a Tarantool instance
+	// That's why we can't just check the Tarantool response for an unsupported
+	// request error.
+	watchersRequired := false
+	for _, feature := range conn.opts.RequiredProtocolInfo.Features {
+		if feature == WatchersFeature {
+			watchersRequired = true
+			break
+		}
+	}
+
+	if !watchersRequired {
+		err := fmt.Errorf("the feature %s must be required by connection "+
+			"options to create a watcher", WatchersFeature)
+		return nil, err
+	}
+
+	st, err := subscribeWatchChannel(conn, key)
+	if err != nil {
+		return nil, err
+	}
+
+	// Start the watcher goroutine.
+	done := make(chan struct{})
+	finished := make(chan struct{})
+
+	go func() {
+		version := initWatchEventVersion
+		for {
+			state := <-st
+			if state.changed == nil {
+				state.changed = make(chan struct{})
+			}
+			st <- state
+
+			if state.version != version {
+				callback(WatchEvent{
+					Conn:  conn,
+					Key:   key,
+					Value: state.value,
+				})
+				version = state.version
+
+				// Do we need to acknowledge the notification?
+				state = <-st
+				sendAck := !state.ack && version == state.version
+				if sendAck {
+					state.ack = true
+				}
+				st <- state
+
+				if sendAck {
+					conn.Do(newWatchRequest(key)).Get()
+					// We expect a reconnect and re-subscribe if it fails to
+					// send the watch request. So it looks ok do not check a
+					// result.
+				}
+			}
+
+			select {
+			case <-done:
+				state := <-st
+				state.cnt -= 1
+				if state.cnt == 0 {
+					state.unready = make(chan struct{})
+				}
+				st <- state
+
+				if state.cnt == 0 {
+					// The last one sends IPROTO_UNWATCH.
+					conn.Do(newUnwatchRequest(key)).Get()
+					conn.watchMap.Delete(key)
+					close(state.unready)
+				}
+
+				close(finished)
+				return
+			case <-state.changed:
+			}
+		}
+	}()
+
+	return &connWatcher{
+		done:     done,
+		finished: finished,
 	}, nil
 }
 

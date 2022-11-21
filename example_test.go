@@ -329,7 +329,7 @@ func ExampleProtocolVersion() {
 	fmt.Println("Connector client protocol features:", clientProtocolInfo.Features)
 	// Output:
 	// Connector client protocol version: 4
-	// Connector client protocol features: [StreamsFeature TransactionsFeature ErrorExtensionFeature]
+	// Connector client protocol features: [StreamsFeature TransactionsFeature ErrorExtensionFeature WatchersFeature]
 }
 
 func getTestTxnOpts() tarantool.Opts {
@@ -1043,6 +1043,51 @@ func ExampleConnection_NewPrepared() {
 	if err != nil {
 		fmt.Printf("Failed to prepare")
 	}
+}
+
+func ExampleConnection_NewWatcher() {
+	const key = "foo"
+	const value = "bar"
+
+	// Tarantool watchers since version 2.10
+	isLess, err := test_helpers.IsTarantoolVersionLess(2, 10, 0)
+	if err != nil || isLess {
+		return
+	}
+
+	server := "127.0.0.1:3013"
+	opts := tarantool.Opts{
+		Timeout:       500 * time.Millisecond,
+		Reconnect:     1 * time.Second,
+		MaxReconnects: 3,
+		User:          "test",
+		Pass:          "test",
+		// You need to require the feature to create a watcher.
+		RequiredProtocolInfo: tarantool.ProtocolInfo{
+			Features: []tarantool.ProtocolFeature{tarantool.WatchersFeature},
+		},
+	}
+	conn, err := tarantool.Connect(server, opts)
+	if err != nil {
+		fmt.Printf("Failed to connect: %s\n", err)
+		return
+	}
+	defer conn.Close()
+
+	callback := func(event tarantool.WatchEvent) {
+		fmt.Printf("event connection: %s\n", event.Conn.Addr())
+		fmt.Printf("event key: %s\n", event.Key)
+		fmt.Printf("event value: %v\n", event.Value)
+	}
+	watcher, err := conn.NewWatcher(key, callback)
+	if err != nil {
+		fmt.Printf("Failed to connect: %s\n", err)
+		return
+	}
+	defer watcher.Unregister()
+
+	conn.Do(tarantool.NewBroadcastRequest(key).Value(value)).Get()
+	time.Sleep(time.Second)
 }
 
 // To pass contexts to request objects, use the Context() method.

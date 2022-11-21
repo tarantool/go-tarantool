@@ -91,12 +91,13 @@ type ConnectionPool struct {
 	connOpts tarantool.Opts
 	opts     OptsPool
 
-	state      state
-	done       chan struct{}
-	roPool     *RoundRobinStrategy
-	rwPool     *RoundRobinStrategy
-	anyPool    *RoundRobinStrategy
-	poolsMutex sync.RWMutex
+	state            state
+	done             chan struct{}
+	roPool           *RoundRobinStrategy
+	rwPool           *RoundRobinStrategy
+	anyPool          *RoundRobinStrategy
+	poolsMutex       sync.RWMutex
+	watcherContainer watcherContainer
 }
 
 var _ Pooler = (*ConnectionPool)(nil)
@@ -640,25 +641,6 @@ func (connPool *ConnectionPool) ExecuteAsync(expr string, args interface{}, user
 	return conn.ExecuteAsync(expr, args)
 }
 
-// Do sends the request and returns a future.
-// For requests that belong to an only one connection (e.g. Unprepare or ExecutePrepared)
-// the argument of type Mode is unused.
-func (connPool *ConnectionPool) Do(req tarantool.Request, userMode Mode) *tarantool.Future {
-	if connectedReq, ok := req.(tarantool.ConnectedRequest); ok {
-		conn, _ := connPool.getConnectionFromPool(connectedReq.Conn().Addr())
-		if conn == nil {
-			return newErrorFuture(fmt.Errorf("the passed connected request doesn't belong to the current connection or connection pool"))
-		}
-		return connectedReq.Conn().Do(req)
-	}
-	conn, err := connPool.getNextConnection(userMode)
-	if err != nil {
-		return newErrorFuture(err)
-	}
-
-	return conn.Do(req)
-}
-
 // NewStream creates new Stream object for connection selected
 // by userMode from connPool.
 //
@@ -680,6 +662,86 @@ func (connPool *ConnectionPool) NewPrepared(expr string, userMode Mode) (*tarant
 		return nil, err
 	}
 	return conn.NewPrepared(expr)
+}
+
+// NewWatcher creates a new Watcher object for the connection pool.
+//
+// You need to require WatchersFeature to use watchers, see examples for the
+// function.
+//
+// The behavior is same as if Connection.NewWatcher() called for each
+// connection with a suitable role.
+//
+// Keep in mind that garbage collection of a watcher handle doesn’t lead to the
+// watcher’s destruction. In this case, the watcher remains registered. You
+// need to call Unregister() directly.
+//
+// Unregister() guarantees that there will be no the watcher's callback calls
+// after it, but Unregister() call from the callback leads to a deadlock.
+//
+// See:
+// https://www.tarantool.io/en/doc/latest/reference/reference_lua/box_events/#box-watchers
+//
+// Since 1.10.0
+func (pool *ConnectionPool) NewWatcher(key string,
+	callback tarantool.WatchCallback, mode Mode) (tarantool.Watcher, error) {
+	watchersRequired := false
+	for _, feature := range pool.connOpts.RequiredProtocolInfo.Features {
+		if tarantool.WatchersFeature == feature {
+			watchersRequired = true
+			break
+		}
+	}
+	if !watchersRequired {
+		return nil, errors.New("the feature WatchersFeature must be " +
+			"required by connection options to create a watcher")
+	}
+
+	watcher := &poolWatcher{
+		container:    &pool.watcherContainer,
+		mode:         mode,
+		key:          key,
+		callback:     callback,
+		watchers:     make(map[string]tarantool.Watcher),
+		unregistered: false,
+	}
+
+	watcher.container.add(watcher)
+
+	rr := pool.anyPool
+	if mode == RW {
+		rr = pool.rwPool
+	} else if mode == RO {
+		rr = pool.roPool
+	}
+
+	conns := rr.GetConnections()
+	for _, conn := range conns {
+		if err := watcher.watch(conn); err != nil {
+			conn.Close()
+		}
+	}
+
+	return watcher, nil
+}
+
+// Do sends the request and returns a future.
+// For requests that belong to the only one connection (e.g. Unprepare or ExecutePrepared)
+// the argument of type Mode is unused.
+func (connPool *ConnectionPool) Do(req tarantool.Request, userMode Mode) *tarantool.Future {
+	if connectedReq, ok := req.(tarantool.ConnectedRequest); ok {
+		conn, _ := connPool.getConnectionFromPool(connectedReq.Conn().Addr())
+		if conn == nil {
+			return newErrorFuture(fmt.Errorf("the passed connected request doesn't belong to the current connection or connection pool"))
+		}
+		return connectedReq.Conn().Do(req)
+	}
+	conn, err := connPool.getNextConnection(userMode)
+	if err != nil {
+		return newErrorFuture(err)
+	}
+
+	return conn.Do(req)
 }
 
 //
@@ -733,26 +795,63 @@ func (connPool *ConnectionPool) getConnectionFromPool(addr string) (*tarantool.C
 	return connPool.anyPool.GetConnByAddr(addr), UnknownRole
 }
 
-func (connPool *ConnectionPool) deleteConnection(addr string) {
-	if conn := connPool.anyPool.DeleteConnByAddr(addr); conn != nil {
-		if conn := connPool.rwPool.DeleteConnByAddr(addr); conn != nil {
-			return
+func (pool *ConnectionPool) deleteConnection(addr string) {
+	if conn := pool.anyPool.DeleteConnByAddr(addr); conn != nil {
+		if conn := pool.rwPool.DeleteConnByAddr(addr); conn == nil {
+			pool.roPool.DeleteConnByAddr(addr)
 		}
-		connPool.roPool.DeleteConnByAddr(addr)
+		// The internal connection deinitialization.
+		pool.watcherContainer.mutex.RLock()
+		defer pool.watcherContainer.mutex.RUnlock()
+
+		pool.watcherContainer.foreach(func(watcher *poolWatcher) error {
+			watcher.unwatch(conn)
+			return nil
+		})
 	}
 }
 
-func (connPool *ConnectionPool) addConnection(addr string,
-	conn *tarantool.Connection, role Role) {
+func (pool *ConnectionPool) addConnection(addr string,
+	conn *tarantool.Connection, role Role) error {
+	// The internal connection initialization.
+	pool.watcherContainer.mutex.RLock()
+	defer pool.watcherContainer.mutex.RUnlock()
 
-	connPool.anyPool.AddConn(addr, conn)
+	watched := []*poolWatcher{}
+	err := pool.watcherContainer.foreach(func(watcher *poolWatcher) error {
+		watch := false
+		if watcher.mode == RW {
+			watch = role == MasterRole
+		} else if watcher.mode == RO {
+			watch = role == ReplicaRole
+		} else {
+			watch = true
+		}
+		if watch {
+			if err := watcher.watch(conn); err != nil {
+				return err
+			}
+			watched = append(watched, watcher)
+		}
+		return nil
+	})
+	if err != nil {
+		for _, watcher := range watched {
+			watcher.unwatch(conn)
+		}
+		log.Printf("tarantool: failed initialize watchers for %s: %s", addr, err)
+		return err
+	}
+
+	pool.anyPool.AddConn(addr, conn)
 
 	switch role {
 	case MasterRole:
-		connPool.rwPool.AddConn(addr, conn)
+		pool.rwPool.AddConn(addr, conn)
 	case ReplicaRole:
-		connPool.roPool.AddConn(addr, conn)
+		pool.roPool.AddConn(addr, conn)
 	}
+	return nil
 }
 
 func (connPool *ConnectionPool) handlerDiscovered(conn *tarantool.Connection,
@@ -811,7 +910,10 @@ func (connPool *ConnectionPool) fillPools() ([]connState, bool) {
 			}
 
 			if connPool.handlerDiscovered(conn, role) {
-				connPool.addConnection(addr, conn, role)
+				if connPool.addConnection(addr, conn, role) != nil {
+					conn.Close()
+					connPool.handlerDeactivated(conn, role)
+				}
 
 				if conn.ConnectedNow() {
 					states[i].conn = conn
@@ -864,7 +966,15 @@ func (pool *ConnectionPool) updateConnection(s connState) connState {
 				return s
 			}
 
-			pool.addConnection(s.addr, s.conn, role)
+			if pool.addConnection(s.addr, s.conn, role) != nil {
+				pool.poolsMutex.Unlock()
+
+				s.conn.Close()
+				pool.handlerDeactivated(s.conn, role)
+				s.conn = nil
+				s.role = UnknownRole
+				return s
+			}
 			s.role = role
 		}
 	}
@@ -911,7 +1021,12 @@ func (pool *ConnectionPool) tryConnect(s connState) connState {
 			return s
 		}
 
-		pool.addConnection(s.addr, conn, role)
+		if pool.addConnection(s.addr, conn, role) != nil {
+			pool.poolsMutex.Unlock()
+			conn.Close()
+			pool.handlerDeactivated(conn, role)
+			return s
+		}
 		s.conn = conn
 		s.role = role
 	}

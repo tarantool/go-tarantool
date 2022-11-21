@@ -1139,6 +1139,45 @@ func TestConnectorNewStream(t *testing.T) {
 	require.Equalf(t, testMode, m.mode, "unexpected proxy mode")
 }
 
+type watcherMock struct{}
+
+func (w *watcherMock) Unregister() {}
+
+const reqWatchKey = "foo"
+
+var reqWatcher tarantool.Watcher = &watcherMock{}
+
+type newWatcherMock struct {
+	Pooler
+	key      string
+	callback tarantool.WatchCallback
+	called   int
+	mode     Mode
+}
+
+func (m *newWatcherMock) NewWatcher(key string,
+	callback tarantool.WatchCallback, mode Mode) (tarantool.Watcher, error) {
+	m.called++
+	m.key = key
+	m.callback = callback
+	m.mode = mode
+	return reqWatcher, reqErr
+}
+
+func TestConnectorNewWatcher(t *testing.T) {
+	m := &newWatcherMock{}
+	c := NewConnectorAdapter(m, testMode)
+
+	w, err := c.NewWatcher(reqWatchKey, func(event tarantool.WatchEvent) {})
+
+	require.Equalf(t, reqWatcher, w, "unexpected watcher")
+	require.Equalf(t, reqErr, err, "unexpected error")
+	require.Equalf(t, 1, m.called, "should be called only once")
+	require.Equalf(t, reqWatchKey, m.key, "unexpected key")
+	require.NotNilf(t, m.callback, "callback must be set")
+	require.Equalf(t, testMode, m.mode, "unexpected proxy mode")
+}
+
 var reqRequest tarantool.Request = tarantool.NewPingRequest()
 
 type doMock struct {

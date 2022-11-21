@@ -76,13 +76,16 @@ var clientProtocolInfo ProtocolInfo = ProtocolInfo{
 	// 1.10.0.
 	Version: ProtocolVersion(4),
 	// Streams and transactions were introduced in protocol version 1
-	// (Tarantool 2.10.0), in connector since 1.7.0. Error extension
-	// type was introduced in protocol version 2 (Tarantool 2.10.0),
-	// in connector since 1.10.0.
+	// (Tarantool 2.10.0), in connector since 1.7.0.
+	// Error extension type was introduced in protocol
+	// version 2 (Tarantool 2.10.0), in connector since 1.10.0.
+	// Watchers were introduced in protocol version 3 (Tarantool 2.10.0), in
+	// connector since 1.10.0.
 	Features: []ProtocolFeature{
 		StreamsFeature,
 		TransactionsFeature,
 		ErrorExtensionFeature,
+		WatchersFeature,
 	},
 }
 

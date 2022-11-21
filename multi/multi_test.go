@@ -548,6 +548,30 @@ func TestStream_Rollback(t *testing.T) {
 	}
 }
 
+func TestConnectionMulti_NewWatcher(t *testing.T) {
+	test_helpers.SkipIfStreamsUnsupported(t)
+
+	multiConn, err := Connect([]string{server1, server2}, connOpts)
+	if err != nil {
+		t.Fatalf("Failed to connect: %s", err.Error())
+	}
+	if multiConn == nil {
+		t.Fatalf("conn is nil after Connect")
+	}
+	defer multiConn.Close()
+
+	watcher, err := multiConn.NewWatcher("foo", func(event tarantool.WatchEvent) {})
+	if watcher != nil {
+		t.Errorf("Unexpected watcher")
+	}
+	if err == nil {
+		t.Fatalf("Unexpected success")
+	}
+	if err.Error() != "ConnectionMulti is deprecated use ConnectionPool" {
+		t.Fatalf("Unexpected error: %s", err)
+	}
+}
+
 // runTestMain is a body of TestMain function
 // (see https://pkg.go.dev/testing#hdr-Main).
 // Using defer + os.Exit is not works so TestMain body
