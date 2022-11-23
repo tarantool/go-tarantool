@@ -4,12 +4,17 @@ import "fmt"
 
 // Error is wrapper around error returned by Tarantool.
 type Error struct {
-	Code uint32
-	Msg  string
+	Code         uint32
+	Msg          string
+	ExtendedInfo *BoxError
 }
 
 // Error converts an Error to a string.
 func (tnterr Error) Error() string {
+	if tnterr.ExtendedInfo != nil {
+		return tnterr.ExtendedInfo.Error()
+	}
+
 	return fmt.Sprintf("%s (0x%x)", tnterr.Msg, tnterr.Code)
 }
 

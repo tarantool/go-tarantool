@@ -35,13 +35,14 @@ const (
 	KeyExpression   = 0x27
 	KeyDefTuple     = 0x28
 	KeyData         = 0x30
-	KeyError24      = 0x31
+	KeyError24      = 0x31 /* Error in pre-2.4 format. */
 	KeyMetaData     = 0x32
 	KeyBindCount    = 0x34
 	KeySQLText      = 0x40
 	KeySQLBind      = 0x41
 	KeySQLInfo      = 0x42
 	KeyStmtID       = 0x43
+	KeyError        = 0x52 /* Extended error in >= 2.4 format. */
 	KeyVersion      = 0x54
 	KeyFeatures     = 0x55
 	KeyTimeout      = 0x56

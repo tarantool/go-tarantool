@@ -3148,6 +3148,103 @@ func TestConnectionFeatureOptsImmutable(t *testing.T) {
 	require.True(t, connected, "Reconnect success")
 }
 
+func TestErrorExtendedInfoBasic(t *testing.T) {
+	test_helpers.SkipIfErrorExtendedInfoUnsupported(t)
+
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	defer conn.Close()
+
+	_, err := conn.Eval("not a Lua code", []interface{}{})
+	require.NotNilf(t, err, "expected error on invalid Lua code")
+
+	ttErr, ok := err.(Error)
+	require.Equalf(t, ok, true, "error is built from a Tarantool error")
+
+	expected := BoxError{
+		Type:  "LuajitError",
+		File:  "eval",
+		Line:  uint64(1),
+		Msg:   "eval:1: unexpected symbol near 'not'",
+		Errno: uint64(0),
+		Code:  uint64(32),
+	}
+
+	// In fact, CheckEqualBoxErrors does not check than File and Line
+	// of connector BoxError are equal to the Tarantool ones
+	// since they may differ between different Tarantool versions
+	// and editions.
+	test_helpers.CheckEqualBoxErrors(t, expected, *ttErr.ExtendedInfo)
+}
+
+func TestErrorExtendedInfoStack(t *testing.T) {
+	test_helpers.SkipIfErrorExtendedInfoUnsupported(t)
+
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	defer conn.Close()
+
+	_, err := conn.Eval("error(chained_error)", []interface{}{})
+	require.NotNilf(t, err, "expected error on explicit error raise")
+
+	ttErr, ok := err.(Error)
+	require.Equalf(t, ok, true, "error is built from a Tarantool error")
+
+	expected := BoxError{
+		Type:  "ClientError",
+		File:  "config.lua",
+		Line:  uint64(214),
+		Msg:   "Timeout exceeded",
+		Errno: uint64(0),
+		Code:  uint64(78),
+		Prev: &BoxError{
+			Type:  "ClientError",
+			File:  "config.lua",
+			Line:  uint64(213),
+			Msg:   "Unknown error",
+			Errno: uint64(0),
+			Code:  uint64(0),
+		},
+	}
+
+	// In fact, CheckEqualBoxErrors does not check than File and Line
+	// of connector BoxError are equal to the Tarantool ones
+	// since they may differ between different Tarantool versions
+	// and editions.
+	test_helpers.CheckEqualBoxErrors(t, expected, *ttErr.ExtendedInfo)
+}
+
+func TestErrorExtendedInfoFields(t *testing.T) {
+	test_helpers.SkipIfErrorExtendedInfoUnsupported(t)
+
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	defer conn.Close()
+
+	_, err := conn.Eval("error(access_denied_error)", []interface{}{})
+	require.NotNilf(t, err, "expected error on forbidden action")
+
+	ttErr, ok := err.(Error)
+	require.Equalf(t, ok, true, "error is built from a Tarantool error")
+
+	expected := BoxError{
+		Type:  "AccessDeniedError",
+		File:  "/__w/sdk/sdk/tarantool-2.10/tarantool/src/box/func.c",
+		Line:  uint64(535),
+		Msg:   "Execute access to function 'forbidden_function' is denied for user 'no_grants'",
+		Errno: uint64(0),
+		Code:  uint64(42),
+		Fields: map[string]interface{}{
+			"object_type": "function",
+			"object_name": "forbidden_function",
+			"access_type": "Execute",
+		},
+	}
+
+	// In fact, CheckEqualBoxErrors does not check than File and Line
+	// of connector BoxError are equal to the Tarantool ones
+	// since they may differ between different Tarantool versions
+	// and editions.
+	test_helpers.CheckEqualBoxErrors(t, expected, *ttErr.ExtendedInfo)
+}
+
 // runTestMain is a body of TestMain function
 // (see https://pkg.go.dev/testing#hdr-Main).
 // Using defer + os.Exit is not works so TestMain body

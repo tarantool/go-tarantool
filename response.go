@@ -151,6 +151,7 @@ func (resp *Response) decodeBody() (err error) {
 		var stmtID, bindCount uint64
 		var serverProtocolInfo ProtocolInfo
 		var feature ProtocolFeature
+		var errorExtendedInfo *BoxError = nil
 
 		d := newDecoder(&resp.buf)
 
@@ -171,6 +172,10 @@ func (resp *Response) decodeBody() (err error) {
 				}
 				if resp.Data, ok = res.([]interface{}); !ok {
 					return fmt.Errorf("result is not array: %v", res)
+				}
+			case KeyError:
+				if errorExtendedInfo, err = decodeBoxError(d); err != nil {
+					return err
 				}
 			case KeyError24:
 				if resp.Error, err = d.DecodeString(); err != nil {
@@ -236,7 +241,7 @@ func (resp *Response) decodeBody() (err error) {
 
 		if resp.Code != OkCode && resp.Code != PushCode {
 			resp.Code &^= ErrorCodeBit
-			err = Error{resp.Code, resp.Error}
+			err = Error{resp.Code, resp.Error, errorExtendedInfo}
 		}
 	}
 	return
@@ -246,6 +251,8 @@ func (resp *Response) decodeBodyTyped(res interface{}) (err error) {
 	if resp.buf.Len() > 0 {
 		offset := resp.buf.Offset()
 		defer resp.buf.Seek(offset)
+
+		var errorExtendedInfo *BoxError = nil
 
 		var l int
 		d := newDecoder(&resp.buf)
@@ -260,6 +267,10 @@ func (resp *Response) decodeBodyTyped(res interface{}) (err error) {
 			switch cd {
 			case KeyData:
 				if err = d.Decode(res); err != nil {
+					return err
+				}
+			case KeyError:
+				if errorExtendedInfo, err = decodeBoxError(d); err != nil {
 					return err
 				}
 			case KeyError24:
@@ -282,7 +293,7 @@ func (resp *Response) decodeBodyTyped(res interface{}) (err error) {
 		}
 		if resp.Code != OkCode && resp.Code != PushCode {
 			resp.Code &^= ErrorCodeBit
-			err = Error{resp.Code, resp.Error}
+			err = Error{resp.Code, resp.Error, errorExtendedInfo}
 		}
 	}
 	return

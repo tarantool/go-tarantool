@@ -11,6 +11,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 ### Added
 
 - Support iproto feature discovery (#120)
+- Support errors extended information (#209)
 
 ### Changed
 

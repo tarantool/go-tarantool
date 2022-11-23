@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"github.com/tarantool/go-tarantool"
 )
 
@@ -118,5 +119,60 @@ func SkipIfIdSupported(t *testing.T) {
 
 	if !isLess {
 		t.Skip("Skipping test for Tarantool with non-zero protocol version and features")
+	}
+}
+
+// CheckEqualBoxErrors checks equivalence of tarantool.BoxError objects.
+//
+// Tarantool errors are not comparable by nature:
+//
+// tarantool> msgpack.decode(mp_error_repr) == msgpack.decode(mp_error_repr)
+// ---
+// - false
+// ...
+//
+// Tarantool error file and line could differ even between
+// different patches.
+//
+// So we check equivalence of all attributes except for Line and File.
+// For Line and File, we check that they are filled with some non-default values
+// (lines are counted starting with 1 and empty file path is not expected too).
+func CheckEqualBoxErrors(t *testing.T, expected tarantool.BoxError, actual tarantool.BoxError) {
+	t.Helper()
+
+	require.Equalf(t, expected.Depth(), actual.Depth(), "Error stack depth is the same")
+
+	for {
+		require.Equal(t, expected.Type, actual.Type)
+		require.Greater(t, len(expected.File), 0)
+		require.Greater(t, expected.Line, uint64(0))
+		require.Equal(t, expected.Msg, actual.Msg)
+		require.Equal(t, expected.Errno, actual.Errno)
+		require.Equal(t, expected.Code, actual.Code)
+		require.Equal(t, expected.Fields, actual.Fields)
+
+		if expected.Prev != nil {
+			// Stack depth is the same
+			expected = *expected.Prev
+			actual = *actual.Prev
+		} else {
+			break
+		}
+	}
+}
+
+// SkipIfErrorExtendedInfoUnsupported skips test run if Tarantool without
+// IPROTO_ERROR (0x52) support is used.
+func SkipIfErrorExtendedInfoUnsupported(t *testing.T) {
+	t.Helper()
+
+	// Tarantool provides extended error info only since 2.4.1 version.
+	isLess, err := IsTarantoolVersionLess(2, 4, 1)
+	if err != nil {
+		t.Fatalf("Could not check the Tarantool version")
+	}
+
+	if isLess {
+		t.Skip("Skipping test for Tarantool without error extended info support")
 	}
 }
