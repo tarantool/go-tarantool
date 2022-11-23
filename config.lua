@@ -130,6 +130,8 @@ box.once("init", function()
     -- grants for sql tests
     box.schema.user.grant('test', 'create,read,write,drop,alter', 'space')
     box.schema.user.grant('test', 'create', 'sequence')
+
+    box.schema.user.create('no_grants')
 end)
 
 local function func_name()
@@ -156,6 +158,41 @@ local function push_func(cnt)
     return cnt
 end
 rawset(_G, 'push_func', push_func)
+
+local function tarantool_version_at_least(wanted_major, wanted_minor, wanted_patch)
+    -- https://github.com/tarantool/crud/blob/733528be02c1ffa3dacc12c034ee58c9903127fc/test/helper.lua#L316-L337
+    local major_minor_patch = _TARANTOOL:split('-', 1)[1]
+    local major_minor_patch_parts = major_minor_patch:split('.', 2)
+
+    local major = tonumber(major_minor_patch_parts[1])
+    local minor = tonumber(major_minor_patch_parts[2])
+    local patch = tonumber(major_minor_patch_parts[3])
+
+    if major < (wanted_major or 0) then return false end
+    if major > (wanted_major or 0) then return true end
+
+    if minor < (wanted_minor or 0) then return false end
+    if minor > (wanted_minor or 0) then return true end
+
+    if patch < (wanted_patch or 0) then return false end
+    if patch > (wanted_patch or 0) then return true end
+
+    return true
+end
+
+if tarantool_version_at_least(2, 4, 1) then
+    local e1 = box.error.new(box.error.UNKNOWN)
+    local e2 = box.error.new(box.error.TIMEOUT)
+    e2:set_prev(e1)
+    rawset(_G, 'chained_error', e2)
+
+    local user = box.session.user()
+    box.schema.func.create('forbidden_function', {body = 'function() end'})
+    box.session.su('no_grants')
+    local _, access_denied_error = pcall(function() box.func.forbidden_function:call() end)
+    box.session.su(user)
+    rawset(_G, 'access_denied_error', access_denied_error)
+end
 
 box.space.test:truncate()
 
