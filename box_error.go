@@ -5,6 +5,8 @@ import (
 	"fmt"
 )
 
+const errorExtID = 3
+
 const (
 	keyErrorStack   = 0x00
 	keyErrorType    = 0x00
@@ -167,6 +169,105 @@ func decodeBoxError(d *decoder) (*BoxError, error) {
 	return &errorStack[0], nil
 }
 
+func encodeBoxError(enc *encoder, boxError *BoxError) error {
+	if boxError == nil {
+		return fmt.Errorf("msgpack: unexpected nil BoxError on encode")
+	}
+
+	if err := enc.EncodeMapLen(1); err != nil {
+		return err
+	}
+	if err := encodeUint(enc, keyErrorStack); err != nil {
+		return err
+	}
+
+	var stackDepth = boxError.Depth()
+	if err := enc.EncodeArrayLen(stackDepth); err != nil {
+		return err
+	}
+
+	for ; stackDepth > 0; stackDepth-- {
+		fieldsLen := len(boxError.Fields)
+
+		if fieldsLen > 0 {
+			if err := enc.EncodeMapLen(7); err != nil {
+				return err
+			}
+		} else {
+			if err := enc.EncodeMapLen(6); err != nil {
+				return err
+			}
+		}
+
+		if err := encodeUint(enc, keyErrorType); err != nil {
+			return err
+		}
+		if err := enc.EncodeString(boxError.Type); err != nil {
+			return err
+		}
+
+		if err := encodeUint(enc, keyErrorFile); err != nil {
+			return err
+		}
+		if err := enc.EncodeString(boxError.File); err != nil {
+			return err
+		}
+
+		if err := encodeUint(enc, keyErrorLine); err != nil {
+			return err
+		}
+		if err := enc.EncodeUint64(boxError.Line); err != nil {
+			return err
+		}
+
+		if err := encodeUint(enc, keyErrorMessage); err != nil {
+			return err
+		}
+		if err := enc.EncodeString(boxError.Msg); err != nil {
+			return err
+		}
+
+		if err := encodeUint(enc, keyErrorErrno); err != nil {
+			return err
+		}
+		if err := enc.EncodeUint64(boxError.Errno); err != nil {
+			return err
+		}
+
+		if err := encodeUint(enc, keyErrorErrcode); err != nil {
+			return err
+		}
+		if err := enc.EncodeUint64(boxError.Code); err != nil {
+			return err
+		}
+
+		if fieldsLen > 0 {
+			if err := encodeUint(enc, keyErrorFields); err != nil {
+				return err
+			}
+
+			if err := enc.EncodeMapLen(fieldsLen); err != nil {
+				return err
+			}
+
+			for k, v := range boxError.Fields {
+				if err := enc.EncodeString(k); err != nil {
+					return err
+				}
+				if err := enc.Encode(v); err != nil {
+					return err
+				}
+			}
+		}
+
+		if stackDepth > 1 {
+			boxError = boxError.Prev
+		}
+	}
+
+	return nil
+}
+
 // UnmarshalMsgpack deserializes a BoxError value from a MessagePack
 // representation.
 func (e *BoxError) UnmarshalMsgpack(b []byte) error {
@@ -183,4 +284,16 @@ func (e *BoxError) UnmarshalMsgpack(b []byte) error {
 		*e = *val
 		return nil
 	}
+}
+
+// MarshalMsgpack serializes the BoxError into a MessagePack representation.
+func (e *BoxError) MarshalMsgpack() ([]byte, error) {
+	var buf bytes.Buffer
+
+	enc := newEncoder(&buf)
+	if err := encodeBoxError(enc, e); err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
 }
