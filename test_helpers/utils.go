@@ -176,3 +176,20 @@ func SkipIfErrorExtendedInfoUnsupported(t *testing.T) {
 		t.Skip("Skipping test for Tarantool without error extended info support")
 	}
 }
+
+// SkipIfErrorExtendedInfoUnsupported skips test run if Tarantool without
+// MP_ERROR type over iproto support is used.
+func SkipIfErrorMessagePackTypeUnsupported(t *testing.T) {
+	t.Helper()
+
+	// Tarantool error type over MessagePack supported only since 2.10.0 version.
+	isLess, err := IsTarantoolVersionLess(2, 10, 0)
+	if err != nil {
+		t.Fatalf("Could not check the Tarantool version")
+	}
+
+	if isLess {
+		t.Skip("Skipping test for Tarantool without support of error type over MessagePack")
+		t.Skip("Skipping test for Tarantool without error extended info support")
+	}
+}

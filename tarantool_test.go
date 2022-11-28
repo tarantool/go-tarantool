@@ -2868,8 +2868,12 @@ func TestConnectionProtocolInfoSupported(t *testing.T) {
 	require.Equal(t,
 		clientProtocolInfo,
 		ProtocolInfo{
-			Version:  ProtocolVersion(4),
-			Features: []ProtocolFeature{StreamsFeature, TransactionsFeature},
+			Version: ProtocolVersion(4),
+			Features: []ProtocolFeature{
+				StreamsFeature,
+				TransactionsFeature,
+				ErrorExtensionFeature,
+			},
 		})
 
 	serverProtocolInfo := conn.ServerProtocolInfo()
@@ -2997,8 +3001,12 @@ func TestConnectionProtocolInfoUnsupported(t *testing.T) {
 	require.Equal(t,
 		clientProtocolInfo,
 		ProtocolInfo{
-			Version:  ProtocolVersion(4),
-			Features: []ProtocolFeature{StreamsFeature, TransactionsFeature},
+			Version: ProtocolVersion(4),
+			Features: []ProtocolFeature{
+				StreamsFeature,
+				TransactionsFeature,
+				ErrorExtensionFeature,
+			},
 		})
 
 	serverProtocolInfo := conn.ServerProtocolInfo()

@@ -42,7 +42,7 @@ const (
 	// (unsupported by connector).
 	ErrorExtensionFeature ProtocolFeature = 2
 	// WatchersFeature represents support of watchers
-	// (unsupported by connector).
+	// (supported by connector).
 	WatchersFeature ProtocolFeature = 3
 	// PaginationFeature represents support of pagination
 	// (unsupported by connector).
@@ -76,10 +76,13 @@ var clientProtocolInfo ProtocolInfo = ProtocolInfo{
 	// 1.10.0.
 	Version: ProtocolVersion(4),
 	// Streams and transactions were introduced in protocol version 1
-	// (Tarantool 2.10.0), in connector since 1.7.0.
+	// (Tarantool 2.10.0), in connector since 1.7.0. Error extension
+	// type was introduced in protocol version 2 (Tarantool 2.10.0),
+	// in connector since 1.10.0.
 	Features: []ProtocolFeature{
 		StreamsFeature,
 		TransactionsFeature,
+		ErrorExtensionFeature,
 	},
 }
 

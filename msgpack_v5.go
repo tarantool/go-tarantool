@@ -52,3 +52,7 @@ func msgpackIsString(code byte) bool {
 	return msgpcode.IsFixedString(code) || code == msgpcode.Str8 ||
 		code == msgpcode.Str16 || code == msgpcode.Str32
 }
+
+func init() {
+	msgpack.RegisterExt(errorExtID, (*BoxError)(nil))
+}

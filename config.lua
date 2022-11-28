@@ -116,6 +116,21 @@ box.once("init", function()
         }
     end
 
+    local s = box.schema.space.create('test_error_type', {
+        id = 522,
+        temporary = true,
+        if_not_exists = true,
+        field_count = 2,
+        -- You can't specify box.error as format type,
+        -- but can put box.error objects.
+    })
+    s:create_index('primary', {
+        type = 'tree',
+        unique = true,
+        parts = {1, 'string'},
+        if_not_exists = true
+    })
+
     --box.schema.user.grant('guest', 'read,write,execute', 'universe')
     box.schema.func.create('box.info')
     box.schema.func.create('simple_concat')
@@ -126,6 +141,7 @@ box.once("init", function()
     box.schema.user.grant('test', 'read,write', 'space', 'test')
     box.schema.user.grant('test', 'read,write', 'space', 'schematest')
     box.schema.user.grant('test', 'read,write', 'space', 'test_perf')
+    box.schema.user.grant('test', 'read,write', 'space', 'test_error_type')
 
     -- grants for sql tests
     box.schema.user.grant('test', 'create,read,write,drop,alter', 'space')
@@ -182,6 +198,8 @@ end
 
 if tarantool_version_at_least(2, 4, 1) then
     local e1 = box.error.new(box.error.UNKNOWN)
+    rawset(_G, 'simple_error', e1)
+
     local e2 = box.error.new(box.error.TIMEOUT)
     e2:set_prev(e1)
     rawset(_G, 'chained_error', e2)
@@ -192,6 +210,55 @@ if tarantool_version_at_least(2, 4, 1) then
     local _, access_denied_error = pcall(function() box.func.forbidden_function:call() end)
     box.session.su(user)
     rawset(_G, 'access_denied_error', access_denied_error)
+
+    -- cdata structure is as follows:
+    --
+    -- tarantool> err:unpack()
+    -- - code: val
+    --   base_type: val
+    --   type: val
+    --   message: val
+    --   field1: val
+    --   field2: val
+    --   trace:
+    --   - file: val
+    --     line: val
+
+    local function compare_box_error_attributes(expected, actual, attr_provider)
+        for attr, _ in pairs(attr_provider:unpack()) do
+            if (attr ~= 'prev') and (attr ~= 'trace') then
+                if expected[attr] ~= actual[attr] then
+                    error(('%s expected %s is not equal to actual %s'):format(
+                           attr, expected[attr], actual[attr]))
+                end
+            end
+        end
+    end
+
+    local function compare_box_errors(expected, actual)
+        if (expected == nil) and (actual ~= nil) then
+            error(('Expected error stack is empty, but actual error ' ..
+                   'has previous %s (%s) error'):format(
+                   actual.type, actual.message))
+        end
+
+        if (expected ~= nil) and (actual == nil) then
+            error(('Actual error stack is empty, but expected error ' ..
+                   'has previous %s (%s) error'):format(
+                   expected.type, expected.message))
+        end
+
+        compare_box_error_attributes(expected, actual, expected)
+        compare_box_error_attributes(expected, actual, actual)
+
+        if (expected.prev ~= nil) or (actual.prev ~= nil) then
+            return compare_box_errors(expected.prev, actual.prev)
+        end
+
+        return true
+    end
+
+    rawset(_G, 'compare_box_errors', compare_box_errors)
 end
 
 box.space.test:truncate()
