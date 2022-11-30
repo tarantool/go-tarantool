@@ -77,10 +77,10 @@ func (d defaultLogger) Report(event ConnLogKind, conn *Connection, v ...interfac
 	case LogReconnectFailed:
 		reconnects := v[0].(uint)
 		err := v[1].(error)
-		log.Printf("tarantool: reconnect (%d/%d) to %s failed: %s\n", reconnects, conn.opts.MaxReconnects, conn.addr, err.Error())
+		log.Printf("tarantool: reconnect (%d/%d) to %s failed: %s", reconnects, conn.opts.MaxReconnects, conn.addr, err)
 	case LogLastReconnectFailed:
 		err := v[0].(error)
-		log.Printf("tarantool: last reconnect to %s failed: %s, giving it up.\n", conn.addr, err.Error())
+		log.Printf("tarantool: last reconnect to %s failed: %s, giving it up", conn.addr, err)
 	case LogUnexpectedResultId:
 		resp := v[0].(*Response)
 		log.Printf("tarantool: connection %s got unexpected resultId (%d) in response", conn.addr, resp.RequestId)
