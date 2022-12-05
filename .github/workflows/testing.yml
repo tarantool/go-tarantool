@@ -50,7 +50,7 @@ jobs:
 
       - name: Setup Tarantool ${{ matrix.tarantool }}
         if: matrix.tarantool != '2.x-latest'
-        uses: tarantool/setup-tarantool@v1
+        uses: tarantool/setup-tarantool@v2
         with:
           tarantool-version: ${{ matrix.tarantool }}
 
