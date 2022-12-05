@@ -15,7 +15,7 @@ jobs:
     - uses: actions/checkout@master
 
     - name: Setup Tarantool
-      uses: tarantool/setup-tarantool@v1
+      uses: tarantool/setup-tarantool@v2
       with:
         tarantool-version: '2.8'
 
