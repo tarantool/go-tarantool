@@ -21,7 +21,9 @@ jobs:
         github.event.pull_request.head.repo.full_name != github.repository) ||
       (github.event_name == 'workflow_dispatch')
 
-    runs-on: ubuntu-latest
+    # We could replace it with ubuntu-latest after fixing the bug:
+    # https://github.com/tarantool/setup-tarantool/issues/37
+    runs-on: ubuntu-20.04
 
     strategy:
       fail-fast: false
