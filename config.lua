@@ -7,7 +7,7 @@ box.cfg{
 
 box.once("init", function()
     local st = box.schema.space.create('schematest', {
-        id = 516,
+        id = 616,
         temporary = true,
         if_not_exists = true,
         field_count = 7,
@@ -36,7 +36,7 @@ box.once("init", function()
     st:truncate()
 
     local s = box.schema.space.create('test', {
-        id = 517,
+        id = 617,
         if_not_exists = true,
     })
     s:create_index('primary', {
@@ -46,7 +46,7 @@ box.once("init", function()
     })
 
     local s = box.schema.space.create('teststring', {
-        id = 518,
+        id = 618,
         if_not_exists = true,
     })
     s:create_index('primary', {
@@ -56,7 +56,7 @@ box.once("init", function()
     })
 
     local s = box.schema.space.create('testintint', {
-        id = 519,
+        id = 619,
         if_not_exists = true,
     })
     s:create_index('primary', {
@@ -66,7 +66,7 @@ box.once("init", function()
     })
 
     local s = box.schema.space.create('SQL_TEST', {
-        id = 520,
+        id = 620,
         if_not_exists = true,
         format = {
             {name = "NAME0", type = "unsigned"},
@@ -82,7 +82,7 @@ box.once("init", function()
     s:insert{1, "test", "test"}
 
     local s = box.schema.space.create('test_perf', {
-        id = 521,
+        id = 621,
         temporary = true,
         if_not_exists = true,
         field_count = 3,
@@ -117,7 +117,7 @@ box.once("init", function()
     end
 
     local s = box.schema.space.create('test_error_type', {
-        id = 522,
+        id = 622,
         temporary = true,
         if_not_exists = true,
         field_count = 2,

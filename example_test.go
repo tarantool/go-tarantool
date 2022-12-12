@@ -51,7 +51,7 @@ func ExampleConnection_Select() {
 	conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
 	conn.Replace(spaceNo, []interface{}{uint(1112), "hallo", "werld"})
 
-	resp, err := conn.Select(517, 0, 0, 100, tarantool.IterEq, []interface{}{uint(1111)})
+	resp, err := conn.Select(617, 0, 0, 100, tarantool.IterEq, []interface{}{uint(1111)})
 
 	if err != nil {
 		fmt.Printf("error in select is %v", err)
@@ -75,7 +75,7 @@ func ExampleConnection_SelectTyped() {
 	defer conn.Close()
 	var res []Tuple
 
-	err := conn.SelectTyped(517, 0, 0, 100, tarantool.IterEq, tarantool.IntKey{1111}, &res)
+	err := conn.SelectTyped(617, 0, 0, 100, tarantool.IterEq, tarantool.IntKey{1111}, &res)
 
 	if err != nil {
 		fmt.Printf("error in select is %v", err)
@@ -96,7 +96,7 @@ func ExampleConnection_SelectTyped() {
 func ExampleConnection_SelectAsync() {
 	conn := example_connect(opts)
 	defer conn.Close()
-	spaceNo := uint32(517)
+	spaceNo := uint32(617)
 
 	conn.Insert(spaceNo, []interface{}{uint(16), "test", "one"})
 	conn.Insert(spaceNo, []interface{}{uint(17), "test", "one"})
@@ -223,7 +223,7 @@ func ExampleSelectRequest() {
 	conn := example_connect(opts)
 	defer conn.Close()
 
-	req := tarantool.NewSelectRequest(517).
+	req := tarantool.NewSelectRequest(617).
 		Limit(100).
 		Key(tarantool.IntKey{1111})
 	resp, err := conn.Do(req).Get()
@@ -253,7 +253,7 @@ func ExampleUpdateRequest() {
 	conn := example_connect(opts)
 	defer conn.Close()
 
-	req := tarantool.NewUpdateRequest(517).
+	req := tarantool.NewUpdateRequest(617).
 		Key(tarantool.IntKey{1111}).
 		Operations(tarantool.NewOperations().Assign(1, "bye"))
 	resp, err := conn.Do(req).Get()
@@ -284,7 +284,7 @@ func ExampleUpsertRequest() {
 	defer conn.Close()
 
 	var req tarantool.Request
-	req = tarantool.NewUpsertRequest(517).
+	req = tarantool.NewUpsertRequest(617).
 		Tuple([]interface{}{uint(1113), "first", "first"}).
 		Operations(tarantool.NewOperations().Assign(1, "updated"))
 	resp, err := conn.Do(req).Get()
@@ -305,7 +305,7 @@ func ExampleUpsertRequest() {
 	}
 	fmt.Printf("response is %#v\n", resp.Data)
 
-	req = tarantool.NewSelectRequest(517).
+	req = tarantool.NewSelectRequest(617).
 		Limit(100).
 		Key(tarantool.IntKey{1113})
 	resp, err = conn.Do(req).Get()
@@ -830,12 +830,12 @@ func ExampleSchema() {
 	}
 
 	space1 := schema.Spaces["test"]
-	space2 := schema.SpacesById[516]
+	space2 := schema.SpacesById[616]
 	fmt.Printf("Space 1 ID %d %s\n", space1.Id, space1.Name)
 	fmt.Printf("Space 2 ID %d %s\n", space2.Id, space2.Name)
 	// Output:
-	// Space 1 ID 517 test
-	// Space 2 ID 516 schematest
+	// Space 1 ID 617 test
+	// Space 2 ID 616 schematest
 }
 
 // Example demonstrates how to retrieve information with space schema.
@@ -854,7 +854,7 @@ func ExampleSpace() {
 
 	// Access Space objects by name or ID.
 	space1 := schema.Spaces["test"]
-	space2 := schema.SpacesById[516] // It's a map.
+	space2 := schema.SpacesById[616] // It's a map.
 	fmt.Printf("Space 1 ID %d %s %s\n", space1.Id, space1.Name, space1.Engine)
 	fmt.Printf("Space 1 ID %d %t\n", space1.FieldsCount, space1.Temporary)
 
@@ -875,7 +875,7 @@ func ExampleSpace() {
 	fmt.Printf("SpaceField 2 %s %s\n", spaceField2.Name, spaceField2.Type)
 
 	// Output:
-	// Space 1 ID 517 test memtx
+	// Space 1 ID 617 test memtx
 	// Space 1 ID 0 false
 	// Index 0 primary
 	// &{0 unsigned} &{2 string}
