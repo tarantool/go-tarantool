@@ -899,7 +899,6 @@ func runTestMain(m *testing.M) int {
 	inst, err := test_helpers.StartTarantool(test_helpers.StartOpts{
 		InitScript:   "testdata/config.lua",
 		Listen:       server,
-		WorkDir:      "work_dir",
 		User:         opts.User,
 		Pass:         opts.Pass,
 		WaitStart:    100 * time.Millisecond,
@@ -913,7 +912,6 @@ func runTestMain(m *testing.M) int {
 
 	defer test_helpers.StopTarantoolWithCleanup(inst)
 
-	workDirs := []string{"work_dir1", "work_dir2"}
 	poolOpts := test_helpers.StartOpts{
 		InitScript:   "testdata/pool.lua",
 		User:         opts.User,
@@ -921,7 +919,7 @@ func runTestMain(m *testing.M) int {
 		WaitStart:    3 * time.Second, // replication_timeout * 3
 		ConnectRetry: -1,
 	}
-	instances, err = test_helpers.StartTarantoolInstances(serversPool, workDirs, poolOpts)
+	instances, err = test_helpers.StartTarantoolInstances(serversPool, nil, poolOpts)
 
 	if err != nil {
 		log.Fatalf("Failed to prepare test tarantool pool: %s", err)

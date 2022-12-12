@@ -613,7 +613,6 @@ func runTestMain(m *testing.M) int {
 	instance, err := test_helpers.StartTarantool(test_helpers.StartOpts{
 		InitScript:   "config.lua",
 		Listen:       server,
-		WorkDir:      "work_dir",
 		User:         opts.User,
 		Pass:         opts.Pass,
 		WaitStart:    100 * time.Millisecond,

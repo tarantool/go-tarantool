@@ -47,9 +47,10 @@ type StartOpts struct {
 	// a Tarantool instance.
 	ClientSsl tarantool.SslOpts
 
-	// WorkDir is box.cfg work_dir parameter for tarantool.
-	// Specify folder to store tarantool data files.
-	// Folder must be unique for each tarantool process used simultaneously.
+	// WorkDir is box.cfg work_dir parameter for a Tarantool instance:
+	// a folder to store data files. If not specified, helpers create a
+	// new temporary directory.
+	// Folder must be unique for each Tarantool process used simultaneously.
 	// https://www.tarantool.io/en/doc/latest/reference/configuration/#confval-work_dir
 	WorkDir string
 
@@ -189,6 +190,32 @@ func RestartTarantool(inst *TarantoolInstance) error {
 func StartTarantool(startOpts StartOpts) (TarantoolInstance, error) {
 	// Prepare tarantool command.
 	var inst TarantoolInstance
+	var dir string
+	var err error
+
+	if startOpts.WorkDir == "" {
+		// Create work_dir for a new instance.
+		// TO DO: replace with `os.MkdirTemp` when we drop support of
+		// Go 1.16 an older
+		dir, err = ioutil.TempDir("", "work_dir")
+		if err != nil {
+			return inst, err
+		}
+		startOpts.WorkDir = dir
+	} else {
+		// Clean up existing work_dir.
+		err = os.RemoveAll(startOpts.WorkDir)
+		if err != nil {
+			return inst, err
+		}
+
+		// Create work_dir.
+		err = os.Mkdir(startOpts.WorkDir, 0755)
+		if err != nil {
+			return inst, err
+		}
+	}
+
 	inst.Cmd = exec.Command("tarantool", startOpts.InitScript)
 
 	inst.Cmd.Env = append(
@@ -197,18 +224,6 @@ func StartTarantool(startOpts StartOpts) (TarantoolInstance, error) {
 		fmt.Sprintf("TEST_TNT_LISTEN=%s", startOpts.Listen),
 		fmt.Sprintf("TEST_TNT_MEMTX_USE_MVCC_ENGINE=%t", startOpts.MemtxUseMvccEngine),
 	)
-
-	// Clean up existing work_dir.
-	err := os.RemoveAll(startOpts.WorkDir)
-	if err != nil {
-		return inst, err
-	}
-
-	// Create work_dir.
-	err = os.Mkdir(startOpts.WorkDir, 0755)
-	if err != nil {
-		return inst, err
-	}
 
 	// Copy SSL certificates.
 	if startOpts.SslCertsDir != "" {

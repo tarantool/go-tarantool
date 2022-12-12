@@ -592,7 +592,6 @@ func runTestMain(m *testing.M) int {
 	inst1, err := test_helpers.StartTarantool(test_helpers.StartOpts{
 		InitScript:         initScript,
 		Listen:             server1,
-		WorkDir:            "work_dir1",
 		User:               connOpts.User,
 		Pass:               connOpts.Pass,
 		WaitStart:          waitStart,
@@ -609,7 +608,6 @@ func runTestMain(m *testing.M) int {
 	inst2, err := test_helpers.StartTarantool(test_helpers.StartOpts{
 		InitScript:   initScript,
 		Listen:       server2,
-		WorkDir:      "work_dir2",
 		User:         connOpts.User,
 		Pass:         connOpts.Pass,
 		WaitStart:    waitStart,

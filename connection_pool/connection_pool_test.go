@@ -2379,10 +2379,6 @@ func runTestMain(m *testing.M) int {
 	waitStart := 100 * time.Millisecond
 	connectRetry := 3
 	retryTimeout := 500 * time.Millisecond
-	workDirs := []string{
-		"work_dir1", "work_dir2",
-		"work_dir3", "work_dir4",
-		"work_dir5"}
 
 	// Tarantool supports streams and interactive transactions since version 2.10.0
 	isStreamUnsupported, err := test_helpers.IsTarantoolVersionLess(2, 10, 0)
@@ -2390,7 +2386,7 @@ func runTestMain(m *testing.M) int {
 		log.Fatalf("Could not check the Tarantool version")
 	}
 
-	instances, err = test_helpers.StartTarantoolInstances(servers, workDirs, test_helpers.StartOpts{
+	instances, err = test_helpers.StartTarantoolInstances(servers, nil, test_helpers.StartOpts{
 		InitScript:         initScript,
 		User:               connOpts.User,
 		Pass:               connOpts.Pass,

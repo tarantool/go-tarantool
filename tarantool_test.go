@@ -23,7 +23,6 @@ import (
 var startOpts test_helpers.StartOpts = test_helpers.StartOpts{
 	InitScript:   "config.lua",
 	Listen:       server,
-	WorkDir:      "work_dir",
 	User:         opts.User,
 	Pass:         opts.Pass,
 	WaitStart:    100 * time.Millisecond,
@@ -3317,7 +3316,6 @@ func TestConnection_NewWatcher_reconnect(t *testing.T) {
 	inst, err := test_helpers.StartTarantool(test_helpers.StartOpts{
 		InitScript:   "config.lua",
 		Listen:       server,
-		WorkDir:      "work_dir",
 		User:         opts.User,
 		Pass:         opts.Pass,
 		WaitStart:    100 * time.Millisecond,
