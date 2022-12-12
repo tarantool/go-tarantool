@@ -13,7 +13,7 @@ rawset(_G, 'get_cluster_nodes', get_cluster_nodes)
 
 box.once("init", function()
     local s = box.schema.space.create('test', {
-        id = 517,
+        id = 617,
         if_not_exists = true,
     })
     s:create_index('primary', {type = 'tree', parts = {1, 'string'}, if_not_exists = true})
@@ -22,7 +22,7 @@ box.once("init", function()
     box.schema.user.grant('test', 'read,write,execute', 'universe')
 
     local sp = box.schema.space.create('SQL_TEST', {
-        id = 521,
+        id = 621,
         if_not_exists = true,
         format = {
             {name = "NAME0", type = "unsigned"},

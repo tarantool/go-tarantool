@@ -99,7 +99,7 @@ func convertUint64(v interface{}) (result uint64, err error) {
 }
 
 var server = "127.0.0.1:3013"
-var spaceNo = uint32(517)
+var spaceNo = uint32(617)
 var spaceName = "test"
 var indexNo = uint32(0)
 var indexName = "primary"
@@ -1776,29 +1776,29 @@ func TestSchema(t *testing.T) {
 	}
 	var space, space2 *Space
 	var ok bool
-	if space, ok = schema.SpacesById[516]; !ok {
-		t.Errorf("space with id = 516 was not found in schema.SpacesById")
+	if space, ok = schema.SpacesById[616]; !ok {
+		t.Errorf("space with id = 616 was not found in schema.SpacesById")
 	}
 	if space2, ok = schema.Spaces["schematest"]; !ok {
 		t.Errorf("space with name 'schematest' was not found in schema.SpacesById")
 	}
 	if space != space2 {
-		t.Errorf("space with id = 516 and space with name schematest are different")
+		t.Errorf("space with id = 616 and space with name schematest are different")
 	}
-	if space.Id != 516 {
-		t.Errorf("space 516 has incorrect Id")
+	if space.Id != 616 {
+		t.Errorf("space 616 has incorrect Id")
 	}
 	if space.Name != "schematest" {
-		t.Errorf("space 516 has incorrect Name")
+		t.Errorf("space 616 has incorrect Name")
 	}
 	if !space.Temporary {
-		t.Errorf("space 516 should be temporary")
+		t.Errorf("space 616 should be temporary")
 	}
 	if space.Engine != "memtx" {
-		t.Errorf("space 516 engine should be memtx")
+		t.Errorf("space 616 engine should be memtx")
 	}
 	if space.FieldsCount != 7 {
-		t.Errorf("space 516 has incorrect fields count")
+		t.Errorf("space 616 has incorrect fields count")
 	}
 
 	if space.FieldsById == nil {
@@ -1908,20 +1908,20 @@ func TestSchema(t *testing.T) {
 	}
 
 	var rSpaceNo, rIndexNo uint32
-	rSpaceNo, rIndexNo, err = schema.ResolveSpaceIndex(516, 3)
-	if err != nil || rSpaceNo != 516 || rIndexNo != 3 {
+	rSpaceNo, rIndexNo, err = schema.ResolveSpaceIndex(616, 3)
+	if err != nil || rSpaceNo != 616 || rIndexNo != 3 {
 		t.Errorf("numeric space and index params not resolved as-is")
 	}
-	rSpaceNo, _, err = schema.ResolveSpaceIndex(516, nil)
-	if err != nil || rSpaceNo != 516 {
+	rSpaceNo, _, err = schema.ResolveSpaceIndex(616, nil)
+	if err != nil || rSpaceNo != 616 {
 		t.Errorf("numeric space param not resolved as-is")
 	}
 	rSpaceNo, rIndexNo, err = schema.ResolveSpaceIndex("schematest", "secondary")
-	if err != nil || rSpaceNo != 516 || rIndexNo != 3 {
+	if err != nil || rSpaceNo != 616 || rIndexNo != 3 {
 		t.Errorf("symbolic space and index params not resolved")
 	}
 	rSpaceNo, _, err = schema.ResolveSpaceIndex("schematest", nil)
-	if err != nil || rSpaceNo != 516 {
+	if err != nil || rSpaceNo != 616 {
 		t.Errorf("symbolic space param not resolved")
 	}
 	_, _, err = schema.ResolveSpaceIndex("schematest22", "secondary")

@@ -16,7 +16,7 @@ import (
 
 var server1 = "127.0.0.1:3013"
 var server2 = "127.0.0.1:3014"
-var spaceNo = uint32(517)
+var spaceNo = uint32(617)
 var spaceName = "test"
 var indexNo = uint32(0)
 var connOpts = tarantool.Opts{
