@@ -219,7 +219,8 @@ func SetClusterRO(servers []string, connOpts tarantool.Opts, roles []bool) error
 }
 
 func StartTarantoolInstances(servers []string, workDirs []string, opts StartOpts) ([]TarantoolInstance, error) {
-	if len(servers) != len(workDirs) {
+	isUserWorkDirs := (workDirs != nil)
+	if isUserWorkDirs && (len(servers) != len(workDirs)) {
 		return nil, fmt.Errorf("number of servers should be equal to number of workDirs")
 	}
 
@@ -227,7 +228,11 @@ func StartTarantoolInstances(servers []string, workDirs []string, opts StartOpts
 
 	for i, server := range servers {
 		opts.Listen = server
-		opts.WorkDir = workDirs[i]
+		if isUserWorkDirs {
+			opts.WorkDir = workDirs[i]
+		} else {
+			opts.WorkDir = ""
+		}
 
 		instance, err := StartTarantool(opts)
 		if err != nil {
