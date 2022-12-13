@@ -81,6 +81,12 @@ test-uuid:
 	go clean -testcache
 	go test -tags "$(TAGS)" ./uuid/ -v -p 1
 
+.PHONY: test-settings
+test-settings:
+	@echo "Running tests in settings package"
+	go clean -testcache
+	go test -tags "$(TAGS)" ./settings/ -v -p 1
+
 .PHONY: test-main
 test-main:
 	@echo "Running tests in main package"

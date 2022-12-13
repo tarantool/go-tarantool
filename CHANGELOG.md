@@ -14,6 +14,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 - Support errors extended information (#209)
 - Error type support in MessagePack (#209)
 - Event subscription support (#119)
+- Session settings support (#215)
 
 ### Changed
 
