@@ -38,6 +38,8 @@ golangci-lint:
 
 .PHONY: test
 test:
+	@echo "Running all packages tests"
+	go clean -testcache
 	go test -tags "$(TAGS)" ./... -v -p 1
 
 .PHONY: testdata
