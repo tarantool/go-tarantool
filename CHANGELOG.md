@@ -16,6 +16,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 - Event subscription support (#119)
 - Session settings support (#215)
 - pap-sha256 authorization method support (Tarantool EE feature) (#243)
+- Support graceful shutdown (#214)
 
 ### Changed
 
