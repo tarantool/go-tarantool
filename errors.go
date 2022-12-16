@@ -55,6 +55,7 @@ const (
 	ErrProtocolError      = 0x4000 + iota
 	ErrTimeouted          = 0x4000 + iota
 	ErrRateLimited        = 0x4000 + iota
+	ErrConnectionShutdown = 0x4000 + iota
 )
 
 // Tarantool server error codes.
