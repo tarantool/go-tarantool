@@ -298,7 +298,7 @@ func StopTarantool(inst TarantoolInstance) {
 			log.Fatalf("Failed to wait for Tarantool process to exit, got %s", err)
 		}
 
-		inst.Cmd = nil
+		inst.Cmd.Process = nil
 	}
 }
 
