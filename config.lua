@@ -1,6 +1,12 @@
 -- Do not set listen for now so connector won't be
 -- able to send requests until everything is configured.
+local auth_type = os.getenv("TEST_TNT_AUTH_TYPE")
+if auth_type == "auto" then
+    auth_type = nil
+end
+
 box.cfg{
+    auth_type = auth_type,
     work_dir = os.getenv("TEST_TNT_WORK_DIR"),
     memtx_use_mvcc_engine = os.getenv("TEST_TNT_MEMTX_USE_MVCC_ENGINE") == 'true' or nil,
 }
@@ -267,5 +273,6 @@ box.space.test:truncate()
 
 -- Set listen only when every other thing is configured.
 box.cfg{
+    auth_type = auth_type,
     listen = os.getenv("TEST_TNT_LISTEN"),
 }

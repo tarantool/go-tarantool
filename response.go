@@ -213,6 +213,21 @@ func (resp *Response) decodeBody() (err error) {
 					}
 					serverProtocolInfo.Features[i] = feature
 				}
+			case KeyAuthType:
+				var auth string
+				if auth, err = d.DecodeString(); err != nil {
+					return err
+				}
+				found := false
+				for _, a := range [...]Auth{ChapSha1Auth, PapSha256Auth} {
+					if auth == a.String() {
+						serverProtocolInfo.Auth = a
+						found = true
+					}
+				}
+				if !found {
+					return fmt.Errorf("unknown auth type %s", auth)
+				}
 			default:
 				if err = d.Skip(); err != nil {
 					return err

@@ -226,6 +226,8 @@ type Greeting struct {
 
 // Opts is a way to configure Connection
 type Opts struct {
+	// Auth is an authentication method.
+	Auth Auth
 	// Timeout for response to a particular request. The timeout is reset when
 	// push messages are received. If Timeout is zero, any request can be
 	// blocked infinitely.
@@ -546,19 +548,40 @@ func (conn *Connection) dial() (err error) {
 
 	// Auth.
 	if opts.User != "" {
-		scr, err := scramble(conn.Greeting.auth, opts.Pass)
-		if err != nil {
-			err = errors.New("auth: scrambling failure " + err.Error())
-			connection.Close()
-			return err
+		auth := opts.Auth
+		if opts.Auth == AutoAuth {
+			if conn.serverProtocolInfo.Auth != AutoAuth {
+				auth = conn.serverProtocolInfo.Auth
+			} else {
+				auth = ChapSha1Auth
+			}
 		}
-		if err = conn.writeAuthRequest(w, scr); err != nil {
+
+		var req Request
+		if auth == ChapSha1Auth {
+			salt := conn.Greeting.auth
+			req, err = newChapSha1AuthRequest(conn.opts.User, salt, opts.Pass)
+			if err != nil {
+				return fmt.Errorf("auth: %w", err)
+			}
+		} else if auth == PapSha256Auth {
+			if opts.Transport != connTransportSsl {
+				return errors.New("auth: forbidden to use " + auth.String() +
+					" unless SSL is enabled for the connection")
+			}
+			req = newPapSha256AuthRequest(conn.opts.User, opts.Pass)
+		} else {
 			connection.Close()
-			return err
+			return errors.New("auth: " + auth.String())
 		}
-		if err = conn.readAuthResponse(r); err != nil {
+
+		if err = conn.writeRequest(w, req); err != nil {
 			connection.Close()
-			return err
+			return fmt.Errorf("auth: %w", err)
+		}
+		if _, err = conn.readResponse(r); err != nil {
+			connection.Close()
+			return fmt.Errorf("auth: %w", err)
 		}
 	}
 
@@ -662,28 +685,6 @@ func (conn *Connection) writeRequest(w *bufio.Writer, req Request) error {
 	return err
 }
 
-func (conn *Connection) writeAuthRequest(w *bufio.Writer, scramble []byte) error {
-	req := newAuthRequest(conn.opts.User, string(scramble))
-
-	err := conn.writeRequest(w, req)
-	if err != nil {
-		return fmt.Errorf("auth: %w", err)
-	}
-
-	return nil
-}
-
-func (conn *Connection) writeIdRequest(w *bufio.Writer, protocolInfo ProtocolInfo) error {
-	req := NewIdRequest(protocolInfo)
-
-	err := conn.writeRequest(w, req)
-	if err != nil {
-		return fmt.Errorf("identify: %w", err)
-	}
-
-	return nil
-}
-
 func (conn *Connection) readResponse(r io.Reader) (Response, error) {
 	respBytes, err := conn.read(r)
 	if err != nil {
@@ -704,24 +705,6 @@ func (conn *Connection) readResponse(r io.Reader) (Response, error) {
 			return resp, fmt.Errorf("decode response body error: %w", err)
 		}
 	}
-	return resp, nil
-}
-
-func (conn *Connection) readAuthResponse(r io.Reader) error {
-	_, err := conn.readResponse(r)
-	if err != nil {
-		return fmt.Errorf("auth: %w", err)
-	}
-
-	return nil
-}
-
-func (conn *Connection) readIdResponse(r io.Reader) (Response, error) {
-	resp, err := conn.readResponse(r)
-	if err != nil {
-		return resp, fmt.Errorf("identify: %w", err)
-	}
-
 	return resp, nil
 }
 
@@ -1625,19 +1608,20 @@ func checkProtocolInfo(expected ProtocolInfo, actual ProtocolInfo) error {
 func (conn *Connection) identify(w *bufio.Writer, r *bufio.Reader) error {
 	var ok bool
 
-	werr := conn.writeIdRequest(w, clientProtocolInfo)
+	req := NewIdRequest(clientProtocolInfo)
+	werr := conn.writeRequest(w, req)
 	if werr != nil {
-		return werr
+		return fmt.Errorf("identify: %w", werr)
 	}
 
-	resp, rerr := conn.readIdResponse(r)
+	resp, rerr := conn.readResponse(r)
 	if rerr != nil {
 		if resp.Code == ErrUnknownRequestType {
 			// IPROTO_ID requests are not supported by server.
 			return nil
 		}
 
-		return rerr
+		return fmt.Errorf("identify: %w", rerr)
 	}
 
 	if len(resp.Data) == 0 {
@@ -1664,5 +1648,7 @@ func (conn *Connection) ServerProtocolInfo() ProtocolInfo {
 // supported by Go connection client.
 // Since 1.10.0
 func (conn *Connection) ClientProtocolInfo() ProtocolInfo {
-	return clientProtocolInfo.Clone()
+	info := clientProtocolInfo.Clone()
+	info.Auth = conn.opts.Auth
+	return info
 }

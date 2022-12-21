@@ -51,6 +51,7 @@ const (
 	KeyEvent        = 0x57
 	KeyEventData    = 0x58
 	KeyTxnIsolation = 0x59
+	KeyAuthType     = 0x5b
 
 	KeyFieldName               = 0x00
 	KeyFieldType               = 0x01

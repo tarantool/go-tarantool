@@ -3,6 +3,7 @@ package tarantool
 import (
 	"context"
 	"errors"
+	"fmt"
 	"reflect"
 	"strings"
 	"sync"
@@ -591,14 +592,30 @@ func (req *spaceIndexRequest) setIndex(index interface{}) {
 
 type authRequest struct {
 	baseRequest
-	user, scramble string
+	auth       Auth
+	user, pass string
 }
 
-func newAuthRequest(user, scramble string) *authRequest {
+func newChapSha1AuthRequest(user, salt, password string) (*authRequest, error) {
+	scr, err := scramble(salt, password)
+	if err != nil {
+		return nil, fmt.Errorf("scrambling failure: %w", err)
+	}
+
 	req := new(authRequest)
 	req.requestCode = AuthRequestCode
+	req.auth = ChapSha1Auth
 	req.user = user
-	req.scramble = scramble
+	req.pass = string(scr)
+	return req, nil
+}
+
+func newPapSha256AuthRequest(user, password string) *authRequest {
+	req := new(authRequest)
+	req.requestCode = AuthRequestCode
+	req.auth = PapSha256Auth
+	req.user = user
+	req.pass = password
 	return req
 }
 
@@ -606,7 +623,7 @@ func newAuthRequest(user, scramble string) *authRequest {
 func (req *authRequest) Body(res SchemaResolver, enc *encoder) error {
 	return enc.Encode(map[uint32]interface{}{
 		KeyUserName: req.user,
-		KeyTuple:    []interface{}{string("chap-sha1"), string(req.scramble)},
+		KeyTuple:    []interface{}{req.auth.String(), req.pass},
 	})
 }
 

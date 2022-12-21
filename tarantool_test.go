@@ -726,6 +726,38 @@ func BenchmarkSQLSerial(b *testing.B) {
 	}
 }
 
+func TestOptsAuth_Default(t *testing.T) {
+	defaultOpts := opts
+	defaultOpts.Auth = AutoAuth
+
+	conn := test_helpers.ConnectWithValidation(t, server, defaultOpts)
+	defer conn.Close()
+}
+
+func TestOptsAuth_ChapSha1Auth(t *testing.T) {
+	chapSha1Opts := opts
+	chapSha1Opts.Auth = ChapSha1Auth
+
+	conn := test_helpers.ConnectWithValidation(t, server, chapSha1Opts)
+	defer conn.Close()
+}
+
+func TestOptsAuth_PapSha256AuthForbit(t *testing.T) {
+	papSha256Opts := opts
+	papSha256Opts.Auth = PapSha256Auth
+
+	conn, err := Connect(server, papSha256Opts)
+	if err == nil {
+		t.Error("An error expected.")
+		conn.Close()
+	}
+
+	if err.Error() != "auth: forbidden to use pap-sha256 unless "+
+		"SSL is enabled for the connection" {
+		t.Errorf("An unexpected error: %s", err)
+	}
+}
+
 func TestFutureMultipleGetGetTyped(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
