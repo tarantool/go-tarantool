@@ -27,6 +27,9 @@ import (
 )
 
 type StartOpts struct {
+	// Auth is an authentication method for a Tarantool instance.
+	Auth tarantool.Auth
+
 	// InitScript is a Lua script for tarantool to run on start.
 	InitScript string
 
@@ -223,6 +226,7 @@ func StartTarantool(startOpts StartOpts) (TarantoolInstance, error) {
 		fmt.Sprintf("TEST_TNT_WORK_DIR=%s", startOpts.WorkDir),
 		fmt.Sprintf("TEST_TNT_LISTEN=%s", startOpts.Listen),
 		fmt.Sprintf("TEST_TNT_MEMTX_USE_MVCC_ENGINE=%t", startOpts.MemtxUseMvccEngine),
+		fmt.Sprintf("TEST_TNT_AUTH_TYPE=%s", startOpts.Auth),
 	)
 
 	// Copy SSL certificates.
@@ -248,6 +252,7 @@ func StartTarantool(startOpts StartOpts) (TarantoolInstance, error) {
 	time.Sleep(startOpts.WaitStart)
 
 	opts := tarantool.Opts{
+		Auth:       startOpts.Auth,
 		Timeout:    500 * time.Millisecond,
 		User:       startOpts.User,
 		Pass:       startOpts.Pass,

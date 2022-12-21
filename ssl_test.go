@@ -94,7 +94,7 @@ func createClientServerSslOk(t testing.TB, serverOpts,
 	return l, c, msgs, errs
 }
 
-func serverTnt(serverOpts, clientOpts SslOpts) (test_helpers.TarantoolInstance, error) {
+func serverTnt(serverOpts, clientOpts SslOpts, auth Auth) (test_helpers.TarantoolInstance, error) {
 	listen := tntHost + "?transport=ssl&"
 
 	key := serverOpts.KeyFile
@@ -120,6 +120,7 @@ func serverTnt(serverOpts, clientOpts SslOpts) (test_helpers.TarantoolInstance, 
 	listen = listen[:len(listen)-1]
 
 	return test_helpers.StartTarantool(test_helpers.StartOpts{
+		Auth:            auth,
 		InitScript:      "config.lua",
 		Listen:          listen,
 		SslCertsDir:     "testdata",
@@ -170,7 +171,7 @@ func assertConnectionSslOk(t testing.TB, serverOpts, clientOpts SslOpts) {
 func assertConnectionTntFail(t testing.TB, serverOpts, clientOpts SslOpts) {
 	t.Helper()
 
-	inst, err := serverTnt(serverOpts, clientOpts)
+	inst, err := serverTnt(serverOpts, clientOpts, AutoAuth)
 	serverTntStop(inst)
 
 	if err == nil {
@@ -181,7 +182,7 @@ func assertConnectionTntFail(t testing.TB, serverOpts, clientOpts SslOpts) {
 func assertConnectionTntOk(t testing.TB, serverOpts, clientOpts SslOpts) {
 	t.Helper()
 
-	inst, err := serverTnt(serverOpts, clientOpts)
+	inst, err := serverTnt(serverOpts, clientOpts, AutoAuth)
 	serverTntStop(inst)
 
 	if err != nil {
@@ -432,12 +433,14 @@ var tests = []test{
 	},
 }
 
-func TestSslOpts(t *testing.T) {
+func isTestTntSsl() bool {
 	testTntSsl, exists := os.LookupEnv("TEST_TNT_SSL")
-	isTntSsl := false
-	if exists && (testTntSsl == "1" || strings.ToUpper(testTntSsl) == "TRUE") {
-		isTntSsl = true
-	}
+	return exists &&
+		(testTntSsl == "1" || strings.ToUpper(testTntSsl) == "TRUE")
+}
+
+func TestSslOpts(t *testing.T) {
+	isTntSsl := isTestTntSsl()
 
 	for _, test := range tests {
 		if test.ok {
@@ -462,4 +465,40 @@ func TestSslOpts(t *testing.T) {
 			})
 		}
 	}
+}
+
+func TestOpts_PapSha256Auth(t *testing.T) {
+	isTntSsl := isTestTntSsl()
+	if !isTntSsl {
+		t.Skip("TEST_TNT_SSL is not set")
+	}
+
+	isLess, err := test_helpers.IsTarantoolVersionLess(2, 11, 0)
+	if err != nil {
+		t.Fatalf("Could not check Tarantool version.")
+	}
+	if isLess {
+		t.Skip("Skipping test for Tarantoo without pap-sha256 support")
+	}
+
+	sslOpts := SslOpts{
+		KeyFile:  "testdata/localhost.key",
+		CertFile: "testdata/localhost.crt",
+	}
+	inst, err := serverTnt(sslOpts, sslOpts, PapSha256Auth)
+	defer serverTntStop(inst)
+	if err != nil {
+		t.Errorf("An unexpected server error: %s", err)
+	}
+
+	clientOpts := opts
+	clientOpts.Transport = "ssl"
+	clientOpts.Ssl = sslOpts
+	clientOpts.Auth = PapSha256Auth
+	conn := test_helpers.ConnectWithValidation(t, tntHost, clientOpts)
+	conn.Close()
+
+	clientOpts.Auth = AutoAuth
+	conn = test_helpers.ConnectWithValidation(t, tntHost, clientOpts)
+	conn.Close()
 }

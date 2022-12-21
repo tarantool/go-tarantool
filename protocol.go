@@ -13,6 +13,8 @@ type ProtocolFeature uint64
 
 // ProtocolInfo type aggregates Tarantool protocol version and features info.
 type ProtocolInfo struct {
+	// Auth is an authentication method.
+	Auth Auth
 	// Version is the supported protocol version.
 	Version ProtocolVersion
 	// Features are supported protocol features.
