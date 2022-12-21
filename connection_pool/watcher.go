@@ -26,22 +26,24 @@ func (c *watcherContainer) add(watcher *poolWatcher) {
 }
 
 // remove removes a watcher from the container.
-func (c *watcherContainer) remove(watcher *poolWatcher) {
+func (c *watcherContainer) remove(watcher *poolWatcher) bool {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
 	if watcher == c.head {
 		c.head = watcher.next
+		return true
 	} else {
 		cur := c.head
 		for cur.next != nil {
 			if cur.next == watcher {
 				cur.next = watcher.next
-				break
+				return true
 			}
 			cur = cur.next
 		}
 	}
+	return false
 }
 
 // foreach iterates over the container to the end or until the call returns
@@ -83,15 +85,13 @@ type poolWatcher struct {
 
 // Unregister unregisters the pool watcher.
 func (w *poolWatcher) Unregister() {
-	w.mutex.Lock()
-	defer w.mutex.Unlock()
-
-	if !w.unregistered {
-		w.container.remove(w)
+	if !w.unregistered && w.container.remove(w) {
+		w.mutex.Lock()
 		w.unregistered = true
 		for _, watcher := range w.watchers {
 			watcher.Unregister()
 		}
+		w.mutex.Unlock()
 	}
 }
 
