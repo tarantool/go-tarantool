@@ -1,4 +1,4 @@
-package connection_pool
+package pool
 
 import (
 	"time"

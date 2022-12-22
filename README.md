@@ -28,6 +28,7 @@ faster than other packages according to public benchmarks.
   * [Walking\-through example](#walking-through-example)
   * [Migration to v2](#migration-to-v2)
     * [multi package](#multi-package)
+    * [pool package](#pool-package)
     * [msgpack.v5](#msgpackv5)
 * [Contributing](#contributing)
 * [Alternative connectors](#alternative-connectors)
@@ -161,7 +162,14 @@ The article describes migration from go-tarantool to go-tarantool/v2.
 
 #### multi package
 
-The subpackage has been deleted. You could use `connection_pool` instead.
+The subpackage has been deleted. You could use `pool` instead.
+
+#### pool package
+
+The logic has not changed, but there are a few renames:
+
+* The `connection_pool` subpackage has been renamed to `pool`.
+* The type `PoolOpts` has been renamed to `Opts`.
 
 #### msgpack.v5
 

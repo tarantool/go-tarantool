@@ -12,6 +12,8 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Changed
 
+- connection_pool renamed to pool (#239)
+
 ### Removed
 
 - multi subpackage (#240)

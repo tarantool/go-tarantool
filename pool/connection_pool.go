@@ -8,7 +8,7 @@
 // - Automatic master discovery by mode parameter.
 //
 // Since: 1.6.0
-package connection_pool
+package pool
 
 import (
 	"errors"
@@ -59,8 +59,8 @@ type ConnectionHandler interface {
 	Deactivated(conn *tarantool.Connection, role Role) error
 }
 
-// OptsPool provides additional options (configurable via ConnectWithOpts).
-type OptsPool struct {
+// Opts provides additional options (configurable via ConnectWithOpts).
+type Opts struct {
 	// Timeout for timer to reopen connections that have been closed by some
 	// events and to relocate connection between subpools if ro/rw role has
 	// been updated.
@@ -93,7 +93,7 @@ type ConnectionPool struct {
 	addrsMutex sync.RWMutex
 
 	connOpts tarantool.Opts
-	opts     OptsPool
+	opts     Opts
 
 	state            state
 	done             chan struct{}
@@ -132,7 +132,7 @@ func newEndpoint(addr string) *endpoint {
 
 // ConnectWithOpts creates pool for instances with addresses addrs
 // with options opts.
-func ConnectWithOpts(addrs []string, connOpts tarantool.Opts, opts OptsPool) (connPool *ConnectionPool, err error) {
+func ConnectWithOpts(addrs []string, connOpts tarantool.Opts, opts Opts) (connPool *ConnectionPool, err error) {
 	if len(addrs) == 0 {
 		return nil, ErrEmptyAddrs
 	}
@@ -179,9 +179,9 @@ func ConnectWithOpts(addrs []string, connOpts tarantool.Opts, opts OptsPool) (co
 //
 // It is useless to set up tarantool.Opts.Reconnect value for a connection.
 // The connection pool has its own reconnection logic. See
-// OptsPool.CheckTimeout description.
+// Opts.CheckTimeout description.
 func Connect(addrs []string, connOpts tarantool.Opts) (connPool *ConnectionPool, err error) {
-	opts := OptsPool{
+	opts := Opts{
 		CheckTimeout: 1 * time.Second,
 	}
 	return ConnectWithOpts(addrs, connOpts, opts)

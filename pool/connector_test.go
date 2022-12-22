@@ -1,4 +1,4 @@
-package connection_pool_test
+package pool_test
 
 import (
 	"errors"
@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/tarantool/go-tarantool/v2"
-	. "github.com/tarantool/go-tarantool/v2/connection_pool"
+	. "github.com/tarantool/go-tarantool/v2/pool"
 )
 
 var testMode Mode = RW

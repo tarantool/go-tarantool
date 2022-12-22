@@ -1,11 +1,11 @@
-package connection_pool_test
+package pool_test
 
 import (
 	"fmt"
 	"time"
 
 	"github.com/tarantool/go-tarantool/v2"
-	"github.com/tarantool/go-tarantool/v2/connection_pool"
+	"github.com/tarantool/go-tarantool/v2/pool"
 	"github.com/tarantool/go-tarantool/v2/test_helpers"
 )
 
@@ -19,12 +19,12 @@ type Tuple struct {
 
 var testRoles = []bool{true, true, false, true, true}
 
-func examplePool(roles []bool, connOpts tarantool.Opts) (*connection_pool.ConnectionPool, error) {
+func examplePool(roles []bool, connOpts tarantool.Opts) (*pool.ConnectionPool, error) {
 	err := test_helpers.SetClusterRO(servers, connOpts, roles)
 	if err != nil {
 		return nil, fmt.Errorf("ConnectionPool is not established")
 	}
-	connPool, err := connection_pool.Connect(servers, connOpts)
+	connPool, err := pool.Connect(servers, connOpts)
 	if err != nil || connPool == nil {
 		return nil, fmt.Errorf("ConnectionPool is not established")
 	}
@@ -33,11 +33,11 @@ func examplePool(roles []bool, connOpts tarantool.Opts) (*connection_pool.Connec
 }
 
 func ExampleConnectionPool_Select() {
-	pool, err := examplePool(testRoles, connOpts)
+	connPool, err := examplePool(testRoles, connOpts)
 	if err != nil {
 		fmt.Println(err)
 	}
-	defer pool.Close()
+	defer connPool.Close()
 
 	// Connect to servers[2] to check if tuple
 	// was inserted on RW instance
@@ -60,17 +60,17 @@ func ExampleConnectionPool_Select() {
 		return
 	}
 
-	resp, err := pool.Select(
+	resp, err := connPool.Select(
 		spaceNo, indexNo, 0, 100, tarantool.IterEq,
-		[]interface{}{"key1"}, connection_pool.PreferRW)
+		[]interface{}{"key1"}, pool.PreferRW)
 	if err != nil {
 		fmt.Printf("error in select is %v", err)
 		return
 	}
 	fmt.Printf("response is %#v\n", resp.Data)
-	resp, err = pool.Select(
+	resp, err = connPool.Select(
 		spaceNo, indexNo, 0, 100, tarantool.IterEq,
-		[]interface{}{"key2"}, connection_pool.PreferRW)
+		[]interface{}{"key2"}, pool.PreferRW)
 	if err != nil {
 		fmt.Printf("error in select is %v", err)
 		return
@@ -94,11 +94,11 @@ func ExampleConnectionPool_Select() {
 }
 
 func ExampleConnectionPool_SelectTyped() {
-	pool, err := examplePool(testRoles, connOpts)
+	connPool, err := examplePool(testRoles, connOpts)
 	if err != nil {
 		fmt.Println(err)
 	}
-	defer pool.Close()
+	defer connPool.Close()
 
 	// Connect to servers[2] to check if tuple
 	// was inserted on RW instance
@@ -122,17 +122,17 @@ func ExampleConnectionPool_SelectTyped() {
 	}
 
 	var res []Tuple
-	err = pool.SelectTyped(
+	err = connPool.SelectTyped(
 		spaceNo, indexNo, 0, 100, tarantool.IterEq,
-		[]interface{}{"key1"}, &res, connection_pool.PreferRW)
+		[]interface{}{"key1"}, &res, pool.PreferRW)
 	if err != nil {
 		fmt.Printf("error in select is %v", err)
 		return
 	}
 	fmt.Printf("response is %v\n", res)
-	err = pool.SelectTyped(
+	err = connPool.SelectTyped(
 		spaceName, indexName, 0, 100, tarantool.IterEq,
-		[]interface{}{"key2"}, &res, connection_pool.PreferRW)
+		[]interface{}{"key2"}, &res, pool.PreferRW)
 	if err != nil {
 		fmt.Printf("error in select is %v", err)
 		return
@@ -156,11 +156,11 @@ func ExampleConnectionPool_SelectTyped() {
 }
 
 func ExampleConnectionPool_SelectAsync() {
-	pool, err := examplePool(testRoles, connOpts)
+	connPool, err := examplePool(testRoles, connOpts)
 	if err != nil {
 		fmt.Println(err)
 	}
-	defer pool.Close()
+	defer connPool.Close()
 
 	// Connect to servers[2] to check if tuple
 	// was inserted on RW instance
@@ -190,15 +190,15 @@ func ExampleConnectionPool_SelectAsync() {
 	}
 
 	var futs [3]*tarantool.Future
-	futs[0] = pool.SelectAsync(
+	futs[0] = connPool.SelectAsync(
 		spaceName, indexName, 0, 2, tarantool.IterEq,
-		[]interface{}{"key1"}, connection_pool.PreferRW)
-	futs[1] = pool.SelectAsync(
+		[]interface{}{"key1"}, pool.PreferRW)
+	futs[1] = connPool.SelectAsync(
 		spaceName, indexName, 0, 1, tarantool.IterEq,
-		[]interface{}{"key2"}, connection_pool.RW)
-	futs[2] = pool.SelectAsync(
+		[]interface{}{"key2"}, pool.RW)
+	futs[2] = connPool.SelectAsync(
 		spaceName, indexName, 0, 1, tarantool.IterEq,
-		[]interface{}{"key3"}, connection_pool.RW)
+		[]interface{}{"key3"}, pool.RW)
 	var t []Tuple
 	err = futs[0].GetTyped(&t)
 	fmt.Println("Future", 0, "Error", err)
@@ -239,16 +239,16 @@ func ExampleConnectionPool_SelectAsync() {
 
 func ExampleConnectionPool_SelectAsync_err() {
 	roles := []bool{true, true, true, true, true}
-	pool, err := examplePool(roles, connOpts)
+	connPool, err := examplePool(roles, connOpts)
 	if err != nil {
 		fmt.Println(err)
 	}
-	defer pool.Close()
+	defer connPool.Close()
 
 	var futs [3]*tarantool.Future
-	futs[0] = pool.SelectAsync(
+	futs[0] = connPool.SelectAsync(
 		spaceName, indexName, 0, 2, tarantool.IterEq,
-		[]interface{}{"key1"}, connection_pool.RW)
+		[]interface{}{"key1"}, pool.RW)
 
 	err = futs[0].Err()
 	fmt.Println("Future", 0, "Error", err)
@@ -258,14 +258,14 @@ func ExampleConnectionPool_SelectAsync_err() {
 }
 
 func ExampleConnectionPool_Ping() {
-	pool, err := examplePool(testRoles, connOpts)
+	connPool, err := examplePool(testRoles, connOpts)
 	if err != nil {
 		fmt.Println(err)
 	}
-	defer pool.Close()
+	defer connPool.Close()
 
 	// Ping a Tarantool instance to check connection.
-	resp, err := pool.Ping(connection_pool.ANY)
+	resp, err := connPool.Ping(pool.ANY)
 	fmt.Println("Ping Code", resp.Code)
 	fmt.Println("Ping Data", resp.Data)
 	fmt.Println("Ping Error", err)
@@ -276,20 +276,20 @@ func ExampleConnectionPool_Ping() {
 }
 
 func ExampleConnectionPool_Insert() {
-	pool, err := examplePool(testRoles, connOpts)
+	connPool, err := examplePool(testRoles, connOpts)
 	if err != nil {
 		fmt.Println(err)
 	}
-	defer pool.Close()
+	defer connPool.Close()
 
 	// Insert a new tuple {"key1", "value1"}.
-	resp, err := pool.Insert(spaceNo, []interface{}{"key1", "value1"})
+	resp, err := connPool.Insert(spaceNo, []interface{}{"key1", "value1"})
 	fmt.Println("Insert key1")
 	fmt.Println("Error", err)
 	fmt.Println("Code", resp.Code)
 	fmt.Println("Data", resp.Data)
 	// Insert a new tuple {"key2", "value2"}.
-	resp, err = pool.Insert(spaceName, &Tuple{Key: "key2", Value: "value2"}, connection_pool.PreferRW)
+	resp, err = connPool.Insert(spaceName, &Tuple{Key: "key2", Value: "value2"}, pool.PreferRW)
 	fmt.Println("Insert key2")
 	fmt.Println("Error", err)
 	fmt.Println("Code", resp.Code)
@@ -325,11 +325,11 @@ func ExampleConnectionPool_Insert() {
 }
 
 func ExampleConnectionPool_Delete() {
-	pool, err := examplePool(testRoles, connOpts)
+	connPool, err := examplePool(testRoles, connOpts)
 	if err != nil {
 		fmt.Println(err)
 	}
-	defer pool.Close()
+	defer connPool.Close()
 
 	// Connect to servers[2] to check if tuple
 	// was inserted on RW instance
@@ -353,14 +353,14 @@ func ExampleConnectionPool_Delete() {
 	}
 
 	// Delete tuple with primary key {"key1"}.
-	resp, err := pool.Delete(spaceNo, indexNo, []interface{}{"key1"})
+	resp, err := connPool.Delete(spaceNo, indexNo, []interface{}{"key1"})
 	fmt.Println("Delete key1")
 	fmt.Println("Error", err)
 	fmt.Println("Code", resp.Code)
 	fmt.Println("Data", resp.Data)
 
 	// Delete tuple with primary key { "key2" }.
-	resp, err = pool.Delete(spaceName, indexName, []interface{}{"key2"}, connection_pool.PreferRW)
+	resp, err = connPool.Delete(spaceName, indexName, []interface{}{"key2"}, pool.PreferRW)
 	fmt.Println("Delete key2")
 	fmt.Println("Error", err)
 	fmt.Println("Code", resp.Code)
@@ -377,11 +377,11 @@ func ExampleConnectionPool_Delete() {
 }
 
 func ExampleConnectionPool_Replace() {
-	pool, err := examplePool(testRoles, connOpts)
+	connPool, err := examplePool(testRoles, connOpts)
 	if err != nil {
 		fmt.Println(err)
 	}
-	defer pool.Close()
+	defer connPool.Close()
 
 	// Connect to servers[2] to check if tuple
 	// was inserted on RW instance
@@ -401,22 +401,22 @@ func ExampleConnectionPool_Replace() {
 	// Replace a tuple with primary key ""key1.
 	// Note, Tuple is defined within tests, and has EncdodeMsgpack and
 	// DecodeMsgpack methods.
-	resp, err := pool.Replace(spaceNo, []interface{}{"key1", "new_value"})
+	resp, err := connPool.Replace(spaceNo, []interface{}{"key1", "new_value"})
 	fmt.Println("Replace key1")
 	fmt.Println("Error", err)
 	fmt.Println("Code", resp.Code)
 	fmt.Println("Data", resp.Data)
-	resp, err = pool.Replace(spaceName, []interface{}{"key1", "another_value"})
+	resp, err = connPool.Replace(spaceName, []interface{}{"key1", "another_value"})
 	fmt.Println("Replace key1")
 	fmt.Println("Error", err)
 	fmt.Println("Code", resp.Code)
 	fmt.Println("Data", resp.Data)
-	resp, err = pool.Replace(spaceName, &Tuple{Key: "key1", Value: "value2"})
+	resp, err = connPool.Replace(spaceName, &Tuple{Key: "key1", Value: "value2"})
 	fmt.Println("Replace key1")
 	fmt.Println("Error", err)
 	fmt.Println("Code", resp.Code)
 	fmt.Println("Data", resp.Data)
-	resp, err = pool.Replace(spaceName, &Tuple{Key: "key1", Value: "new_value2"}, connection_pool.PreferRW)
+	resp, err = connPool.Replace(spaceName, &Tuple{Key: "key1", Value: "new_value2"}, pool.PreferRW)
 	fmt.Println("Replace key1")
 	fmt.Println("Error", err)
 	fmt.Println("Code", resp.Code)
@@ -448,11 +448,11 @@ func ExampleConnectionPool_Replace() {
 }
 
 func ExampleConnectionPool_Update() {
-	pool, err := examplePool(testRoles, connOpts)
+	connPool, err := examplePool(testRoles, connOpts)
 	if err != nil {
 		fmt.Println(err)
 	}
-	defer pool.Close()
+	defer connPool.Close()
 
 	// Connect to servers[2] to check if tuple
 	// was inserted on RW instance
@@ -470,9 +470,9 @@ func ExampleConnectionPool_Update() {
 	}
 
 	// Update tuple with primary key { "key1" }.
-	resp, err := pool.Update(
+	resp, err := connPool.Update(
 		spaceName, indexName, []interface{}{"key1"},
-		[]interface{}{[]interface{}{"=", 1, "new_value"}}, connection_pool.PreferRW)
+		[]interface{}{[]interface{}{"=", 1, "new_value"}}, pool.PreferRW)
 	fmt.Println("Update key1")
 	fmt.Println("Error", err)
 	fmt.Println("Code", resp.Code)
@@ -492,14 +492,14 @@ func ExampleConnectionPool_Update() {
 }
 
 func ExampleConnectionPool_Call() {
-	pool, err := examplePool(testRoles, connOpts)
+	connPool, err := examplePool(testRoles, connOpts)
 	if err != nil {
 		fmt.Println(err)
 	}
-	defer pool.Close()
+	defer connPool.Close()
 
 	// Call a function 'simple_incr' with arguments.
-	resp, err := pool.Call17("simple_incr", []interface{}{1}, connection_pool.PreferRW)
+	resp, err := connPool.Call17("simple_incr", []interface{}{1}, pool.PreferRW)
 	fmt.Println("Call simple_incr()")
 	fmt.Println("Error", err)
 	fmt.Println("Code", resp.Code)
@@ -512,14 +512,14 @@ func ExampleConnectionPool_Call() {
 }
 
 func ExampleConnectionPool_Eval() {
-	pool, err := examplePool(testRoles, connOpts)
+	connPool, err := examplePool(testRoles, connOpts)
 	if err != nil {
 		fmt.Println(err)
 	}
-	defer pool.Close()
+	defer connPool.Close()
 
 	// Run raw Lua code.
-	resp, err := pool.Eval("return 1 + 2", []interface{}{}, connection_pool.PreferRW)
+	resp, err := connPool.Eval("return 1 + 2", []interface{}{}, pool.PreferRW)
 	fmt.Println("Eval 'return 1 + 2'")
 	fmt.Println("Error", err)
 	fmt.Println("Code", resp.Code)
@@ -532,15 +532,15 @@ func ExampleConnectionPool_Eval() {
 }
 
 func ExampleConnectionPool_Do() {
-	pool, err := examplePool(testRoles, connOpts)
+	connPool, err := examplePool(testRoles, connOpts)
 	if err != nil {
 		fmt.Println(err)
 	}
-	defer pool.Close()
+	defer connPool.Close()
 
 	// Ping a Tarantool instance to check connection.
 	req := tarantool.NewPingRequest()
-	resp, err := pool.Do(req, connection_pool.ANY).Get()
+	resp, err := connPool.Do(req, pool.ANY).Get()
 	fmt.Println("Ping Code", resp.Code)
 	fmt.Println("Ping Data", resp.Data)
 	fmt.Println("Ping Error", err)
@@ -551,13 +551,13 @@ func ExampleConnectionPool_Do() {
 }
 
 func ExampleConnectionPool_NewPrepared() {
-	pool, err := examplePool(testRoles, connOpts)
+	connPool, err := examplePool(testRoles, connOpts)
 	if err != nil {
 		fmt.Println(err)
 	}
-	defer pool.Close()
+	defer connPool.Close()
 
-	stmt, err := pool.NewPrepared("SELECT 1", connection_pool.ANY)
+	stmt, err := connPool.NewPrepared("SELECT 1", pool.ANY)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -565,11 +565,11 @@ func ExampleConnectionPool_NewPrepared() {
 	executeReq := tarantool.NewExecutePreparedRequest(stmt)
 	unprepareReq := tarantool.NewUnprepareRequest(stmt)
 
-	_, err = pool.Do(executeReq, connection_pool.ANY).Get()
+	_, err = connPool.Do(executeReq, pool.ANY).Get()
 	if err != nil {
 		fmt.Printf("Failed to execute prepared stmt")
 	}
-	_, err = pool.Do(unprepareReq, connection_pool.ANY).Get()
+	_, err = connPool.Do(unprepareReq, pool.ANY).Get()
 	if err != nil {
 		fmt.Printf("Failed to prepare")
 	}
@@ -584,26 +584,26 @@ func ExampleConnectionPool_NewWatcher() {
 		tarantool.WatchersFeature,
 	}
 
-	pool, err := examplePool(testRoles, connOpts)
+	connPool, err := examplePool(testRoles, connOpts)
 	if err != nil {
 		fmt.Println(err)
 	}
-	defer pool.Close()
+	defer connPool.Close()
 
 	callback := func(event tarantool.WatchEvent) {
 		fmt.Printf("event connection: %s\n", event.Conn.Addr())
 		fmt.Printf("event key: %s\n", event.Key)
 		fmt.Printf("event value: %v\n", event.Value)
 	}
-	mode := connection_pool.ANY
-	watcher, err := pool.NewWatcher(key, callback, mode)
+	mode := pool.ANY
+	watcher, err := connPool.NewWatcher(key, callback, mode)
 	if err != nil {
 		fmt.Printf("Unexpected error: %s\n", err)
 		return
 	}
 	defer watcher.Unregister()
 
-	pool.Do(tarantool.NewBroadcastRequest(key).Value(value), mode).Get()
+	connPool.Do(tarantool.NewBroadcastRequest(key).Value(value), mode).Get()
 	time.Sleep(time.Second)
 }
 
@@ -613,14 +613,14 @@ func ExampleConnectionPool_NewWatcher_noWatchersFeature() {
 	opts := connOpts.Clone()
 	opts.RequiredProtocolInfo.Features = []tarantool.ProtocolFeature{}
 
-	pool, err := examplePool(testRoles, connOpts)
+	connPool, err := examplePool(testRoles, connOpts)
 	if err != nil {
 		fmt.Println(err)
 	}
-	defer pool.Close()
+	defer connPool.Close()
 
 	callback := func(event tarantool.WatchEvent) {}
-	watcher, err := pool.NewWatcher(key, callback, connection_pool.ANY)
+	watcher, err := connPool.NewWatcher(key, callback, pool.ANY)
 	fmt.Println(watcher)
 	fmt.Println(err)
 	// Output:
@@ -655,15 +655,15 @@ func ExampleCommitRequest() {
 	}
 
 	txnOpts := getTestTxnOpts()
-	pool, err := examplePool(testRoles, txnOpts)
+	connPool, err := examplePool(testRoles, txnOpts)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	defer pool.Close()
+	defer connPool.Close()
 
 	// example pool has only one rw instance
-	stream, err := pool.NewStream(connection_pool.RW)
+	stream, err := connPool.NewStream(pool.RW)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -696,7 +696,7 @@ func ExampleCommitRequest() {
 		Limit(1).
 		Iterator(tarantool.IterEq).
 		Key([]interface{}{"example_commit_key"})
-	resp, err = pool.Do(selectReq, connection_pool.RW).Get()
+	resp, err = connPool.Do(selectReq, pool.RW).Get()
 	if err != nil {
 		fmt.Printf("Failed to Select: %s", err.Error())
 		return
@@ -722,7 +722,7 @@ func ExampleCommitRequest() {
 
 	// Select outside of transaction
 	// example pool has only one rw instance
-	resp, err = pool.Do(selectReq, connection_pool.RW).Get()
+	resp, err = connPool.Do(selectReq, pool.RW).Get()
 	if err != nil {
 		fmt.Printf("Failed to Select: %s", err.Error())
 		return
@@ -743,14 +743,14 @@ func ExampleRollbackRequest() {
 
 	txnOpts := getTestTxnOpts()
 	// example pool has only one rw instance
-	pool, err := examplePool(testRoles, txnOpts)
+	connPool, err := examplePool(testRoles, txnOpts)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	defer pool.Close()
+	defer connPool.Close()
 
-	stream, err := pool.NewStream(connection_pool.RW)
+	stream, err := connPool.NewStream(pool.RW)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -783,7 +783,7 @@ func ExampleRollbackRequest() {
 		Limit(1).
 		Iterator(tarantool.IterEq).
 		Key([]interface{}{"example_rollback_key"})
-	resp, err = pool.Do(selectReq, connection_pool.RW).Get()
+	resp, err = connPool.Do(selectReq, pool.RW).Get()
 	if err != nil {
 		fmt.Printf("Failed to Select: %s", err.Error())
 		return
@@ -809,7 +809,7 @@ func ExampleRollbackRequest() {
 
 	// Select outside of transaction
 	// example pool has only one rw instance
-	resp, err = pool.Do(selectReq, connection_pool.RW).Get()
+	resp, err = connPool.Do(selectReq, pool.RW).Get()
 	if err != nil {
 		fmt.Printf("Failed to Select: %s", err.Error())
 		return
@@ -830,14 +830,14 @@ func ExampleBeginRequest_TxnIsolation() {
 
 	txnOpts := getTestTxnOpts()
 	// example pool has only one rw instance
-	pool, err := examplePool(testRoles, txnOpts)
+	connPool, err := examplePool(testRoles, txnOpts)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	defer pool.Close()
+	defer connPool.Close()
 
-	stream, err := pool.NewStream(connection_pool.RW)
+	stream, err := connPool.NewStream(pool.RW)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -872,7 +872,7 @@ func ExampleBeginRequest_TxnIsolation() {
 		Limit(1).
 		Iterator(tarantool.IterEq).
 		Key([]interface{}{"isolation_level_key"})
-	resp, err = pool.Do(selectReq, connection_pool.RW).Get()
+	resp, err = connPool.Do(selectReq, pool.RW).Get()
 	if err != nil {
 		fmt.Printf("Failed to Select: %s", err.Error())
 		return
@@ -898,7 +898,7 @@ func ExampleBeginRequest_TxnIsolation() {
 
 	// Select outside of transaction
 	// example pool has only one rw instance
-	resp, err = pool.Do(selectReq, connection_pool.RW).Get()
+	resp, err = connPool.Do(selectReq, pool.RW).Get()
 	if err != nil {
 		fmt.Printf("Failed to Select: %s", err.Error())
 		return
@@ -907,13 +907,13 @@ func ExampleBeginRequest_TxnIsolation() {
 }
 
 func ExampleConnectorAdapter() {
-	pool, err := examplePool(testRoles, connOpts)
+	connPool, err := examplePool(testRoles, connOpts)
 	if err != nil {
 		fmt.Println(err)
 	}
-	defer pool.Close()
+	defer connPool.Close()
 
-	adapter := connection_pool.NewConnectorAdapter(pool, connection_pool.RW)
+	adapter := pool.NewConnectorAdapter(connPool, pool.RW)
 	var connector tarantool.Connector = adapter
 
 	// Ping an RW instance to check connection.
@@ -930,7 +930,7 @@ func ExampleConnectorAdapter() {
 // ExampleConnectionPool_CloseGraceful_force demonstrates how to force close
 // a connection pool with graceful close in progress after a while.
 func ExampleConnectionPool_CloseGraceful_force() {
-	pool, err := examplePool(testRoles, connOpts)
+	connPool, err := examplePool(testRoles, connOpts)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -941,11 +941,11 @@ func ExampleConnectionPool_CloseGraceful_force() {
 	fiber.sleep(time)
 `
 	req := tarantool.NewEvalRequest(eval).Args([]interface{}{10})
-	fut := pool.Do(req, connection_pool.ANY)
+	fut := connPool.Do(req, pool.ANY)
 
 	done := make(chan struct{})
 	go func() {
-		pool.CloseGraceful()
+		connPool.CloseGraceful()
 		fmt.Println("ConnectionPool.CloseGraceful() done!")
 		close(done)
 	}()
@@ -954,7 +954,7 @@ func ExampleConnectionPool_CloseGraceful_force() {
 	case <-done:
 	case <-time.After(3 * time.Second):
 		fmt.Println("Force ConnectionPool.Close()!")
-		pool.Close()
+		connPool.Close()
 	}
 	<-done
 
