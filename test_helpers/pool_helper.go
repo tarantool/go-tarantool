@@ -6,20 +6,20 @@ import (
 	"time"
 
 	"github.com/tarantool/go-tarantool/v2"
-	"github.com/tarantool/go-tarantool/v2/connection_pool"
+	"github.com/tarantool/go-tarantool/v2/pool"
 )
 
 type ListenOnInstanceArgs struct {
-	ConnPool      *connection_pool.ConnectionPool
-	Mode          connection_pool.Mode
+	ConnPool      *pool.ConnectionPool
+	Mode          pool.Mode
 	ServersNumber int
 	ExpectedPorts map[string]bool
 }
 
 type CheckStatusesArgs struct {
-	ConnPool           *connection_pool.ConnectionPool
+	ConnPool           *pool.ConnectionPool
 	Servers            []string
-	Mode               connection_pool.Mode
+	Mode               pool.Mode
 	ExpectedPoolStatus bool
 	ExpectedStatuses   map[string]bool
 }

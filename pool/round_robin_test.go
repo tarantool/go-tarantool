@@ -1,10 +1,10 @@
-package connection_pool_test
+package pool_test
 
 import (
 	"testing"
 
 	"github.com/tarantool/go-tarantool/v2"
-	. "github.com/tarantool/go-tarantool/v2/connection_pool"
+	. "github.com/tarantool/go-tarantool/v2/pool"
 )
 
 const (
