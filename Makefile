@@ -75,12 +75,6 @@ test-decimal:
 	go clean -testcache
 	go test -tags "$(TAGS)" ./decimal/ -v -p 1
 
-.PHONY: test-multi
-test-multi:
-	@echo "Running tests in multiconnection package"
-	go clean -testcache
-	go test -tags "$(TAGS)" ./multi/ -v -p 1
-
 .PHONY: test-queue
 test-queue:
 	@echo "Running tests in queue package"
