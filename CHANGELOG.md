@@ -12,6 +12,10 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Changed
 
+### Removed
+
+- multi subpackage (#240)
+
 ### Fixed
 
 ## [1.12.0] - 2023-06-07
