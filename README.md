@@ -26,7 +26,8 @@ faster than other packages according to public benchmarks.
 * [Documentation](#documentation)
   * [API reference](#api-reference)
   * [Walking\-through example](#walking-through-example)
-  * [msgpack.v5 migration](#msgpackv5-migration)
+  * [Migration to v2](#migration-to-v2)
+    * [msgpack.v5](#msgpackv5)
 * [Contributing](#contributing)
 * [Alternative connectors](#alternative-connectors)
 
@@ -153,7 +154,11 @@ There are two parameters:
 * a space number (it could just as easily have been a space name), and
 * a tuple.
 
-### msgpack.v5 migration
+### Migration to v2
+
+The article describes migration from go-tarantool to go-tarantool/v2.
+
+#### msgpack.v5
 
 Most function names and argument types in `msgpack.v5` and `msgpack.v2`
 have not changed (in our code, we noticed changes in `EncodeInt`, `EncodeUint`
