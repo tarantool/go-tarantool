@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/tarantool/go-tarantool"
-	"github.com/tarantool/go-tarantool/queue"
-	"github.com/tarantool/go-tarantool/test_helpers"
+	. "github.com/tarantool/go-tarantool/v2"
+	"github.com/tarantool/go-tarantool/v2/queue"
+	"github.com/tarantool/go-tarantool/v2/test_helpers"
 )
 
 var server = "127.0.0.1:3013"

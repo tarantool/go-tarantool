@@ -60,7 +60,7 @@ package settings
 import (
 	"context"
 
-	"github.com/tarantool/go-tarantool"
+	"github.com/tarantool/go-tarantool/v2"
 )
 
 // SetRequest helps to set session settings.

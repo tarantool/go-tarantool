@@ -6,7 +6,7 @@ package multi
 import (
 	"testing"
 
-	"github.com/tarantool/go-tarantool"
+	"github.com/tarantool/go-tarantool/v2"
 )
 
 func TestCall(t *testing.T) {

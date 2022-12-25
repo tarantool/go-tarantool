@@ -4,7 +4,7 @@
 package tarantool_test
 
 import (
-	"github.com/tarantool/go-tarantool"
+	"github.com/tarantool/go-tarantool/v2"
 	"github.com/vmihailenco/msgpack/v5"
 )
 

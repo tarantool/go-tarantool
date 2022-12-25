@@ -3,7 +3,7 @@ package crud
 import (
 	"context"
 
-	"github.com/tarantool/go-tarantool"
+	"github.com/tarantool/go-tarantool/v2"
 )
 
 // StatsRequest helps you to create request object to call `crud.stats`

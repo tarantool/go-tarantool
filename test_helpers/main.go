@@ -3,7 +3,7 @@
 // Package introduces go helpers for starting a tarantool process and
 // validating Tarantool version. Helpers are based on os/exec calls.
 // Retries to connect test tarantool instance handled explicitly,
-// see tarantool/go-tarantool#136.
+// see tarantool/go-tarantool/#136.
 //
 // Tarantool's instance Lua scripts use environment variables to configure
 // box.cfg. Listen port is set in the end of script so it is possible to
@@ -23,7 +23,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/tarantool/go-tarantool"
+	"github.com/tarantool/go-tarantool/v2"
 )
 
 type StartOpts struct {

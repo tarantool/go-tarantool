@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/tarantool/go-tarantool"
+	. "github.com/tarantool/go-tarantool/v2"
 )
 
 func assertResponseIteratorValue(t testing.TB, it ResponseIterator,

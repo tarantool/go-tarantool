@@ -6,7 +6,7 @@ package settings_test
 import (
 	"io"
 
-	"github.com/tarantool/go-tarantool"
+	"github.com/tarantool/go-tarantool/v2"
 	"gopkg.in/vmihailenco/msgpack.v2"
 )
 

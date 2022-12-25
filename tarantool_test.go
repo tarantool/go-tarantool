@@ -18,8 +18,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/stretchr/testify/assert"
-	. "github.com/tarantool/go-tarantool"
-	"github.com/tarantool/go-tarantool/test_helpers"
+	. "github.com/tarantool/go-tarantool/v2"
+	"github.com/tarantool/go-tarantool/v2/test_helpers"
 )
 
 var startOpts test_helpers.StartOpts = test_helpers.StartOpts{

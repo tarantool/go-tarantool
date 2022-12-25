@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/tarantool/go-tarantool"
+	"github.com/tarantool/go-tarantool/v2"
 )
 
 // Queue is a handle to Tarantool queue's tube.

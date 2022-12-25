@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tarantool/go-tarantool"
+	"github.com/tarantool/go-tarantool/v2"
 )
 
 func ExampleConnect() {

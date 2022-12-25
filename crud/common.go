@@ -56,7 +56,7 @@ package crud
 import (
 	"context"
 
-	"github.com/tarantool/go-tarantool"
+	"github.com/tarantool/go-tarantool/v2"
 )
 
 type baseRequest struct {
