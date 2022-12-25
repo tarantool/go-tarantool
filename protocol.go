@@ -3,6 +3,8 @@ package tarantool
 import (
 	"context"
 	"fmt"
+
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 // ProtocolVersion type stores Tarantool protocol version.
@@ -101,15 +103,15 @@ type IdRequest struct {
 	protocolInfo ProtocolInfo
 }
 
-func fillId(enc *encoder, protocolInfo ProtocolInfo) error {
+func fillId(enc *msgpack.Encoder, protocolInfo ProtocolInfo) error {
 	enc.EncodeMapLen(2)
 
-	encodeUint(enc, KeyVersion)
+	enc.EncodeUint(KeyVersion)
 	if err := enc.Encode(protocolInfo.Version); err != nil {
 		return err
 	}
 
-	encodeUint(enc, KeyFeatures)
+	enc.EncodeUint(KeyFeatures)
 
 	t := len(protocolInfo.Features)
 	if err := enc.EncodeArrayLen(t); err != nil {
@@ -133,8 +135,8 @@ func NewIdRequest(protocolInfo ProtocolInfo) *IdRequest {
 	return req
 }
 
-// Body fills an encoder with the id request body.
-func (req *IdRequest) Body(res SchemaResolver, enc *encoder) error {
+// Body fills an msgpack.Encoder with the id request body.
+func (req *IdRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 	return fillId(enc, req.protocolInfo)
 }
 

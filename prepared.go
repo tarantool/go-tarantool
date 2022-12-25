@@ -3,6 +3,8 @@ package tarantool
 import (
 	"context"
 	"fmt"
+
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 // PreparedID is a type for Prepared Statement ID
@@ -18,23 +20,23 @@ type Prepared struct {
 	Conn        *Connection
 }
 
-func fillPrepare(enc *encoder, expr string) error {
+func fillPrepare(enc *msgpack.Encoder, expr string) error {
 	enc.EncodeMapLen(1)
-	encodeUint(enc, KeySQLText)
+	enc.EncodeUint(KeySQLText)
 	return enc.EncodeString(expr)
 }
 
-func fillUnprepare(enc *encoder, stmt Prepared) error {
+func fillUnprepare(enc *msgpack.Encoder, stmt Prepared) error {
 	enc.EncodeMapLen(1)
-	encodeUint(enc, KeyStmtID)
-	return encodeUint(enc, uint64(stmt.StatementID))
+	enc.EncodeUint(KeyStmtID)
+	return enc.EncodeUint(uint64(stmt.StatementID))
 }
 
-func fillExecutePrepared(enc *encoder, stmt Prepared, args interface{}) error {
+func fillExecutePrepared(enc *msgpack.Encoder, stmt Prepared, args interface{}) error {
 	enc.EncodeMapLen(2)
-	encodeUint(enc, KeyStmtID)
-	encodeUint(enc, uint64(stmt.StatementID))
-	encodeUint(enc, KeySQLBind)
+	enc.EncodeUint(KeyStmtID)
+	enc.EncodeUint(uint64(stmt.StatementID))
+	enc.EncodeUint(KeySQLBind)
 	return encodeSQLBind(enc, args)
 }
 
@@ -72,8 +74,8 @@ func NewPrepareRequest(expr string) *PrepareRequest {
 	return req
 }
 
-// Body fills an encoder with the execute request body.
-func (req *PrepareRequest) Body(res SchemaResolver, enc *encoder) error {
+// Body fills an msgpack.Encoder with the execute request body.
+func (req *PrepareRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 	return fillPrepare(enc, req.expr)
 }
 
@@ -108,8 +110,8 @@ func (req *UnprepareRequest) Conn() *Connection {
 	return req.stmt.Conn
 }
 
-// Body fills an encoder with the execute request body.
-func (req *UnprepareRequest) Body(res SchemaResolver, enc *encoder) error {
+// Body fills an msgpack.Encoder with the execute request body.
+func (req *UnprepareRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 	return fillUnprepare(enc, *req.stmt)
 }
 
@@ -153,8 +155,8 @@ func (req *ExecutePreparedRequest) Args(args interface{}) *ExecutePreparedReques
 	return req
 }
 
-// Body fills an encoder with the execute request body.
-func (req *ExecutePreparedRequest) Body(res SchemaResolver, enc *encoder) error {
+// Body fills an msgpack.Encoder with the execute request body.
+func (req *ExecutePreparedRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 	return fillExecutePrepared(enc, *req.stmt, req.args)
 }
 

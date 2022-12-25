@@ -3,6 +3,9 @@ package tarantool
 import (
 	"errors"
 	"fmt"
+
+	"github.com/vmihailenco/msgpack/v5"
+	"github.com/vmihailenco/msgpack/v5/msgpcode"
 )
 
 // nolint: varcheck,deadcode
@@ -15,6 +18,26 @@ const (
 	vspaceSpTypeFieldNum   = 6
 	vspaceSpFormatFieldNum = 7
 )
+
+func msgpackIsUint(code byte) bool {
+	return code == msgpcode.Uint8 || code == msgpcode.Uint16 ||
+		code == msgpcode.Uint32 || code == msgpcode.Uint64 ||
+		msgpcode.IsFixedNum(code)
+}
+
+func msgpackIsMap(code byte) bool {
+	return code == msgpcode.Map16 || code == msgpcode.Map32 || msgpcode.IsFixedMap(code)
+}
+
+func msgpackIsArray(code byte) bool {
+	return code == msgpcode.Array16 || code == msgpcode.Array32 ||
+		msgpcode.IsFixedArray(code)
+}
+
+func msgpackIsString(code byte) bool {
+	return msgpcode.IsFixedString(code) || code == msgpcode.Str8 ||
+		code == msgpcode.Str16 || code == msgpcode.Str32
+}
 
 // SchemaResolver is an interface for resolving schema details.
 type SchemaResolver interface {
@@ -49,7 +72,7 @@ type Space struct {
 	IndexesById map[uint32]*Index
 }
 
-func (space *Space) DecodeMsgpack(d *decoder) error {
+func (space *Space) DecodeMsgpack(d *msgpack.Decoder) error {
 	arrayLen, err := d.DecodeArrayLen()
 	if err != nil {
 		return err
@@ -134,7 +157,7 @@ type Field struct {
 	Type string
 }
 
-func (field *Field) DecodeMsgpack(d *decoder) error {
+func (field *Field) DecodeMsgpack(d *msgpack.Decoder) error {
 	l, err := d.DecodeMapLen()
 	if err != nil {
 		return err
@@ -172,7 +195,7 @@ type Index struct {
 	Fields  []*IndexField
 }
 
-func (index *Index) DecodeMsgpack(d *decoder) error {
+func (index *Index) DecodeMsgpack(d *msgpack.Decoder) error {
 	_, err := d.DecodeArrayLen()
 	if err != nil {
 		return err
@@ -248,7 +271,7 @@ type IndexField struct {
 	Type string
 }
 
-func (indexField *IndexField) DecodeMsgpack(d *decoder) error {
+func (indexField *IndexField) DecodeMsgpack(d *msgpack.Decoder) error {
 	code, err := d.PeekCode()
 	if err != nil {
 		return err

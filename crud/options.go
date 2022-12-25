@@ -1,5 +1,9 @@
 package crud
 
+import (
+	"github.com/vmihailenco/msgpack/v5"
+)
+
 const (
 	timeoutOptName                       = "timeout"
 	vshardRouterOptName                  = "vshard_router"
@@ -121,7 +125,7 @@ type BaseOpts struct {
 }
 
 // EncodeMsgpack provides custom msgpack encoder.
-func (opts BaseOpts) EncodeMsgpack(enc *encoder) error {
+func (opts BaseOpts) EncodeMsgpack(enc *msgpack.Encoder) error {
 	const optsCnt = 2
 
 	names := [optsCnt]string{timeoutOptName, vshardRouterOptName}
@@ -148,7 +152,7 @@ type SimpleOperationOpts struct {
 }
 
 // EncodeMsgpack provides custom msgpack encoder.
-func (opts SimpleOperationOpts) EncodeMsgpack(enc *encoder) error {
+func (opts SimpleOperationOpts) EncodeMsgpack(enc *msgpack.Encoder) error {
 	const optsCnt = 4
 
 	names := [optsCnt]string{timeoutOptName, vshardRouterOptName,
@@ -182,7 +186,7 @@ type SimpleOperationObjectOpts struct {
 }
 
 // EncodeMsgpack provides custom msgpack encoder.
-func (opts SimpleOperationObjectOpts) EncodeMsgpack(enc *encoder) error {
+func (opts SimpleOperationObjectOpts) EncodeMsgpack(enc *msgpack.Encoder) error {
 	const optsCnt = 5
 
 	names := [optsCnt]string{timeoutOptName, vshardRouterOptName,
@@ -218,7 +222,7 @@ type OperationManyOpts struct {
 }
 
 // EncodeMsgpack provides custom msgpack encoder.
-func (opts OperationManyOpts) EncodeMsgpack(enc *encoder) error {
+func (opts OperationManyOpts) EncodeMsgpack(enc *msgpack.Encoder) error {
 	const optsCnt = 5
 
 	names := [optsCnt]string{timeoutOptName, vshardRouterOptName,
@@ -258,7 +262,7 @@ type OperationObjectManyOpts struct {
 }
 
 // EncodeMsgpack provides custom msgpack encoder.
-func (opts OperationObjectManyOpts) EncodeMsgpack(enc *encoder) error {
+func (opts OperationObjectManyOpts) EncodeMsgpack(enc *msgpack.Encoder) error {
 	const optsCnt = 6
 
 	names := [optsCnt]string{timeoutOptName, vshardRouterOptName,
@@ -289,7 +293,7 @@ type BorderOpts struct {
 }
 
 // EncodeMsgpack provides custom msgpack encoder.
-func (opts BorderOpts) EncodeMsgpack(enc *encoder) error {
+func (opts BorderOpts) EncodeMsgpack(enc *msgpack.Encoder) error {
 	const optsCnt = 3
 
 	names := [optsCnt]string{timeoutOptName, vshardRouterOptName, fieldsOptName}
@@ -302,7 +306,8 @@ func (opts BorderOpts) EncodeMsgpack(enc *encoder) error {
 	return encodeOptions(enc, names[:], values[:], exists[:])
 }
 
-func encodeOptions(enc *encoder, names []string, values []interface{}, exists []bool) error {
+func encodeOptions(enc *msgpack.Encoder,
+	names []string, values []interface{}, exists []bool) error {
 	mapLen := 0
 
 	for _, exist := range exists {

@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"time"
+
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 type TxnIsolationLevel uint
@@ -27,7 +29,7 @@ type Stream struct {
 	Conn *Connection
 }
 
-func fillBegin(enc *encoder, txnIsolation TxnIsolationLevel, timeout time.Duration) error {
+func fillBegin(enc *msgpack.Encoder, txnIsolation TxnIsolationLevel, timeout time.Duration) error {
 	hasTimeout := timeout > 0
 	hasIsolationLevel := txnIsolation != DefaultIsolationLevel
 	mapLen := 0
@@ -44,7 +46,7 @@ func fillBegin(enc *encoder, txnIsolation TxnIsolationLevel, timeout time.Durati
 	}
 
 	if hasTimeout {
-		err = encodeUint(enc, KeyTimeout)
+		err = enc.EncodeUint(KeyTimeout)
 		if err != nil {
 			return err
 		}
@@ -56,12 +58,12 @@ func fillBegin(enc *encoder, txnIsolation TxnIsolationLevel, timeout time.Durati
 	}
 
 	if hasIsolationLevel {
-		err = encodeUint(enc, KeyTxnIsolation)
+		err = enc.EncodeUint(KeyTxnIsolation)
 		if err != nil {
 			return err
 		}
 
-		err = encodeUint(enc, uint64(txnIsolation))
+		err = enc.EncodeUint(uint64(txnIsolation))
 		if err != nil {
 			return err
 		}
@@ -70,11 +72,11 @@ func fillBegin(enc *encoder, txnIsolation TxnIsolationLevel, timeout time.Durati
 	return err
 }
 
-func fillCommit(enc *encoder) error {
+func fillCommit(enc *msgpack.Encoder) error {
 	return enc.EncodeMapLen(0)
 }
 
-func fillRollback(enc *encoder) error {
+func fillRollback(enc *msgpack.Encoder) error {
 	return enc.EncodeMapLen(0)
 }
 
@@ -108,8 +110,8 @@ func (req *BeginRequest) Timeout(timeout time.Duration) *BeginRequest {
 	return req
 }
 
-// Body fills an encoder with the begin request body.
-func (req *BeginRequest) Body(res SchemaResolver, enc *encoder) error {
+// Body fills an msgpack.Encoder with the begin request body.
+func (req *BeginRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 	return fillBegin(enc, req.txnIsolation, req.timeout)
 }
 
@@ -138,8 +140,8 @@ func NewCommitRequest() *CommitRequest {
 	return req
 }
 
-// Body fills an encoder with the commit request body.
-func (req *CommitRequest) Body(res SchemaResolver, enc *encoder) error {
+// Body fills an msgpack.Encoder with the commit request body.
+func (req *CommitRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 	return fillCommit(enc)
 }
 
@@ -168,8 +170,8 @@ func NewRollbackRequest() *RollbackRequest {
 	return req
 }
 
-// Body fills an encoder with the rollback request body.
-func (req *RollbackRequest) Body(res SchemaResolver, enc *encoder) error {
+// Body fills an msgpack.Encoder with the rollback request body.
+func (req *RollbackRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 	return fillRollback(enc)
 }
 

@@ -3,6 +3,8 @@ package tarantool
 import (
 	"bytes"
 	"fmt"
+
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 const errorExtID = 3
@@ -69,7 +71,7 @@ func (e *BoxError) Depth() int {
 	return depth
 }
 
-func decodeBoxError(d *decoder) (*BoxError, error) {
+func decodeBoxError(d *msgpack.Decoder) (*BoxError, error) {
 	var l, larr, l1, l2 int
 	var errorStack []BoxError
 	var err error
@@ -169,7 +171,7 @@ func decodeBoxError(d *decoder) (*BoxError, error) {
 	return &errorStack[0], nil
 }
 
-func encodeBoxError(enc *encoder, boxError *BoxError) error {
+func encodeBoxError(enc *msgpack.Encoder, boxError *BoxError) error {
 	if boxError == nil {
 		return fmt.Errorf("msgpack: unexpected nil BoxError on encode")
 	}
@@ -177,7 +179,7 @@ func encodeBoxError(enc *encoder, boxError *BoxError) error {
 	if err := enc.EncodeMapLen(1); err != nil {
 		return err
 	}
-	if err := encodeUint(enc, keyErrorStack); err != nil {
+	if err := enc.EncodeUint(keyErrorStack); err != nil {
 		return err
 	}
 
@@ -199,42 +201,42 @@ func encodeBoxError(enc *encoder, boxError *BoxError) error {
 			}
 		}
 
-		if err := encodeUint(enc, keyErrorType); err != nil {
+		if err := enc.EncodeUint(keyErrorType); err != nil {
 			return err
 		}
 		if err := enc.EncodeString(boxError.Type); err != nil {
 			return err
 		}
 
-		if err := encodeUint(enc, keyErrorFile); err != nil {
+		if err := enc.EncodeUint(keyErrorFile); err != nil {
 			return err
 		}
 		if err := enc.EncodeString(boxError.File); err != nil {
 			return err
 		}
 
-		if err := encodeUint(enc, keyErrorLine); err != nil {
+		if err := enc.EncodeUint(keyErrorLine); err != nil {
 			return err
 		}
 		if err := enc.EncodeUint64(boxError.Line); err != nil {
 			return err
 		}
 
-		if err := encodeUint(enc, keyErrorMessage); err != nil {
+		if err := enc.EncodeUint(keyErrorMessage); err != nil {
 			return err
 		}
 		if err := enc.EncodeString(boxError.Msg); err != nil {
 			return err
 		}
 
-		if err := encodeUint(enc, keyErrorErrno); err != nil {
+		if err := enc.EncodeUint(keyErrorErrno); err != nil {
 			return err
 		}
 		if err := enc.EncodeUint64(boxError.Errno); err != nil {
 			return err
 		}
 
-		if err := encodeUint(enc, keyErrorErrcode); err != nil {
+		if err := enc.EncodeUint(keyErrorErrcode); err != nil {
 			return err
 		}
 		if err := enc.EncodeUint64(boxError.Code); err != nil {
@@ -242,7 +244,7 @@ func encodeBoxError(enc *encoder, boxError *BoxError) error {
 		}
 
 		if fieldsLen > 0 {
-			if err := encodeUint(enc, keyErrorFields); err != nil {
+			if err := enc.EncodeUint(keyErrorFields); err != nil {
 				return err
 			}
 
@@ -276,7 +278,7 @@ func (e *BoxError) UnmarshalMsgpack(b []byte) error {
 	}
 
 	buf := bytes.NewBuffer(b)
-	dec := newDecoder(buf)
+	dec := msgpack.NewDecoder(buf)
 
 	if val, err := decodeBoxError(dec); err != nil {
 		return err
@@ -290,10 +292,14 @@ func (e *BoxError) UnmarshalMsgpack(b []byte) error {
 func (e *BoxError) MarshalMsgpack() ([]byte, error) {
 	var buf bytes.Buffer
 
-	enc := newEncoder(&buf)
+	enc := msgpack.NewEncoder(&buf)
 	if err := encodeBoxError(enc, e); err != nil {
 		return nil, err
 	}
 
 	return buf.Bytes(), nil
+}
+
+func init() {
+	msgpack.RegisterExt(errorExtID, (*BoxError)(nil))
 }

@@ -1,6 +1,10 @@
 package crud
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/vmihailenco/msgpack/v5"
+)
 
 // Error describes CRUD error object.
 type Error struct {
@@ -20,7 +24,7 @@ type Error struct {
 }
 
 // DecodeMsgpack provides custom msgpack decoder.
-func (e *Error) DecodeMsgpack(d *decoder) error {
+func (e *Error) DecodeMsgpack(d *msgpack.Decoder) error {
 	l, err := d.DecodeMapLen()
 	if err != nil {
 		return err
@@ -76,7 +80,7 @@ type ErrorMany struct {
 }
 
 // DecodeMsgpack provides custom msgpack decoder.
-func (e *ErrorMany) DecodeMsgpack(d *decoder) error {
+func (e *ErrorMany) DecodeMsgpack(d *msgpack.Decoder) error {
 	l, err := d.DecodeArrayLen()
 	if err != nil {
 		return err

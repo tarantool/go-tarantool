@@ -1,9 +1,7 @@
 package test_helpers
 
 import (
-	"bytes"
 	"fmt"
-	"io"
 	"testing"
 	"time"
 
@@ -229,17 +227,4 @@ func CheckEqualBoxErrors(t *testing.T, expected tarantool.BoxError, actual taran
 			break
 		}
 	}
-}
-
-func ExtractRequestBody(req tarantool.Request, resolver tarantool.SchemaResolver,
-	newEncFunc func(w io.Writer) *encoder) ([]byte, error) {
-	var reqBuf bytes.Buffer
-	reqEnc := newEncFunc(&reqBuf)
-
-	err := req.Body(resolver, reqEnc)
-	if err != nil {
-		return nil, fmt.Errorf("An unexpected Response.Body() error: %q", err.Error())
-	}
-
-	return reqBuf.Bytes(), nil
 }

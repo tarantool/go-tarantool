@@ -3,6 +3,8 @@ package crud
 import (
 	"context"
 
+	"github.com/vmihailenco/msgpack/v5"
+
 	"github.com/tarantool/go-tarantool/v2"
 )
 
@@ -39,7 +41,7 @@ type CountOpts struct {
 }
 
 // EncodeMsgpack provides custom msgpack encoder.
-func (opts CountOpts) EncodeMsgpack(enc *encoder) error {
+func (opts CountOpts) EncodeMsgpack(enc *msgpack.Encoder) error {
 	const optsCnt = 9
 
 	names := [optsCnt]string{timeoutOptName, vshardRouterOptName,
@@ -101,7 +103,7 @@ func (req CountRequest) Opts(opts CountOpts) CountRequest {
 }
 
 // Body fills an encoder with the call request body.
-func (req CountRequest) Body(res tarantool.SchemaResolver, enc *encoder) error {
+func (req CountRequest) Body(res tarantool.SchemaResolver, enc *msgpack.Encoder) error {
 	args := countArgs{Space: req.space, Conditions: req.conditions, Opts: req.opts}
 	req.impl = req.impl.Args(args)
 	return req.impl.Body(res, enc)

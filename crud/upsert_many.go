@@ -3,6 +3,8 @@ package crud
 import (
 	"context"
 
+	"github.com/vmihailenco/msgpack/v5"
+
 	"github.com/tarantool/go-tarantool/v2"
 )
 
@@ -57,7 +59,7 @@ func (req UpsertManyRequest) Opts(opts UpsertManyOpts) UpsertManyRequest {
 }
 
 // Body fills an encoder with the call request body.
-func (req UpsertManyRequest) Body(res tarantool.SchemaResolver, enc *encoder) error {
+func (req UpsertManyRequest) Body(res tarantool.SchemaResolver, enc *msgpack.Encoder) error {
 	args := upsertManyArgs{Space: req.space, TuplesOperationsData: req.tuplesOperationsData,
 		Opts: req.opts}
 	req.impl = req.impl.Args(args)
@@ -123,7 +125,7 @@ func (req UpsertObjectManyRequest) Opts(opts UpsertObjectManyOpts) UpsertObjectM
 }
 
 // Body fills an encoder with the call request body.
-func (req UpsertObjectManyRequest) Body(res tarantool.SchemaResolver, enc *encoder) error {
+func (req UpsertObjectManyRequest) Body(res tarantool.SchemaResolver, enc *msgpack.Encoder) error {
 	args := upsertObjectManyArgs{Space: req.space, ObjectsOperationsData: req.objectsOperationsData,
 		Opts: req.opts}
 	req.impl = req.impl.Args(args)

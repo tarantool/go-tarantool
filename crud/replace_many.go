@@ -3,6 +3,8 @@ package crud
 import (
 	"context"
 
+	"github.com/vmihailenco/msgpack/v5"
+
 	"github.com/tarantool/go-tarantool/v2"
 )
 
@@ -48,7 +50,7 @@ func (req ReplaceManyRequest) Opts(opts ReplaceManyOpts) ReplaceManyRequest {
 }
 
 // Body fills an encoder with the call request body.
-func (req ReplaceManyRequest) Body(res tarantool.SchemaResolver, enc *encoder) error {
+func (req ReplaceManyRequest) Body(res tarantool.SchemaResolver, enc *msgpack.Encoder) error {
 	if req.tuples == nil {
 		req.tuples = []Tuple{}
 	}
@@ -106,7 +108,7 @@ func (req ReplaceObjectManyRequest) Opts(opts ReplaceObjectManyOpts) ReplaceObje
 }
 
 // Body fills an encoder with the call request body.
-func (req ReplaceObjectManyRequest) Body(res tarantool.SchemaResolver, enc *encoder) error {
+func (req ReplaceObjectManyRequest) Body(res tarantool.SchemaResolver, enc *msgpack.Encoder) error {
 	if req.objects == nil {
 		req.objects = []Object{}
 	}

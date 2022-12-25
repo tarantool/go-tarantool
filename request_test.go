@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/vmihailenco/msgpack/v5"
 
 	. "github.com/tarantool/go-tarantool/v2"
-	"github.com/tarantool/go-tarantool/v2/test_helpers"
 )
 
 const invalidSpaceMsg = "invalid space"
@@ -68,7 +68,7 @@ func assertBodyCall(t testing.TB, requests []Request, errorMsg string) {
 	const errBegin = "An unexpected Request.Body() "
 	for _, req := range requests {
 		var reqBuf bytes.Buffer
-		enc := NewEncoder(&reqBuf)
+		enc := msgpack.NewEncoder(&reqBuf)
 
 		err := req.Body(&resolver, enc)
 		if err != nil && errorMsg != "" && err.Error() != errorMsg {
@@ -86,11 +86,15 @@ func assertBodyCall(t testing.TB, requests []Request, errorMsg string) {
 func assertBodyEqual(t testing.TB, reference []byte, req Request) {
 	t.Helper()
 
-	reqBody, err := test_helpers.ExtractRequestBody(req, &resolver, NewEncoder)
+	var reqBuf bytes.Buffer
+	reqEnc := msgpack.NewEncoder(&reqBuf)
+
+	err := req.Body(&resolver, reqEnc)
 	if err != nil {
 		t.Fatalf("An unexpected Response.Body() error: %q", err.Error())
 	}
 
+	reqBody := reqBuf.Bytes()
 	if !bytes.Equal(reqBody, reference) {
 		t.Errorf("Encoded request %v != reference %v", reqBody, reference)
 	}
@@ -301,7 +305,7 @@ func TestRequestsCtx_setter(t *testing.T) {
 func TestPingRequestDefaultValues(t *testing.T) {
 	var refBuf bytes.Buffer
 
-	refEnc := NewEncoder(&refBuf)
+	refEnc := msgpack.NewEncoder(&refBuf)
 	err := RefImplPingBody(refEnc)
 	if err != nil {
 		t.Errorf("An unexpected RefImplPingBody() error: %q", err.Error())
@@ -315,7 +319,7 @@ func TestPingRequestDefaultValues(t *testing.T) {
 func TestSelectRequestDefaultValues(t *testing.T) {
 	var refBuf bytes.Buffer
 
-	refEnc := NewEncoder(&refBuf)
+	refEnc := msgpack.NewEncoder(&refBuf)
 	err := RefImplSelectBody(refEnc, validSpace, defaultIndex, 0, 0xFFFFFFFF,
 		IterAll, []interface{}{}, nil, false)
 	if err != nil {
@@ -331,7 +335,7 @@ func TestSelectRequestDefaultIteratorEqIfKey(t *testing.T) {
 	var refBuf bytes.Buffer
 	key := []interface{}{uint(18)}
 
-	refEnc := NewEncoder(&refBuf)
+	refEnc := msgpack.NewEncoder(&refBuf)
 	err := RefImplSelectBody(refEnc, validSpace, defaultIndex, 0, 0xFFFFFFFF,
 		IterEq, key, nil, false)
 	if err != nil {
@@ -349,7 +353,7 @@ func TestSelectRequestIteratorNotChangedIfKey(t *testing.T) {
 	key := []interface{}{uint(678)}
 	const iter = IterGe
 
-	refEnc := NewEncoder(&refBuf)
+	refEnc := msgpack.NewEncoder(&refBuf)
 	err := RefImplSelectBody(refEnc, validSpace, defaultIndex, 0, 0xFFFFFFFF,
 		iter, key, nil, false)
 	if err != nil {
@@ -372,7 +376,7 @@ func TestSelectRequestSetters(t *testing.T) {
 	afterKey := []interface{}{uint(13)}
 	var refBufAfterBytes, refBufAfterKey bytes.Buffer
 
-	refEncAfterBytes := NewEncoder(&refBufAfterBytes)
+	refEncAfterBytes := msgpack.NewEncoder(&refBufAfterBytes)
 	err := RefImplSelectBody(refEncAfterBytes, validSpace, validIndex, offset,
 		limit, iter, key, afterBytes, true)
 	if err != nil {
@@ -380,7 +384,7 @@ func TestSelectRequestSetters(t *testing.T) {
 		return
 	}
 
-	refEncAfterKey := NewEncoder(&refBufAfterKey)
+	refEncAfterKey := msgpack.NewEncoder(&refBufAfterKey)
 	err = RefImplSelectBody(refEncAfterKey, validSpace, validIndex, offset,
 		limit, iter, key, afterKey, true)
 	if err != nil {
@@ -412,7 +416,7 @@ func TestSelectRequestSetters(t *testing.T) {
 func TestInsertRequestDefaultValues(t *testing.T) {
 	var refBuf bytes.Buffer
 
-	refEnc := NewEncoder(&refBuf)
+	refEnc := msgpack.NewEncoder(&refBuf)
 	err := RefImplInsertBody(refEnc, validSpace, []interface{}{})
 	if err != nil {
 		t.Errorf("An unexpected RefImplInsertBody() error: %q", err.Error())
@@ -427,7 +431,7 @@ func TestInsertRequestSetters(t *testing.T) {
 	tuple := []interface{}{uint(24)}
 	var refBuf bytes.Buffer
 
-	refEnc := NewEncoder(&refBuf)
+	refEnc := msgpack.NewEncoder(&refBuf)
 	err := RefImplInsertBody(refEnc, validSpace, tuple)
 	if err != nil {
 		t.Errorf("An unexpected RefImplInsertBody() error: %q", err.Error())
@@ -442,7 +446,7 @@ func TestInsertRequestSetters(t *testing.T) {
 func TestReplaceRequestDefaultValues(t *testing.T) {
 	var refBuf bytes.Buffer
 
-	refEnc := NewEncoder(&refBuf)
+	refEnc := msgpack.NewEncoder(&refBuf)
 	err := RefImplReplaceBody(refEnc, validSpace, []interface{}{})
 	if err != nil {
 		t.Errorf("An unexpected RefImplReplaceBody() error: %q", err.Error())
@@ -457,7 +461,7 @@ func TestReplaceRequestSetters(t *testing.T) {
 	tuple := []interface{}{uint(99)}
 	var refBuf bytes.Buffer
 
-	refEnc := NewEncoder(&refBuf)
+	refEnc := msgpack.NewEncoder(&refBuf)
 	err := RefImplReplaceBody(refEnc, validSpace, tuple)
 	if err != nil {
 		t.Errorf("An unexpected RefImplReplaceBody() error: %q", err.Error())
@@ -472,7 +476,7 @@ func TestReplaceRequestSetters(t *testing.T) {
 func TestDeleteRequestDefaultValues(t *testing.T) {
 	var refBuf bytes.Buffer
 
-	refEnc := NewEncoder(&refBuf)
+	refEnc := msgpack.NewEncoder(&refBuf)
 	err := RefImplDeleteBody(refEnc, validSpace, defaultIndex, []interface{}{})
 	if err != nil {
 		t.Errorf("An unexpected RefImplDeleteBody() error: %q", err.Error())
@@ -487,7 +491,7 @@ func TestDeleteRequestSetters(t *testing.T) {
 	key := []interface{}{uint(923)}
 	var refBuf bytes.Buffer
 
-	refEnc := NewEncoder(&refBuf)
+	refEnc := msgpack.NewEncoder(&refBuf)
 	err := RefImplDeleteBody(refEnc, validSpace, validIndex, key)
 	if err != nil {
 		t.Errorf("An unexpected RefImplDeleteBody() error: %q", err.Error())
@@ -503,7 +507,7 @@ func TestDeleteRequestSetters(t *testing.T) {
 func TestUpdateRequestDefaultValues(t *testing.T) {
 	var refBuf bytes.Buffer
 
-	refEnc := NewEncoder(&refBuf)
+	refEnc := msgpack.NewEncoder(&refBuf)
 	err := RefImplUpdateBody(refEnc, validSpace, defaultIndex, []interface{}{}, []Op{})
 	if err != nil {
 		t.Errorf("An unexpected RefImplUpdateBody() error: %q", err.Error())
@@ -519,7 +523,7 @@ func TestUpdateRequestSetters(t *testing.T) {
 	refOps, reqOps := getTestOps()
 	var refBuf bytes.Buffer
 
-	refEnc := NewEncoder(&refBuf)
+	refEnc := msgpack.NewEncoder(&refBuf)
 	err := RefImplUpdateBody(refEnc, validSpace, validIndex, key, refOps)
 	if err != nil {
 		t.Errorf("An unexpected RefImplUpdateBody() error: %q", err.Error())
@@ -536,7 +540,7 @@ func TestUpdateRequestSetters(t *testing.T) {
 func TestUpsertRequestDefaultValues(t *testing.T) {
 	var refBuf bytes.Buffer
 
-	refEnc := NewEncoder(&refBuf)
+	refEnc := msgpack.NewEncoder(&refBuf)
 	err := RefImplUpsertBody(refEnc, validSpace, []interface{}{}, []Op{})
 	if err != nil {
 		t.Errorf("An unexpected RefImplUpsertBody() error: %q", err.Error())
@@ -552,7 +556,7 @@ func TestUpsertRequestSetters(t *testing.T) {
 	refOps, reqOps := getTestOps()
 	var refBuf bytes.Buffer
 
-	refEnc := NewEncoder(&refBuf)
+	refEnc := msgpack.NewEncoder(&refBuf)
 	err := RefImplUpsertBody(refEnc, validSpace, tuple, refOps)
 	if err != nil {
 		t.Errorf("An unexpected RefImplUpsertBody() error: %q", err.Error())
@@ -568,7 +572,7 @@ func TestUpsertRequestSetters(t *testing.T) {
 func TestCallRequestsDefaultValues(t *testing.T) {
 	var refBuf bytes.Buffer
 
-	refEnc := NewEncoder(&refBuf)
+	refEnc := msgpack.NewEncoder(&refBuf)
 	err := RefImplCallBody(refEnc, validExpr, []interface{}{})
 	if err != nil {
 		t.Errorf("An unexpected RefImplCallBody() error: %q", err.Error())
@@ -587,7 +591,7 @@ func TestCallRequestsSetters(t *testing.T) {
 	args := []interface{}{uint(34)}
 	var refBuf bytes.Buffer
 
-	refEnc := NewEncoder(&refBuf)
+	refEnc := msgpack.NewEncoder(&refBuf)
 	err := RefImplCallBody(refEnc, validExpr, args)
 	if err != nil {
 		t.Errorf("An unexpected RefImplCallBody() error: %q", err.Error())
@@ -608,7 +612,7 @@ func TestCallRequestsSetters(t *testing.T) {
 func TestEvalRequestDefaultValues(t *testing.T) {
 	var refBuf bytes.Buffer
 
-	refEnc := NewEncoder(&refBuf)
+	refEnc := msgpack.NewEncoder(&refBuf)
 	err := RefImplEvalBody(refEnc, validExpr, []interface{}{})
 	if err != nil {
 		t.Errorf("An unexpected RefImplEvalBody() error: %q", err.Error())
@@ -623,7 +627,7 @@ func TestEvalRequestSetters(t *testing.T) {
 	args := []interface{}{uint(34), int(12)}
 	var refBuf bytes.Buffer
 
-	refEnc := NewEncoder(&refBuf)
+	refEnc := msgpack.NewEncoder(&refBuf)
 	err := RefImplEvalBody(refEnc, validExpr, args)
 	if err != nil {
 		t.Errorf("An unexpected RefImplEvalBody() error: %q", err.Error())
@@ -638,7 +642,7 @@ func TestEvalRequestSetters(t *testing.T) {
 func TestExecuteRequestDefaultValues(t *testing.T) {
 	var refBuf bytes.Buffer
 
-	refEnc := NewEncoder(&refBuf)
+	refEnc := msgpack.NewEncoder(&refBuf)
 	err := RefImplExecuteBody(refEnc, validExpr, []interface{}{})
 	if err != nil {
 		t.Errorf("An unexpected RefImplExecuteBody() error: %q", err.Error())
@@ -653,7 +657,7 @@ func TestExecuteRequestSetters(t *testing.T) {
 	args := []interface{}{uint(11)}
 	var refBuf bytes.Buffer
 
-	refEnc := NewEncoder(&refBuf)
+	refEnc := msgpack.NewEncoder(&refBuf)
 	err := RefImplExecuteBody(refEnc, validExpr, args)
 	if err != nil {
 		t.Errorf("An unexpected RefImplExecuteBody() error: %q", err.Error())
@@ -668,7 +672,7 @@ func TestExecuteRequestSetters(t *testing.T) {
 func TestPrepareRequestDefaultValues(t *testing.T) {
 	var refBuf bytes.Buffer
 
-	refEnc := NewEncoder(&refBuf)
+	refEnc := msgpack.NewEncoder(&refBuf)
 	err := RefImplPrepareBody(refEnc, validExpr)
 	if err != nil {
 		t.Errorf("An unexpected RefImplPrepareBody() error: %q", err.Error())
@@ -682,7 +686,7 @@ func TestPrepareRequestDefaultValues(t *testing.T) {
 func TestUnprepareRequestDefaultValues(t *testing.T) {
 	var refBuf bytes.Buffer
 
-	refEnc := NewEncoder(&refBuf)
+	refEnc := msgpack.NewEncoder(&refBuf)
 	err := RefImplUnprepareBody(refEnc, *validStmt)
 	if err != nil {
 		t.Errorf("An unexpected RefImplUnprepareBody() error: %q", err.Error())
@@ -698,7 +702,7 @@ func TestExecutePreparedRequestSetters(t *testing.T) {
 	args := []interface{}{uint(11)}
 	var refBuf bytes.Buffer
 
-	refEnc := NewEncoder(&refBuf)
+	refEnc := msgpack.NewEncoder(&refBuf)
 	err := RefImplExecutePreparedBody(refEnc, *validStmt, args)
 	if err != nil {
 		t.Errorf("An unexpected RefImplExecutePreparedBody() error: %q", err.Error())
@@ -714,7 +718,7 @@ func TestExecutePreparedRequestSetters(t *testing.T) {
 func TestExecutePreparedRequestDefaultValues(t *testing.T) {
 	var refBuf bytes.Buffer
 
-	refEnc := NewEncoder(&refBuf)
+	refEnc := msgpack.NewEncoder(&refBuf)
 	err := RefImplExecutePreparedBody(refEnc, *validStmt, []interface{}{})
 	if err != nil {
 		t.Errorf("An unexpected RefImplExecutePreparedBody() error: %q", err.Error())
@@ -729,7 +733,7 @@ func TestExecutePreparedRequestDefaultValues(t *testing.T) {
 func TestBeginRequestDefaultValues(t *testing.T) {
 	var refBuf bytes.Buffer
 
-	refEnc := NewEncoder(&refBuf)
+	refEnc := msgpack.NewEncoder(&refBuf)
 	err := RefImplBeginBody(refEnc, defaultIsolationLevel, defaultTimeout)
 	if err != nil {
 		t.Errorf("An unexpected RefImplBeginBody() error: %q", err.Error())
@@ -743,7 +747,7 @@ func TestBeginRequestDefaultValues(t *testing.T) {
 func TestBeginRequestSetters(t *testing.T) {
 	var refBuf bytes.Buffer
 
-	refEnc := NewEncoder(&refBuf)
+	refEnc := msgpack.NewEncoder(&refBuf)
 	err := RefImplBeginBody(refEnc, ReadConfirmedLevel, validTimeout)
 	if err != nil {
 		t.Errorf("An unexpected RefImplBeginBody() error: %q", err.Error())
@@ -757,7 +761,7 @@ func TestBeginRequestSetters(t *testing.T) {
 func TestCommitRequestDefaultValues(t *testing.T) {
 	var refBuf bytes.Buffer
 
-	refEnc := NewEncoder(&refBuf)
+	refEnc := msgpack.NewEncoder(&refBuf)
 	err := RefImplCommitBody(refEnc)
 	if err != nil {
 		t.Errorf("An unexpected RefImplCommitBody() error: %q", err.Error())
@@ -771,7 +775,7 @@ func TestCommitRequestDefaultValues(t *testing.T) {
 func TestRollbackRequestDefaultValues(t *testing.T) {
 	var refBuf bytes.Buffer
 
-	refEnc := NewEncoder(&refBuf)
+	refEnc := msgpack.NewEncoder(&refBuf)
 	err := RefImplRollbackBody(refEnc)
 	if err != nil {
 		t.Errorf("An unexpected RefImplRollbackBody() error: %q", err.Error())
@@ -785,7 +789,7 @@ func TestRollbackRequestDefaultValues(t *testing.T) {
 func TestBroadcastRequestDefaultValues(t *testing.T) {
 	var refBuf bytes.Buffer
 
-	refEnc := NewEncoder(&refBuf)
+	refEnc := msgpack.NewEncoder(&refBuf)
 	expectedArgs := []interface{}{validKey}
 	err := RefImplCallBody(refEnc, "box.broadcast", expectedArgs)
 	if err != nil {
@@ -801,7 +805,7 @@ func TestBroadcastRequestSetters(t *testing.T) {
 	value := []interface{}{uint(34), int(12)}
 	var refBuf bytes.Buffer
 
-	refEnc := NewEncoder(&refBuf)
+	refEnc := msgpack.NewEncoder(&refBuf)
 	expectedArgs := []interface{}{validKey, value}
 	err := RefImplCallBody(refEnc, "box.broadcast", expectedArgs)
 	if err != nil {

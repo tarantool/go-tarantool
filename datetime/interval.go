@@ -1,8 +1,11 @@
 package datetime
 
 import (
+	"bytes"
 	"fmt"
 	"reflect"
+
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 const interval_extId = 6
@@ -63,22 +66,22 @@ func (ival Interval) Sub(sub Interval) Interval {
 	return ival
 }
 
-func encodeIntervalValue(e *encoder, typ uint64, value int64) (err error) {
+func encodeIntervalValue(e *msgpack.Encoder, typ uint64, value int64) (err error) {
 	if value == 0 {
 		return
 	}
-	err = encodeUint(e, typ)
+	err = e.EncodeUint(typ)
 	if err == nil {
 		if value > 0 {
-			err = encodeUint(e, uint64(value))
+			err = e.EncodeUint(uint64(value))
 		} else if value < 0 {
-			err = encodeInt(e, int64(value))
+			err = e.EncodeInt(int64(value))
 		}
 	}
 	return
 }
 
-func encodeInterval(e *encoder, v reflect.Value) (err error) {
+func encodeInterval(e *msgpack.Encoder, v reflect.Value) (err error) {
 	val := v.Interface().(Interval)
 
 	var fieldNum uint64
@@ -89,7 +92,7 @@ func encodeInterval(e *encoder, v reflect.Value) (err error) {
 			fieldNum++
 		}
 	}
-	if err = encodeUint(e, fieldNum); err != nil {
+	if err = e.EncodeUint(fieldNum); err != nil {
 		return
 	}
 
@@ -123,7 +126,7 @@ func encodeInterval(e *encoder, v reflect.Value) (err error) {
 	return nil
 }
 
-func decodeInterval(d *decoder, v reflect.Value) (err error) {
+func decodeInterval(d *msgpack.Decoder, v reflect.Value) (err error) {
 	var fieldNum uint
 	if fieldNum, err = d.DecodeUint(); err != nil {
 		return
@@ -176,4 +179,22 @@ func decodeInterval(d *decoder, v reflect.Value) (err error) {
 
 	v.Set(reflect.ValueOf(val))
 	return nil
+}
+
+func init() {
+	msgpack.RegisterExtEncoder(interval_extId, Interval{},
+		func(e *msgpack.Encoder, v reflect.Value) (ret []byte, err error) {
+			var b bytes.Buffer
+
+			enc := msgpack.NewEncoder(&b)
+			if err = encodeInterval(enc, v); err == nil {
+				ret = b.Bytes()
+			}
+
+			return
+		})
+	msgpack.RegisterExtDecoder(interval_extId, Interval{},
+		func(d *msgpack.Decoder, v reflect.Value, extLen int) error {
+			return decodeInterval(d, v)
+		})
 }

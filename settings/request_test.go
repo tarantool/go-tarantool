@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"github.com/vmihailenco/msgpack/v5"
+
 	"github.com/tarantool/go-tarantool/v2"
 	. "github.com/tarantool/go-tarantool/v2/settings"
 )
@@ -68,7 +70,7 @@ func TestRequestsAPI(t *testing.T) {
 		require.Equal(t, test.code, test.req.Code())
 
 		var reqBuf bytes.Buffer
-		enc := NewEncoder(&reqBuf)
+		enc := msgpack.NewEncoder(&reqBuf)
 		require.Nilf(t, test.req.Body(&resolver, enc), "No errors on fill")
 	}
 }

@@ -18,12 +18,13 @@ import (
 	"reflect"
 
 	"github.com/google/uuid"
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 // UUID external type.
 const UUID_extId = 2
 
-func encodeUUID(e *encoder, v reflect.Value) error {
+func encodeUUID(e *msgpack.Encoder, v reflect.Value) error {
 	id := v.Interface().(uuid.UUID)
 
 	bytes, err := id.MarshalBinary()
@@ -33,13 +34,13 @@ func encodeUUID(e *encoder, v reflect.Value) error {
 
 	_, err = e.Writer().Write(bytes)
 	if err != nil {
-		return fmt.Errorf("msgpack: can't write bytes to encoder writer: %w", err)
+		return fmt.Errorf("msgpack: can't write bytes to msgpack.Encoder writer: %w", err)
 	}
 
 	return nil
 }
 
-func decodeUUID(d *decoder, v reflect.Value) error {
+func decodeUUID(d *msgpack.Decoder, v reflect.Value) error {
 	var bytesCount int = 16
 	bytes := make([]byte, bytesCount)
 
@@ -58,4 +59,17 @@ func decodeUUID(d *decoder, v reflect.Value) error {
 
 	v.Set(reflect.ValueOf(id))
 	return nil
+}
+
+func init() {
+	msgpack.Register(reflect.TypeOf((*uuid.UUID)(nil)).Elem(), encodeUUID, decodeUUID)
+	msgpack.RegisterExtEncoder(UUID_extId, uuid.UUID{},
+		func(e *msgpack.Encoder, v reflect.Value) ([]byte, error) {
+			uuid := v.Interface().(uuid.UUID)
+			return uuid.MarshalBinary()
+		})
+	msgpack.RegisterExtDecoder(UUID_extId, uuid.UUID{},
+		func(d *msgpack.Decoder, v reflect.Value, extLen int) error {
+			return decodeUUID(d, v)
+		})
 }

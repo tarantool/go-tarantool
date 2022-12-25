@@ -13,6 +13,8 @@ import (
 	"encoding/binary"
 	"fmt"
 	"time"
+
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 // Datetime MessagePack serialization schema is an MP_EXT extension, which
@@ -318,4 +320,8 @@ func (tm *Datetime) UnmarshalMsgpack(b []byte) error {
 		*tm = *dtp
 	}
 	return err
+}
+
+func init() {
+	msgpack.RegisterExt(datetime_extId, (*Datetime)(nil))
 }

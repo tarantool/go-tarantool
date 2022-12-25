@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"testing"
+
+	"github.com/vmihailenco/msgpack/v5"
 
 	"github.com/tarantool/go-tarantool/v2"
 	"github.com/tarantool/go-tarantool/v2/crud"
-	"github.com/tarantool/go-tarantool/v2/test_helpers"
 )
 
 const invalidSpaceMsg = "invalid space"
@@ -91,15 +93,28 @@ func (*ValidSchemeResolver) ResolveSpaceIndex(s, i interface{}) (spaceNo, indexN
 
 var resolver ValidSchemeResolver
 
+func extractRequestBody(req tarantool.Request,
+	resolver tarantool.SchemaResolver) ([]byte, error) {
+	var reqBuf bytes.Buffer
+	reqEnc := msgpack.NewEncoder(&reqBuf)
+
+	err := req.Body(resolver, reqEnc)
+	if err != nil {
+		return nil, fmt.Errorf("An unexpected Response.Body() error: %q", err.Error())
+	}
+
+	return reqBuf.Bytes(), nil
+}
+
 func assertBodyEqual(t testing.TB, reference tarantool.Request, req tarantool.Request) {
 	t.Helper()
 
-	reqBody, err := test_helpers.ExtractRequestBody(req, &resolver, newEncoder)
+	reqBody, err := extractRequestBody(req, &resolver)
 	if err != nil {
 		t.Fatalf("An unexpected Response.Body() error: %q", err.Error())
 	}
 
-	refBody, err := test_helpers.ExtractRequestBody(reference, &resolver, newEncoder)
+	refBody, err := extractRequestBody(reference, &resolver)
 	if err != nil {
 		t.Fatalf("An unexpected Response.Body() error: %q", err.Error())
 	}
@@ -112,7 +127,7 @@ func assertBodyEqual(t testing.TB, reference tarantool.Request, req tarantool.Re
 func BenchmarkLenRequest(b *testing.B) {
 	buf := bytes.Buffer{}
 	buf.Grow(512 * 1024 * 1024) // Avoid allocs in test.
-	enc := newEncoder(&buf)
+	enc := msgpack.NewEncoder(&buf)
 
 	b.ResetTimer()
 
@@ -131,7 +146,7 @@ func BenchmarkLenRequest(b *testing.B) {
 func BenchmarkSelectRequest(b *testing.B) {
 	buf := bytes.Buffer{}
 	buf.Grow(512 * 1024 * 1024) // Avoid allocs in test.
-	enc := newEncoder(&buf)
+	enc := msgpack.NewEncoder(&buf)
 
 	b.ResetTimer()
 

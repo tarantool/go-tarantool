@@ -3,6 +3,8 @@ package crud
 import (
 	"context"
 
+	"github.com/vmihailenco/msgpack/v5"
+
 	"github.com/tarantool/go-tarantool/v2"
 )
 
@@ -48,7 +50,7 @@ func (req MaxRequest) Opts(opts MaxOpts) MaxRequest {
 }
 
 // Body fills an encoder with the call request body.
-func (req MaxRequest) Body(res tarantool.SchemaResolver, enc *encoder) error {
+func (req MaxRequest) Body(res tarantool.SchemaResolver, enc *msgpack.Encoder) error {
 	args := maxArgs{Space: req.space, Index: req.index, Opts: req.opts}
 	req.impl = req.impl.Args(args)
 	return req.impl.Body(res, enc)

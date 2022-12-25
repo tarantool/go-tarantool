@@ -373,7 +373,7 @@ func copyFile(srcFile, dstFile string) error {
 	return nil
 }
 
-// msgpack.v2 and msgpack.v5 return different uint types in responses. The
+// msgpack.v5 decodes different uint types depending on value. The
 // function helps to unify a result.
 func ConvertUint64(v interface{}) (result uint64, err error) {
 	switch v := v.(type) {

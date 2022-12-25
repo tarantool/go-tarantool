@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/vmihailenco/msgpack/v5"
+
 	. "github.com/tarantool/go-tarantool/v2"
 	"github.com/tarantool/go-tarantool/v2/queue"
 	"github.com/tarantool/go-tarantool/v2/test_helpers"
@@ -300,7 +302,7 @@ type customData struct {
 	customField string
 }
 
-func (c *customData) DecodeMsgpack(d *decoder) error {
+func (c *customData) DecodeMsgpack(d *msgpack.Decoder) error {
 	var err error
 	var l int
 	if l, err = d.DecodeArrayLen(); err != nil {
@@ -315,7 +317,7 @@ func (c *customData) DecodeMsgpack(d *decoder) error {
 	return nil
 }
 
-func (c *customData) EncodeMsgpack(e *encoder) error {
+func (c *customData) EncodeMsgpack(e *msgpack.Encoder) error {
 	if err := e.EncodeArrayLen(1); err != nil {
 		return err
 	}

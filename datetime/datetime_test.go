@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/vmihailenco/msgpack/v5"
+
 	. "github.com/tarantool/go-tarantool/v2"
 	. "github.com/tarantool/go-tarantool/v2/datetime"
 	"github.com/tarantool/go-tarantool/v2/test_helpers"
@@ -431,7 +433,7 @@ func assertDatetimeIsEqual(t *testing.T, tuples []interface{}, tm time.Time) {
 		if len(tpl) != 2 {
 			t.Fatalf("Unexpected return value body (tuple len = %d)", len(tpl))
 		}
-		if val, ok := toDatetime(tpl[dtIndex]); !ok || !val.ToTime().Equal(tm) {
+		if val, ok := tpl[dtIndex].(*Datetime); !ok || !val.ToTime().Equal(tm) {
 			t.Fatalf("Unexpected tuple %d field %v, expected %v",
 				dtIndex,
 				val,
@@ -546,7 +548,7 @@ func TestCustomTimezone(t *testing.T) {
 	assertDatetimeIsEqual(t, resp.Data, tm)
 
 	tpl := resp.Data[0].([]interface{})
-	if respDt, ok := toDatetime(tpl[0]); ok {
+	if respDt, ok := tpl[0].(*Datetime); ok {
 		zone := respDt.ToTime().Location().String()
 		_, offset := respDt.ToTime().Zone()
 		if zone != customZone {
@@ -776,7 +778,7 @@ type Tuple1 struct {
 	Datetime Datetime
 }
 
-func (t *Tuple1) EncodeMsgpack(e *encoder) error {
+func (t *Tuple1) EncodeMsgpack(e *msgpack.Encoder) error {
 	if err := e.EncodeArrayLen(2); err != nil {
 		return err
 	}
@@ -786,7 +788,7 @@ func (t *Tuple1) EncodeMsgpack(e *encoder) error {
 	return nil
 }
 
-func (t *Tuple1) DecodeMsgpack(d *decoder) error {
+func (t *Tuple1) DecodeMsgpack(d *msgpack.Decoder) error {
 	var err error
 	var l int
 	if l, err = d.DecodeArrayLen(); err != nil {
@@ -802,7 +804,7 @@ func (t *Tuple1) DecodeMsgpack(d *decoder) error {
 	return nil
 }
 
-func (ev *Event) EncodeMsgpack(e *encoder) error {
+func (ev *Event) EncodeMsgpack(e *msgpack.Encoder) error {
 	if err := e.EncodeArrayLen(2); err != nil {
 		return err
 	}
@@ -815,7 +817,7 @@ func (ev *Event) EncodeMsgpack(e *encoder) error {
 	return nil
 }
 
-func (ev *Event) DecodeMsgpack(d *decoder) error {
+func (ev *Event) DecodeMsgpack(d *msgpack.Decoder) error {
 	var err error
 	var l int
 	if l, err = d.DecodeArrayLen(); err != nil {
@@ -831,14 +833,16 @@ func (ev *Event) DecodeMsgpack(d *decoder) error {
 	if err != nil {
 		return err
 	}
-	var ok bool
-	if ev.Datetime, ok = toDatetime(res); !ok {
+
+	if dt, ok := res.(*Datetime); !ok {
 		return fmt.Errorf("Datetime doesn't match")
+	} else {
+		ev.Datetime = *dt
 	}
 	return nil
 }
 
-func (c *Tuple2) EncodeMsgpack(e *encoder) error {
+func (c *Tuple2) EncodeMsgpack(e *msgpack.Encoder) error {
 	if err := e.EncodeArrayLen(3); err != nil {
 		return err
 	}
@@ -852,7 +856,7 @@ func (c *Tuple2) EncodeMsgpack(e *encoder) error {
 	return nil
 }
 
-func (c *Tuple2) DecodeMsgpack(d *decoder) error {
+func (c *Tuple2) DecodeMsgpack(d *msgpack.Decoder) error {
 	var err error
 	var l int
 	if l, err = d.DecodeArrayLen(); err != nil {
@@ -938,7 +942,7 @@ func TestCustomEncodeDecodeTuple1(t *testing.T) {
 	}
 
 	for i, tv := range []time.Time{tm1, tm2} {
-		dt, ok := toDatetime(events[i].([]interface{})[1])
+		dt, ok := events[i].([]interface{})[1].(*Datetime)
 		if !ok || !dt.ToTime().Equal(tv) {
 			t.Fatalf("%v != %v", dt.ToTime(), tv)
 		}
@@ -1011,7 +1015,7 @@ func TestCustomEncodeDecodeTuple5(t *testing.T) {
 	if tpl, ok := resp.Data[0].([]interface{}); !ok {
 		t.Errorf("Unexpected body of Select")
 	} else {
-		if val, ok := toDatetime(tpl[0]); !ok || !val.ToTime().Equal(tm) {
+		if val, ok := tpl[0].(*Datetime); !ok || !val.ToTime().Equal(tm) {
 			t.Fatalf("Unexpected body of Select")
 		}
 	}
@@ -1043,7 +1047,7 @@ func TestMPEncode(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Unable to create Datetime from %s: %s", tm, err)
 			}
-			buf, err := marshal(dt)
+			buf, err := msgpack.Marshal(dt)
 			if err != nil {
 				t.Fatalf("Marshalling failed: %s", err.Error())
 			}
@@ -1076,7 +1080,7 @@ func TestMPDecode(t *testing.T) {
 			}
 			buf, _ := hex.DecodeString(testcase.mpBuf)
 			var v Datetime
-			err = unmarshal(buf, &v)
+			err = msgpack.Unmarshal(buf, &v)
 			if err != nil {
 				t.Fatalf("Unmarshalling failed: %s", err.Error())
 			}

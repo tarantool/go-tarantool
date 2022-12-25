@@ -3,6 +3,8 @@ package crud
 import (
 	"context"
 
+	"github.com/vmihailenco/msgpack/v5"
+
 	"github.com/tarantool/go-tarantool/v2"
 )
 
@@ -58,7 +60,7 @@ func (req UpdateRequest) Opts(opts UpdateOpts) UpdateRequest {
 }
 
 // Body fills an encoder with the call request body.
-func (req UpdateRequest) Body(res tarantool.SchemaResolver, enc *encoder) error {
+func (req UpdateRequest) Body(res tarantool.SchemaResolver, enc *msgpack.Encoder) error {
 	if req.key == nil {
 		req.key = []interface{}{}
 	}
