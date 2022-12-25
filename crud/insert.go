@@ -3,6 +3,8 @@ package crud
 import (
 	"context"
 
+	"github.com/vmihailenco/msgpack/v5"
+
 	"github.com/tarantool/go-tarantool/v2"
 )
 
@@ -48,7 +50,7 @@ func (req InsertRequest) Opts(opts InsertOpts) InsertRequest {
 }
 
 // Body fills an encoder with the call request body.
-func (req InsertRequest) Body(res tarantool.SchemaResolver, enc *encoder) error {
+func (req InsertRequest) Body(res tarantool.SchemaResolver, enc *msgpack.Encoder) error {
 	if req.tuple == nil {
 		req.tuple = []interface{}{}
 	}
@@ -106,7 +108,7 @@ func (req InsertObjectRequest) Opts(opts InsertObjectOpts) InsertObjectRequest {
 }
 
 // Body fills an encoder with the call request body.
-func (req InsertObjectRequest) Body(res tarantool.SchemaResolver, enc *encoder) error {
+func (req InsertObjectRequest) Body(res tarantool.SchemaResolver, enc *msgpack.Encoder) error {
 	if req.object == nil {
 		req.object = MapObject{}
 	}

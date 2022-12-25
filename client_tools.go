@@ -1,14 +1,18 @@
 package tarantool
 
+import (
+	"github.com/vmihailenco/msgpack/v5"
+)
+
 // IntKey is utility type for passing integer key to Select*, Update*,
 // Delete* and GetTyped. It serializes to array with single integer element.
 type IntKey struct {
 	I int
 }
 
-func (k IntKey) EncodeMsgpack(enc *encoder) error {
+func (k IntKey) EncodeMsgpack(enc *msgpack.Encoder) error {
 	enc.EncodeArrayLen(1)
-	encodeInt(enc, int64(k.I))
+	enc.EncodeInt(int64(k.I))
 	return nil
 }
 
@@ -19,9 +23,9 @@ type UintKey struct {
 	I uint
 }
 
-func (k UintKey) EncodeMsgpack(enc *encoder) error {
+func (k UintKey) EncodeMsgpack(enc *msgpack.Encoder) error {
 	enc.EncodeArrayLen(1)
-	encodeUint(enc, uint64(k.I))
+	enc.EncodeUint(uint64(k.I))
 	return nil
 }
 
@@ -31,7 +35,7 @@ type StringKey struct {
 	S string
 }
 
-func (k StringKey) EncodeMsgpack(enc *encoder) error {
+func (k StringKey) EncodeMsgpack(enc *msgpack.Encoder) error {
 	enc.EncodeArrayLen(1)
 	enc.EncodeString(k.S)
 	return nil
@@ -43,10 +47,10 @@ type IntIntKey struct {
 	I1, I2 int
 }
 
-func (k IntIntKey) EncodeMsgpack(enc *encoder) error {
+func (k IntIntKey) EncodeMsgpack(enc *msgpack.Encoder) error {
 	enc.EncodeArrayLen(2)
-	encodeInt(enc, int64(k.I1))
-	encodeInt(enc, int64(k.I2))
+	enc.EncodeInt(int64(k.I1))
+	enc.EncodeInt(int64(k.I2))
 	return nil
 }
 
@@ -57,10 +61,10 @@ type Op struct {
 	Arg   interface{}
 }
 
-func (o Op) EncodeMsgpack(enc *encoder) error {
+func (o Op) EncodeMsgpack(enc *msgpack.Encoder) error {
 	enc.EncodeArrayLen(3)
 	enc.EncodeString(o.Op)
-	encodeInt(enc, int64(o.Field))
+	enc.EncodeInt(int64(o.Field))
 	return enc.Encode(o.Arg)
 }
 
@@ -145,12 +149,12 @@ type OpSplice struct {
 	Replace string
 }
 
-func (o OpSplice) EncodeMsgpack(enc *encoder) error {
+func (o OpSplice) EncodeMsgpack(enc *msgpack.Encoder) error {
 	enc.EncodeArrayLen(5)
 	enc.EncodeString(o.Op)
-	encodeInt(enc, int64(o.Field))
-	encodeInt(enc, int64(o.Pos))
-	encodeInt(enc, int64(o.Len))
+	enc.EncodeInt(int64(o.Field))
+	enc.EncodeInt(int64(o.Pos))
+	enc.EncodeInt(int64(o.Len))
 	enc.EncodeString(o.Replace)
 	return nil
 }

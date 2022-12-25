@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/vmihailenco/msgpack/v5"
+
 	. "github.com/tarantool/go-tarantool/v2"
 	"github.com/tarantool/go-tarantool/v2/test_helpers"
 	_ "github.com/tarantool/go-tarantool/v2/uuid"
@@ -32,7 +34,7 @@ type TupleUUID struct {
 	id uuid.UUID
 }
 
-func (t *TupleUUID) DecodeMsgpack(d *decoder) error {
+func (t *TupleUUID) DecodeMsgpack(d *msgpack.Decoder) error {
 	var err error
 	var l int
 	if l, err = d.DecodeArrayLen(); err != nil {

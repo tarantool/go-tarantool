@@ -13,6 +13,8 @@ import (
 	"log"
 	"time"
 
+	"github.com/vmihailenco/msgpack/v5"
+
 	"github.com/tarantool/go-tarantool/v2"
 	"github.com/tarantool/go-tarantool/v2/queue"
 )
@@ -21,7 +23,7 @@ type dummyData struct {
 	Dummy bool
 }
 
-func (c *dummyData) DecodeMsgpack(d *decoder) error {
+func (c *dummyData) DecodeMsgpack(d *msgpack.Decoder) error {
 	var err error
 	if c.Dummy, err = d.DecodeBool(); err != nil {
 		return err
@@ -29,7 +31,7 @@ func (c *dummyData) DecodeMsgpack(d *decoder) error {
 	return nil
 }
 
-func (c *dummyData) EncodeMsgpack(e *encoder) error {
+func (c *dummyData) EncodeMsgpack(e *msgpack.Encoder) error {
 	return e.EncodeBool(c.Dummy)
 }
 

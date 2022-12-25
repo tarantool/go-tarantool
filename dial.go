@@ -9,6 +9,8 @@ import (
 	"net"
 	"strings"
 	"time"
+
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 const (
@@ -350,7 +352,7 @@ func authenticate(c Conn, opts DialOpts, salt string) error {
 // writeRequest writes a request to the writer.
 func writeRequest(w writeFlusher, req Request) error {
 	var packet smallWBuf
-	err := pack(&packet, newEncoder(&packet), 0, req, ignoreStreamId, nil)
+	err := pack(&packet, msgpack.NewEncoder(&packet), 0, req, ignoreStreamId, nil)
 
 	if err != nil {
 		return fmt.Errorf("pack error: %w", err)
@@ -374,7 +376,7 @@ func readResponse(r io.Reader) (Response, error) {
 	}
 
 	resp := Response{buf: smallBuf{b: respBytes}}
-	err = resp.decodeHeader(newDecoder(&smallBuf{}))
+	err = resp.decodeHeader(msgpack.NewDecoder(&smallBuf{}))
 	if err != nil {
 		return resp, fmt.Errorf("decode response header error: %w", err)
 	}

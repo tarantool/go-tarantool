@@ -2,6 +2,8 @@ package tarantool
 
 import (
 	"context"
+
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 // BroadcastRequest helps to send broadcast messages. See:
@@ -37,8 +39,8 @@ func (req *BroadcastRequest) Code() int32 {
 	return req.call.Code()
 }
 
-// Body fills an encoder with the broadcast request body.
-func (req *BroadcastRequest) Body(res SchemaResolver, enc *encoder) error {
+// Body fills an msgpack.Encoder with the broadcast request body.
+func (req *BroadcastRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 	return req.call.Body(res, enc)
 }
 
@@ -70,12 +72,12 @@ func newWatchRequest(key string) *watchRequest {
 	return req
 }
 
-// Body fills an encoder with the watch request body.
-func (req *watchRequest) Body(res SchemaResolver, enc *encoder) error {
+// Body fills an msgpack.Encoder with the watch request body.
+func (req *watchRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 	if err := enc.EncodeMapLen(1); err != nil {
 		return err
 	}
-	if err := encodeUint(enc, KeyEvent); err != nil {
+	if err := enc.EncodeUint(KeyEvent); err != nil {
 		return err
 	}
 	return enc.EncodeString(req.key)
@@ -104,12 +106,12 @@ func newUnwatchRequest(key string) *unwatchRequest {
 	return req
 }
 
-// Body fills an encoder with the unwatch request body.
-func (req *unwatchRequest) Body(res SchemaResolver, enc *encoder) error {
+// Body fills an msgpack.Encoder with the unwatch request body.
+func (req *unwatchRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 	if err := enc.EncodeMapLen(1); err != nil {
 		return err
 	}
-	if err := encodeUint(enc, KeyEvent); err != nil {
+	if err := enc.EncodeUint(KeyEvent); err != nil {
 		return err
 	}
 	return enc.EncodeString(req.key)

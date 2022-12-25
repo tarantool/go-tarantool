@@ -3,6 +3,8 @@ package crud
 import (
 	"context"
 
+	"github.com/vmihailenco/msgpack/v5"
+
 	"github.com/tarantool/go-tarantool/v2"
 )
 
@@ -42,7 +44,7 @@ func (req LenRequest) Opts(opts LenOpts) LenRequest {
 }
 
 // Body fills an encoder with the call request body.
-func (req LenRequest) Body(res tarantool.SchemaResolver, enc *encoder) error {
+func (req LenRequest) Body(res tarantool.SchemaResolver, enc *msgpack.Encoder) error {
 	args := lenArgs{Space: req.space, Opts: req.opts}
 	req.impl = req.impl.Args(args)
 	return req.impl.Body(res, enc)

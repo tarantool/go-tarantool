@@ -3,6 +3,8 @@ package crud
 import (
 	"context"
 
+	"github.com/vmihailenco/msgpack/v5"
+
 	"github.com/tarantool/go-tarantool/v2"
 )
 
@@ -14,7 +16,7 @@ type StatusTable struct {
 }
 
 // DecodeMsgpack provides custom msgpack decoder.
-func (statusTable *StatusTable) DecodeMsgpack(d *decoder) error {
+func (statusTable *StatusTable) DecodeMsgpack(d *msgpack.Decoder) error {
 	l, err := d.DecodeMapLen()
 	if err != nil {
 		return err
@@ -54,7 +56,7 @@ type StorageInfoResult struct {
 }
 
 // DecodeMsgpack provides custom msgpack decoder.
-func (r *StorageInfoResult) DecodeMsgpack(d *decoder) error {
+func (r *StorageInfoResult) DecodeMsgpack(d *msgpack.Decoder) error {
 	_, err := d.DecodeArrayLen()
 	if err != nil {
 		return err
@@ -116,7 +118,7 @@ func (req StorageInfoRequest) Opts(opts StorageInfoOpts) StorageInfoRequest {
 }
 
 // Body fills an encoder with the call request body.
-func (req StorageInfoRequest) Body(res tarantool.SchemaResolver, enc *encoder) error {
+func (req StorageInfoRequest) Body(res tarantool.SchemaResolver, enc *msgpack.Encoder) error {
 	args := storageInfoArgs{Opts: req.opts}
 	req.impl = req.impl.Args(args)
 	return req.impl.Body(res, enc)

@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"github.com/vmihailenco/msgpack/v5"
+
 	. "github.com/tarantool/go-tarantool/v2"
 	"github.com/tarantool/go-tarantool/v2/test_helpers"
 )
@@ -217,7 +219,7 @@ type TupleBoxError struct {
 	val BoxError
 }
 
-func (t *TupleBoxError) EncodeMsgpack(e *encoder) error {
+func (t *TupleBoxError) EncodeMsgpack(e *msgpack.Encoder) error {
 	if err := e.EncodeArrayLen(2); err != nil {
 		return err
 	}
@@ -229,7 +231,7 @@ func (t *TupleBoxError) EncodeMsgpack(e *encoder) error {
 	return e.Encode(&t.val)
 }
 
-func (t *TupleBoxError) DecodeMsgpack(d *decoder) error {
+func (t *TupleBoxError) DecodeMsgpack(d *msgpack.Decoder) error {
 	var err error
 	var l int
 	if l, err = d.DecodeArrayLen(); err != nil {
@@ -278,11 +280,11 @@ var tupleCases = map[string]struct {
 func TestErrorTypeMPEncodeDecode(t *testing.T) {
 	for name, testcase := range tupleCases {
 		t.Run(name, func(t *testing.T) {
-			buf, err := marshal(&testcase.tuple)
+			buf, err := msgpack.Marshal(&testcase.tuple)
 			require.Nil(t, err)
 
 			var res TupleBoxError
-			err = unmarshal(buf, &res)
+			err = msgpack.Unmarshal(buf, &res)
 			require.Nil(t, err)
 
 			require.Equal(t, testcase.tuple, res)
@@ -302,9 +304,9 @@ func TestErrorTypeEval(t *testing.T) {
 			require.Nil(t, err)
 			require.NotNil(t, resp.Data)
 			require.Equal(t, len(resp.Data), 1)
-			actual, ok := toBoxError(resp.Data[0])
+			actual, ok := resp.Data[0].(*BoxError)
 			require.Truef(t, ok, "Response data has valid type")
-			require.Equal(t, testcase.tuple.val, actual)
+			require.Equal(t, testcase.tuple.val, *actual)
 		})
 	}
 }
@@ -440,14 +442,13 @@ func TestErrorTypeSelect(t *testing.T) {
 			tpl, ok := resp.Data[0].([]interface{})
 			require.Truef(t, ok, "Tuple has valid type")
 			require.Equal(t, testcase.tuple.pk, tpl[0])
-			var actual BoxError
-			actual, ok = toBoxError(tpl[1])
+			actual, ok := tpl[1].(*BoxError)
 			require.Truef(t, ok, "BoxError tuple field has valid type")
 			// In fact, CheckEqualBoxErrors does not check than File and Line
 			// of connector BoxError are equal to the Tarantool ones
 			// since they may differ between different Tarantool versions
 			// and editions.
-			test_helpers.CheckEqualBoxErrors(t, testcase.tuple.val, actual)
+			test_helpers.CheckEqualBoxErrors(t, testcase.tuple.val, *actual)
 		})
 	}
 }

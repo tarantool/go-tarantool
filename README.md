@@ -72,15 +72,7 @@ This allows us to introduce new features without losing backward compatibility.
    go_tarantool_call_17
    ```
    **Note:** In future releases, `Call17` may be used as default `Call` behavior.
-3. To replace usage of `msgpack.v2` with `msgpack.v5`, you can use the build
-   tag:
-   ```
-   go_tarantool_msgpack_v5
-   ```
-   **Note:** In future releases, `msgpack.v5` may be used by default. We recommend
-   to read [msgpack.v5 migration notes](#msgpackv5-migration) and try to
-   use msgpack.v5 before the changes.
-4. To run fuzz tests with decimals, you can use the build tag:
+3. To run fuzz tests with decimals, you can use the build tag:
    ```
    go_tarantool_decimal_fuzzing
    ```

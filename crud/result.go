@@ -3,6 +3,9 @@ package crud
 import (
 	"fmt"
 	"reflect"
+
+	"github.com/vmihailenco/msgpack/v5"
+	"github.com/vmihailenco/msgpack/v5/msgpcode"
 )
 
 // FieldFormat contains field definition: {name='...',type='...'[,is_nullable=...]}.
@@ -13,7 +16,7 @@ type FieldFormat struct {
 }
 
 // DecodeMsgpack provides custom msgpack decoder.
-func (format *FieldFormat) DecodeMsgpack(d *decoder) error {
+func (format *FieldFormat) DecodeMsgpack(d *msgpack.Decoder) error {
 	l, err := d.DecodeMapLen()
 	if err != nil {
 		return err
@@ -60,8 +63,13 @@ func MakeResult(rowType reflect.Type) Result {
 	}
 }
 
+func msgpackIsArray(code byte) bool {
+	return code == msgpcode.Array16 || code == msgpcode.Array32 ||
+		msgpcode.IsFixedArray(code)
+}
+
 // DecodeMsgpack provides custom msgpack decoder.
-func (r *Result) DecodeMsgpack(d *decoder) error {
+func (r *Result) DecodeMsgpack(d *msgpack.Decoder) error {
 	arrLen, err := d.DecodeArrayLen()
 	if err != nil {
 		return err
@@ -162,7 +170,7 @@ type NumberResult struct {
 }
 
 // DecodeMsgpack provides custom msgpack decoder.
-func (r *NumberResult) DecodeMsgpack(d *decoder) error {
+func (r *NumberResult) DecodeMsgpack(d *msgpack.Decoder) error {
 	arrLen, err := d.DecodeArrayLen()
 	if err != nil {
 		return err
@@ -201,7 +209,7 @@ type BoolResult struct {
 }
 
 // DecodeMsgpack provides custom msgpack decoder.
-func (r *BoolResult) DecodeMsgpack(d *decoder) error {
+func (r *BoolResult) DecodeMsgpack(d *msgpack.Decoder) error {
 	arrLen, err := d.DecodeArrayLen()
 	if err != nil {
 		return err

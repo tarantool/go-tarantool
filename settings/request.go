@@ -60,6 +60,8 @@ package settings
 import (
 	"context"
 
+	"github.com/vmihailenco/msgpack/v5"
+
 	"github.com/tarantool/go-tarantool/v2"
 )
 
@@ -89,7 +91,7 @@ func (req *SetRequest) Code() int32 {
 }
 
 // Body fills an encoder with set session settings request body.
-func (req *SetRequest) Body(res tarantool.SchemaResolver, enc *encoder) error {
+func (req *SetRequest) Body(res tarantool.SchemaResolver, enc *msgpack.Encoder) error {
 	return req.impl.Body(res, enc)
 }
 
@@ -129,7 +131,7 @@ func (req *GetRequest) Code() int32 {
 }
 
 // Body fills an encoder with get session settings request body.
-func (req *GetRequest) Body(res tarantool.SchemaResolver, enc *encoder) error {
+func (req *GetRequest) Body(res tarantool.SchemaResolver, enc *msgpack.Encoder) error {
 	return req.impl.Body(res, enc)
 }
 

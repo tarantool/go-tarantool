@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/vmihailenco/msgpack/v5"
+
 	"github.com/tarantool/go-tarantool/v2"
 )
 
@@ -371,7 +373,7 @@ type kickResult struct {
 	id uint64
 }
 
-func (r *kickResult) DecodeMsgpack(d *decoder) (err error) {
+func (r *kickResult) DecodeMsgpack(d *msgpack.Decoder) (err error) {
 	var l int
 	if l, err = d.DecodeArrayLen(); err != nil {
 		return err
@@ -453,7 +455,7 @@ type queueData struct {
 	result interface{}
 }
 
-func (qd *queueData) DecodeMsgpack(d *decoder) error {
+func (qd *queueData) DecodeMsgpack(d *msgpack.Decoder) error {
 	var err error
 	var l int
 	if l, err = d.DecodeArrayLen(); err != nil {
@@ -472,7 +474,7 @@ func (qd *queueData) DecodeMsgpack(d *decoder) error {
 	}
 
 	if qd.task.Data() == nil {
-		// It may happen if the decoder has a code.Nil value inside. As a
+		// It may happen if the msgpack.Decoder has a code.Nil value inside. As a
 		// result, the task will not be decoded.
 		qd.task = nil
 	}

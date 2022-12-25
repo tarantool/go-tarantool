@@ -3,6 +3,8 @@ package crud
 import (
 	"context"
 
+	"github.com/vmihailenco/msgpack/v5"
+
 	"github.com/tarantool/go-tarantool/v2"
 )
 
@@ -28,7 +30,7 @@ func (req StatsRequest) Space(space string) StatsRequest {
 }
 
 // Body fills an encoder with the call request body.
-func (req StatsRequest) Body(res tarantool.SchemaResolver, enc *encoder) error {
+func (req StatsRequest) Body(res tarantool.SchemaResolver, enc *msgpack.Encoder) error {
 	if value, ok := req.space.Get(); ok {
 		req.impl = req.impl.Args([]interface{}{value})
 	} else {

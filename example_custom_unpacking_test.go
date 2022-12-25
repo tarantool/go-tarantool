@@ -5,6 +5,8 @@ import (
 	"log"
 	"time"
 
+	"github.com/vmihailenco/msgpack/v5"
+
 	"github.com/tarantool/go-tarantool/v2"
 )
 
@@ -23,11 +25,11 @@ type Tuple3 struct {
 	Members []Member
 }
 
-func (c *Tuple2) EncodeMsgpack(e *encoder) error {
+func (c *Tuple2) EncodeMsgpack(e *msgpack.Encoder) error {
 	if err := e.EncodeArrayLen(3); err != nil {
 		return err
 	}
-	if err := encodeUint(e, uint64(c.Cid)); err != nil {
+	if err := e.EncodeUint(uint64(c.Cid)); err != nil {
 		return err
 	}
 	if err := e.EncodeString(c.Orig); err != nil {
@@ -37,7 +39,7 @@ func (c *Tuple2) EncodeMsgpack(e *encoder) error {
 	return nil
 }
 
-func (c *Tuple2) DecodeMsgpack(d *decoder) error {
+func (c *Tuple2) DecodeMsgpack(d *msgpack.Decoder) error {
 	var err error
 	var l int
 	if l, err = d.DecodeArrayLen(); err != nil {

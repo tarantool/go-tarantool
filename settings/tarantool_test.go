@@ -89,7 +89,7 @@ func TestErrorMarshalingEnabledSetting(t *testing.T) {
 	resp, err = conn.Eval("return box.error.new(box.error.UNKNOWN)", []interface{}{})
 	require.Nil(t, err)
 	require.NotNil(t, resp)
-	_, ok := toBoxError(resp.Data[0])
+	_, ok := resp.Data[0].(*tarantool.BoxError)
 	require.True(t, ok)
 }
 
