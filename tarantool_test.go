@@ -977,21 +977,19 @@ func TestClient(t *testing.T) {
 	}
 
 	// Upsert
-	if strings.Compare(conn.Greeting.Version, "Tarantool 1.6.7") >= 0 {
-		resp, err = conn.Upsert(spaceNo, []interface{}{uint(3), 1}, []interface{}{[]interface{}{"+", 1, 1}})
-		if err != nil {
-			t.Fatalf("Failed to Upsert (insert): %s", err.Error())
-		}
-		if resp == nil {
-			t.Errorf("Response is nil after Upsert (insert)")
-		}
-		resp, err = conn.Upsert(spaceNo, []interface{}{uint(3), 1}, []interface{}{[]interface{}{"+", 1, 1}})
-		if err != nil {
-			t.Fatalf("Failed to Upsert (update): %s", err.Error())
-		}
-		if resp == nil {
-			t.Errorf("Response is nil after Upsert (update)")
-		}
+	resp, err = conn.Upsert(spaceNo, []interface{}{uint(3), 1}, []interface{}{[]interface{}{"+", 1, 1}})
+	if err != nil {
+		t.Fatalf("Failed to Upsert (insert): %s", err.Error())
+	}
+	if resp == nil {
+		t.Errorf("Response is nil after Upsert (insert)")
+	}
+	resp, err = conn.Upsert(spaceNo, []interface{}{uint(3), 1}, []interface{}{[]interface{}{"+", 1, 1}})
+	if err != nil {
+		t.Fatalf("Failed to Upsert (update): %s", err.Error())
+	}
+	if resp == nil {
+		t.Errorf("Response is nil after Upsert (update)")
 	}
 
 	// Select
@@ -2009,21 +2007,19 @@ func TestClientNamed(t *testing.T) {
 	}
 
 	// Upsert
-	if strings.Compare(conn.Greeting.Version, "Tarantool 1.6.7") >= 0 {
-		resp, err = conn.Upsert(spaceName, []interface{}{uint(1003), 1}, []interface{}{[]interface{}{"+", 1, 1}})
-		if err != nil {
-			t.Fatalf("Failed to Upsert (insert): %s", err.Error())
-		}
-		if resp == nil {
-			t.Errorf("Response is nil after Upsert (insert)")
-		}
-		resp, err = conn.Upsert(spaceName, []interface{}{uint(1003), 1}, []interface{}{[]interface{}{"+", 1, 1}})
-		if err != nil {
-			t.Fatalf("Failed to Upsert (update): %s", err.Error())
-		}
-		if resp == nil {
-			t.Errorf("Response is nil after Upsert (update)")
-		}
+	resp, err = conn.Upsert(spaceName, []interface{}{uint(1003), 1}, []interface{}{[]interface{}{"+", 1, 1}})
+	if err != nil {
+		t.Fatalf("Failed to Upsert (insert): %s", err.Error())
+	}
+	if resp == nil {
+		t.Errorf("Response is nil after Upsert (insert)")
+	}
+	resp, err = conn.Upsert(spaceName, []interface{}{uint(1003), 1}, []interface{}{[]interface{}{"+", 1, 1}})
+	if err != nil {
+		t.Fatalf("Failed to Upsert (update): %s", err.Error())
+	}
+	if resp == nil {
+		t.Errorf("Response is nil after Upsert (update)")
 	}
 
 	// Select
