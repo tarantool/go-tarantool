@@ -12,7 +12,7 @@
 # Client in Go for Tarantool
 
 The package `go-tarantool` contains everything you need to connect to
-[Tarantool 1.6+][tarantool-site].
+[Tarantool 1.10+][tarantool-site].
 
 The advantage of integrating Go with Tarantool, which is an application server
 plus a DBMS, is that Go programmers can handle databases and perform on-the-fly
@@ -32,7 +32,7 @@ faster than other packages according to public benchmarks.
 
 ## Installation
 
-We assume that you have Tarantool version 1.6+ and a modern Linux or BSD
+We assume that you have Tarantool version 1.10+ and a modern Linux or BSD
 operating system.
 
 You need a current version of `go`, version 1.13 or later (use `go version` to
