@@ -6,9 +6,9 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/tarantool/go-tarantool"
-	"github.com/tarantool/go-tarantool/crud"
-	"github.com/tarantool/go-tarantool/test_helpers"
+	"github.com/tarantool/go-tarantool/v2"
+	"github.com/tarantool/go-tarantool/v2/crud"
+	"github.com/tarantool/go-tarantool/v2/test_helpers"
 )
 
 const invalidSpaceMsg = "invalid space"

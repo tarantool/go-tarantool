@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	. "github.com/tarantool/go-tarantool"
+	. "github.com/tarantool/go-tarantool/v2"
 )
 
 func TestOptsClonePreservesRequiredProtocolFeatures(t *testing.T) {

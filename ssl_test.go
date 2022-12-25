@@ -15,8 +15,8 @@ import (
 	"time"
 
 	"github.com/tarantool/go-openssl"
-	. "github.com/tarantool/go-tarantool"
-	"github.com/tarantool/go-tarantool/test_helpers"
+	. "github.com/tarantool/go-tarantool/v2"
+	"github.com/tarantool/go-tarantool/v2/test_helpers"
 )
 
 const sslHost = "127.0.0.1"

@@ -45,7 +45,7 @@ The package `go-tarantool` is located in [tarantool/go-tarantool][go-tarantool]
 repository. To download and install, say:
 
 ```
-$ go get github.com/tarantool/go-tarantool
+$ go get github.com/tarantool/go-tarantool/v2
 ```
 
 This should put the source and binary files in subdirectories of
@@ -112,7 +112,7 @@ package tarantool
 
 import (
 	"fmt"
-	"github.com/tarantool/go-tarantool"
+	"github.com/tarantool/go-tarantool/v2"
 )
 
 func main() {
@@ -129,7 +129,7 @@ func main() {
 }
 ```
 
-**Observation 1:** The line "`github.com/tarantool/go-tarantool`" in the
+**Observation 1:** The line "`github.com/tarantool/go-tarantool/v2`" in the
 `import(...)` section brings in all Tarantool-related functions and structures.
 
 **Observation 2:** The line starting with "`Opts :=`" sets up the options for

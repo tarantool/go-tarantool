@@ -3,7 +3,7 @@ package connection_pool
 import (
 	"sync"
 
-	"github.com/tarantool/go-tarantool"
+	"github.com/tarantool/go-tarantool/v2"
 )
 
 type RoundRobinStrategy struct {

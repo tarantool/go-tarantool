@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tarantool/go-tarantool"
-	"github.com/tarantool/go-tarantool/connection_pool"
-	"github.com/tarantool/go-tarantool/test_helpers"
+	"github.com/tarantool/go-tarantool/v2"
+	"github.com/tarantool/go-tarantool/v2/connection_pool"
+	"github.com/tarantool/go-tarantool/v2/test_helpers"
 )
 
 type Tuple struct {

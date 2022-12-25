@@ -3,9 +3,9 @@ package settings_test
 import (
 	"fmt"
 
-	"github.com/tarantool/go-tarantool"
-	"github.com/tarantool/go-tarantool/settings"
-	"github.com/tarantool/go-tarantool/test_helpers"
+	"github.com/tarantool/go-tarantool/v2"
+	"github.com/tarantool/go-tarantool/v2/settings"
+	"github.com/tarantool/go-tarantool/v2/test_helpers"
 )
 
 func example_connect(opts tarantool.Opts) *tarantool.Connection {

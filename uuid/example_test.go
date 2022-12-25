@@ -13,8 +13,8 @@ import (
 	"log"
 
 	"github.com/google/uuid"
-	"github.com/tarantool/go-tarantool"
-	_ "github.com/tarantool/go-tarantool/uuid"
+	"github.com/tarantool/go-tarantool/v2"
+	_ "github.com/tarantool/go-tarantool/v2/uuid"
 )
 
 // Example demonstrates how to use tuples with UUID. To enable UUID support

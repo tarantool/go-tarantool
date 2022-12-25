@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tarantool/go-tarantool"
+	"github.com/tarantool/go-tarantool/v2"
 )
 
 // ConnectorAdapter allows to use Pooler as Connector.

@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	. "github.com/tarantool/go-tarantool"
-	"github.com/tarantool/go-tarantool/test_helpers"
-	_ "github.com/tarantool/go-tarantool/uuid"
+	. "github.com/tarantool/go-tarantool/v2"
+	"github.com/tarantool/go-tarantool/v2/test_helpers"
+	_ "github.com/tarantool/go-tarantool/v2/uuid"
 )
 
 // There is no way to skip tests in testing.M,

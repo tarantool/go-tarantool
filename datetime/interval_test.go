@@ -5,8 +5,8 @@ import (
 	"reflect"
 	"testing"
 
-	. "github.com/tarantool/go-tarantool/datetime"
-	"github.com/tarantool/go-tarantool/test_helpers"
+	. "github.com/tarantool/go-tarantool/v2/datetime"
+	"github.com/tarantool/go-tarantool/v2/test_helpers"
 )
 
 func TestIntervalAdd(t *testing.T) {
