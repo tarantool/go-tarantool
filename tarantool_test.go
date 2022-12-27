@@ -3005,24 +3005,6 @@ func TestClientIdRequestObjectWithPassedCanceledContext(t *testing.T) {
 	require.Equal(t, err.Error(), "context is done")
 }
 
-func TestClientIdRequestObjectWithContext(t *testing.T) {
-	var err error
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
-
-	ctx, cancel := context.WithCancel(context.Background())
-	req := NewIdRequest(ProtocolInfo{
-		Version:  ProtocolVersion(1),
-		Features: []ProtocolFeature{StreamsFeature},
-	}).Context(ctx) //nolint
-	fut := conn.Do(req)
-	cancel()
-	resp, err := fut.Get()
-	require.Nilf(t, resp, "Response is empty")
-	require.NotNilf(t, err, "Error is not empty")
-	require.Equal(t, err.Error(), "context is done")
-}
-
 func TestConnectionProtocolInfoUnsupported(t *testing.T) {
 	test_helpers.SkipIfIdSupported(t)
 

@@ -2,6 +2,7 @@ package tarantool_test
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"testing"
 	"time"
@@ -29,6 +30,11 @@ const defaultTimeout = 0
 const validTimeout = 500 * time.Millisecond
 
 var validStmt *Prepared = &Prepared{StatementID: 1, Conn: &Connection{}}
+
+var validProtocolInfo ProtocolInfo = ProtocolInfo{
+	Version:  ProtocolVersion(3),
+	Features: []ProtocolFeature{StreamsFeature},
+}
 
 type ValidSchemeResolver struct {
 }
@@ -184,6 +190,7 @@ func TestRequestsCodes(t *testing.T) {
 		{req: NewBeginRequest(), code: BeginRequestCode},
 		{req: NewCommitRequest(), code: CommitRequestCode},
 		{req: NewRollbackRequest(), code: RollbackRequestCode},
+		{req: NewIdRequest(validProtocolInfo), code: IdRequestCode},
 		{req: NewBroadcastRequest(validKey), code: CallRequestCode},
 	}
 
@@ -216,12 +223,80 @@ func TestRequestsAsync(t *testing.T) {
 		{req: NewBeginRequest(), async: false},
 		{req: NewCommitRequest(), async: false},
 		{req: NewRollbackRequest(), async: false},
+		{req: NewIdRequest(validProtocolInfo), async: false},
 		{req: NewBroadcastRequest(validKey), async: false},
 	}
 
 	for _, test := range tests {
 		if async := test.req.Async(); async != test.async {
 			t.Errorf("An invalid async %t, expected %t", async, test.async)
+		}
+	}
+}
+
+func TestRequestsCtx_default(t *testing.T) {
+	tests := []struct {
+		req      Request
+		expected context.Context
+	}{
+		{req: NewSelectRequest(validSpace), expected: nil},
+		{req: NewUpdateRequest(validSpace), expected: nil},
+		{req: NewUpsertRequest(validSpace), expected: nil},
+		{req: NewInsertRequest(validSpace), expected: nil},
+		{req: NewReplaceRequest(validSpace), expected: nil},
+		{req: NewDeleteRequest(validSpace), expected: nil},
+		{req: NewCall16Request(validExpr), expected: nil},
+		{req: NewCall17Request(validExpr), expected: nil},
+		{req: NewEvalRequest(validExpr), expected: nil},
+		{req: NewExecuteRequest(validExpr), expected: nil},
+		{req: NewPingRequest(), expected: nil},
+		{req: NewPrepareRequest(validExpr), expected: nil},
+		{req: NewUnprepareRequest(validStmt), expected: nil},
+		{req: NewExecutePreparedRequest(validStmt), expected: nil},
+		{req: NewBeginRequest(), expected: nil},
+		{req: NewCommitRequest(), expected: nil},
+		{req: NewRollbackRequest(), expected: nil},
+		{req: NewIdRequest(validProtocolInfo), expected: nil},
+		{req: NewBroadcastRequest(validKey), expected: nil},
+	}
+
+	for _, test := range tests {
+		if ctx := test.req.Ctx(); ctx != test.expected {
+			t.Errorf("An invalid ctx %t, expected %t", ctx, test.expected)
+		}
+	}
+}
+
+func TestRequestsCtx_setter(t *testing.T) {
+	ctx := context.Background()
+	tests := []struct {
+		req      Request
+		expected context.Context
+	}{
+		{req: NewSelectRequest(validSpace).Context(ctx), expected: ctx},
+		{req: NewUpdateRequest(validSpace).Context(ctx), expected: ctx},
+		{req: NewUpsertRequest(validSpace).Context(ctx), expected: ctx},
+		{req: NewInsertRequest(validSpace).Context(ctx), expected: ctx},
+		{req: NewReplaceRequest(validSpace).Context(ctx), expected: ctx},
+		{req: NewDeleteRequest(validSpace).Context(ctx), expected: ctx},
+		{req: NewCall16Request(validExpr).Context(ctx), expected: ctx},
+		{req: NewCall17Request(validExpr).Context(ctx), expected: ctx},
+		{req: NewEvalRequest(validExpr).Context(ctx), expected: ctx},
+		{req: NewExecuteRequest(validExpr).Context(ctx), expected: ctx},
+		{req: NewPingRequest().Context(ctx), expected: ctx},
+		{req: NewPrepareRequest(validExpr).Context(ctx), expected: ctx},
+		{req: NewUnprepareRequest(validStmt).Context(ctx), expected: ctx},
+		{req: NewExecutePreparedRequest(validStmt).Context(ctx), expected: ctx},
+		{req: NewBeginRequest().Context(ctx), expected: ctx},
+		{req: NewCommitRequest().Context(ctx), expected: ctx},
+		{req: NewRollbackRequest().Context(ctx), expected: ctx},
+		{req: NewIdRequest(validProtocolInfo).Context(ctx), expected: ctx},
+		{req: NewBroadcastRequest(validKey).Context(ctx), expected: ctx},
+	}
+
+	for _, test := range tests {
+		if ctx := test.req.Ctx(); ctx != test.expected {
+			t.Errorf("An invalid ctx %t, expected %t", ctx, test.expected)
 		}
 	}
 }
