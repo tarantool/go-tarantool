@@ -37,7 +37,8 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v2
+        uses: golangci/golangci-lint-action@v3
+        continue-on-error: true
         with:
           # The suppression of the rule `errcheck` may be removed after adding
           # errors check in all methods calling EncodeXxx inside.
@@ -47,7 +48,16 @@ jobs:
           # The `//nolint` workaround was not the acceptable way of warnings suppression,
           # cause those comments get rendered in documentation by godoc.
           # See https://github.com/tarantool/go-tarantool/pull/160#discussion_r858608221
+          #
+          # The first run is for GitHub Actions error format.
           args: -E goimports -D errcheck
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          # The second run is for human-readable error format with a file name
+          # and a line number.
+          args: --out-${NO_FUTURE}format colored-line-number -E goimports -D errcheck
 
   codespell:
     runs-on: ubuntu-latest
