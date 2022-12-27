@@ -2397,15 +2397,57 @@ func TestClientRequestObjectsWithPassedCanceledContext(t *testing.T) {
 	}
 }
 
+// waitCtxRequest waits for the WaitGroup in Body() call and returns
+// the context from Ctx() call. The request helps us to make sure that
+// the context's cancel() call is called before a response received.
+type waitCtxRequest struct {
+	ctx context.Context
+	wg  sync.WaitGroup
+}
+
+func (req *waitCtxRequest) Code() int32 {
+	return NewPingRequest().Code()
+}
+
+func (req *waitCtxRequest) Body(res SchemaResolver, enc *encoder) error {
+	req.wg.Wait()
+	return NewPingRequest().Body(res, enc)
+}
+
+func (req *waitCtxRequest) Ctx() context.Context {
+	return req.ctx
+}
+
+func (req *waitCtxRequest) Async() bool {
+	return NewPingRequest().Async()
+}
+
 func TestClientRequestObjectsWithContext(t *testing.T) {
 	var err error
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
 	ctx, cancel := context.WithCancel(context.Background())
-	req := NewPingRequest().Context(ctx)
-	fut := conn.Do(req)
+	req := &waitCtxRequest{ctx: ctx}
+	req.wg.Add(1)
+
+	var futWg sync.WaitGroup
+	var fut *Future
+
+	futWg.Add(1)
+	go func() {
+		defer futWg.Done()
+		fut = conn.Do(req)
+	}()
+
 	cancel()
+	req.wg.Done()
+
+	futWg.Wait()
+	if fut == nil {
+		t.Fatalf("fut must be not nil")
+	}
+
 	resp, err := fut.Get()
 	if resp != nil {
 		t.Fatalf("response must be nil")
