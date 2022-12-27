@@ -1062,22 +1062,18 @@ func (conn *Connection) newFuture(ctx context.Context) (fut *Future) {
 }
 
 // This method removes a future from the internal queue if the context
-// is "done" before the response is come. Such select logic is inspired
-// from this thread: https://groups.google.com/g/golang-dev/c/jX4oQEls3uk
+// is "done" before the response is come.
 func (conn *Connection) contextWatchdog(fut *Future, ctx context.Context) {
 	select {
 	case <-fut.done:
+	case <-ctx.Done():
+	}
+
+	select {
+	case <-fut.done:
+		return
 	default:
-		select {
-		case <-ctx.Done():
-			conn.cancelFuture(fut, fmt.Errorf("context is done"))
-		default:
-			select {
-			case <-fut.done:
-			case <-ctx.Done():
-				conn.cancelFuture(fut, fmt.Errorf("context is done"))
-			}
-		}
+		conn.cancelFuture(fut, fmt.Errorf("context is done"))
 	}
 }
 
@@ -1093,11 +1089,9 @@ func (conn *Connection) send(req Request, streamId uint64) *Future {
 			return fut
 		default:
 		}
-	}
-	conn.putFuture(fut, req, streamId)
-	if req.Ctx() != nil {
 		go conn.contextWatchdog(fut, req.Ctx())
 	}
+	conn.putFuture(fut, req, streamId)
 	return fut
 }
 
@@ -1308,15 +1302,6 @@ func (conn *Connection) Do(req Request) *Future {
 			fut := NewFuture()
 			fut.SetError(fmt.Errorf("the passed connected request doesn't belong to the current connection or connection pool"))
 			return fut
-		}
-	}
-	if req.Ctx() != nil {
-		select {
-		case <-req.Ctx().Done():
-			fut := NewFuture()
-			fut.SetError(fmt.Errorf("context is done"))
-			return fut
-		default:
 		}
 	}
 	return conn.send(req, ignoreStreamId)
