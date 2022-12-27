@@ -31,6 +31,8 @@ var connOptsMulti = OptsMulti{
 	ClusterDiscoveryTime: 3 * time.Second,
 }
 
+var instances []test_helpers.TarantoolInstance
+
 func TestConnError_IncorrectParams(t *testing.T) {
 	multiConn, err := Connect([]string{}, tarantool.Opts{})
 	if err == nil {
@@ -118,36 +120,41 @@ func TestReconnect(t *testing.T) {
 }
 
 func TestDisconnectAll(t *testing.T) {
-	multiConn, _ := Connect([]string{server1, server2}, connOpts)
+	sleep := 100 * time.Millisecond
+	sleepCnt := int((time.Second / sleep) * 2) // Checkout time * 2.
+
+	servers := []string{server1, server2}
+	multiConn, _ := Connect(servers, connOpts)
 	if multiConn == nil {
 		t.Errorf("conn is nil after Connect")
 		return
 	}
-	timer := time.NewTimer(300 * time.Millisecond)
-	<-timer.C
-	defer multiConn.Close()
 
-	conn, _ := multiConn.getConnectionFromPool(server1)
-	conn.Close()
-	conn, _ = multiConn.getConnectionFromPool(server2)
-	conn.Close()
+	for _, inst := range instances {
+		test_helpers.StopTarantoolWithCleanup(inst)
+	}
+
+	for i := 0; i < sleepCnt && multiConn.ConnectedNow(); i++ {
+		time.Sleep(sleep)
+	}
 
 	if multiConn.ConnectedNow() {
 		t.Errorf("incorrect status after desconnect all")
 	}
 
-	timer = time.NewTimer(100 * time.Millisecond)
-	<-timer.C
+	for _, inst := range instances {
+		err := test_helpers.RestartTarantool(&inst)
+		if err != nil {
+			t.Fatalf("failed to restart Tarantool: %s", err)
+		}
+	}
+
+	for i := 0; i < sleepCnt && !multiConn.ConnectedNow(); i++ {
+		time.Sleep(sleep)
+	}
+
 	if !multiConn.ConnectedNow() {
 		t.Errorf("incorrect multiConn status after reconnecting")
-	}
-	conn, _ = multiConn.getConnectionFromPool(server1)
-	if !conn.ConnectedNow() {
-		t.Errorf("incorrect server1 conn status after reconnecting")
-	}
-	conn, _ = multiConn.getConnectionFromPool(server2)
-	if !conn.ConnectedNow() {
-		t.Errorf("incorrect server2 conn status after reconnecting")
 	}
 }
 
@@ -589,9 +596,9 @@ func runTestMain(m *testing.M) int {
 		log.Fatalf("Could not check the Tarantool version")
 	}
 
-	inst1, err := test_helpers.StartTarantool(test_helpers.StartOpts{
+	servers := []string{server1, server2}
+	instances, err = test_helpers.StartTarantoolInstances(servers, nil, test_helpers.StartOpts{
 		InitScript:         initScript,
-		Listen:             server1,
 		User:               connOpts.User,
 		Pass:               connOpts.Pass,
 		WaitStart:          waitStart,
@@ -599,26 +606,13 @@ func runTestMain(m *testing.M) int {
 		RetryTimeout:       retryTimeout,
 		MemtxUseMvccEngine: !isStreamUnsupported,
 	})
-	defer test_helpers.StopTarantoolWithCleanup(inst1)
 
 	if err != nil {
 		log.Fatalf("Failed to prepare test tarantool: %s", err)
+		return -1
 	}
 
-	inst2, err := test_helpers.StartTarantool(test_helpers.StartOpts{
-		InitScript:   initScript,
-		Listen:       server2,
-		User:         connOpts.User,
-		Pass:         connOpts.Pass,
-		WaitStart:    waitStart,
-		ConnectRetry: connectRetry,
-		RetryTimeout: retryTimeout,
-	})
-	defer test_helpers.StopTarantoolWithCleanup(inst2)
-
-	if err != nil {
-		log.Fatalf("Failed to prepare test tarantool: %s", err)
-	}
+	defer test_helpers.StopTarantoolInstances(instances)
 
 	return m.Run()
 }

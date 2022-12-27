@@ -25,6 +25,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
   package-level variable decimalPrecision (#233)
 - Flaky tests TestClientRequestObjectsWithContext and
   TestClientIdRequestObjectWithContext (#244)
+- Flaky test multi/TestDisconnectAll (#234)
 
 ## [1.9.0] - 2022-11-02
 
