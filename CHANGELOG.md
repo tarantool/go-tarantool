@@ -10,22 +10,29 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [1.10.0] - 2022-12-31
+
+The release improves compatibility with new Tarantool versions.
+
+### Added
+
 - Support iproto feature discovery (#120)
 - Support errors extended information (#209)
-- Error type support in MessagePack (#209)
-- Event subscription support (#119)
-- Session settings support (#215)
-- pap-sha256 authorization method support (Tarantool EE feature) (#243)
+- Support error type in MessagePack (#209)
+- Support event subscription (#119)
+- Support session settings (#215)
+- Support pap-sha256 authorization method (Tarantool EE feature) (#243)
 - Support graceful shutdown (#214)
-
-### Changed
 
 ### Fixed
 
 - Decimal package uses a test variable DecimalPrecision instead of a
   package-level variable decimalPrecision (#233)
-- Flaky tests TestClientRequestObjectsWithContext and
-  TestClientIdRequestObjectWithContext (#244)
+- Flaky test TestClientRequestObjectsWithContext (#244)
 - Flaky test multi/TestDisconnectAll (#234)
 
 ## [1.9.0] - 2022-11-02
