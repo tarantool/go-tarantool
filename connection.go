@@ -1368,6 +1368,9 @@ func (conn *Connection) OverrideSchema(s *Schema) {
 	if s != nil {
 		conn.mutex.Lock()
 		defer conn.mutex.Unlock()
+		conn.lockShards()
+		defer conn.unlockShards()
+
 		conn.Schema = s
 	}
 }
