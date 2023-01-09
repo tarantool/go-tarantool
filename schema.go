@@ -329,7 +329,10 @@ func (conn *Connection) loadSchema() (err error) {
 		schema.SpacesById[index.SpaceId].Indexes[index.Name] = index
 	}
 
+	conn.lockShards()
 	conn.Schema = schema
+	conn.unlockShards()
+
 	return nil
 }
 
