@@ -702,7 +702,7 @@ func pack(h *smallWBuf, enc *encoder, reqid uint32,
 
 func (conn *Connection) writeRequest(w *bufio.Writer, req Request) error {
 	var packet smallWBuf
-	err := pack(&packet, newEncoder(&packet), 0, req, ignoreStreamId, conn.Schema)
+	err := pack(&packet, newEncoder(&packet), 0, req, ignoreStreamId, nil)
 
 	if err != nil {
 		return fmt.Errorf("pack error: %w", err)
