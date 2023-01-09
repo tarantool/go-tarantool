@@ -33,7 +33,7 @@ func (c *watcherContainer) remove(watcher *poolWatcher) bool {
 	if watcher == c.head {
 		c.head = watcher.next
 		return true
-	} else {
+	} else if c.head != nil {
 		cur := c.head
 		for cur.next != nil {
 			if cur.next == watcher {
@@ -85,7 +85,11 @@ type poolWatcher struct {
 
 // Unregister unregisters the pool watcher.
 func (w *poolWatcher) Unregister() {
-	if !w.unregistered && w.container.remove(w) {
+	w.mutex.Lock()
+	unregistered := w.unregistered
+	w.mutex.Unlock()
+
+	if !unregistered && w.container.remove(w) {
 		w.mutex.Lock()
 		w.unregistered = true
 		for _, watcher := range w.watchers {
