@@ -50,6 +50,12 @@ test:
 testdata:
 	(cd ./testdata; ./generate.sh)
 
+.PHONY: testrace
+testrace:
+	@echo "Running all packages tests with data race detector"
+	go clean -testcache
+	go test -race -tags "$(TAGS)" ./... -v -p 1
+
 .PHONY: test-connection-pool
 test-connection-pool:
 	@echo "Running tests in connection_pool package"
