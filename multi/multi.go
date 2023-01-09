@@ -263,7 +263,7 @@ func (connMulti *ConnectionMulti) Close() (err error) {
 	defer connMulti.mutex.Unlock()
 
 	close(connMulti.control)
-	connMulti.state = connClosed
+	atomic.StoreUint32(&connMulti.state, connClosed)
 
 	for _, conn := range connMulti.pool {
 		if err == nil {
