@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -235,9 +236,8 @@ func TestClose(t *testing.T) {
 }
 
 type testHandler struct {
-	discovered, deactivated int
+	discovered, deactivated uint32
 	errs                    []error
-	mutex                   sync.Mutex
 }
 
 func (h *testHandler) addErr(err error) {
@@ -246,10 +246,7 @@ func (h *testHandler) addErr(err error) {
 
 func (h *testHandler) Discovered(conn *tarantool.Connection,
 	role connection_pool.Role) error {
-	h.mutex.Lock()
-	defer h.mutex.Unlock()
-
-	h.discovered++
+	discovered := atomic.AddUint32(&h.discovered, 1)
 
 	if conn == nil {
 		h.addErr(fmt.Errorf("discovered conn == nil"))
@@ -260,14 +257,14 @@ func (h *testHandler) Discovered(conn *tarantool.Connection,
 	// discovered >= 3 - update a connection after a role update
 	addr := conn.Addr()
 	if addr == servers[0] {
-		if h.discovered < 3 && role != connection_pool.MasterRole {
+		if discovered < 3 && role != connection_pool.MasterRole {
 			h.addErr(fmt.Errorf("unexpected init role %d for addr %s", role, addr))
 		}
-		if h.discovered >= 3 && role != connection_pool.ReplicaRole {
+		if discovered >= 3 && role != connection_pool.ReplicaRole {
 			h.addErr(fmt.Errorf("unexpected updated role %d for addr %s", role, addr))
 		}
 	} else if addr == servers[1] {
-		if h.discovered >= 3 {
+		if discovered >= 3 {
 			h.addErr(fmt.Errorf("unexpected discovery for addr %s", addr))
 		}
 		if role != connection_pool.ReplicaRole {
@@ -282,10 +279,7 @@ func (h *testHandler) Discovered(conn *tarantool.Connection,
 
 func (h *testHandler) Deactivated(conn *tarantool.Connection,
 	role connection_pool.Role) error {
-	h.mutex.Lock()
-	defer h.mutex.Unlock()
-
-	h.deactivated++
+	deactivated := atomic.AddUint32(&h.deactivated, 1)
 
 	if conn == nil {
 		h.addErr(fmt.Errorf("removed conn == nil"))
@@ -293,7 +287,7 @@ func (h *testHandler) Deactivated(conn *tarantool.Connection,
 	}
 
 	addr := conn.Addr()
-	if h.deactivated == 1 && addr == servers[0] {
+	if deactivated == 1 && addr == servers[0] {
 		// A first close is a role update.
 		if role != connection_pool.MasterRole {
 			h.addErr(fmt.Errorf("unexpected removed role %d for addr %s", role, addr))
@@ -337,19 +331,24 @@ func TestConnectionHandlerOpenUpdateClose(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		// Wait for read_only update, it should report about close connection
 		// with old role.
-		if h.discovered >= 3 {
+		if atomic.LoadUint32(&h.discovered) >= 3 {
 			break
 		}
 		time.Sleep(poolOpts.CheckTimeout)
 	}
-	require.Equalf(t, h.deactivated, 1, "updated not reported as deactivated")
-	require.Equalf(t, h.discovered, 3, "updated not reported as discovered")
+
+	discovered := atomic.LoadUint32(&h.discovered)
+	deactivated := atomic.LoadUint32(&h.deactivated)
+	require.Equalf(t, uint32(3), discovered,
+		"updated not reported as discovered")
+	require.Equalf(t, uint32(1), deactivated,
+		"updated not reported as deactivated")
 
 	pool.Close()
 
 	for i := 0; i < 100; i++ {
 		// Wait for close of all connections.
-		if h.deactivated >= 3 {
+		if atomic.LoadUint32(&h.deactivated) >= 3 {
 			break
 		}
 		time.Sleep(poolOpts.CheckTimeout)
@@ -361,8 +360,13 @@ func TestConnectionHandlerOpenUpdateClose(t *testing.T) {
 	connected, err := pool.ConnectedNow(connection_pool.ANY)
 	require.Nilf(t, err, "failed to get connected state")
 	require.Falsef(t, connected, "connection pool still be connected")
-	require.Equalf(t, len(poolServers)+1, h.discovered, "unexpected discovered count")
-	require.Equalf(t, len(poolServers)+1, h.deactivated, "unexpected deactivated count")
+
+	discovered = atomic.LoadUint32(&h.discovered)
+	deactivated = atomic.LoadUint32(&h.deactivated)
+	require.Equalf(t, uint32(len(poolServers)+1), discovered,
+		"unexpected discovered count")
+	require.Equalf(t, uint32(len(poolServers)+1), deactivated,
+		"unexpected deactivated count")
 }
 
 type testAddErrorHandler struct {
