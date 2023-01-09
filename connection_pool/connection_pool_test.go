@@ -403,18 +403,14 @@ func TestConnectionHandlerOpenError(t *testing.T) {
 }
 
 type testUpdateErrorHandler struct {
-	discovered, deactivated int
-	mutex                   sync.Mutex
+	discovered, deactivated uint32
 }
 
 func (h *testUpdateErrorHandler) Discovered(conn *tarantool.Connection,
 	role connection_pool.Role) error {
-	h.mutex.Lock()
-	defer h.mutex.Unlock()
+	atomic.AddUint32(&h.discovered, 1)
 
-	h.discovered++
-
-	if h.deactivated != 0 {
+	if atomic.LoadUint32(&h.deactivated) != 0 {
 		// Don't add a connection into a pool again after it was deleted.
 		return fmt.Errorf("any error")
 	}
@@ -423,10 +419,7 @@ func (h *testUpdateErrorHandler) Discovered(conn *tarantool.Connection,
 
 func (h *testUpdateErrorHandler) Deactivated(conn *tarantool.Connection,
 	role connection_pool.Role) error {
-	h.mutex.Lock()
-	defer h.mutex.Unlock()
-
-	h.deactivated++
+	atomic.AddUint32(&h.deactivated, 1)
 	return nil
 }
 
@@ -477,7 +470,9 @@ func TestConnectionHandlerUpdateError(t *testing.T) {
 
 	require.Nilf(t, err, "failed to get ConnectedNow()")
 	require.Falsef(t, connected, "should be deactivated")
-	require.GreaterOrEqualf(t, h.discovered, h.deactivated, "discovered < deactivated")
+	discovered := atomic.LoadUint32(&h.discovered)
+	deactivated := atomic.LoadUint32(&h.deactivated)
+	require.GreaterOrEqualf(t, discovered, deactivated, "discovered < deactivated")
 	require.Nilf(t, err, "failed to get ConnectedNow()")
 }
 
