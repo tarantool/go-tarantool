@@ -26,12 +26,18 @@ To run tests for the main package and each subpackage:
 make test
 ```
 
+To run tests for the main package and each subpackage with race detector:
+```bash
+make testrace
+```
+
 The tests set up all required `tarantool` processes before run and clean up
 afterwards.
 
 If you want to run the tests with specific build tags:
 ```bash
 make test TAGS=go_tarantool_ssl_disable,go_tarantool_msgpack_v5
+make testrace TAGS=go_tarantool_ssl_disable,go_tarantool_msgpack_v5
 ```
 
 If you have Tarantool Enterprise Edition 2.10 or newer, you can run additional
@@ -39,6 +45,7 @@ SSL tests. To do this, you need to set an environment variable 'TEST_TNT_SSL':
 
 ```bash
 TEST_TNT_SSL=true make test
+TEST_TNT_SSL=true make testrace
 ```
 
 If you want to run the tests for a specific package:
