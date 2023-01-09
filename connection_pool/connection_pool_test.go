@@ -2164,7 +2164,11 @@ func TestConnectionPool_NewWatcher_update(t *testing.T) {
 	err := test_helpers.SetClusterRO(servers, opts, roles)
 	require.Nilf(t, err, "fail to set roles for cluster")
 
-	pool, err := connection_pool.Connect(servers, opts)
+	poolOpts := connection_pool.OptsPool{
+		CheckTimeout: 500 * time.Millisecond,
+	}
+	pool, err := connection_pool.ConnectWithOpts(servers, opts, poolOpts)
+
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, pool, "conn is nil after Connect")
 	defer pool.Close()
@@ -2192,7 +2196,7 @@ func TestConnectionPool_NewWatcher_update(t *testing.T) {
 			} else {
 				testMap[addr] = 1
 			}
-		case <-time.After(time.Second):
+		case <-time.After(poolOpts.CheckTimeout * 2):
 			t.Errorf("Failed to get a watch init event.")
 			break
 		}
