@@ -1033,7 +1033,7 @@ func (conn *Connection) newFuture(ctx context.Context) (fut *Future) {
 	shardn := fut.requestId & (conn.opts.Concurrency - 1)
 	shard := &conn.shard[shardn]
 	shard.rmut.Lock()
-	switch conn.state {
+	switch atomic.LoadUint32(&conn.state) {
 	case connClosed:
 		fut.err = ClientError{
 			ErrConnectionClosed,
@@ -1733,9 +1733,10 @@ func (conn *Connection) shutdown() {
 	conn.mutex.Lock()
 	defer conn.mutex.Unlock()
 
-	if !atomic.CompareAndSwapUint32(&(conn.state), connConnected, connShutdown) {
+	if !atomic.CompareAndSwapUint32(&conn.state, connConnected, connShutdown) {
 		return
 	}
+
 	conn.cond.Broadcast()
 	conn.notify(Shutdown)
 
