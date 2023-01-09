@@ -212,7 +212,9 @@ func (connMulti *ConnectionMulti) checker() {
 						connMulti.deleteConnectionFromPool(v)
 					}
 				}
+				connMulti.mutex.Lock()
 				connMulti.addrs = addrs
+				connMulti.mutex.Unlock()
 			}
 		case <-timer.C:
 			for _, addr := range connMulti.addrs {

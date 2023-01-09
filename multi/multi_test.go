@@ -200,13 +200,18 @@ func TestRefresh(t *testing.T) {
 		t.Errorf("conn is nil after Connect")
 		return
 	}
+
+	multiConn.mutex.RLock()
 	curAddr := multiConn.addrs[0]
+	multiConn.mutex.RUnlock()
 
 	// Wait for refresh timer.
 	// Scenario 1 nodeload, 1 refresh, 1 nodeload.
 	time.Sleep(10 * time.Second)
 
+	multiConn.mutex.RLock()
 	newAddr := multiConn.addrs[0]
+	multiConn.mutex.RUnlock()
 
 	if curAddr == newAddr {
 		t.Errorf("Expect address refresh")
