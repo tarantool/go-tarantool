@@ -302,7 +302,7 @@ func (indexField *IndexField) DecodeMsgpack(d *decoder) error {
 	return errors.New("unexpected schema format (index fields)")
 }
 
-func (conn *Connection) loadSchema() (err error) {
+func (conn *Connection) LoadSchema() (err error) {
 	schema := new(Schema)
 	schema.SpacesById = make(map[uint32]*Space)
 	schema.Spaces = make(map[string]*Space)

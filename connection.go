@@ -436,7 +436,7 @@ func Connect(addr string, opts Opts) (conn *Connection, err error) {
 
 	// TODO: reload schema after reconnect.
 	if !conn.opts.SkipSchema {
-		if err = conn.loadSchema(); err != nil {
+		if err = conn.LoadSchema(); err != nil {
 			conn.mutex.Lock()
 			defer conn.mutex.Unlock()
 			conn.closeConnection(err, true)
