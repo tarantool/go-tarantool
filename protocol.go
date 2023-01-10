@@ -41,7 +41,7 @@ const (
 	// (supported by connector).
 	TransactionsFeature ProtocolFeature = 1
 	// ErrorExtensionFeature represents support of MP_ERROR objects over MessagePack
-	// (unsupported by connector).
+	// (supported by connector).
 	ErrorExtensionFeature ProtocolFeature = 2
 	// WatchersFeature represents support of watchers
 	// (supported by connector).
