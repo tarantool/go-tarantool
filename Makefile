@@ -21,12 +21,13 @@ endif
 
 .PHONY: clean
 clean:
-	( cd ./queue; rm -rf .rocks )
+	( rm -rf queue/testdata/.rocks crud/testdata/.rocks )
 	rm -f $(COVERAGE_FILE)
 
 .PHONY: deps
 deps: clean
 	( cd ./queue/testdata; $(TTCTL) rocks install queue 1.2.1 )
+	( cd ./crud/testdata; $(TTCTL) rocks install crud 1.0.0 )
 
 .PHONY: datetime-timezones
 datetime-timezones:
@@ -98,6 +99,13 @@ test-settings:
 	@echo "Running tests in settings package"
 	go clean -testcache
 	go test -tags "$(TAGS)" ./settings/ -v -p 1
+
+.PHONY: test-crud
+test-crud:
+	@echo "Running tests in crud package"
+	cd ./crud/testdata && tarantool -e "require('crud')"
+	go clean -testcache
+	go test -tags "$(TAGS)" ./crud/ -v -p 1
 
 .PHONY: test-main
 test-main:
