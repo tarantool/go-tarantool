@@ -50,17 +50,43 @@ jobs:
       - name: Clone the connector
         uses: actions/checkout@v2
 
+      - name: Setup tt
+        run: |
+          curl -L https://tarantool.io/release/2/installer.sh | sudo bash
+          sudo apt install -y tt
+
       - name: Setup Tarantool ${{ matrix.tarantool }}
         if: matrix.tarantool != '2.x-latest'
         uses: tarantool/setup-tarantool@v2
         with:
           tarantool-version: ${{ matrix.tarantool }}
 
-      - name: Setup Tarantool 2.x (latest)
+      - name: Get Tarantool 2.x latest commit
         if: matrix.tarantool == '2.x-latest'
         run: |
-          curl -L https://tarantool.io/pre-release/2/installer.sh | sudo bash
-          sudo apt install -y tarantool tarantool-dev
+          commit_hash=$(git ls-remote https://github.com/tarantool/tarantool.git --branch master | head -c 8)
+          echo "LATEST_COMMIT=${commit_hash}" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Cache Tarantool 2.x latest
+        if: matrix.tarantool == '2.x-latest'
+        id: cache-latest
+        uses: actions/cache@v3
+        with:
+          path: "/opt/tarantool"
+          key: cache-latest-${{ env.LATEST_COMMIT }}
+
+      - name: Setup Tarantool 2.x latest
+        if: matrix.tarantool == '2.x-latest' && steps.cache-latest.outputs.cache-hit != 'true'
+        run: |
+          # mkdir could be removed after:
+          # https://github.com/tarantool/tt/issues/282
+          sudo mkdir -p /opt/tarantool
+          sudo tt install tarantool=master
+
+      - name: Add Tarantool 2.x latest to PATH
+        if: matrix.tarantool == '2.x-latest'
+        run: echo "/opt/tarantool/bin" >> $GITHUB_PATH
 
       - name: Setup golang for the connector and tests
         uses: actions/setup-go@v2

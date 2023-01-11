@@ -14,6 +14,10 @@ BENCH_OPTIONS := -bench=. -run=^Benchmark -benchmem -benchtime=${DURATION} -coun
 GO_TARANTOOL_URL := https://github.com/tarantool/go-tarantool
 GO_TARANTOOL_DIR := ${PROJECT_DIR}/${BENCH_PATH}/go-tarantool
 TAGS :=
+TTCTL := tt
+ifeq (,$(shell which tt 2>/dev/null))
+	TTCTL := tarantoolctl
+endif
 
 .PHONY: clean
 clean:
@@ -22,7 +26,7 @@ clean:
 
 .PHONY: deps
 deps: clean
-	( cd ./queue/testdata; tarantoolctl rocks install queue 1.2.1 )
+	( cd ./queue/testdata; $(TTCTL) rocks install queue 1.2.1 )
 
 .PHONY: datetime-timezones
 datetime-timezones:
