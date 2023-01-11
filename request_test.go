@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	. "github.com/tarantool/go-tarantool"
+	"github.com/tarantool/go-tarantool/test_helpers"
 )
 
 const invalidSpaceMsg = "invalid space"
@@ -85,17 +86,13 @@ func assertBodyCall(t testing.TB, requests []Request, errorMsg string) {
 func assertBodyEqual(t testing.TB, reference []byte, req Request) {
 	t.Helper()
 
-	var reqBuf bytes.Buffer
-	reqEnc := NewEncoder(&reqBuf)
-
-	err := req.Body(&resolver, reqEnc)
+	reqBody, err := test_helpers.ExtractRequestBody(req, &resolver, NewEncoder)
 	if err != nil {
-		t.Errorf("An unexpected Response.Body() error: %q", err.Error())
-	} else {
-		reqBody := reqBuf.Bytes()
-		if !bytes.Equal(reqBody, reference) {
-			t.Errorf("Encoded request %v != reference %v", reqBody, reference)
-		}
+		t.Fatalf("An unexpected Response.Body() error: %q", err.Error())
+	}
+
+	if !bytes.Equal(reqBody, reference) {
+		t.Errorf("Encoded request %v != reference %v", reqBody, reference)
 	}
 }
 

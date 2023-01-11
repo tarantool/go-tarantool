@@ -372,3 +372,33 @@ func copyFile(srcFile, dstFile string) error {
 
 	return nil
 }
+
+// msgpack.v2 and msgpack.v5 return different uint types in responses. The
+// function helps to unify a result.
+func ConvertUint64(v interface{}) (result uint64, err error) {
+	switch v := v.(type) {
+	case uint:
+		result = uint64(v)
+	case uint8:
+		result = uint64(v)
+	case uint16:
+		result = uint64(v)
+	case uint32:
+		result = uint64(v)
+	case uint64:
+		result = uint64(v)
+	case int:
+		result = uint64(v)
+	case int8:
+		result = uint64(v)
+	case int16:
+		result = uint64(v)
+	case int32:
+		result = uint64(v)
+	case int64:
+		result = uint64(v)
+	default:
+		err = fmt.Errorf("Non-number value %T", v)
+	}
+	return
+}

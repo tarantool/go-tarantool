@@ -67,36 +67,6 @@ func (m *Member) DecodeMsgpack(d *decoder) error {
 	return nil
 }
 
-// msgpack.v2 and msgpack.v5 return different uint types in responses. The
-// function helps to unify a result.
-func convertUint64(v interface{}) (result uint64, err error) {
-	switch v := v.(type) {
-	case uint:
-		result = uint64(v)
-	case uint8:
-		result = uint64(v)
-	case uint16:
-		result = uint64(v)
-	case uint32:
-		result = uint64(v)
-	case uint64:
-		result = uint64(v)
-	case int:
-		result = uint64(v)
-	case int8:
-		result = uint64(v)
-	case int16:
-		result = uint64(v)
-	case int32:
-		result = uint64(v)
-	case int64:
-		result = uint64(v)
-	default:
-		err = fmt.Errorf("Non-number value %T", v)
-	}
-	return
-}
-
 var server = "127.0.0.1:3013"
 var spaceNo = uint32(617)
 var spaceName = "test"
@@ -874,7 +844,7 @@ func TestClient(t *testing.T) {
 		if len(tpl) != 3 {
 			t.Errorf("Unexpected body of Insert (tuple len)")
 		}
-		if id, err := convertUint64(tpl[0]); err != nil || id != 1 {
+		if id, err := test_helpers.ConvertUint64(tpl[0]); err != nil || id != 1 {
 			t.Errorf("Unexpected body of Insert (0)")
 		}
 		if h, ok := tpl[1].(string); !ok || h != "hello" {
@@ -910,7 +880,7 @@ func TestClient(t *testing.T) {
 		if len(tpl) != 3 {
 			t.Errorf("Unexpected body of Delete (tuple len)")
 		}
-		if id, err := convertUint64(tpl[0]); err != nil || id != 1 {
+		if id, err := test_helpers.ConvertUint64(tpl[0]); err != nil || id != 1 {
 			t.Errorf("Unexpected body of Delete (0)")
 		}
 		if h, ok := tpl[1].(string); !ok || h != "hello" {
@@ -958,7 +928,7 @@ func TestClient(t *testing.T) {
 		if len(tpl) != 3 {
 			t.Errorf("Unexpected body of Replace (tuple len)")
 		}
-		if id, err := convertUint64(tpl[0]); err != nil || id != 2 {
+		if id, err := test_helpers.ConvertUint64(tpl[0]); err != nil || id != 2 {
 			t.Errorf("Unexpected body of Replace (0)")
 		}
 		if h, ok := tpl[1].(string); !ok || h != "hi" {
@@ -986,7 +956,7 @@ func TestClient(t *testing.T) {
 		if len(tpl) != 2 {
 			t.Errorf("Unexpected body of Update (tuple len)")
 		}
-		if id, err := convertUint64(tpl[0]); err != nil || id != 2 {
+		if id, err := test_helpers.ConvertUint64(tpl[0]); err != nil || id != 2 {
 			t.Errorf("Unexpected body of Update (0)")
 		}
 		if h, ok := tpl[1].(string); !ok || h != "bye" {
@@ -1042,7 +1012,7 @@ func TestClient(t *testing.T) {
 	if tpl, ok := resp.Data[0].([]interface{}); !ok {
 		t.Errorf("Unexpected body of Select")
 	} else {
-		if id, err := convertUint64(tpl[0]); err != nil || id != 10 {
+		if id, err := test_helpers.ConvertUint64(tpl[0]); err != nil || id != 10 {
 			t.Errorf("Unexpected body of Select (0)")
 		}
 		if h, ok := tpl[1].(string); !ok || h != "val 10" {
@@ -1175,7 +1145,7 @@ func TestClient(t *testing.T) {
 	if len(resp.Data) < 1 {
 		t.Errorf("Response.Data is empty after Eval")
 	}
-	if val, err := convertUint64(resp.Data[0]); err != nil || val != 11 {
+	if val, err := test_helpers.ConvertUint64(resp.Data[0]); err != nil || val != 11 {
 		t.Errorf("5 + 6 == 11, but got %v", val)
 	}
 }
@@ -1220,7 +1190,7 @@ func TestClientSessionPush(t *testing.T) {
 		t.Errorf("Response is nil after CallAsync")
 	} else if len(resp.Data) < 1 {
 		t.Errorf("Response.Data is empty after Call17Async")
-	} else if val, err := convertUint64(resp.Data[0]); err != nil || val != pushMax {
+	} else if val, err := test_helpers.ConvertUint64(resp.Data[0]); err != nil || val != pushMax {
 		t.Errorf("Result is not %d: %v", pushMax, resp.Data)
 	}
 
@@ -1252,12 +1222,12 @@ func TestClientSessionPush(t *testing.T) {
 			}
 			if resp.Code == PushCode {
 				pushCnt += 1
-				if val, err := convertUint64(resp.Data[0]); err != nil || val != pushCnt {
+				if val, err := test_helpers.ConvertUint64(resp.Data[0]); err != nil || val != pushCnt {
 					t.Errorf("Unexpected push data = %v", resp.Data)
 				}
 			} else {
 				respCnt += 1
-				if val, err := convertUint64(resp.Data[0]); err != nil || val != pushMax {
+				if val, err := test_helpers.ConvertUint64(resp.Data[0]); err != nil || val != pushMax {
 					t.Errorf("Result is not %d: %v", pushMax, resp.Data)
 				}
 			}
@@ -1281,7 +1251,7 @@ func TestClientSessionPush(t *testing.T) {
 		resp, err := fut.Get()
 		if err != nil {
 			t.Errorf("Unable to call fut.Get(): %s", err)
-		} else if val, err := convertUint64(resp.Data[0]); err != nil || val != pushMax {
+		} else if val, err := test_helpers.ConvertUint64(resp.Data[0]); err != nil || val != pushMax {
 			t.Errorf("Result is not %d: %v", pushMax, resp.Data)
 		}
 
@@ -2150,7 +2120,7 @@ func TestClientRequestObjects(t *testing.T) {
 			if len(tpl) != 3 {
 				t.Errorf("Unexpected body of Insert (tuple len)")
 			}
-			if id, err := convertUint64(tpl[0]); err != nil || id != uint64(i) {
+			if id, err := test_helpers.ConvertUint64(tpl[0]); err != nil || id != uint64(i) {
 				t.Errorf("Unexpected body of Insert (0)")
 			}
 			if h, ok := tpl[1].(string); !ok || h != fmt.Sprintf("val %d", i) {
@@ -2188,7 +2158,7 @@ func TestClientRequestObjects(t *testing.T) {
 			if len(tpl) != 3 {
 				t.Errorf("Unexpected body of Replace (tuple len)")
 			}
-			if id, err := convertUint64(tpl[0]); err != nil || id != uint64(i) {
+			if id, err := test_helpers.ConvertUint64(tpl[0]); err != nil || id != uint64(i) {
 				t.Errorf("Unexpected body of Replace (0)")
 			}
 			if h, ok := tpl[1].(string); !ok || h != fmt.Sprintf("val %d", i) {
@@ -2225,7 +2195,7 @@ func TestClientRequestObjects(t *testing.T) {
 		if len(tpl) != 3 {
 			t.Errorf("Unexpected body of Delete (tuple len)")
 		}
-		if id, err := convertUint64(tpl[0]); err != nil || id != uint64(1016) {
+		if id, err := test_helpers.ConvertUint64(tpl[0]); err != nil || id != uint64(1016) {
 			t.Errorf("Unexpected body of Delete (0)")
 		}
 		if h, ok := tpl[1].(string); !ok || h != "val 1016" {
@@ -2259,7 +2229,7 @@ func TestClientRequestObjects(t *testing.T) {
 	if tpl, ok := resp.Data[0].([]interface{}); !ok {
 		t.Errorf("Unexpected body of Update")
 	} else {
-		if id, err := convertUint64(tpl[0]); err != nil || id != uint64(1010) {
+		if id, err := test_helpers.ConvertUint64(tpl[0]); err != nil || id != uint64(1010) {
 			t.Errorf("Unexpected body of Update (0)")
 		}
 		if h, ok := tpl[1].(string); !ok || h != "val 1010" {
@@ -2294,13 +2264,13 @@ func TestClientRequestObjects(t *testing.T) {
 	if tpl, ok := resp.Data[0].([]interface{}); !ok {
 		t.Errorf("Unexpected body of Select")
 	} else {
-		if id, err := convertUint64(tpl[0]); err != nil || id != 1010 {
+		if id, err := test_helpers.ConvertUint64(tpl[0]); err != nil || id != 1010 {
 			t.Errorf("Unexpected body of Update (0)")
 		}
 		if h, ok := tpl[1].(string); !ok || h != "bye" {
 			t.Errorf("Unexpected body of Update (1)")
 		}
-		if h, err := convertUint64(tpl[2]); err != nil || h != 1 {
+		if h, err := test_helpers.ConvertUint64(tpl[2]); err != nil || h != 1 {
 			t.Errorf("Unexpected body of Update (2)")
 		}
 	}
@@ -2387,7 +2357,7 @@ func TestClientRequestObjects(t *testing.T) {
 	if len(resp.Data) < 1 {
 		t.Errorf("Response.Data is empty after Eval")
 	}
-	if val, err := convertUint64(resp.Data[0]); err != nil || val != 11 {
+	if val, err := test_helpers.ConvertUint64(resp.Data[0]); err != nil || val != 11 {
 		t.Errorf("5 + 6 == 11, but got %v", val)
 	}
 
@@ -2479,7 +2449,7 @@ func testConnectionDoSelectRequestCheck(t *testing.T,
 		if tpl, ok := resp.Data[i].([]interface{}); !ok {
 			t.Errorf("Unexpected body of Select")
 		} else {
-			if id, err := convertUint64(tpl[0]); err != nil || id != key {
+			if id, err := test_helpers.ConvertUint64(tpl[0]); err != nil || id != key {
 				t.Errorf("Unexpected body of Select (0) %v, expected %d",
 					tpl[0], key)
 			}
@@ -2798,7 +2768,7 @@ func TestStream_Commit(t *testing.T) {
 	if tpl, ok := resp.Data[0].([]interface{}); !ok {
 		t.Fatalf("Unexpected body of Select")
 	} else {
-		if id, err := convertUint64(tpl[0]); err != nil || id != 1001 {
+		if id, err := test_helpers.ConvertUint64(tpl[0]); err != nil || id != 1001 {
 			t.Fatalf("Unexpected body of Select (0)")
 		}
 		if h, ok := tpl[1].(string); !ok || h != "hello2" {
@@ -2833,7 +2803,7 @@ func TestStream_Commit(t *testing.T) {
 	if tpl, ok := resp.Data[0].([]interface{}); !ok {
 		t.Fatalf("Unexpected body of Select")
 	} else {
-		if id, err := convertUint64(tpl[0]); err != nil || id != 1001 {
+		if id, err := test_helpers.ConvertUint64(tpl[0]); err != nil || id != 1001 {
 			t.Fatalf("Unexpected body of Select (0)")
 		}
 		if h, ok := tpl[1].(string); !ok || h != "hello2" {
@@ -2913,7 +2883,7 @@ func TestStream_Rollback(t *testing.T) {
 	if tpl, ok := resp.Data[0].([]interface{}); !ok {
 		t.Fatalf("Unexpected body of Select")
 	} else {
-		if id, err := convertUint64(tpl[0]); err != nil || id != 1001 {
+		if id, err := test_helpers.ConvertUint64(tpl[0]); err != nil || id != 1001 {
 			t.Fatalf("Unexpected body of Select (0)")
 		}
 		if h, ok := tpl[1].(string); !ok || h != "hello2" {
@@ -3018,7 +2988,7 @@ func TestStream_TxnIsolationLevel(t *testing.T) {
 		require.Truef(t, ok, "unexpected body of Select")
 		require.Equalf(t, 3, len(tpl), "unexpected body of Select")
 
-		key, err := convertUint64(tpl[0])
+		key, err := test_helpers.ConvertUint64(tpl[0])
 		require.Nilf(t, err, "unexpected body of Select (0)")
 		require.Equalf(t, uint64(1001), key, "unexpected body of Select (0)")
 
