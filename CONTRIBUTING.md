@@ -132,47 +132,12 @@ Note: the variable `BENCH_PATH` is not purposed to be used with absolute paths.
 
 ## Recommendations for how to achieve stable results
 
-Before any judgments, verify whether results are stable on given host and how large the noise. Run `make bench-diff` without changes and look on the report. Several times.
+Before any judgments, verify whether results are stable on given host and how
+large the noise. Run `make bench-diff` without changes and look on the report.
+Several times.
 
-There are suggestions how to achieve best results:
-
-* Close all background applications, especially web browser. Look at `top` (`htop`, `atop`, ...) and if something bubbles there, close it.
-* Disable cron daemon.
-* Disable TurboBoost and set fixed frequency.
-  * If you're using `intel_pstate` frequency driver (it is usually default):
-
-    Disable TurboBoost:
-
-    ```shell
-    $ echo 0 > /sys/devices/system/cpu/intel_pstate/no_turbo
-    ```
-
-    Set fixed frequency: not sure it is possible.
-
-    * If you're using `acpi-cpufreq` driver:
-
-    Ensure you actually don't use intel_pstate:
-
-    ```shell
-    $ grep -o 'intel_pstate=\w\+' /proc/cmdline
-     intel_pstate=disable
-     $ cpupower -c all frequency-info | grep driver:
-       driver: acpi-cpufreq
-       <...>
-     ```
-
-     Disable TurboBoost:
-
-     ```shell
-     $ echo 0 > /sys/devices/system/cpu/cpufreq/boost
-     ```
-
-     Set fixed frequency:
-
-     ```shell
-     $ cpupower -c all frequency-set -g userspace
-     $ cpupower -c all frequency-set -f 1.80GHz # adjust for your CPU
-     ```
+There are suggestions how to achieve best results, see
+https://github.com/tarantool/tarantool/wiki/Benchmarking
 
 ## Code review checklist
 
