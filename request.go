@@ -10,35 +10,103 @@ import (
 )
 
 func fillSearch(enc *encoder, spaceNo, indexNo uint32, key interface{}) error {
-	encodeUint(enc, KeySpaceNo)
-	encodeUint(enc, uint64(spaceNo))
-	encodeUint(enc, KeyIndexNo)
-	encodeUint(enc, uint64(indexNo))
-	encodeUint(enc, KeyKey)
+	if err := encodeUint(enc, KeySpaceNo); err != nil {
+		return err
+	}
+	if err := encodeUint(enc, uint64(spaceNo)); err != nil {
+		return err
+	}
+	if err := encodeUint(enc, KeyIndexNo); err != nil {
+		return err
+	}
+	if err := encodeUint(enc, uint64(indexNo)); err != nil {
+		return err
+	}
+	if err := encodeUint(enc, KeyKey); err != nil {
+		return err
+	}
 	return enc.Encode(key)
 }
 
-func fillIterator(enc *encoder, offset, limit, iterator uint32) {
-	encodeUint(enc, KeyIterator)
-	encodeUint(enc, uint64(iterator))
-	encodeUint(enc, KeyOffset)
-	encodeUint(enc, uint64(offset))
-	encodeUint(enc, KeyLimit)
-	encodeUint(enc, uint64(limit))
+func fillIterator(enc *encoder, offset, limit, iterator uint32) error {
+	if err := encodeUint(enc, KeyIterator); err != nil {
+		return err
+	}
+	if err := encodeUint(enc, uint64(iterator)); err != nil {
+		return err
+	}
+	if err := encodeUint(enc, KeyOffset); err != nil {
+		return err
+	}
+	if err := encodeUint(enc, uint64(offset)); err != nil {
+		return err
+	}
+	if err := encodeUint(enc, KeyLimit); err != nil {
+		return err
+	}
+	return encodeUint(enc, uint64(limit))
 }
 
 func fillInsert(enc *encoder, spaceNo uint32, tuple interface{}) error {
-	enc.EncodeMapLen(2)
-	encodeUint(enc, KeySpaceNo)
-	encodeUint(enc, uint64(spaceNo))
-	encodeUint(enc, KeyTuple)
+	if err := enc.EncodeMapLen(2); err != nil {
+		return err
+	}
+	if err := encodeUint(enc, KeySpaceNo); err != nil {
+		return err
+	}
+	if err := encodeUint(enc, uint64(spaceNo)); err != nil {
+		return err
+	}
+	if err := encodeUint(enc, KeyTuple); err != nil {
+		return err
+	}
 	return enc.Encode(tuple)
 }
 
-func fillSelect(enc *encoder, spaceNo, indexNo, offset, limit, iterator uint32, key interface{}) error {
-	enc.EncodeMapLen(6)
-	fillIterator(enc, offset, limit, iterator)
-	return fillSearch(enc, spaceNo, indexNo, key)
+func fillSelect(enc *encoder, spaceNo, indexNo, offset, limit, iterator uint32,
+	key, after interface{}, fetchPos bool) error {
+	mapLen := 6
+	if fetchPos {
+		mapLen += 1
+	}
+	if after != nil {
+		mapLen += 1
+	}
+	if err := enc.EncodeMapLen(mapLen); err != nil {
+		return err
+	}
+	if err := fillIterator(enc, offset, limit, iterator); err != nil {
+		return err
+	}
+	if err := fillSearch(enc, spaceNo, indexNo, key); err != nil {
+		return err
+	}
+	if fetchPos {
+		if err := encodeUint(enc, KeyFetchPos); err != nil {
+			return err
+		}
+		if err := enc.EncodeBool(fetchPos); err != nil {
+			return err
+		}
+	}
+	if after != nil {
+		if pos, ok := after.([]byte); ok {
+			if err := encodeUint(enc, KeyAfterPos); err != nil {
+				return err
+			}
+			if err := enc.EncodeString(string(pos)); err != nil {
+				return err
+			}
+		} else {
+			if err := encodeUint(enc, KeyAfterTuple); err != nil {
+				return err
+			}
+			if err := enc.Encode(after); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func fillUpdate(enc *encoder, spaceNo, indexNo uint32, key, ops interface{}) error {
@@ -660,9 +728,9 @@ func (req *PingRequest) Context(ctx context.Context) *PingRequest {
 // by a Connection.
 type SelectRequest struct {
 	spaceIndexRequest
-	isIteratorSet           bool
+	isIteratorSet, fetchPos bool
 	offset, limit, iterator uint32
-	key                     interface{}
+	key, after              interface{}
 }
 
 // NewSelectRequest returns a new empty SelectRequest.
@@ -671,8 +739,10 @@ func NewSelectRequest(space interface{}) *SelectRequest {
 	req.requestCode = SelectRequestCode
 	req.setSpace(space)
 	req.isIteratorSet = false
+	req.fetchPos = false
 	req.iterator = IterAll
 	req.key = []interface{}{}
+	req.after = nil
 	req.limit = 0xFFFFFFFF
 	return req
 }
@@ -716,6 +786,30 @@ func (req *SelectRequest) Key(key interface{}) *SelectRequest {
 	return req
 }
 
+// FetchPos determines whether to fetch positions of the last tuple. A position
+// descriptor will be saved in Response.Pos value.
+//
+// Note: default value is false.
+//
+// Requires Tarantool >= 2.11.
+// Since 1.11.0
+func (req *SelectRequest) FetchPos(fetch bool) *SelectRequest {
+	req.fetchPos = fetch
+	return req
+}
+
+// After must contain a tuple from which selection must continue or its
+// position (a value from Response.Pos).
+//
+// Note: default value in nil.
+//
+// Requires Tarantool >= 2.11.
+// Since 1.11.0
+func (req *SelectRequest) After(after interface{}) *SelectRequest {
+	req.after = after
+	return req
+}
+
 // Body fills an encoder with the select request body.
 func (req *SelectRequest) Body(res SchemaResolver, enc *encoder) error {
 	spaceNo, indexNo, err := res.ResolveSpaceIndex(req.space, req.index)
@@ -723,7 +817,8 @@ func (req *SelectRequest) Body(res SchemaResolver, enc *encoder) error {
 		return err
 	}
 
-	return fillSelect(enc, spaceNo, indexNo, req.offset, req.limit, req.iterator, req.key)
+	return fillSelect(enc, spaceNo, indexNo, req.offset, req.limit, req.iterator,
+		req.key, req.after, req.fetchPos)
 }
 
 // Context sets a passed context to the request.

@@ -319,7 +319,8 @@ func TestSelectRequestDefaultValues(t *testing.T) {
 	var refBuf bytes.Buffer
 
 	refEnc := NewEncoder(&refBuf)
-	err := RefImplSelectBody(refEnc, validSpace, defaultIndex, 0, 0xFFFFFFFF, IterAll, []interface{}{})
+	err := RefImplSelectBody(refEnc, validSpace, defaultIndex, 0, 0xFFFFFFFF,
+		IterAll, []interface{}{}, nil, false)
 	if err != nil {
 		t.Errorf("An unexpected RefImplSelectBody() error %q", err.Error())
 		return
@@ -334,7 +335,8 @@ func TestSelectRequestDefaultIteratorEqIfKey(t *testing.T) {
 	key := []interface{}{uint(18)}
 
 	refEnc := NewEncoder(&refBuf)
-	err := RefImplSelectBody(refEnc, validSpace, defaultIndex, 0, 0xFFFFFFFF, IterEq, key)
+	err := RefImplSelectBody(refEnc, validSpace, defaultIndex, 0, 0xFFFFFFFF,
+		IterEq, key, nil, false)
 	if err != nil {
 		t.Errorf("An unexpected RefImplSelectBody() error %q", err.Error())
 		return
@@ -351,7 +353,8 @@ func TestSelectRequestIteratorNotChangedIfKey(t *testing.T) {
 	const iter = IterGe
 
 	refEnc := NewEncoder(&refBuf)
-	err := RefImplSelectBody(refEnc, validSpace, defaultIndex, 0, 0xFFFFFFFF, iter, key)
+	err := RefImplSelectBody(refEnc, validSpace, defaultIndex, 0, 0xFFFFFFFF,
+		iter, key, nil, false)
 	if err != nil {
 		t.Errorf("An unexpected RefImplSelectBody() error %q", err.Error())
 		return
@@ -368,22 +371,45 @@ func TestSelectRequestSetters(t *testing.T) {
 	const limit = 5
 	const iter = IterLt
 	key := []interface{}{uint(36)}
-	var refBuf bytes.Buffer
+	afterBytes := []byte{0x1, 0x2, 0x3}
+	afterKey := []interface{}{uint(13)}
+	var refBufAfterBytes, refBufAfterKey bytes.Buffer
 
-	refEnc := NewEncoder(&refBuf)
-	err := RefImplSelectBody(refEnc, validSpace, validIndex, offset, limit, iter, key)
+	refEncAfterBytes := NewEncoder(&refBufAfterBytes)
+	err := RefImplSelectBody(refEncAfterBytes, validSpace, validIndex, offset,
+		limit, iter, key, afterBytes, true)
 	if err != nil {
-		t.Errorf("An unexpected RefImplSelectBody() error %q", err.Error())
+		t.Errorf("An unexpected RefImplSelectBody() error %s", err)
 		return
 	}
 
-	req := NewSelectRequest(validSpace).
+	refEncAfterKey := NewEncoder(&refBufAfterKey)
+	err = RefImplSelectBody(refEncAfterKey, validSpace, validIndex, offset,
+		limit, iter, key, afterKey, true)
+	if err != nil {
+		t.Errorf("An unexpected RefImplSelectBody() error %s", err)
+		return
+	}
+
+	reqAfterBytes := NewSelectRequest(validSpace).
 		Index(validIndex).
 		Offset(offset).
 		Limit(limit).
 		Iterator(iter).
-		Key(key)
-	assertBodyEqual(t, refBuf.Bytes(), req)
+		Key(key).
+		After(afterBytes).
+		FetchPos(true)
+	reqAfterKey := NewSelectRequest(validSpace).
+		Index(validIndex).
+		Offset(offset).
+		Limit(limit).
+		Iterator(iter).
+		Key(key).
+		After(afterKey).
+		FetchPos(true)
+
+	assertBodyEqual(t, refBufAfterBytes.Bytes(), reqAfterBytes)
+	assertBodyEqual(t, refBufAfterKey.Bytes(), reqAfterKey)
 }
 
 func TestInsertRequestDefaultValues(t *testing.T) {

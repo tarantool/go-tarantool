@@ -329,7 +329,7 @@ func ExampleProtocolVersion() {
 	fmt.Println("Connector client protocol features:", clientProtocolInfo.Features)
 	// Output:
 	// Connector client protocol version: 4
-	// Connector client protocol features: [StreamsFeature TransactionsFeature ErrorExtensionFeature WatchersFeature]
+	// Connector client protocol features: [StreamsFeature TransactionsFeature ErrorExtensionFeature WatchersFeature PaginationFeature]
 }
 
 func getTestTxnOpts() tarantool.Opts {

@@ -47,7 +47,7 @@ const (
 	// (supported by connector).
 	WatchersFeature ProtocolFeature = 3
 	// PaginationFeature represents support of pagination
-	// (unsupported by connector).
+	// (supported by connector).
 	PaginationFeature ProtocolFeature = 4
 )
 
@@ -83,11 +83,14 @@ var clientProtocolInfo ProtocolInfo = ProtocolInfo{
 	// version 2 (Tarantool 2.10.0), in connector since 1.10.0.
 	// Watchers were introduced in protocol version 3 (Tarantool 2.10.0), in
 	// connector since 1.10.0.
+	// Pagination were introduced in protocol version 4 (Tarantool 2.11.0), in
+	// connector since 1.11.0.
 	Features: []ProtocolFeature{
 		StreamsFeature,
 		TransactionsFeature,
 		ErrorExtensionFeature,
 		WatchersFeature,
+		PaginationFeature,
 	},
 }
 
