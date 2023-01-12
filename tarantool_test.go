@@ -850,6 +850,9 @@ func TestClient(t *testing.T) {
 	if resp == nil {
 		t.Fatalf("Response is nil after Ping")
 	}
+	if resp.Pos != nil {
+		t.Errorf("Response should not have a position")
+	}
 
 	// Insert
 	resp, err = conn.Insert(spaceNo, []interface{}{uint(1), "hello", "world"})
@@ -858,6 +861,9 @@ func TestClient(t *testing.T) {
 	}
 	if resp == nil {
 		t.Fatalf("Response is nil after Insert")
+	}
+	if resp.Pos != nil {
+		t.Errorf("Response should not have a position")
 	}
 	if len(resp.Data) != 1 {
 		t.Errorf("Response Body len != 1")
@@ -892,6 +898,9 @@ func TestClient(t *testing.T) {
 	if resp == nil {
 		t.Fatalf("Response is nil after Delete")
 	}
+	if resp.Pos != nil {
+		t.Errorf("Response should not have a position")
+	}
 	if len(resp.Data) != 1 {
 		t.Errorf("Response Body len != 1")
 	}
@@ -915,6 +924,9 @@ func TestClient(t *testing.T) {
 	if resp == nil {
 		t.Fatalf("Response is nil after Delete")
 	}
+	if resp.Pos != nil {
+		t.Errorf("Response should not have a position")
+	}
 	if len(resp.Data) != 0 {
 		t.Errorf("Response Data len != 0")
 	}
@@ -925,7 +937,10 @@ func TestClient(t *testing.T) {
 		t.Fatalf("Failed to Replace: %s", err.Error())
 	}
 	if resp == nil {
-		t.Errorf("Response is nil after Replace")
+		t.Fatalf("Response is nil after Replace")
+	}
+	if resp.Pos != nil {
+		t.Errorf("Response should not have a position")
 	}
 	resp, err = conn.Replace(spaceNo, []interface{}{uint(2), "hi", "planet"})
 	if err != nil {
@@ -959,6 +974,9 @@ func TestClient(t *testing.T) {
 	if resp == nil {
 		t.Fatalf("Response is nil after Update")
 	}
+	if resp.Pos != nil {
+		t.Errorf("Response should not have a position")
+	}
 	if len(resp.Data) != 1 {
 		t.Errorf("Response Data len != 1")
 	}
@@ -982,7 +1000,10 @@ func TestClient(t *testing.T) {
 		t.Fatalf("Failed to Upsert (insert): %s", err.Error())
 	}
 	if resp == nil {
-		t.Errorf("Response is nil after Upsert (insert)")
+		t.Fatalf("Response is nil after Upsert (insert)")
+	}
+	if resp.Pos != nil {
+		t.Errorf("Response should not have a position")
 	}
 	resp, err = conn.Upsert(spaceNo, []interface{}{uint(3), 1}, []interface{}{[]interface{}{"+", 1, 1}})
 	if err != nil {
@@ -998,6 +1019,9 @@ func TestClient(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to Replace: %s", err.Error())
 		}
+		if resp.Pos != nil {
+			t.Errorf("Response should not have a position")
+		}
 		if resp.Code != 0 {
 			t.Errorf("Failed to replace")
 		}
@@ -1008,6 +1032,9 @@ func TestClient(t *testing.T) {
 	}
 	if resp == nil {
 		t.Fatalf("Response is nil after Select")
+	}
+	if resp.Pos != nil {
+		t.Errorf("Response should not have a position")
 	}
 	if len(resp.Data) != 1 {
 		t.Errorf("Response Data len != 1")
@@ -1030,6 +1057,9 @@ func TestClient(t *testing.T) {
 	}
 	if resp == nil {
 		t.Fatalf("Response is nil after Select")
+	}
+	if resp.Pos != nil {
+		t.Errorf("Response should not have a position")
 	}
 	if len(resp.Data) != 0 {
 		t.Errorf("Response Data len != 0")
@@ -1101,6 +1131,9 @@ func TestClient(t *testing.T) {
 	if resp == nil {
 		t.Fatalf("Response is nil after Call16")
 	}
+	if resp.Pos != nil {
+		t.Errorf("Response should not have a position")
+	}
 	if len(resp.Data) < 1 {
 		t.Errorf("Response.Data is empty after Eval")
 	}
@@ -1110,6 +1143,9 @@ func TestClient(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to use Call16")
 	}
+	if resp.Pos != nil {
+		t.Errorf("Response should not have a position")
+	}
 	if val, ok := resp.Data[0].([]interface{})[0].(string); !ok || val != "11" {
 		t.Errorf("result is not {{1}} : %v", resp.Data)
 	}
@@ -1117,6 +1153,9 @@ func TestClient(t *testing.T) {
 	resp, err = conn.Call17("simple_concat", []interface{}{"1"})
 	if err != nil {
 		t.Errorf("Failed to use Call")
+	}
+	if resp.Pos != nil {
+		t.Errorf("Response should not have a position")
 	}
 	if val, ok := resp.Data[0].(string); !ok || val != "11" {
 		t.Errorf("result is not {{1}} : %v", resp.Data)
@@ -1129,6 +1168,9 @@ func TestClient(t *testing.T) {
 	}
 	if resp == nil {
 		t.Fatalf("Response is nil after Eval")
+	}
+	if resp.Pos != nil {
+		t.Errorf("Response should not have a position")
 	}
 	if len(resp.Data) < 1 {
 		t.Errorf("Response.Data is empty after Eval")
@@ -1200,6 +1242,9 @@ func TestClientSessionPush(t *testing.T) {
 			if resp == nil {
 				t.Errorf("Response is empty after it.Next() == true")
 				break
+			}
+			if resp.Pos != nil {
+				t.Errorf("Response should not have a position")
 			}
 			if len(resp.Data) < 1 {
 				t.Errorf("Response.Data is empty after CallAsync")
@@ -2090,6 +2135,9 @@ func TestClientRequestObjects(t *testing.T) {
 		if resp == nil {
 			t.Fatalf("Response is nil after Insert")
 		}
+		if resp.Pos != nil {
+			t.Errorf("Response should not have a position")
+		}
 		if resp.Data == nil {
 			t.Fatalf("Response data is nil after Insert")
 		}
@@ -2125,6 +2173,9 @@ func TestClientRequestObjects(t *testing.T) {
 		if resp == nil {
 			t.Fatalf("Response is nil after Replace")
 		}
+		if resp.Pos != nil {
+			t.Errorf("Response should not have a position")
+		}
 		if resp.Data == nil {
 			t.Fatalf("Response data is nil after Replace")
 		}
@@ -2158,6 +2209,9 @@ func TestClientRequestObjects(t *testing.T) {
 	}
 	if resp == nil {
 		t.Fatalf("Response is nil after Delete")
+	}
+	if resp.Pos != nil {
+		t.Errorf("Response should not have a position")
 	}
 	if resp.Data == nil {
 		t.Fatalf("Response data is nil after Delete")
@@ -2193,6 +2247,9 @@ func TestClientRequestObjects(t *testing.T) {
 	if resp == nil {
 		t.Fatalf("Response is nil after Update")
 	}
+	if resp.Pos != nil {
+		t.Errorf("Response should not have a position")
+	}
 	if resp.Data == nil {
 		t.Fatalf("Response data is nil after Update")
 	}
@@ -2225,6 +2282,9 @@ func TestClientRequestObjects(t *testing.T) {
 	if resp == nil {
 		t.Fatalf("Response is nil after Update")
 	}
+	if resp.Pos != nil {
+		t.Errorf("Response should not have a position")
+	}
 	if resp.Data == nil {
 		t.Fatalf("Response data is nil after Update")
 	}
@@ -2255,6 +2315,9 @@ func TestClientRequestObjects(t *testing.T) {
 	if resp == nil {
 		t.Fatalf("Response is nil after Upsert (update)")
 	}
+	if resp.Pos != nil {
+		t.Errorf("Response should not have a position")
+	}
 	if resp.Data == nil {
 		t.Fatalf("Response data is nil after Upsert")
 	}
@@ -2273,6 +2336,9 @@ func TestClientRequestObjects(t *testing.T) {
 	if resp == nil {
 		t.Fatalf("Response is nil after Upsert (update)")
 	}
+	if resp.Pos != nil {
+		t.Errorf("Response should not have a position")
+	}
 	if resp.Data == nil {
 		t.Fatalf("Response data is nil after Upsert")
 	}
@@ -2280,42 +2346,14 @@ func TestClientRequestObjects(t *testing.T) {
 		t.Fatalf("Response Data len != 0")
 	}
 
-	// Select.
-	req = NewSelectRequest(spaceNo).
-		Index(indexNo).
-		Limit(20).
-		Iterator(IterGe).
-		Key([]interface{}{uint(1010)})
-	resp, err = conn.Do(req).Get()
-	if err != nil {
-		t.Errorf("Failed to Select: %s", err.Error())
-	}
-	if resp == nil {
-		t.Errorf("Response is nil after Select")
-		return
-	}
-	if len(resp.Data) != 9 {
-		t.Fatalf("Response Data len %d != 9", len(resp.Data))
-	}
-	if tpl, ok := resp.Data[0].([]interface{}); !ok {
-		t.Errorf("Unexpected body of Select")
-	} else {
-		if id, err := convertUint64(tpl[0]); err != nil || id != 1010 {
-			t.Errorf("Unexpected body of Select (0) %v, expected %d", tpl[0], 1010)
-		}
-		if h, ok := tpl[1].(string); !ok || h != "bye" {
-			t.Errorf("Unexpected body of Select (1) %q, expected %q", tpl[1].(string), "bye")
-		}
-		if h, ok := tpl[2].(string); !ok || h != "bye" {
-			t.Errorf("Unexpected body of Select (2) %q, expected %q", tpl[2].(string), "bye")
-		}
-	}
-
 	// Call16 vs Call17
 	req = NewCall16Request("simple_concat").Args([]interface{}{"1"})
 	resp, err = conn.Do(req).Get()
 	if err != nil {
 		t.Errorf("Failed to use Call")
+	}
+	if resp.Pos != nil {
+		t.Errorf("Response should not have a position")
 	}
 	if val, ok := resp.Data[0].([]interface{})[0].(string); !ok || val != "11" {
 		t.Errorf("result is not {{1}} : %v", resp.Data)
@@ -2326,6 +2364,9 @@ func TestClientRequestObjects(t *testing.T) {
 	resp, err = conn.Do(req).Get()
 	if err != nil {
 		t.Errorf("Failed to use Call17")
+	}
+	if resp.Pos != nil {
+		t.Errorf("Response should not have a position")
 	}
 	if val, ok := resp.Data[0].(string); !ok || val != "11" {
 		t.Errorf("result is not {{1}} : %v", resp.Data)
@@ -2339,6 +2380,9 @@ func TestClientRequestObjects(t *testing.T) {
 	}
 	if resp == nil {
 		t.Fatalf("Response is nil after Eval")
+	}
+	if resp.Pos != nil {
+		t.Errorf("Response should not have a position")
 	}
 	if len(resp.Data) < 1 {
 		t.Errorf("Response.Data is empty after Eval")
@@ -2364,6 +2408,9 @@ func TestClientRequestObjects(t *testing.T) {
 	if resp == nil {
 		t.Fatal("Response is nil after Execute")
 	}
+	if resp.Pos != nil {
+		t.Errorf("Response should not have a position")
+	}
 	if len(resp.Data) != 0 {
 		t.Fatalf("Response Body len != 0")
 	}
@@ -2382,6 +2429,9 @@ func TestClientRequestObjects(t *testing.T) {
 	if resp == nil {
 		t.Fatal("Response is nil after Execute")
 	}
+	if resp.Pos != nil {
+		t.Errorf("Response should not have a position")
+	}
 	if len(resp.Data) != 0 {
 		t.Fatalf("Response Body len != 0")
 	}
@@ -2391,6 +2441,137 @@ func TestClientRequestObjects(t *testing.T) {
 	if resp.SQLInfo.AffectedCount != 1 {
 		t.Errorf("Incorrect count of dropped spaces: %d", resp.SQLInfo.AffectedCount)
 	}
+}
+
+func testConnectionDoSelectRequestPrepare(t *testing.T, conn Connector) {
+	t.Helper()
+
+	for i := 1010; i < 1020; i++ {
+		req := NewReplaceRequest(spaceName).Tuple(
+			[]interface{}{uint(i), fmt.Sprintf("val %d", i), "bla"})
+		if _, err := conn.Do(req).Get(); err != nil {
+			t.Fatalf("Unable to prepare tuples: %s", err)
+		}
+	}
+}
+
+func testConnectionDoSelectRequestCheck(t *testing.T,
+	resp *Response, err error, pos bool, dataLen int, firstKey uint64) {
+	t.Helper()
+
+	if err != nil {
+		t.Fatalf("Failed to Select: %s", err.Error())
+	}
+	if resp == nil {
+		t.Fatalf("Response is nil after Select")
+	}
+	if !pos && resp.Pos != nil {
+		t.Errorf("Response should not have a position descriptor")
+	}
+	if pos && resp.Pos == nil {
+		t.Fatalf("A response must have a position descriptor")
+	}
+	if len(resp.Data) != dataLen {
+		t.Fatalf("Response Data len %d != %d", len(resp.Data), dataLen)
+	}
+	for i := 0; i < dataLen; i++ {
+		key := firstKey + uint64(i)
+		if tpl, ok := resp.Data[i].([]interface{}); !ok {
+			t.Errorf("Unexpected body of Select")
+		} else {
+			if id, err := convertUint64(tpl[0]); err != nil || id != key {
+				t.Errorf("Unexpected body of Select (0) %v, expected %d",
+					tpl[0], key)
+			}
+			expectedSecond := fmt.Sprintf("val %d", key)
+			if h, ok := tpl[1].(string); !ok || h != expectedSecond {
+				t.Errorf("Unexpected body of Select (1) %q, expected %q",
+					tpl[1].(string), expectedSecond)
+			}
+			if h, ok := tpl[2].(string); !ok || h != "bla" {
+				t.Errorf("Unexpected body of Select (2) %q, expected %q",
+					tpl[2].(string), "bla")
+			}
+		}
+	}
+}
+
+func TestConnectionDoSelectRequest(t *testing.T) {
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	defer conn.Close()
+
+	testConnectionDoSelectRequestPrepare(t, conn)
+
+	req := NewSelectRequest(spaceNo).
+		Index(indexNo).
+		Limit(20).
+		Iterator(IterGe).
+		Key([]interface{}{uint(1010)})
+	resp, err := conn.Do(req).Get()
+
+	testConnectionDoSelectRequestCheck(t, resp, err, false, 10, 1010)
+}
+
+func TestConnectionDoSelectRequest_fetch_pos(t *testing.T) {
+	test_helpers.SkipIfPaginationUnsupported(t)
+
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	defer conn.Close()
+
+	testConnectionDoSelectRequestPrepare(t, conn)
+
+	req := NewSelectRequest(spaceNo).
+		Index(indexNo).
+		Limit(2).
+		Iterator(IterGe).
+		FetchPos(true).
+		Key([]interface{}{uint(1010)})
+	resp, err := conn.Do(req).Get()
+
+	testConnectionDoSelectRequestCheck(t, resp, err, true, 2, 1010)
+}
+
+func TestConnectDoSelectRequest_after_tuple(t *testing.T) {
+	test_helpers.SkipIfPaginationUnsupported(t)
+
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	defer conn.Close()
+
+	testConnectionDoSelectRequestPrepare(t, conn)
+
+	req := NewSelectRequest(spaceNo).
+		Index(indexNo).
+		Limit(2).
+		Iterator(IterGe).
+		FetchPos(true).
+		Key([]interface{}{uint(1010)}).
+		After([]interface{}{uint(1012)})
+	resp, err := conn.Do(req).Get()
+
+	testConnectionDoSelectRequestCheck(t, resp, err, true, 2, 1013)
+}
+
+func TestConnectionDoSelectRequest_pagination_pos(t *testing.T) {
+	test_helpers.SkipIfPaginationUnsupported(t)
+
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	defer conn.Close()
+
+	testConnectionDoSelectRequestPrepare(t, conn)
+
+	req := NewSelectRequest(spaceNo).
+		Index(indexNo).
+		Limit(2).
+		Iterator(IterGe).
+		FetchPos(true).
+		Key([]interface{}{uint(1010)})
+	resp, err := conn.Do(req).Get()
+
+	testConnectionDoSelectRequestCheck(t, resp, err, true, 2, 1010)
+
+	resp, err = conn.Do(req.After(resp.Pos)).Get()
+
+	testConnectionDoSelectRequestCheck(t, resp, err, true, 2, 1012)
 }
 
 func TestClientRequestObjectsWithNilContext(t *testing.T) {
@@ -2943,6 +3124,7 @@ func TestConnectionProtocolInfoSupported(t *testing.T) {
 				TransactionsFeature,
 				ErrorExtensionFeature,
 				WatchersFeature,
+				PaginationFeature,
 			},
 		})
 
@@ -3059,6 +3241,7 @@ func TestConnectionProtocolInfoUnsupported(t *testing.T) {
 				TransactionsFeature,
 				ErrorExtensionFeature,
 				WatchersFeature,
+				PaginationFeature,
 			},
 		})
 

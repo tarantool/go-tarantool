@@ -182,6 +182,14 @@ func SkipIfErrorMessagePackTypeUnsupported(t *testing.T) {
 	SkipIfFeatureUnsupported(t, "error type in MessagePack", 2, 10, 0)
 }
 
+// SkipIfPaginationUnsupported skips test run if Tarantool without
+// pagination is used.
+func SkipIfPaginationUnsupported(t *testing.T) {
+	t.Helper()
+
+	SkipIfFeatureUnsupported(t, "pagination", 2, 11, 0)
+}
+
 // CheckEqualBoxErrors checks equivalence of tarantool.BoxError objects.
 //
 // Tarantool errors are not comparable by nature:

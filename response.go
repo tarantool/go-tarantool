@@ -7,9 +7,12 @@ import (
 type Response struct {
 	RequestId uint32
 	Code      uint32
-	Error     string // error message
-	// Data contains deserialized data for untyped requests
-	Data     []interface{}
+	// Error contains an error message.
+	Error string
+	// Data contains deserialized data for untyped requests.
+	Data []interface{}
+	// Pos contains a position descriptor of last selected tuple.
+	Pos      []byte
 	MetaData []ColumnMetaData
 	SQLInfo  SQLInfo
 	buf      smallBuf
@@ -228,6 +231,10 @@ func (resp *Response) decodeBody() (err error) {
 				if !found {
 					return fmt.Errorf("unknown auth type %s", auth)
 				}
+			case KeyPos:
+				if resp.Pos, err = d.DecodeBytes(); err != nil {
+					return fmt.Errorf("unable to decode a position: %w", err)
+				}
 			default:
 				if err = d.Skip(); err != nil {
 					return err
@@ -299,6 +306,10 @@ func (resp *Response) decodeBodyTyped(res interface{}) (err error) {
 			case KeyMetaData:
 				if err = d.Decode(&resp.MetaData); err != nil {
 					return err
+				}
+			case KeyPos:
+				if resp.Pos, err = d.DecodeBytes(); err != nil {
+					return fmt.Errorf("unable to decode a position: %w", err)
 				}
 			default:
 				if err = d.Skip(); err != nil {

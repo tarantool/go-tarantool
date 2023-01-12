@@ -23,8 +23,9 @@ func RefImplPingBody(enc *encoder) error {
 
 // RefImplSelectBody is reference implementation for filling of a select
 // request's body.
-func RefImplSelectBody(enc *encoder, space, index, offset, limit, iterator uint32, key interface{}) error {
-	return fillSelect(enc, space, index, offset, limit, iterator, key)
+func RefImplSelectBody(enc *encoder, space, index, offset, limit, iterator uint32,
+	key, after interface{}, fetchPos bool) error {
+	return fillSelect(enc, space, index, offset, limit, iterator, key, after, fetchPos)
 }
 
 // RefImplInsertBody is reference implementation for filling of an insert
