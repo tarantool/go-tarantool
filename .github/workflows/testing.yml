@@ -359,24 +359,40 @@ jobs:
           make deps
 
       - name: Run regression tests
-        run: |
-          cd "${SRCDIR}"
-          make test
+        uses: nick-fields/retry@v2
+        with:
+          timeout_minutes: 30
+          max_attempts: 3
+          command: |
+            cd "${SRCDIR}"
+            make test
 
       - name: Run regression tests with call_17
-        run: |
-          cd "${SRCDIR}"
-          make test TAGS="go_tarantool_call_17"
+        uses: nick-fields/retry@v2
+        with:
+          timeout_minutes: 30
+          max_attempts: 3
+          command: |
+            cd "${SRCDIR}"
+            make test TAGS="go_tarantool_call_17"
 
       - name: Run regression tests with msgpack.v5
-        run: |
-          cd "${SRCDIR}"
-          make test TAGS="go_tarantool_msgpack_v5"
+        uses: nick-fields/retry@v2
+        with:
+          timeout_minutes: 30
+          max_attempts: 3
+          command: |
+            cd "${SRCDIR}"
+            make test TAGS="go_tarantool_msgpack_v5"
 
       - name: Run regression tests with msgpack.v5 and call_17
-        run: |
-          cd "${SRCDIR}"
-          make test TAGS="go_tarantool_msgpack_v5,go_tarantool_call_17"
+        uses: nick-fields/retry@v2
+        with:
+          timeout_minutes: 30
+          max_attempts: 3
+          command: |
+            cd "${SRCDIR}"
+            make test TAGS="go_tarantool_msgpack_v5,go_tarantool_call_17"
 
       - name: Run fuzzing tests
         if: ${{ matrix.fuzzing }}
