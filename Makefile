@@ -123,7 +123,13 @@ ${BENCH_PATH} bench-deps:
 	rm -rf ${BENCH_PATH}
 	mkdir ${BENCH_PATH}
 	go clean -testcache
-	cd ${BENCH_PATH} && git clone https://go.googlesource.com/perf && cd perf && go install ./cmd/benchstat
+	# It is unable to build a latest version of benchstat with go 1.13. So
+	# we need to switch to an old commit.
+	cd ${BENCH_PATH} && \
+		git clone https://go.googlesource.com/perf && \
+		cd perf && \
+		git checkout 91a04616dc65ba76dbe9e5cf746b923b1402d303 && \
+		go install ./cmd/benchstat
 	rm -rf ${BENCH_PATH}/perf
 
 .PHONY: bench
