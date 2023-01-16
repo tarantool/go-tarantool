@@ -89,8 +89,8 @@ func (h *QueueConnectionHandler) Discovered(conn *tarantool.Connection,
 		}
 	}
 
-	atomic.AddInt32(&h.masterCnt, 1)
 	fmt.Printf("Master %s is ready to work!\n", conn.Addr())
+	atomic.AddInt32(&h.masterCnt, 1)
 
 	return nil
 }
@@ -185,8 +185,12 @@ func Example_connectionPool() {
 
 	// Wait for a new master instance re-identification.
 	<-h.masterUpdated
-	if h.err != nil {
-		fmt.Printf("Unable to re-identify in the pool: %s", h.err)
+	h.mutex.Lock()
+	err = h.err
+	h.mutex.Unlock()
+
+	if err != nil {
+		fmt.Printf("Unable to re-identify in the pool: %s", err)
 		return
 	}
 
