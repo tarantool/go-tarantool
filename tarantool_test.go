@@ -2,7 +2,9 @@ package tarantool_test
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
+	"io"
 	"log"
 	"math"
 	"os"
@@ -696,6 +698,60 @@ func BenchmarkSQLSerial(b *testing.B) {
 	}
 }
 
+func TestTtDialer(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	conn, err := TtDialer{}.Dial(server, DialOpts{})
+	require.Nil(err)
+	require.NotNil(conn)
+	defer conn.Close()
+
+	assert.Contains(conn.LocalAddr().String(), "127.0.0.1")
+	assert.Equal(server, conn.RemoteAddr().String())
+	assert.NotEqual("", conn.Greeting().Version)
+
+	// Write IPROTO_PING.
+	ping := []byte{
+		0xce, 0x00, 0x00, 0x00, 0xa, // Length.
+		0x82, // Header map.
+		0x00, 0x40,
+		0x01, 0xce, 0x00, 0x00, 0x00, 0x02,
+		0x80, // Empty map.
+	}
+	ret, err := conn.Write(ping)
+	require.Equal(len(ping), ret)
+	require.Nil(err)
+	require.Nil(conn.Flush())
+
+	// Read IPROTO_PING response length.
+	lenbuf := make([]byte, 5)
+	ret, err = io.ReadFull(conn, lenbuf)
+	require.Nil(err)
+	require.Equal(len(lenbuf), ret)
+	length := int(binary.BigEndian.Uint32(lenbuf[1:]))
+	require.Greater(length, 0)
+
+	// Read IPROTO_PING response.
+	buf := make([]byte, length)
+	ret, err = io.ReadFull(conn, buf)
+	require.Nil(err)
+	require.Equal(len(buf), ret)
+	// Check that it is IPROTO_OK.
+	assert.Equal([]byte{0x83, 0x00, 0xce, 0x00, 0x00, 0x00, 0x00}, buf[:7])
+}
+
+func TestTtDialer_worksWithConnection(t *testing.T) {
+	defaultOpts := opts
+	defaultOpts.Dialer = TtDialer{}
+
+	conn := test_helpers.ConnectWithValidation(t, server, defaultOpts)
+	defer conn.Close()
+
+	_, err := conn.Do(NewPingRequest()).Get()
+	assert.Nil(t, err)
+}
+
 func TestOptsAuth_Default(t *testing.T) {
 	defaultOpts := opts
 	defaultOpts.Auth = AutoAuth
@@ -722,8 +778,8 @@ func TestOptsAuth_PapSha256AuthForbit(t *testing.T) {
 		conn.Close()
 	}
 
-	if err.Error() != "auth: forbidden to use pap-sha256 unless "+
-		"SSL is enabled for the connection" {
+	if err.Error() != "failed to authenticate: forbidden to use pap-sha256"+
+		" unless SSL is enabled for the connection" {
 		t.Errorf("An unexpected error: %s", err)
 	}
 }
@@ -3273,7 +3329,7 @@ func TestConnectionProtocolVersionRequirementFail(t *testing.T) {
 
 	require.Nilf(t, conn, "Connect fail")
 	require.NotNilf(t, err, "Got error on connect")
-	require.Contains(t, err.Error(), "identify: protocol version 3 is not supported")
+	require.Contains(t, err.Error(), "invalid server protocol: protocol version 3 is not supported")
 }
 
 func TestConnectionProtocolFeatureRequirementSuccess(t *testing.T) {
@@ -3304,7 +3360,7 @@ func TestConnectionProtocolFeatureRequirementFail(t *testing.T) {
 
 	require.Nilf(t, conn, "Connect fail")
 	require.NotNilf(t, err, "Got error on connect")
-	require.Contains(t, err.Error(), "identify: protocol feature TransactionsFeature is not supported")
+	require.Contains(t, err.Error(), "invalid server protocol: protocol feature TransactionsFeature is not supported")
 }
 
 func TestConnectionProtocolFeatureRequirementManyFail(t *testing.T) {
@@ -3321,7 +3377,7 @@ func TestConnectionProtocolFeatureRequirementManyFail(t *testing.T) {
 	require.NotNilf(t, err, "Got error on connect")
 	require.Contains(t,
 		err.Error(),
-		"identify: protocol features TransactionsFeature, Unknown feature (code 15532) are not supported")
+		"invalid server protocol: protocol features TransactionsFeature, Unknown feature (code 15532) are not supported")
 }
 
 func TestConnectionFeatureOptsImmutable(t *testing.T) {

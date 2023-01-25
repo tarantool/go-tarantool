@@ -13,6 +13,8 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 - Support pagination (#246)
 - A Makefile target to test with race detector (#218)
 - Support CRUD API (#108)
+- An ability to replace a base network connection to a Tarantool
+  instance (#265)
 
 ### Changed
 
