@@ -3,8 +3,6 @@
 package tarantool
 
 import (
-	"bufio"
-	"bytes"
 	"context"
 	"encoding/binary"
 	"errors"
@@ -12,9 +10,7 @@ import (
 	"io"
 	"log"
 	"math"
-	"net"
 	"runtime"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -27,11 +23,6 @@ const (
 	connConnected    = 1
 	connShutdown     = 2
 	connClosed       = 3
-)
-
-const (
-	connTransportNone = ""
-	connTransportSsl  = "ssl"
 )
 
 const shutdownEventKey = "box.shutdown"
@@ -149,7 +140,7 @@ func (d defaultLogger) Report(event ConnLogKind, conn *Connection, v ...interfac
 // More on graceful shutdown: https://www.tarantool.io/en/doc/latest/dev_guide/internals/iproto/graceful_shutdown/
 type Connection struct {
 	addr  string
-	c     net.Conn
+	c     Conn
 	mutex sync.Mutex
 	cond  *sync.Cond
 	// Schema contains schema loaded on connection.
@@ -237,16 +228,13 @@ type connShard struct {
 	enc             *encoder
 }
 
-// Greeting is a message sent by Tarantool on connect.
-type Greeting struct {
-	Version string
-	auth    string
-}
-
 // Opts is a way to configure Connection
 type Opts struct {
 	// Auth is an authentication method.
 	Auth Auth
+	// Dialer is a Dialer object used to create a new connection to a
+	// Tarantool instance. TtDialer is a default one.
+	Dialer Dialer
 	// Timeout for response to a particular request. The timeout is reset when
 	// push messages are received. If Timeout is zero, any request can be
 	// blocked infinitely.
@@ -377,6 +365,9 @@ func Connect(addr string, opts Opts) (conn *Connection, err error) {
 	if conn.opts.Concurrency == 0 || conn.opts.Concurrency > maxprocs*128 {
 		conn.opts.Concurrency = maxprocs * 4
 	}
+	if conn.opts.Dialer == nil {
+		conn.opts.Dialer = TtDialer{}
+	}
 	if c := conn.opts.Concurrency; c&(c-1) != 0 {
 		for i := uint(1); i < 32; i *= 2 {
 			c |= c >> i
@@ -504,118 +495,43 @@ func (conn *Connection) cancelFuture(fut *Future, err error) {
 }
 
 func (conn *Connection) dial() (err error) {
-	var connection net.Conn
-	network := "tcp"
 	opts := conn.opts
-	address := conn.addr
-	timeout := opts.Reconnect / 2
-	transport := opts.Transport
-	if timeout == 0 {
-		timeout = 500 * time.Millisecond
-	} else if timeout > 5*time.Second {
-		timeout = 5 * time.Second
+	dialTimeout := opts.Reconnect / 2
+	if dialTimeout == 0 {
+		dialTimeout = 500 * time.Millisecond
+	} else if dialTimeout > 5*time.Second {
+		dialTimeout = 5 * time.Second
 	}
-	// Unix socket connection
-	addrLen := len(address)
-	if addrLen > 0 && (address[0] == '.' || address[0] == '/') {
-		network = "unix"
-	} else if addrLen >= 7 && address[0:7] == "unix://" {
-		network = "unix"
-		address = address[7:]
-	} else if addrLen >= 5 && address[0:5] == "unix:" {
-		network = "unix"
-		address = address[5:]
-	} else if addrLen >= 6 && address[0:6] == "unix/:" {
-		network = "unix"
-		address = address[6:]
-	} else if addrLen >= 6 && address[0:6] == "tcp://" {
-		address = address[6:]
-	} else if addrLen >= 4 && address[0:4] == "tcp:" {
-		address = address[4:]
-	}
-	if transport == connTransportNone {
-		connection, err = net.DialTimeout(network, address, timeout)
-	} else if transport == connTransportSsl {
-		connection, err = sslDialTimeout(network, address, timeout, opts.Ssl)
-	} else {
-		err = errors.New("An unsupported transport type: " + transport)
-	}
+
+	var c Conn
+	c, err = conn.opts.Dialer.Dial(conn.addr, DialOpts{
+		DialTimeout:      dialTimeout,
+		IoTimeout:        opts.Timeout,
+		Transport:        opts.Transport,
+		Ssl:              opts.Ssl,
+		RequiredProtocol: opts.RequiredProtocolInfo,
+		Auth:             opts.Auth,
+		User:             opts.User,
+		Password:         opts.Pass,
+	})
 	if err != nil {
 		return
 	}
-	dc := &DeadlineIO{to: opts.Timeout, c: connection}
-	r := bufio.NewReaderSize(dc, 128*1024)
-	w := bufio.NewWriterSize(dc, 128*1024)
-	greeting := make([]byte, 128)
-	_, err = io.ReadFull(r, greeting)
-	if err != nil {
-		connection.Close()
-		return
-	}
-	conn.Greeting.Version = bytes.NewBuffer(greeting[:64]).String()
-	conn.Greeting.auth = bytes.NewBuffer(greeting[64:108]).String()
 
-	// IPROTO_ID requests can be processed without authentication.
-	// https://www.tarantool.io/en/doc/latest/dev_guide/internals/iproto/requests/#iproto-id
-	if err = conn.identify(w, r); err != nil {
-		connection.Close()
-		return err
-	}
-
-	if err = checkProtocolInfo(opts.RequiredProtocolInfo, conn.serverProtocolInfo); err != nil {
-		connection.Close()
-		return fmt.Errorf("identify: %w", err)
-	}
-
-	// Auth.
-	if opts.User != "" {
-		auth := opts.Auth
-		if opts.Auth == AutoAuth {
-			if conn.serverProtocolInfo.Auth != AutoAuth {
-				auth = conn.serverProtocolInfo.Auth
-			} else {
-				auth = ChapSha1Auth
-			}
-		}
-
-		var req Request
-		if auth == ChapSha1Auth {
-			salt := conn.Greeting.auth
-			req, err = newChapSha1AuthRequest(conn.opts.User, salt, opts.Pass)
-			if err != nil {
-				return fmt.Errorf("auth: %w", err)
-			}
-		} else if auth == PapSha256Auth {
-			if opts.Transport != connTransportSsl {
-				return errors.New("auth: forbidden to use " + auth.String() +
-					" unless SSL is enabled for the connection")
-			}
-			req = newPapSha256AuthRequest(conn.opts.User, opts.Pass)
-		} else {
-			connection.Close()
-			return errors.New("auth: " + auth.String())
-		}
-
-		if err = conn.writeRequest(w, req); err != nil {
-			connection.Close()
-			return fmt.Errorf("auth: %w", err)
-		}
-		if _, err = conn.readResponse(r); err != nil {
-			connection.Close()
-			return fmt.Errorf("auth: %w", err)
-		}
-	}
+	conn.Greeting.Version = c.Greeting().Version
+	conn.serverProtocolInfo = c.ProtocolInfo()
 
 	// Watchers.
 	conn.watchMap.Range(func(key, value interface{}) bool {
 		st := value.(chan watchState)
 		state := <-st
 		if state.unready != nil {
+			st <- state
 			return true
 		}
 
 		req := newWatchRequest(key.(string))
-		if err = conn.writeRequest(w, req); err != nil {
+		if err = writeRequest(c, req); err != nil {
 			st <- state
 			return false
 		}
@@ -626,17 +542,18 @@ func (conn *Connection) dial() (err error) {
 	})
 
 	if err != nil {
+		c.Close()
 		return fmt.Errorf("unable to register watch: %w", err)
 	}
 
 	// Only if connected and fully initialized.
 	conn.lockShards()
-	conn.c = connection
+	conn.c = c
 	atomic.StoreUint32(&conn.state, connConnected)
 	conn.cond.Broadcast()
 	conn.unlockShards()
-	go conn.writer(w, connection)
-	go conn.reader(r, connection)
+	go conn.writer(c, c)
+	go conn.reader(c, c)
 
 	// Subscribe shutdown event to process graceful shutdown.
 	if conn.shutdownWatcher == nil && isFeatureInSlice(WatchersFeature, conn.serverProtocolInfo.Features) {
@@ -698,45 +615,6 @@ func pack(h *smallWBuf, enc *encoder, reqid uint32,
 	h.b[hl+4] = byte(l)
 
 	return
-}
-
-func (conn *Connection) writeRequest(w *bufio.Writer, req Request) error {
-	var packet smallWBuf
-	err := pack(&packet, newEncoder(&packet), 0, req, ignoreStreamId, nil)
-
-	if err != nil {
-		return fmt.Errorf("pack error: %w", err)
-	}
-	if err = write(w, packet.b); err != nil {
-		return fmt.Errorf("write error: %w", err)
-	}
-	if err = w.Flush(); err != nil {
-		return fmt.Errorf("flush error: %w", err)
-	}
-	return err
-}
-
-func (conn *Connection) readResponse(r io.Reader) (Response, error) {
-	respBytes, err := conn.read(r)
-	if err != nil {
-		return Response{}, fmt.Errorf("read error: %w", err)
-	}
-
-	resp := Response{buf: smallBuf{b: respBytes}}
-	err = resp.decodeHeader(conn.dec)
-	if err != nil {
-		return resp, fmt.Errorf("decode response header error: %w", err)
-	}
-	err = resp.decodeBody()
-	if err != nil {
-		switch err.(type) {
-		case Error:
-			return resp, err
-		default:
-			return resp, fmt.Errorf("decode response body error: %w", err)
-		}
-	}
-	return resp, nil
 }
 
 func (conn *Connection) createConnection(reconnect bool) (err error) {
@@ -805,7 +683,7 @@ func (conn *Connection) closeConnection(neterr error, forever bool) (err error) 
 	return
 }
 
-func (conn *Connection) reconnectImpl(neterr error, c net.Conn) {
+func (conn *Connection) reconnectImpl(neterr error, c Conn) {
 	if conn.opts.Reconnect > 0 {
 		if c == conn.c {
 			conn.closeConnection(neterr, false)
@@ -818,7 +696,7 @@ func (conn *Connection) reconnectImpl(neterr error, c net.Conn) {
 	}
 }
 
-func (conn *Connection) reconnect(neterr error, c net.Conn) {
+func (conn *Connection) reconnect(neterr error, c Conn) {
 	conn.mutex.Lock()
 	defer conn.mutex.Unlock()
 	conn.reconnectImpl(neterr, c)
@@ -865,7 +743,7 @@ func (conn *Connection) notify(kind ConnEventKind) {
 	}
 }
 
-func (conn *Connection) writer(w *bufio.Writer, c net.Conn) {
+func (conn *Connection) writer(w writeFlusher, c Conn) {
 	var shardn uint32
 	var packet smallWBuf
 	for atomic.LoadUint32(&conn.state) != connClosed {
@@ -897,7 +775,7 @@ func (conn *Connection) writer(w *bufio.Writer, c net.Conn) {
 		if packet.Len() == 0 {
 			continue
 		}
-		if err := write(w, packet.b); err != nil {
+		if _, err := w.Write(packet.b); err != nil {
 			conn.reconnect(err, c)
 			return
 		}
@@ -945,14 +823,14 @@ func readWatchEvent(reader io.Reader) (connWatchEvent, error) {
 	return event, nil
 }
 
-func (conn *Connection) reader(r *bufio.Reader, c net.Conn) {
+func (conn *Connection) reader(r io.Reader, c Conn) {
 	events := make(chan connWatchEvent, 1024)
 	defer close(events)
 
 	go conn.eventer(events)
 
 	for atomic.LoadUint32(&conn.state) != connClosed {
-		respBytes, err := conn.read(r)
+		respBytes, err := read(r, conn.lenbuf[:])
 		if err != nil {
 			conn.reconnect(err, c)
 			return
@@ -1299,31 +1177,20 @@ func (conn *Connection) timeouts() {
 	}
 }
 
-func write(w io.Writer, data []byte) (err error) {
-	l, err := w.Write(data)
-	if err != nil {
-		return
-	}
-	if l != len(data) {
-		panic("Wrong length writed")
-	}
-	return
-}
-
-func (conn *Connection) read(r io.Reader) (response []byte, err error) {
+func read(r io.Reader, lenbuf []byte) (response []byte, err error) {
 	var length int
 
-	if _, err = io.ReadFull(r, conn.lenbuf[:]); err != nil {
+	if _, err = io.ReadFull(r, lenbuf); err != nil {
 		return
 	}
-	if conn.lenbuf[0] != 0xce {
+	if lenbuf[0] != 0xce {
 		err = errors.New("Wrong response header")
 		return
 	}
-	length = (int(conn.lenbuf[1]) << 24) +
-		(int(conn.lenbuf[2]) << 16) +
-		(int(conn.lenbuf[3]) << 8) +
-		int(conn.lenbuf[4])
+	length = (int(lenbuf[1]) << 24) +
+		(int(lenbuf[2]) << 16) +
+		(int(lenbuf[3]) << 8) +
+		int(lenbuf[4])
 
 	if length == 0 {
 		err = errors.New("Response should not be 0 length")
@@ -1627,78 +1494,6 @@ func (conn *Connection) newWatcherImpl(key string, callback WatchCallback) (Watc
 		done:     done,
 		finished: finished,
 	}, nil
-}
-
-// checkProtocolInfo checks that expected protocol version is
-// and protocol features are supported.
-func checkProtocolInfo(expected ProtocolInfo, actual ProtocolInfo) error {
-	var found bool
-	var missingFeatures []ProtocolFeature
-
-	if expected.Version > actual.Version {
-		return fmt.Errorf("protocol version %d is not supported", expected.Version)
-	}
-
-	// It seems that iterating over a small list is way faster
-	// than building a map: https://stackoverflow.com/a/52710077/11646599
-	for _, expectedFeature := range expected.Features {
-		found = false
-		for _, actualFeature := range actual.Features {
-			if expectedFeature == actualFeature {
-				found = true
-			}
-		}
-		if !found {
-			missingFeatures = append(missingFeatures, expectedFeature)
-		}
-	}
-
-	if len(missingFeatures) == 1 {
-		return fmt.Errorf("protocol feature %s is not supported", missingFeatures[0])
-	}
-
-	if len(missingFeatures) > 1 {
-		var sarr []string
-		for _, missingFeature := range missingFeatures {
-			sarr = append(sarr, missingFeature.String())
-		}
-		return fmt.Errorf("protocol features %s are not supported", strings.Join(sarr, ", "))
-	}
-
-	return nil
-}
-
-// identify sends info about client protocol, receives info
-// about server protocol in response and stores it in the connection.
-func (conn *Connection) identify(w *bufio.Writer, r *bufio.Reader) error {
-	var ok bool
-
-	req := NewIdRequest(clientProtocolInfo)
-	werr := conn.writeRequest(w, req)
-	if werr != nil {
-		return fmt.Errorf("identify: %w", werr)
-	}
-
-	resp, rerr := conn.readResponse(r)
-	if rerr != nil {
-		if resp.Code == ErrUnknownRequestType {
-			// IPROTO_ID requests are not supported by server.
-			return nil
-		}
-
-		return fmt.Errorf("identify: %w", rerr)
-	}
-
-	if len(resp.Data) == 0 {
-		return fmt.Errorf("identify: unexpected response: no data")
-	}
-
-	conn.serverProtocolInfo, ok = resp.Data[0].(ProtocolInfo)
-	if !ok {
-		return fmt.Errorf("identify: unexpected response: wrong data")
-	}
-
-	return nil
 }
 
 // ServerProtocolVersion returns protocol version and protocol features

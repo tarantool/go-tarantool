@@ -658,37 +658,54 @@ func (req *spaceIndexRequest) setIndex(index interface{}) {
 	req.index = index
 }
 
+// authRequest implements IPROTO_AUTH request.
 type authRequest struct {
-	baseRequest
 	auth       Auth
 	user, pass string
 }
 
-func newChapSha1AuthRequest(user, salt, password string) (*authRequest, error) {
+// newChapSha1AuthRequest create a new authRequest with chap-sha1
+// authentication method.
+func newChapSha1AuthRequest(user, password, salt string) (authRequest, error) {
+	req := authRequest{}
 	scr, err := scramble(salt, password)
 	if err != nil {
-		return nil, fmt.Errorf("scrambling failure: %w", err)
+		return req, fmt.Errorf("scrambling failure: %w", err)
 	}
 
-	req := new(authRequest)
-	req.requestCode = AuthRequestCode
 	req.auth = ChapSha1Auth
 	req.user = user
 	req.pass = string(scr)
 	return req, nil
 }
 
-func newPapSha256AuthRequest(user, password string) *authRequest {
-	req := new(authRequest)
-	req.requestCode = AuthRequestCode
-	req.auth = PapSha256Auth
-	req.user = user
-	req.pass = password
-	return req
+// newPapSha256AuthRequest create a new authRequest with pap-sha256
+// authentication method.
+func newPapSha256AuthRequest(user, password string) authRequest {
+	return authRequest{
+		auth: PapSha256Auth,
+		user: user,
+		pass: password,
+	}
+}
+
+// Code returns a IPROTO code for the request.
+func (req authRequest) Code() int32 {
+	return AuthRequestCode
+}
+
+// Async returns true if the request does not require a response.
+func (req authRequest) Async() bool {
+	return false
+}
+
+// Ctx returns a context of the request.
+func (req authRequest) Ctx() context.Context {
+	return nil
 }
 
 // Body fills an encoder with the auth request body.
-func (req *authRequest) Body(res SchemaResolver, enc *encoder) error {
+func (req authRequest) Body(res SchemaResolver, enc *encoder) error {
 	return enc.Encode(map[uint32]interface{}{
 		KeyUserName: req.user,
 		KeyTuple:    []interface{}{req.auth.String(), req.pass},
