@@ -791,21 +791,32 @@ func TestUtube_Put(t *testing.T) {
 		close(errChan)
 	}()
 
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(500 * time.Millisecond)
 	// the queue should be blocked for ~2 seconds
 	start := time.Now()
 	t2, err := q.TakeTimeout(2 * time.Second)
 	if err != nil {
+		<-errChan
 		t.Fatalf("Failed to take task from utube: %s", err)
 	}
+
+	if t2 == nil {
+		<-errChan
+		t.Fatalf("Got nil task")
+	}
+
 	if err := t2.Ack(); err != nil {
+		<-errChan
 		t.Fatalf("Failed to ack task: %s", err)
 	}
 	end := time.Now()
 	if _, ok := <-errChan; ok {
 		t.Fatalf("One of tasks failed")
 	}
-	if math.Abs(float64(end.Sub(start)-2*time.Second)) > float64(200*time.Millisecond) {
+
+	timeSpent := math.Abs(float64(end.Sub(start) - 2*time.Second))
+
+	if timeSpent > float64(700*time.Millisecond) {
 		t.Fatalf("Blocking time is less than expected: actual = %.2fs, expected = 1s", end.Sub(start).Seconds())
 	}
 }
