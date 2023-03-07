@@ -39,6 +39,7 @@ The release improves compatibility with new Tarantool versions.
   package-level variable decimalPrecision (#233)
 - Flaky test TestClientRequestObjectsWithContext (#244)
 - Flaky test multi/TestDisconnectAll (#234)
+- Build on macOS with Apple M1 (#260)
 
 ## [1.9.0] - 2022-11-02
 
