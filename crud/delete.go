@@ -6,9 +6,6 @@ import (
 	"github.com/tarantool/go-tarantool"
 )
 
-// DeleteResult describes result for `crud.delete` method.
-type DeleteResult = Result
-
 // DeleteOpts describes options for `crud.delete` method.
 type DeleteOpts = SimpleOperationOpts
 

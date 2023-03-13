@@ -215,12 +215,12 @@ var testResultWithErrCases = []struct {
 }{
 	{
 		"BaseResult",
-		&crud.SelectResult{},
+		&crud.Result{},
 		crud.NewSelectRequest(invalidSpaceName).Opts(selectOpts),
 	},
 	{
 		"ManyResult",
-		&crud.ReplaceManyResult{},
+		&crud.Result{},
 		crud.NewReplaceManyRequest(invalidSpaceName).Opts(opManyOpts),
 	},
 	{
@@ -691,18 +691,18 @@ func TestBaseResult(t *testing.T) {
 	defer conn.Close()
 
 	req := crud.NewSelectRequest(spaceName).Opts(selectOpts)
-	resp := crud.SelectResult{}
+	resp := crud.Result{}
 
 	testCrudRequestPrepareData(t, conn)
 
 	err := conn.Do(req).GetTyped(&resp)
 	if err != nil {
-		t.Fatalf("Failed to Do CRUD request: %s", err.Error())
+		t.Fatalf("Failed to Do CRUD request: %s", err)
 	}
 
 	require.ElementsMatch(t, resp.Metadata, expectedMetadata)
 
-	if len(resp.Rows) != 10 {
+	if len(resp.Rows.([]interface{})) != 10 {
 		t.Fatalf("Unexpected rows: %#v", resp.Rows)
 	}
 
@@ -734,7 +734,7 @@ func TestManyResult(t *testing.T) {
 	defer conn.Close()
 
 	req := crud.NewReplaceManyRequest(spaceName).Tuples(tuples).Opts(opManyOpts)
-	resp := crud.ReplaceResult{}
+	resp := crud.Result{}
 
 	testCrudRequestPrepareData(t, conn)
 
@@ -745,7 +745,7 @@ func TestManyResult(t *testing.T) {
 
 	require.ElementsMatch(t, resp.Metadata, expectedMetadata)
 
-	if len(resp.Rows) != 10 {
+	if len(resp.Rows.([]interface{})) != 10 {
 		t.Fatalf("Unexpected rows: %#v", resp.Rows)
 	}
 

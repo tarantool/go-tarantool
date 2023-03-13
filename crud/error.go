@@ -75,6 +75,30 @@ type ErrorMany struct {
 	Errors []Error
 }
 
+// DecodeMsgpack provides custom msgpack decoder.
+func (e *ErrorMany) DecodeMsgpack(d *decoder) error {
+	l, err := d.DecodeArrayLen()
+	if err != nil {
+		return err
+	}
+
+	var errs []Error
+	for i := 0; i < l; i++ {
+		var crudErr *Error = nil
+		if err := d.Decode(&crudErr); err != nil {
+			return err
+		} else if crudErr != nil {
+			errs = append(errs, *crudErr)
+		}
+	}
+
+	if len(errs) > 0 {
+		*e = ErrorMany{Errors: errs}
+	}
+
+	return nil
+}
+
 // Error converts an Error to a string.
 func (errs ErrorMany) Error() string {
 	var str []string

@@ -6,9 +6,6 @@ import (
 	"github.com/tarantool/go-tarantool"
 )
 
-// MinResult describes result for `crud.min` method.
-type MinResult = Result
-
 // MinOpts describes options for `crud.min` method.
 type MinOpts = BorderOpts
 

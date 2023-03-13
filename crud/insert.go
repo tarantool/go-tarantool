@@ -6,9 +6,6 @@ import (
 	"github.com/tarantool/go-tarantool"
 )
 
-// InsertResult describes result for `crud.insert` method.
-type InsertResult = Result
-
 // InsertOpts describes options for `crud.insert` method.
 type InsertOpts = SimpleOperationOpts
 
@@ -64,9 +61,6 @@ func (req *InsertRequest) Context(ctx context.Context) *InsertRequest {
 
 	return req
 }
-
-// InsertObjectResult describes result for `crud.insert_object` method.
-type InsertObjectResult = Result
 
 // InsertObjectOpts describes options for `crud.insert_object` method.
 type InsertObjectOpts = SimpleOperationObjectOpts

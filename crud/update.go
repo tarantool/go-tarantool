@@ -6,9 +6,6 @@ import (
 	"github.com/tarantool/go-tarantool"
 )
 
-// UpdateResult describes result for `crud.update` method.
-type UpdateResult = Result
-
 // UpdateOpts describes options for `crud.update` method.
 type UpdateOpts = SimpleOperationOpts
 

@@ -2,6 +2,7 @@ package crud
 
 import (
 	"fmt"
+	"reflect"
 )
 
 // FieldFormat contains field definition: {name='...',type='...'[,is_nullable=...]}.
@@ -48,7 +49,15 @@ func (format *FieldFormat) DecodeMsgpack(d *decoder) error {
 // Result describes CRUD result as an object containing metadata and rows.
 type Result struct {
 	Metadata []FieldFormat
-	Rows     []interface{}
+	Rows     interface{}
+	rowType  reflect.Type
+}
+
+// MakeResult create a Result object with a custom row type for decoding.
+func MakeResult(rowType reflect.Type) Result {
+	return Result{
+		rowType: rowType,
+	}
 }
 
 // DecodeMsgpack provides custom msgpack decoder.
@@ -93,85 +102,19 @@ func (r *Result) DecodeMsgpack(d *decoder) error {
 
 			r.Metadata = metadata
 		case "rows":
-			if err = d.Decode(&r.Rows); err != nil {
-				return err
-			}
-		default:
-			if err := d.Skip(); err != nil {
-				return err
-			}
-		}
-	}
-
-	var crudErr *Error = nil
-
-	if err := d.Decode(&crudErr); err != nil {
-		return err
-	}
-
-	for i := 2; i < arrLen; i++ {
-		if err := d.Skip(); err != nil {
-			return err
-		}
-	}
-
-	if crudErr != nil {
-		return crudErr
-	}
-
-	return nil
-}
-
-// ResultMany describes CRUD result as an object containing metadata and rows.
-type ResultMany struct {
-	Metadata []FieldFormat
-	Rows     []interface{}
-}
-
-// DecodeMsgpack provides custom msgpack decoder.
-func (r *ResultMany) DecodeMsgpack(d *decoder) error {
-	arrLen, err := d.DecodeArrayLen()
-	if err != nil {
-		return err
-	}
-
-	if arrLen < 2 {
-		return fmt.Errorf("array len doesn't match: %d", arrLen)
-	}
-
-	l, err := d.DecodeMapLen()
-	if err != nil {
-		return err
-	}
-
-	for i := 0; i < l; i++ {
-		key, err := d.DecodeString()
-		if err != nil {
-			return err
-		}
-
-		switch key {
-		case "metadata":
-			metadataLen, err := d.DecodeArrayLen()
-			if err != nil {
-				return err
-			}
-
-			metadata := make([]FieldFormat, metadataLen)
-
-			for i := 0; i < metadataLen; i++ {
-				fieldFormat := FieldFormat{}
-				if err = d.Decode(&fieldFormat); err != nil {
+			if r.rowType != nil {
+				tuples := reflect.New(reflect.SliceOf(r.rowType))
+				if err = d.DecodeValue(tuples); err != nil {
+					fmt.Println(tuples)
 					return err
 				}
-
-				metadata[i] = fieldFormat
-			}
-
-			r.Metadata = metadata
-		case "rows":
-			if err = d.Decode(&r.Rows); err != nil {
-				return err
+				r.Rows = tuples.Elem().Interface()
+			} else {
+				var decoded []interface{}
+				if err = d.Decode(&decoded); err != nil {
+					return err
+				}
+				r.Rows = decoded
 			}
 		default:
 			if err := d.Skip(); err != nil {
@@ -180,19 +123,27 @@ func (r *ResultMany) DecodeMsgpack(d *decoder) error {
 		}
 	}
 
-	errLen, err := d.DecodeArrayLen()
+	code, err := d.PeekCode()
 	if err != nil {
 		return err
 	}
 
-	var errs []Error
-	for i := 0; i < errLen; i++ {
-		var crudErr *Error = nil
-
+	var retErr error
+	if msgpackIsArray(code) {
+		var crudErr *ErrorMany
 		if err := d.Decode(&crudErr); err != nil {
 			return err
-		} else if crudErr != nil {
-			errs = append(errs, *crudErr)
+		}
+		if crudErr != nil {
+			retErr = *crudErr
+		}
+	} else {
+		var crudErr *Error
+		if err := d.Decode(&crudErr); err != nil {
+			return err
+		}
+		if crudErr != nil {
+			retErr = *crudErr
 		}
 	}
 
@@ -202,11 +153,7 @@ func (r *ResultMany) DecodeMsgpack(d *decoder) error {
 		}
 	}
 
-	if len(errs) > 0 {
-		return &ErrorMany{Errors: errs}
-	}
-
-	return nil
+	return retErr
 }
 
 // NumberResult describes CRUD result as an object containing number.

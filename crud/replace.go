@@ -6,9 +6,6 @@ import (
 	"github.com/tarantool/go-tarantool"
 )
 
-// ReplaceResult describes result for `crud.replace` method.
-type ReplaceResult = Result
-
 // ReplaceOpts describes options for `crud.replace` method.
 type ReplaceOpts = SimpleOperationOpts
 
@@ -64,9 +61,6 @@ func (req *ReplaceRequest) Context(ctx context.Context) *ReplaceRequest {
 
 	return req
 }
-
-// ReplaceObjectResult describes result for `crud.replace_object` method.
-type ReplaceObjectResult = Result
 
 // ReplaceObjectOpts describes options for `crud.replace_object` method.
 type ReplaceObjectOpts = SimpleOperationObjectOpts
