@@ -94,12 +94,12 @@ var resolver ValidSchemeResolver
 func assertBodyEqual(t testing.TB, reference tarantool.Request, req tarantool.Request) {
 	t.Helper()
 
-	reqBody, err := test_helpers.ExtractRequestBody(req, &resolver, crud.NewEncoder)
+	reqBody, err := test_helpers.ExtractRequestBody(req, &resolver, newEncoder)
 	if err != nil {
 		t.Fatalf("An unexpected Response.Body() error: %q", err.Error())
 	}
 
-	refBody, err := test_helpers.ExtractRequestBody(reference, &resolver, crud.NewEncoder)
+	refBody, err := test_helpers.ExtractRequestBody(reference, &resolver, newEncoder)
 	if err != nil {
 		t.Fatalf("An unexpected Response.Body() error: %q", err.Error())
 	}

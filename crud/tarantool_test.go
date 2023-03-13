@@ -123,7 +123,7 @@ func BenchmarkCrud(b *testing.B) {
 
 	buf := bytes.Buffer{}
 	buf.Grow(512 * 1024 * 1024) // Avoid allocs in test.
-	enc := crud.NewEncoder(&buf)
+	enc := newEncoder(&buf)
 
 	b.ResetTimer()
 

@@ -4,8 +4,6 @@
 package crud
 
 import (
-	"io"
-
 	"gopkg.in/vmihailenco/msgpack.v2"
 )
 
@@ -22,8 +20,4 @@ type MapObject map[string]interface{}
 
 func (o MapObject) EncodeMsgpack(enc *encoder) {
 	enc.Encode(o)
-}
-
-func NewEncoder(w io.Writer) *encoder {
-	return msgpack.NewEncoder(w)
 }
