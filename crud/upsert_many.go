@@ -6,9 +6,6 @@ import (
 	"github.com/tarantool/go-tarantool"
 )
 
-// UpsertManyResult describes result for `crud.upsert_many` method.
-type UpsertManyResult = ResultMany
-
 // UpsertManyOpts describes options for `crud.upsert_many` method.
 type UpsertManyOpts = OperationManyOpts
 
@@ -73,9 +70,6 @@ func (req *UpsertManyRequest) Context(ctx context.Context) *UpsertManyRequest {
 
 	return req
 }
-
-// UpsertObjectManyResult describes result for `crud.upsert_object_many` method.
-type UpsertObjectManyResult = ResultMany
 
 // UpsertObjectManyOpts describes options for `crud.upsert_object_many` method.
 type UpsertObjectManyOpts = OperationManyOpts

@@ -6,9 +6,6 @@ import (
 	"github.com/tarantool/go-tarantool"
 )
 
-// GetResult describes result for `crud.get` method.
-type GetResult = Result
-
 // GetOpts describes options for `crud.get` method.
 type GetOpts struct {
 	// Timeout is a `vshard.call` timeout and vshard

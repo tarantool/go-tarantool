@@ -5,6 +5,7 @@ package crud
 
 import (
 	"github.com/vmihailenco/msgpack/v5"
+	"github.com/vmihailenco/msgpack/v5/msgpcode"
 )
 
 type encoder = msgpack.Encoder
@@ -20,4 +21,9 @@ type MapObject map[string]interface{}
 
 func (o MapObject) EncodeMsgpack(enc *encoder) {
 	enc.Encode(o)
+}
+
+func msgpackIsArray(code byte) bool {
+	return code == msgpcode.Array16 || code == msgpcode.Array32 ||
+		msgpcode.IsFixedArray(code)
 }

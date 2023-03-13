@@ -6,9 +6,6 @@ import (
 	"github.com/tarantool/go-tarantool"
 )
 
-// InsertManyResult describes result for `crud.insert_many` method.
-type InsertManyResult = ResultMany
-
 // InsertManyOpts describes options for `crud.insert_many` method.
 type InsertManyOpts = OperationManyOpts
 
@@ -64,9 +61,6 @@ func (req *InsertManyRequest) Context(ctx context.Context) *InsertManyRequest {
 
 	return req
 }
-
-// InsertObjectManyResult describes result for `crud.insert_object_many` method.
-type InsertObjectManyResult = ResultMany
 
 // InsertObjectManyOpts describes options for `crud.insert_object_many` method.
 type InsertObjectManyOpts = OperationObjectManyOpts

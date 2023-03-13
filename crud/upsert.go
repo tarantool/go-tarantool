@@ -6,9 +6,6 @@ import (
 	"github.com/tarantool/go-tarantool"
 )
 
-// UpsertResult describes result for `crud.upsert` method.
-type UpsertResult = Result
-
 // UpsertOpts describes options for `crud.upsert` method.
 type UpsertOpts = SimpleOperationOpts
 
@@ -75,9 +72,6 @@ func (req *UpsertRequest) Context(ctx context.Context) *UpsertRequest {
 
 	return req
 }
-
-// UpsertObjectResult describes result for `crud.upsert_object` method.
-type UpsertObjectResult = Result
 
 // UpsertObjectOpts describes options for `crud.upsert_object` method.
 type UpsertObjectOpts = SimpleOperationOpts

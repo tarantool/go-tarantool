@@ -6,9 +6,6 @@ import (
 	"github.com/tarantool/go-tarantool"
 )
 
-// MaxResult describes result for `crud.max` method.
-type MaxResult = Result
-
 // MaxOpts describes options for `crud.max` method.
 type MaxOpts = BorderOpts
 

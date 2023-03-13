@@ -6,9 +6,6 @@ import (
 	"github.com/tarantool/go-tarantool"
 )
 
-// ReplaceManyResult describes result for `crud.replace_many` method.
-type ReplaceManyResult = ResultMany
-
 // ReplaceManyOpts describes options for `crud.replace_many` method.
 type ReplaceManyOpts = OperationManyOpts
 
@@ -64,9 +61,6 @@ func (req *ReplaceManyRequest) Context(ctx context.Context) *ReplaceManyRequest 
 
 	return req
 }
-
-// ReplaceObjectManyResult describes result for `crud.replace_object_many` method.
-type ReplaceObjectManyResult = ResultMany
 
 // ReplaceObjectManyOpts describes options for `crud.replace_object_many` method.
 type ReplaceObjectManyOpts = OperationObjectManyOpts
