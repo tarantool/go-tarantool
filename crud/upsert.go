@@ -31,7 +31,7 @@ func NewUpsertRequest(space string) *UpsertRequest {
 	req := new(UpsertRequest)
 	req.initImpl("crud.upsert")
 	req.setSpace(space)
-	req.tuple = Tuple{}
+	req.tuple = []interface{}{}
 	req.operations = []Operation{}
 	req.opts = UpsertOpts{}
 	return req

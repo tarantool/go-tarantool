@@ -29,7 +29,7 @@ func NewDeleteRequest(space string) *DeleteRequest {
 	req := new(DeleteRequest)
 	req.initImpl("crud.delete")
 	req.setSpace(space)
-	req.key = Tuple{}
+	req.key = []interface{}{}
 	req.opts = DeleteOpts{}
 	return req
 }
