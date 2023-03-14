@@ -34,8 +34,8 @@ type upsertManyArgs struct {
 // NewUpsertManyRequest returns a new empty UpsertManyRequest.
 func NewUpsertManyRequest(space string) *UpsertManyRequest {
 	req := new(UpsertManyRequest)
-	req.initImpl("crud.upsert_many")
-	req.setSpace(space)
+	req.impl = newCall("crud.upsert_many")
+	req.space = space
 	req.tuplesOperationsData = []TupleOperationsData{}
 	req.opts = UpsertManyOpts{}
 	return req
@@ -99,8 +99,8 @@ type upsertObjectManyArgs struct {
 // NewUpsertObjectManyRequest returns a new empty UpsertObjectManyRequest.
 func NewUpsertObjectManyRequest(space string) *UpsertObjectManyRequest {
 	req := new(UpsertObjectManyRequest)
-	req.initImpl("crud.upsert_object_many")
-	req.setSpace(space)
+	req.impl = newCall("crud.upsert_object_many")
+	req.space = space
 	req.objectsOperationsData = []ObjectOperationsData{}
 	req.opts = UpsertObjectManyOpts{}
 	return req

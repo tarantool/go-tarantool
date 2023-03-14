@@ -63,30 +63,26 @@ type baseRequest struct {
 	impl *tarantool.CallRequest
 }
 
-func (req *baseRequest) initImpl(methodName string) {
-	req.impl = tarantool.NewCall17Request(methodName)
+func newCall(method string) *tarantool.CallRequest {
+	return tarantool.NewCall17Request(method)
 }
 
 // Code returns IPROTO code for CRUD request.
-func (req *baseRequest) Code() int32 {
+func (req baseRequest) Code() int32 {
 	return req.impl.Code()
 }
 
 // Ctx returns a context of CRUD request.
-func (req *baseRequest) Ctx() context.Context {
+func (req baseRequest) Ctx() context.Context {
 	return req.impl.Ctx()
 }
 
 // Async returns is CRUD request expects a response.
-func (req *baseRequest) Async() bool {
+func (req baseRequest) Async() bool {
 	return req.impl.Async()
 }
 
 type spaceRequest struct {
 	baseRequest
 	space string
-}
-
-func (req *spaceRequest) setSpace(space string) {
-	req.space = space
 }

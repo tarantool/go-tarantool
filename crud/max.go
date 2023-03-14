@@ -27,8 +27,8 @@ type maxArgs struct {
 // NewMaxRequest returns a new empty MaxRequest.
 func NewMaxRequest(space string) *MaxRequest {
 	req := new(MaxRequest)
-	req.initImpl("crud.max")
-	req.setSpace(space)
+	req.impl = newCall("crud.max")
+	req.space = space
 	req.index = []interface{}{}
 	req.opts = MaxOpts{}
 	return req

@@ -45,19 +45,27 @@ type SelectOpts struct {
 func (opts SelectOpts) EncodeMsgpack(enc *encoder) error {
 	const optsCnt = 12
 
-	options := [optsCnt]option{opts.Timeout, opts.VshardRouter,
-		opts.Fields, opts.BucketId,
-		opts.Mode, opts.PreferReplica, opts.Balance,
-		opts.First, opts.After, opts.BatchSize,
-		opts.ForceMapCall, opts.Fullscan}
 	names := [optsCnt]string{timeoutOptName, vshardRouterOptName,
 		fieldsOptName, bucketIdOptName,
 		modeOptName, preferReplicaOptName, balanceOptName,
 		firstOptName, afterOptName, batchSizeOptName,
 		forceMapCallOptName, fullscanOptName}
 	values := [optsCnt]interface{}{}
+	exists := [optsCnt]bool{}
+	values[0], exists[0] = opts.Timeout.Get()
+	values[1], exists[1] = opts.VshardRouter.Get()
+	values[2], exists[2] = opts.Fields.Get()
+	values[3], exists[3] = opts.BucketId.Get()
+	values[4], exists[4] = opts.Mode.Get()
+	values[5], exists[5] = opts.PreferReplica.Get()
+	values[6], exists[6] = opts.Balance.Get()
+	values[7], exists[7] = opts.First.Get()
+	values[8], exists[8] = opts.After.Get()
+	values[8], exists[8] = opts.BatchSize.Get()
+	values[8], exists[8] = opts.ForceMapCall.Get()
+	values[8], exists[8] = opts.Fullscan.Get()
 
-	return encodeOptions(enc, options[:], names[:], values[:])
+	return encodeOptions(enc, names[:], values[:], exists[:])
 }
 
 // SelectRequest helps you to create request object to call `crud.select`
@@ -78,8 +86,8 @@ type selectArgs struct {
 // NewSelectRequest returns a new empty SelectRequest.
 func NewSelectRequest(space string) *SelectRequest {
 	req := new(SelectRequest)
-	req.initImpl("crud.select")
-	req.setSpace(space)
+	req.impl = newCall("crud.select")
+	req.space = space
 	req.conditions = nil
 	req.opts = SelectOpts{}
 	return req

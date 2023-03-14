@@ -27,8 +27,8 @@ type replaceManyArgs struct {
 // NewReplaceManyRequest returns a new empty ReplaceManyRequest.
 func NewReplaceManyRequest(space string) *ReplaceManyRequest {
 	req := new(ReplaceManyRequest)
-	req.initImpl("crud.replace_many")
-	req.setSpace(space)
+	req.impl = newCall("crud.replace_many")
+	req.space = space
 	req.tuples = []Tuple{}
 	req.opts = ReplaceManyOpts{}
 	return req
@@ -83,8 +83,8 @@ type replaceObjectManyArgs struct {
 // NewReplaceObjectManyRequest returns a new empty ReplaceObjectManyRequest.
 func NewReplaceObjectManyRequest(space string) *ReplaceObjectManyRequest {
 	req := new(ReplaceObjectManyRequest)
-	req.initImpl("crud.replace_object_many")
-	req.setSpace(space)
+	req.impl = newCall("crud.replace_object_many")
+	req.space = space
 	req.objects = []Object{}
 	req.opts = ReplaceObjectManyOpts{}
 	return req

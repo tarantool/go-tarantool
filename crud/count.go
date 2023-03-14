@@ -42,17 +42,23 @@ type CountOpts struct {
 func (opts CountOpts) EncodeMsgpack(enc *encoder) error {
 	const optsCnt = 9
 
-	options := [optsCnt]option{opts.Timeout, opts.VshardRouter,
-		opts.Mode, opts.PreferReplica, opts.Balance,
-		opts.YieldEvery, opts.BucketId, opts.ForceMapCall,
-		opts.Fullscan}
 	names := [optsCnt]string{timeoutOptName, vshardRouterOptName,
 		modeOptName, preferReplicaOptName, balanceOptName,
 		yieldEveryOptName, bucketIdOptName, forceMapCallOptName,
 		fullscanOptName}
 	values := [optsCnt]interface{}{}
+	exists := [optsCnt]bool{}
+	values[0], exists[0] = opts.Timeout.Get()
+	values[1], exists[1] = opts.VshardRouter.Get()
+	values[2], exists[2] = opts.Mode.Get()
+	values[3], exists[3] = opts.PreferReplica.Get()
+	values[4], exists[4] = opts.Balance.Get()
+	values[5], exists[5] = opts.YieldEvery.Get()
+	values[6], exists[6] = opts.BucketId.Get()
+	values[7], exists[7] = opts.ForceMapCall.Get()
+	values[8], exists[8] = opts.Fullscan.Get()
 
-	return encodeOptions(enc, options[:], names[:], values[:])
+	return encodeOptions(enc, names[:], values[:], exists[:])
 }
 
 // CountRequest helps you to create request object to call `crud.count`
@@ -73,8 +79,8 @@ type countArgs struct {
 // NewCountRequest returns a new empty CountRequest.
 func NewCountRequest(space string) *CountRequest {
 	req := new(CountRequest)
-	req.initImpl("crud.count")
-	req.setSpace(space)
+	req.impl = newCall("crud.count")
+	req.space = space
 	req.conditions = nil
 	req.opts = CountOpts{}
 	return req

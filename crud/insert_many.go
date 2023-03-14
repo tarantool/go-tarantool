@@ -27,8 +27,8 @@ type insertManyArgs struct {
 // NewInsertManyRequest returns a new empty InsertManyRequest.
 func NewInsertManyRequest(space string) *InsertManyRequest {
 	req := new(InsertManyRequest)
-	req.initImpl("crud.insert_many")
-	req.setSpace(space)
+	req.impl = newCall("crud.insert_many")
+	req.space = space
 	req.tuples = []Tuple{}
 	req.opts = InsertManyOpts{}
 	return req
@@ -83,8 +83,8 @@ type insertObjectManyArgs struct {
 // NewInsertObjectManyRequest returns a new empty InsertObjectManyRequest.
 func NewInsertObjectManyRequest(space string) *InsertObjectManyRequest {
 	req := new(InsertObjectManyRequest)
-	req.initImpl("crud.insert_object_many")
-	req.setSpace(space)
+	req.impl = newCall("crud.insert_object_many")
+	req.space = space
 	req.objects = []Object{}
 	req.opts = InsertObjectManyOpts{}
 	return req

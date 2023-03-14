@@ -27,8 +27,8 @@ type insertArgs struct {
 // NewInsertRequest returns a new empty InsertRequest.
 func NewInsertRequest(space string) *InsertRequest {
 	req := new(InsertRequest)
-	req.initImpl("crud.insert")
-	req.setSpace(space)
+	req.impl = newCall("crud.insert")
+	req.space = space
 	req.tuple = []interface{}{}
 	req.opts = InsertOpts{}
 	return req
@@ -83,8 +83,8 @@ type insertObjectArgs struct {
 // NewInsertObjectRequest returns a new empty InsertObjectRequest.
 func NewInsertObjectRequest(space string) *InsertObjectRequest {
 	req := new(InsertObjectRequest)
-	req.initImpl("crud.insert_object")
-	req.setSpace(space)
+	req.impl = newCall("crud.insert_object")
+	req.space = space
 	req.object = MapObject{}
 	req.opts = InsertObjectOpts{}
 	return req

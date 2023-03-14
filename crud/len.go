@@ -28,8 +28,8 @@ type lenArgs struct {
 // NewLenRequest returns a new empty LenRequest.
 func NewLenRequest(space string) *LenRequest {
 	req := new(LenRequest)
-	req.initImpl("crud.len")
-	req.setSpace(space)
+	req.impl = newCall("crud.len")
+	req.space = space
 	req.opts = LenOpts{}
 	return req
 }
