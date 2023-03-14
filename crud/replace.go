@@ -29,7 +29,7 @@ func NewReplaceRequest(space string) *ReplaceRequest {
 	req := new(ReplaceRequest)
 	req.initImpl("crud.replace")
 	req.setSpace(space)
-	req.tuple = Tuple{}
+	req.tuple = []interface{}{}
 	req.opts = ReplaceOpts{}
 	return req
 }

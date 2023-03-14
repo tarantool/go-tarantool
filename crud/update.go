@@ -31,7 +31,7 @@ func NewUpdateRequest(space string) *UpdateRequest {
 	req := new(UpdateRequest)
 	req.initImpl("crud.update")
 	req.setSpace(space)
-	req.key = Tuple{}
+	req.key = []interface{}{}
 	req.operations = []Operation{}
 	req.opts = UpdateOpts{}
 	return req

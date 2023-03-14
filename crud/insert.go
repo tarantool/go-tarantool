@@ -29,7 +29,7 @@ func NewInsertRequest(space string) *InsertRequest {
 	req := new(InsertRequest)
 	req.initImpl("crud.insert")
 	req.setSpace(space)
-	req.tuple = Tuple{}
+	req.tuple = []interface{}{}
 	req.opts = InsertOpts{}
 	return req
 }

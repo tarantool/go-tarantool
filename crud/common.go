@@ -59,9 +59,6 @@ import (
 	"github.com/tarantool/go-tarantool"
 )
 
-// Tuple is a type to describe tuple for CRUD methods.
-type Tuple = []interface{}
-
 type baseRequest struct {
 	impl *tarantool.CallRequest
 }

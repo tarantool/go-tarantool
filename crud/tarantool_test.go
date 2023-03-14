@@ -347,7 +347,7 @@ var testGenerateDataCases = []struct {
 func generateTuples() []crud.Tuple {
 	tpls := []crud.Tuple{}
 	for i := 1010; i < 1020; i++ {
-		tpls = append(tpls, crud.Tuple{uint(i), nil, "bla"})
+		tpls = append(tpls, []interface{}{uint(i), nil, "bla"})
 	}
 
 	return tpls

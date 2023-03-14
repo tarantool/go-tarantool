@@ -64,7 +64,7 @@ func NewGetRequest(space string) *GetRequest {
 	req := new(GetRequest)
 	req.initImpl("crud.get")
 	req.setSpace(space)
-	req.key = Tuple{}
+	req.key = []interface{}{}
 	req.opts = GetOpts{}
 	return req
 }
