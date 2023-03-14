@@ -29,8 +29,8 @@ type updateArgs struct {
 // NewUpdateRequest returns a new empty UpdateRequest.
 func NewUpdateRequest(space string) *UpdateRequest {
 	req := new(UpdateRequest)
-	req.initImpl("crud.update")
-	req.setSpace(space)
+	req.impl = newCall("crud.update")
+	req.space = space
 	req.key = []interface{}{}
 	req.operations = []Operation{}
 	req.opts = UpdateOpts{}

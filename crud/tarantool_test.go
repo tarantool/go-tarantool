@@ -1,7 +1,6 @@
 package crud_test
 
 import (
-	"bytes"
 	"fmt"
 	"log"
 	"os"
@@ -47,43 +46,43 @@ var operations = []crud.Operation{
 }
 
 var selectOpts = crud.SelectOpts{
-	Timeout: crud.NewOptUint(timeout),
+	Timeout: crud.MakeOptUint(timeout),
 }
 
 var countOpts = crud.CountOpts{
-	Timeout: crud.NewOptUint(timeout),
+	Timeout: crud.MakeOptUint(timeout),
 }
 
 var getOpts = crud.GetOpts{
-	Timeout: crud.NewOptUint(timeout),
+	Timeout: crud.MakeOptUint(timeout),
 }
 
 var minOpts = crud.MinOpts{
-	Timeout: crud.NewOptUint(timeout),
+	Timeout: crud.MakeOptUint(timeout),
 }
 
 var maxOpts = crud.MaxOpts{
-	Timeout: crud.NewOptUint(timeout),
+	Timeout: crud.MakeOptUint(timeout),
 }
 
 var baseOpts = crud.BaseOpts{
-	Timeout: crud.NewOptUint(timeout),
+	Timeout: crud.MakeOptUint(timeout),
 }
 
 var simpleOperationOpts = crud.SimpleOperationOpts{
-	Timeout: crud.NewOptUint(timeout),
+	Timeout: crud.MakeOptUint(timeout),
 }
 
 var simpleOperationObjectOpts = crud.SimpleOperationObjectOpts{
-	Timeout: crud.NewOptUint(timeout),
+	Timeout: crud.MakeOptUint(timeout),
 }
 
 var opManyOpts = crud.OperationManyOpts{
-	Timeout: crud.NewOptUint(timeout),
+	Timeout: crud.MakeOptUint(timeout),
 }
 
 var opObjManyOpts = crud.OperationObjectManyOpts{
-	Timeout: crud.NewOptUint(timeout),
+	Timeout: crud.MakeOptUint(timeout),
 }
 
 var conditions = []crud.Condition{
@@ -103,36 +102,6 @@ var tuple = []interface{}{uint(1019), nil, "bla"}
 var object = crud.MapObject{
 	"id":   uint(1019),
 	"name": "bla",
-}
-
-func BenchmarkCrud(b *testing.B) {
-	var err error
-
-	conn := test_helpers.ConnectWithValidation(b, server, opts)
-	defer conn.Close()
-
-	_, err = conn.Replace(spaceName, tuple)
-	if err != nil {
-		b.Error(err)
-	}
-	req := crud.NewLenRequest(spaceName).
-		Opts(crud.LenOpts{
-			Timeout:      crud.NewOptUint(3),
-			VshardRouter: crud.NewOptString("asd"),
-		})
-
-	buf := bytes.Buffer{}
-	buf.Grow(512 * 1024 * 1024) // Avoid allocs in test.
-	enc := newEncoder(&buf)
-
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
-		err := req.Body(nil, enc)
-		if err != nil {
-			b.Error(err)
-		}
-	}
 }
 
 var testProcessDataCases = []struct {

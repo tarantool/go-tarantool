@@ -27,8 +27,8 @@ type replaceArgs struct {
 // NewReplaceRequest returns a new empty ReplaceRequest.
 func NewReplaceRequest(space string) *ReplaceRequest {
 	req := new(ReplaceRequest)
-	req.initImpl("crud.replace")
-	req.setSpace(space)
+	req.impl = newCall("crud.replace")
+	req.space = space
 	req.tuple = []interface{}{}
 	req.opts = ReplaceOpts{}
 	return req
@@ -83,8 +83,8 @@ type replaceObjectArgs struct {
 // NewReplaceObjectRequest returns a new empty ReplaceObjectRequest.
 func NewReplaceObjectRequest(space string) *ReplaceObjectRequest {
 	req := new(ReplaceObjectRequest)
-	req.initImpl("crud.replace_object")
-	req.setSpace(space)
+	req.impl = newCall("crud.replace_object")
+	req.space = space
 	req.object = MapObject{}
 	req.opts = ReplaceObjectOpts{}
 	return req

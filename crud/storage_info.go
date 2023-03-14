@@ -103,7 +103,7 @@ type storageInfoArgs struct {
 // NewStorageInfoRequest returns a new empty StorageInfoRequest.
 func NewStorageInfoRequest() *StorageInfoRequest {
 	req := new(StorageInfoRequest)
-	req.initImpl("crud.storage_info")
+	req.impl = newCall("crud.storage_info")
 	req.opts = StorageInfoOpts{}
 	return req
 }

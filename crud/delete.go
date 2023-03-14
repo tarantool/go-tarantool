@@ -27,8 +27,8 @@ type deleteArgs struct {
 // NewDeleteRequest returns a new empty DeleteRequest.
 func NewDeleteRequest(space string) *DeleteRequest {
 	req := new(DeleteRequest)
-	req.initImpl("crud.delete")
-	req.setSpace(space)
+	req.impl = newCall("crud.delete")
+	req.space = space
 	req.key = []interface{}{}
 	req.opts = DeleteOpts{}
 	return req

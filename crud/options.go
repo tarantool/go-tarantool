@@ -1,11 +1,5 @@
 package crud
 
-import (
-	"errors"
-
-	"github.com/markphelps/optional"
-)
-
 const (
 	timeoutOptName                       = "timeout"
 	vshardRouterOptName                  = "vshard_router"
@@ -25,86 +19,95 @@ const (
 	batchSizeOptName                     = "batch_size"
 )
 
-type option interface {
-	getInterface() (interface{}, error)
-}
-
 // OptUint is an optional uint.
 type OptUint struct {
-	optional.Uint
+	value uint
+	exist bool
 }
 
-// NewOptUint creates an optional uint from value.
-func NewOptUint(value uint) OptUint {
-	return OptUint{optional.NewUint(value)}
+// MakeOptUint creates an optional uint from value.
+func MakeOptUint(value uint) OptUint {
+	return OptUint{
+		value: value,
+		exist: true,
+	}
 }
 
-func (opt OptUint) getInterface() (interface{}, error) {
-	return opt.Get()
+// Get returns the integer value or an error if not present.
+func (opt OptUint) Get() (uint, bool) {
+	return opt.value, opt.exist
 }
 
 // OptInt is an optional int.
 type OptInt struct {
-	optional.Int
+	value int
+	exist bool
 }
 
-// NewOptInt creates an optional int from value.
-func NewOptInt(value int) OptInt {
-	return OptInt{optional.NewInt(value)}
+// MakeOptInt creates an optional int from value.
+func MakeOptInt(value int) OptInt {
+	return OptInt{
+		value: value,
+		exist: true,
+	}
 }
 
-func (opt OptInt) getInterface() (interface{}, error) {
-	return opt.Get()
+// Get returns the integer value or an error if not present.
+func (opt OptInt) Get() (int, bool) {
+	return opt.value, opt.exist
 }
 
 // OptString is an optional string.
 type OptString struct {
-	optional.String
+	value string
+	exist bool
 }
 
-// NewOptString creates an optional string from value.
-func NewOptString(value string) OptString {
-	return OptString{optional.NewString(value)}
+// MakeOptString creates an optional string from value.
+func MakeOptString(value string) OptString {
+	return OptString{
+		value: value,
+		exist: true,
+	}
 }
 
-func (opt OptString) getInterface() (interface{}, error) {
-	return opt.Get()
+// Get returns the string value or an error if not present.
+func (opt OptString) Get() (string, bool) {
+	return opt.value, opt.exist
 }
 
 // OptBool is an optional bool.
 type OptBool struct {
-	optional.Bool
+	value bool
+	exist bool
 }
 
-// NewOptBool creates an optional bool from value.
-func NewOptBool(value bool) OptBool {
-	return OptBool{optional.NewBool(value)}
+// MakeOptBool creates an optional bool from value.
+func MakeOptBool(value bool) OptBool {
+	return OptBool{
+		value: value,
+		exist: true,
+	}
 }
 
-func (opt OptBool) getInterface() (interface{}, error) {
-	return opt.Get()
+// Get returns the boolean value or an error if not present.
+func (opt OptBool) Get() (bool, bool) {
+	return opt.value, opt.exist
 }
 
 // OptTuple is an optional tuple.
 type OptTuple struct {
-	tuple []interface{}
+	tuple interface{}
 }
 
-// NewOptTuple creates an optional tuple from tuple.
-func NewOptTuple(tuple []interface{}) OptTuple {
+// MakeOptTuple creates an optional tuple from tuple.
+func MakeOptTuple(tuple interface{}) OptTuple {
 	return OptTuple{tuple}
 }
 
 // Get returns the tuple value or an error if not present.
-func (o *OptTuple) Get() ([]interface{}, error) {
-	if o.tuple == nil {
-		return nil, errors.New("value not present")
-	}
-	return o.tuple, nil
-}
-
-func (opt OptTuple) getInterface() (interface{}, error) {
-	return opt.Get()
+func (o *OptTuple) Get() (interface{}, bool) {
+	return o.tuple, o.tuple != nil
 }
 
 // BaseOpts describes base options for CRUD operations.
@@ -121,11 +124,13 @@ type BaseOpts struct {
 func (opts BaseOpts) EncodeMsgpack(enc *encoder) error {
 	const optsCnt = 2
 
-	options := [optsCnt]option{opts.Timeout, opts.VshardRouter}
 	names := [optsCnt]string{timeoutOptName, vshardRouterOptName}
 	values := [optsCnt]interface{}{}
+	exists := [optsCnt]bool{}
+	values[0], exists[0] = opts.Timeout.Get()
+	values[1], exists[1] = opts.VshardRouter.Get()
 
-	return encodeOptions(enc, options[:], names[:], values[:])
+	return encodeOptions(enc, names[:], values[:], exists[:])
 }
 
 // SimpleOperationOpts describes options for simple CRUD operations.
@@ -146,13 +151,16 @@ type SimpleOperationOpts struct {
 func (opts SimpleOperationOpts) EncodeMsgpack(enc *encoder) error {
 	const optsCnt = 4
 
-	options := [optsCnt]option{opts.Timeout, opts.VshardRouter,
-		opts.Fields, opts.BucketId}
 	names := [optsCnt]string{timeoutOptName, vshardRouterOptName,
 		fieldsOptName, bucketIdOptName}
 	values := [optsCnt]interface{}{}
+	exists := [optsCnt]bool{}
+	values[0], exists[0] = opts.Timeout.Get()
+	values[1], exists[1] = opts.VshardRouter.Get()
+	values[2], exists[2] = opts.Fields.Get()
+	values[3], exists[3] = opts.BucketId.Get()
 
-	return encodeOptions(enc, options[:], names[:], values[:])
+	return encodeOptions(enc, names[:], values[:], exists[:])
 }
 
 // SimpleOperationObjectOpts describes options for simple CRUD
@@ -177,13 +185,17 @@ type SimpleOperationObjectOpts struct {
 func (opts SimpleOperationObjectOpts) EncodeMsgpack(enc *encoder) error {
 	const optsCnt = 5
 
-	options := [optsCnt]option{opts.Timeout, opts.VshardRouter,
-		opts.Fields, opts.BucketId, opts.SkipNullabilityCheckOnFlatten}
 	names := [optsCnt]string{timeoutOptName, vshardRouterOptName,
 		fieldsOptName, bucketIdOptName, skipNullabilityCheckOnFlattenOptName}
 	values := [optsCnt]interface{}{}
+	exists := [optsCnt]bool{}
+	values[0], exists[0] = opts.Timeout.Get()
+	values[1], exists[1] = opts.VshardRouter.Get()
+	values[2], exists[2] = opts.Fields.Get()
+	values[3], exists[3] = opts.BucketId.Get()
+	values[4], exists[4] = opts.SkipNullabilityCheckOnFlatten.Get()
 
-	return encodeOptions(enc, options[:], names[:], values[:])
+	return encodeOptions(enc, names[:], values[:], exists[:])
 }
 
 // OperationManyOpts describes options for CRUD operations with many tuples.
@@ -209,13 +221,17 @@ type OperationManyOpts struct {
 func (opts OperationManyOpts) EncodeMsgpack(enc *encoder) error {
 	const optsCnt = 5
 
-	options := [optsCnt]option{opts.Timeout, opts.VshardRouter,
-		opts.Fields, opts.StopOnError, opts.RollbackOnError}
 	names := [optsCnt]string{timeoutOptName, vshardRouterOptName,
 		fieldsOptName, stopOnErrorOptName, rollbackOnErrorOptName}
 	values := [optsCnt]interface{}{}
+	exists := [optsCnt]bool{}
+	values[0], exists[0] = opts.Timeout.Get()
+	values[1], exists[1] = opts.VshardRouter.Get()
+	values[2], exists[2] = opts.Fields.Get()
+	values[3], exists[3] = opts.StopOnError.Get()
+	values[4], exists[4] = opts.RollbackOnError.Get()
 
-	return encodeOptions(enc, options[:], names[:], values[:])
+	return encodeOptions(enc, names[:], values[:], exists[:])
 }
 
 // OperationObjectManyOpts describes options for CRUD operations
@@ -245,15 +261,19 @@ type OperationObjectManyOpts struct {
 func (opts OperationObjectManyOpts) EncodeMsgpack(enc *encoder) error {
 	const optsCnt = 6
 
-	options := [optsCnt]option{opts.Timeout, opts.VshardRouter,
-		opts.Fields, opts.StopOnError, opts.RollbackOnError,
-		opts.SkipNullabilityCheckOnFlatten}
 	names := [optsCnt]string{timeoutOptName, vshardRouterOptName,
 		fieldsOptName, stopOnErrorOptName, rollbackOnErrorOptName,
 		skipNullabilityCheckOnFlattenOptName}
 	values := [optsCnt]interface{}{}
+	exists := [optsCnt]bool{}
+	values[0], exists[0] = opts.Timeout.Get()
+	values[1], exists[1] = opts.VshardRouter.Get()
+	values[2], exists[2] = opts.Fields.Get()
+	values[3], exists[3] = opts.StopOnError.Get()
+	values[4], exists[4] = opts.RollbackOnError.Get()
+	values[5], exists[5] = opts.SkipNullabilityCheckOnFlatten.Get()
 
-	return encodeOptions(enc, options[:], names[:], values[:])
+	return encodeOptions(enc, names[:], values[:], exists[:])
 }
 
 // BorderOpts describes options for `crud.min` and `crud.max`.
@@ -272,19 +292,21 @@ type BorderOpts struct {
 func (opts BorderOpts) EncodeMsgpack(enc *encoder) error {
 	const optsCnt = 3
 
-	options := [optsCnt]option{opts.Timeout, opts.VshardRouter, opts.Fields}
 	names := [optsCnt]string{timeoutOptName, vshardRouterOptName, fieldsOptName}
 	values := [optsCnt]interface{}{}
+	exists := [optsCnt]bool{}
+	values[0], exists[0] = opts.Timeout.Get()
+	values[1], exists[1] = opts.VshardRouter.Get()
+	values[2], exists[2] = opts.Fields.Get()
 
-	return encodeOptions(enc, options[:], names[:], values[:])
+	return encodeOptions(enc, names[:], values[:], exists[:])
 }
 
-func encodeOptions(enc *encoder, options []option, names []string, values []interface{}) error {
+func encodeOptions(enc *encoder, names []string, values []interface{}, exists []bool) error {
 	mapLen := 0
 
-	for i, opt := range options {
-		if value, err := opt.getInterface(); err == nil {
-			values[i] = value
+	for _, exist := range exists {
+		if exist {
 			mapLen += 1
 		}
 	}
@@ -295,7 +317,7 @@ func encodeOptions(enc *encoder, options []option, names []string, values []inte
 
 	if mapLen > 0 {
 		for i, name := range names {
-			if values[i] != nil {
+			if exists[i] {
 				enc.EncodeString(name)
 				enc.Encode(values[i])
 			}

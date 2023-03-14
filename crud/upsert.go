@@ -29,8 +29,8 @@ type upsertArgs struct {
 // NewUpsertRequest returns a new empty UpsertRequest.
 func NewUpsertRequest(space string) *UpsertRequest {
 	req := new(UpsertRequest)
-	req.initImpl("crud.upsert")
-	req.setSpace(space)
+	req.impl = newCall("crud.upsert")
+	req.space = space
 	req.tuple = []interface{}{}
 	req.operations = []Operation{}
 	req.opts = UpsertOpts{}
@@ -96,8 +96,8 @@ type upsertObjectArgs struct {
 // NewUpsertObjectRequest returns a new empty UpsertObjectRequest.
 func NewUpsertObjectRequest(space string) *UpsertObjectRequest {
 	req := new(UpsertObjectRequest)
-	req.initImpl("crud.upsert_object")
-	req.setSpace(space)
+	req.impl = newCall("crud.upsert_object")
+	req.space = space
 	req.object = MapObject{}
 	req.operations = []Operation{}
 	req.opts = UpsertObjectOpts{}

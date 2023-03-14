@@ -109,6 +109,46 @@ func assertBodyEqual(t testing.TB, reference tarantool.Request, req tarantool.Re
 	}
 }
 
+func BenchmarkLenRequest(b *testing.B) {
+	buf := bytes.Buffer{}
+	buf.Grow(512 * 1024 * 1024) // Avoid allocs in test.
+	enc := newEncoder(&buf)
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		buf.Reset()
+		req := crud.NewLenRequest(spaceName).
+			Opts(crud.LenOpts{
+				Timeout: crud.MakeOptUint(3),
+			})
+		if err := req.Body(nil, enc); err != nil {
+			b.Error(err)
+		}
+	}
+}
+
+func BenchmarkSelectRequest(b *testing.B) {
+	buf := bytes.Buffer{}
+	buf.Grow(512 * 1024 * 1024) // Avoid allocs in test.
+	enc := newEncoder(&buf)
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		buf.Reset()
+		req := crud.NewSelectRequest(spaceName).
+			Opts(crud.SelectOpts{
+				Timeout:      crud.MakeOptUint(3),
+				VshardRouter: crud.MakeOptString("asd"),
+				Balance:      crud.MakeOptBool(true),
+			})
+		if err := req.Body(nil, enc); err != nil {
+			b.Error(err)
+		}
+	}
+}
+
 func TestRequestsCodes(t *testing.T) {
 	tests := []struct {
 		req  tarantool.Request

@@ -33,15 +33,19 @@ type GetOpts struct {
 func (opts GetOpts) EncodeMsgpack(enc *encoder) error {
 	const optsCnt = 7
 
-	options := [optsCnt]option{opts.Timeout, opts.VshardRouter,
-		opts.Fields, opts.BucketId, opts.Mode,
-		opts.PreferReplica, opts.Balance}
 	names := [optsCnt]string{timeoutOptName, vshardRouterOptName,
 		fieldsOptName, bucketIdOptName, modeOptName,
 		preferReplicaOptName, balanceOptName}
 	values := [optsCnt]interface{}{}
+	exists := [optsCnt]bool{}
+	values[0], exists[0] = opts.Timeout.Get()
+	values[1], exists[1] = opts.VshardRouter.Get()
+	values[1], exists[1] = opts.BucketId.Get()
+	values[2], exists[2] = opts.Mode.Get()
+	values[3], exists[3] = opts.PreferReplica.Get()
+	values[4], exists[4] = opts.Balance.Get()
 
-	return encodeOptions(enc, options[:], names[:], values[:])
+	return encodeOptions(enc, names[:], values[:], exists[:])
 }
 
 // GetRequest helps you to create request object to call `crud.get`
@@ -62,8 +66,8 @@ type getArgs struct {
 // NewGetRequest returns a new empty GetRequest.
 func NewGetRequest(space string) *GetRequest {
 	req := new(GetRequest)
-	req.initImpl("crud.get")
-	req.setSpace(space)
+	req.impl = newCall("crud.get")
+	req.space = space
 	req.key = []interface{}{}
 	req.opts = GetOpts{}
 	return req

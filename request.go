@@ -1120,7 +1120,6 @@ func NewCallRequest(function string) *CallRequest {
 	req := new(CallRequest)
 	req.requestCode = CallRequestCode
 	req.function = function
-	req.args = []interface{}{}
 	return req
 }
 
@@ -1133,7 +1132,11 @@ func (req *CallRequest) Args(args interface{}) *CallRequest {
 
 // Body fills an encoder with the call request body.
 func (req *CallRequest) Body(res SchemaResolver, enc *encoder) error {
-	return fillCall(enc, req.function, req.args)
+	args := req.args
+	if args == nil {
+		args = []interface{}{}
+	}
+	return fillCall(enc, req.function, args)
 }
 
 // Context sets a passed context to the request.

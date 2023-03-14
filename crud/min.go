@@ -27,8 +27,8 @@ type minArgs struct {
 // NewMinRequest returns a new empty MinRequest.
 func NewMinRequest(space string) *MinRequest {
 	req := new(MinRequest)
-	req.initImpl("crud.min")
-	req.setSpace(space)
+	req.impl = newCall("crud.min")
+	req.space = space
 	req.index = []interface{}{}
 	req.opts = MinOpts{}
 	return req

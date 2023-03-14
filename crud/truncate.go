@@ -28,8 +28,8 @@ type truncateArgs struct {
 // NewTruncateRequest returns a new empty TruncateRequest.
 func NewTruncateRequest(space string) *TruncateRequest {
 	req := new(TruncateRequest)
-	req.initImpl("crud.truncate")
-	req.setSpace(space)
+	req.impl = newCall("crud.truncate")
+	req.space = space
 	req.opts = TruncateOpts{}
 	return req
 }
