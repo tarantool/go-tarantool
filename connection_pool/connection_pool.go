@@ -163,6 +163,10 @@ func ConnectWithOpts(addrs []string, connOpts tarantool.Opts, opts OptsPool) (co
 }
 
 // ConnectWithOpts creates pool for instances with addresses addrs.
+//
+// It is useless to set up tarantool.Opts.Reconnect value for a connection.
+// The connection pool has its own reconnection logic. See
+// OptsPool.CheckTimeout description.
 func Connect(addrs []string, connOpts tarantool.Opts) (connPool *ConnectionPool, err error) {
 	opts := OptsPool{
 		CheckTimeout: 1 * time.Second,
@@ -977,10 +981,18 @@ func (pool *ConnectionPool) updateConnection(s connState) connState {
 			}
 			s.role = role
 		}
-	}
+		pool.poolsMutex.Unlock()
+		return s
+	} else {
+		pool.deleteConnection(s.addr)
+		pool.poolsMutex.Unlock()
 
-	pool.poolsMutex.Unlock()
-	return s
+		s.conn.Close()
+		pool.handlerDeactivated(s.conn, s.role)
+		s.conn = nil
+		s.role = UnknownRole
+		return s
+	}
 }
 
 func (pool *ConnectionPool) tryConnect(s connState) connState {

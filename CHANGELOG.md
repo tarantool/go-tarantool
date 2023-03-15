@@ -21,6 +21,8 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 ### Fixed
 
 - Several non-critical data race issues (#218)
+- ConnectionPool does not properly handle disconnection with Opts.Reconnect
+  set (#272)
 
 ## [1.10.0] - 2022-12-31
 

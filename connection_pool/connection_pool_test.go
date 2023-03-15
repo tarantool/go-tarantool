@@ -148,6 +148,52 @@ func TestReconnect(t *testing.T) {
 	require.Nil(t, err)
 }
 
+func TestDisconnect_withReconnect(t *testing.T) {
+	const serverId = 0
+
+	opts := connOpts
+	opts.Reconnect = 10 * time.Second
+
+	connPool, err := connection_pool.Connect([]string{servers[serverId]}, opts)
+	require.Nilf(t, err, "failed to connect")
+	require.NotNilf(t, connPool, "conn is nil after Connect")
+
+	defer connPool.Close()
+
+	// Test.
+	test_helpers.StopTarantoolWithCleanup(instances[serverId])
+	args := test_helpers.CheckStatusesArgs{
+		ConnPool:           connPool,
+		Mode:               connection_pool.ANY,
+		Servers:            []string{servers[serverId]},
+		ExpectedPoolStatus: false,
+		ExpectedStatuses: map[string]bool{
+			servers[serverId]: false,
+		},
+	}
+	err = test_helpers.Retry(test_helpers.CheckPoolStatuses,
+		args, defaultCountRetry, defaultTimeoutRetry)
+	require.Nil(t, err)
+
+	// Restart the server after success.
+	err = test_helpers.RestartTarantool(&instances[serverId])
+	require.Nilf(t, err, "failed to restart tarantool")
+
+	args = test_helpers.CheckStatusesArgs{
+		ConnPool:           connPool,
+		Mode:               connection_pool.ANY,
+		Servers:            []string{servers[serverId]},
+		ExpectedPoolStatus: true,
+		ExpectedStatuses: map[string]bool{
+			servers[serverId]: true,
+		},
+	}
+
+	err = test_helpers.Retry(test_helpers.CheckPoolStatuses,
+		args, defaultCountRetry, defaultTimeoutRetry)
+	require.Nil(t, err)
+}
+
 func TestDisconnectAll(t *testing.T) {
 	server1 := servers[0]
 	server2 := servers[1]
