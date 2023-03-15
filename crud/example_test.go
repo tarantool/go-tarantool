@@ -33,7 +33,7 @@ func exampleConnect() *tarantool.Connection {
 // interface{} type.
 func ExampleResult_rowsInterface() {
 	conn := exampleConnect()
-	req := crud.NewReplaceRequest(exampleSpace).
+	req := crud.MakeReplaceRequest(exampleSpace).
 		Tuple([]interface{}{uint(2010), nil, "bla"})
 
 	ret := crud.Result{}
@@ -54,7 +54,7 @@ func ExampleResult_rowsInterface() {
 // custom type.
 func ExampleResult_rowsCustomType() {
 	conn := exampleConnect()
-	req := crud.NewReplaceRequest(exampleSpace).
+	req := crud.MakeReplaceRequest(exampleSpace).
 		Tuple([]interface{}{uint(2010), nil, "bla"})
 
 	type Tuple struct {
@@ -82,7 +82,7 @@ func ExampleResult_rowsCustomType() {
 // response from *ManyRequest.
 func ExampleResult_many() {
 	conn := exampleConnect()
-	req := crud.NewReplaceManyRequest(exampleSpace).
+	req := crud.MakeReplaceManyRequest(exampleSpace).
 		Tuples([]crud.Tuple{
 			[]interface{}{uint(2010), nil, "bla"},
 			[]interface{}{uint(2011), nil, "bla"},
@@ -105,7 +105,7 @@ func ExampleResult_many() {
 // to handle a crud error.
 func ExampleResult_error() {
 	conn := exampleConnect()
-	req := crud.NewReplaceRequest("not_exist").
+	req := crud.MakeReplaceRequest("not_exist").
 		Tuple([]interface{}{uint(2010), nil, "bla"})
 
 	ret := crud.Result{}
@@ -124,13 +124,13 @@ func ExampleResult_error() {
 // to handle a crud error for a *ManyRequest.
 func ExampleResult_errorMany() {
 	conn := exampleConnect()
-	initReq := crud.NewReplaceRequest("not_exist").
+	initReq := crud.MakeReplaceRequest("not_exist").
 		Tuple([]interface{}{uint(2010), nil, "bla"})
 	if _, err := conn.Do(initReq).Get(); err != nil {
 		fmt.Printf("Failed to initialize the example: %s\n", err)
 	}
 
-	req := crud.NewInsertManyRequest(exampleSpace).
+	req := crud.MakeInsertManyRequest(exampleSpace).
 		Tuples([]crud.Tuple{
 			[]interface{}{uint(2010), nil, "bla"},
 			[]interface{}{uint(2010), nil, "bla"},

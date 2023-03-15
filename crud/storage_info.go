@@ -100,9 +100,9 @@ type storageInfoArgs struct {
 	Opts     StorageInfoOpts
 }
 
-// NewStorageInfoRequest returns a new empty StorageInfoRequest.
-func NewStorageInfoRequest() *StorageInfoRequest {
-	req := new(StorageInfoRequest)
+// MakeStorageInfoRequest returns a new empty StorageInfoRequest.
+func MakeStorageInfoRequest() StorageInfoRequest {
+	req := StorageInfoRequest{}
 	req.impl = newCall("crud.storage_info")
 	req.opts = StorageInfoOpts{}
 	return req
@@ -110,20 +110,20 @@ func NewStorageInfoRequest() *StorageInfoRequest {
 
 // Opts sets the options for the torageInfoRequest request.
 // Note: default value is nil.
-func (req *StorageInfoRequest) Opts(opts StorageInfoOpts) *StorageInfoRequest {
+func (req StorageInfoRequest) Opts(opts StorageInfoOpts) StorageInfoRequest {
 	req.opts = opts
 	return req
 }
 
 // Body fills an encoder with the call request body.
-func (req *StorageInfoRequest) Body(res tarantool.SchemaResolver, enc *encoder) error {
+func (req StorageInfoRequest) Body(res tarantool.SchemaResolver, enc *encoder) error {
 	args := storageInfoArgs{Opts: req.opts}
 	req.impl = req.impl.Args(args)
 	return req.impl.Body(res, enc)
 }
 
 // Context sets a passed context to CRUD request.
-func (req *StorageInfoRequest) Context(ctx context.Context) *StorageInfoRequest {
+func (req StorageInfoRequest) Context(ctx context.Context) StorageInfoRequest {
 	req.impl = req.impl.Context(ctx)
 
 	return req

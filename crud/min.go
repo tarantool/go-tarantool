@@ -24,39 +24,38 @@ type minArgs struct {
 	Opts     MinOpts
 }
 
-// NewMinRequest returns a new empty MinRequest.
-func NewMinRequest(space string) *MinRequest {
-	req := new(MinRequest)
+// MakeMinRequest returns a new empty MinRequest.
+func MakeMinRequest(space string) MinRequest {
+	req := MinRequest{}
 	req.impl = newCall("crud.min")
 	req.space = space
-	req.index = []interface{}{}
 	req.opts = MinOpts{}
 	return req
 }
 
 // Index sets the index name/id for the MinRequest request.
 // Note: default value is nil.
-func (req *MinRequest) Index(index interface{}) *MinRequest {
+func (req MinRequest) Index(index interface{}) MinRequest {
 	req.index = index
 	return req
 }
 
 // Opts sets the options for the MinRequest request.
 // Note: default value is nil.
-func (req *MinRequest) Opts(opts MinOpts) *MinRequest {
+func (req MinRequest) Opts(opts MinOpts) MinRequest {
 	req.opts = opts
 	return req
 }
 
 // Body fills an encoder with the call request body.
-func (req *MinRequest) Body(res tarantool.SchemaResolver, enc *encoder) error {
+func (req MinRequest) Body(res tarantool.SchemaResolver, enc *encoder) error {
 	args := minArgs{Space: req.space, Index: req.index, Opts: req.opts}
 	req.impl = req.impl.Args(args)
 	return req.impl.Body(res, enc)
 }
 
 // Context sets a passed context to CRUD request.
-func (req *MinRequest) Context(ctx context.Context) *MinRequest {
+func (req MinRequest) Context(ctx context.Context) MinRequest {
 	req.impl = req.impl.Context(ctx)
 
 	return req

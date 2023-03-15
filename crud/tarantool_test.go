@@ -112,21 +112,21 @@ var testProcessDataCases = []struct {
 	{
 		"Select",
 		2,
-		crud.NewSelectRequest(spaceName).
+		crud.MakeSelectRequest(spaceName).
 			Conditions(conditions).
 			Opts(selectOpts),
 	},
 	{
 		"Get",
 		2,
-		crud.NewGetRequest(spaceName).
+		crud.MakeGetRequest(spaceName).
 			Key(key).
 			Opts(getOpts),
 	},
 	{
 		"Update",
 		2,
-		crud.NewUpdateRequest(spaceName).
+		crud.MakeUpdateRequest(spaceName).
 			Key(key).
 			Operations(operations).
 			Opts(simpleOperationOpts),
@@ -134,46 +134,56 @@ var testProcessDataCases = []struct {
 	{
 		"Delete",
 		2,
-		crud.NewDeleteRequest(spaceName).
+		crud.MakeDeleteRequest(spaceName).
 			Key(key).
 			Opts(simpleOperationOpts),
 	},
 	{
 		"Min",
 		2,
-		crud.NewMinRequest(spaceName).Index(indexName).Opts(minOpts),
+		crud.MakeMinRequest(spaceName).Opts(minOpts),
+	},
+	{
+		"Min",
+		2,
+		crud.MakeMinRequest(spaceName).Index(indexName).Opts(minOpts),
 	},
 	{
 		"Max",
 		2,
-		crud.NewMaxRequest(spaceName).Index(indexName).Opts(maxOpts),
+		crud.MakeMaxRequest(spaceName).Opts(maxOpts),
+	},
+	{
+		"Max",
+		2,
+		crud.MakeMaxRequest(spaceName).Index(indexName).Opts(maxOpts),
 	},
 	{
 		"Truncate",
 		1,
-		crud.NewTruncateRequest(spaceName).Opts(baseOpts),
+		crud.MakeTruncateRequest(spaceName).Opts(baseOpts),
 	},
 	{
 		"Len",
 		1,
-		crud.NewLenRequest(spaceName).Opts(baseOpts),
+		crud.MakeLenRequest(spaceName).Opts(baseOpts),
 	},
 	{
 		"Count",
 		2,
-		crud.NewCountRequest(spaceName).
+		crud.MakeCountRequest(spaceName).
 			Conditions(conditions).
 			Opts(countOpts),
 	},
 	{
 		"Stats",
 		1,
-		crud.NewStatsRequest().Space(spaceName),
+		crud.MakeStatsRequest().Space(spaceName),
 	},
 	{
 		"StorageInfo",
 		1,
-		crud.NewStorageInfoRequest().Opts(baseOpts),
+		crud.MakeStorageInfoRequest().Opts(baseOpts),
 	},
 }
 
@@ -185,22 +195,22 @@ var testResultWithErrCases = []struct {
 	{
 		"BaseResult",
 		&crud.Result{},
-		crud.NewSelectRequest(invalidSpaceName).Opts(selectOpts),
+		crud.MakeSelectRequest(invalidSpaceName).Opts(selectOpts),
 	},
 	{
 		"ManyResult",
 		&crud.Result{},
-		crud.NewReplaceManyRequest(invalidSpaceName).Opts(opManyOpts),
+		crud.MakeReplaceManyRequest(invalidSpaceName).Opts(opManyOpts),
 	},
 	{
 		"NumberResult",
 		&crud.CountResult{},
-		crud.NewCountRequest(invalidSpaceName).Opts(countOpts),
+		crud.MakeCountRequest(invalidSpaceName).Opts(countOpts),
 	},
 	{
 		"BoolResult",
 		&crud.TruncateResult{},
-		crud.NewTruncateRequest(invalidSpaceName).Opts(baseOpts),
+		crud.MakeTruncateRequest(invalidSpaceName).Opts(baseOpts),
 	},
 }
 
@@ -217,7 +227,7 @@ var testGenerateDataCases = []struct {
 		"Insert",
 		2,
 		1,
-		crud.NewInsertRequest(spaceName).
+		crud.MakeInsertRequest(spaceName).
 			Tuple(tuple).
 			Opts(simpleOperationOpts),
 	},
@@ -225,7 +235,7 @@ var testGenerateDataCases = []struct {
 		"InsertObject",
 		2,
 		1,
-		crud.NewInsertObjectRequest(spaceName).
+		crud.MakeInsertObjectRequest(spaceName).
 			Object(object).
 			Opts(simpleOperationObjectOpts),
 	},
@@ -233,7 +243,7 @@ var testGenerateDataCases = []struct {
 		"InsertMany",
 		2,
 		10,
-		crud.NewInsertManyRequest(spaceName).
+		crud.MakeInsertManyRequest(spaceName).
 			Tuples(tuples).
 			Opts(opManyOpts),
 	},
@@ -241,7 +251,7 @@ var testGenerateDataCases = []struct {
 		"InsertObjectMany",
 		2,
 		10,
-		crud.NewInsertObjectManyRequest(spaceName).
+		crud.MakeInsertObjectManyRequest(spaceName).
 			Objects(objects).
 			Opts(opObjManyOpts),
 	},
@@ -249,7 +259,7 @@ var testGenerateDataCases = []struct {
 		"Replace",
 		2,
 		1,
-		crud.NewReplaceRequest(spaceName).
+		crud.MakeReplaceRequest(spaceName).
 			Tuple(tuple).
 			Opts(simpleOperationOpts),
 	},
@@ -257,7 +267,7 @@ var testGenerateDataCases = []struct {
 		"ReplaceObject",
 		2,
 		1,
-		crud.NewReplaceObjectRequest(spaceName).
+		crud.MakeReplaceObjectRequest(spaceName).
 			Object(object).
 			Opts(simpleOperationObjectOpts),
 	},
@@ -265,7 +275,7 @@ var testGenerateDataCases = []struct {
 		"ReplaceMany",
 		2,
 		10,
-		crud.NewReplaceManyRequest(spaceName).
+		crud.MakeReplaceManyRequest(spaceName).
 			Tuples(tuples).
 			Opts(opManyOpts),
 	},
@@ -273,7 +283,7 @@ var testGenerateDataCases = []struct {
 		"ReplaceObjectMany",
 		2,
 		10,
-		crud.NewReplaceObjectManyRequest(spaceName).
+		crud.MakeReplaceObjectManyRequest(spaceName).
 			Objects(objects).
 			Opts(opObjManyOpts),
 	},
@@ -281,7 +291,7 @@ var testGenerateDataCases = []struct {
 		"Upsert",
 		2,
 		1,
-		crud.NewUpsertRequest(spaceName).
+		crud.MakeUpsertRequest(spaceName).
 			Tuple(tuple).
 			Operations(operations).
 			Opts(simpleOperationOpts),
@@ -290,7 +300,7 @@ var testGenerateDataCases = []struct {
 		"UpsertObject",
 		2,
 		1,
-		crud.NewUpsertObjectRequest(spaceName).
+		crud.MakeUpsertObjectRequest(spaceName).
 			Object(object).
 			Operations(operations).
 			Opts(simpleOperationOpts),
@@ -299,7 +309,7 @@ var testGenerateDataCases = []struct {
 		"UpsertMany",
 		2,
 		10,
-		crud.NewUpsertManyRequest(spaceName).
+		crud.MakeUpsertManyRequest(spaceName).
 			TuplesOperationsData(tuplesOperationsData).
 			Opts(opManyOpts),
 	},
@@ -307,7 +317,7 @@ var testGenerateDataCases = []struct {
 		"UpsertObjectMany",
 		2,
 		10,
-		crud.NewUpsertObjectManyRequest(spaceName).
+		crud.MakeUpsertObjectManyRequest(spaceName).
 			ObjectsOperationsData(objectsOperationData).
 			Opts(opManyOpts),
 	},
@@ -476,7 +486,6 @@ func TestCrudProcessData(t *testing.T) {
 			resp, err := conn.Do(testCase.req).Get()
 			testCrudRequestCheck(t, testCase.req, resp,
 				err, testCase.expectedRespLen)
-
 			for i := 1010; i < 1020; i++ {
 				conn.Delete(spaceName, nil, []interface{}{uint(i)})
 			}
@@ -522,7 +531,7 @@ func TestUnflattenRows(t *testing.T) {
 	defer conn.Close()
 
 	// Do `replace`.
-	req := crud.NewReplaceRequest(spaceName).
+	req := crud.MakeReplaceRequest(spaceName).
 		Tuple(tuple).
 		Opts(simpleOperationOpts)
 	resp, err := conn.Do(req).Get()
@@ -595,7 +604,7 @@ func TestBoolResult(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
-	req := crud.NewTruncateRequest(spaceName).Opts(baseOpts)
+	req := crud.MakeTruncateRequest(spaceName).Opts(baseOpts)
 	resp := crud.TruncateResult{}
 
 	testCrudRequestPrepareData(t, conn)
@@ -618,7 +627,7 @@ func TestNumberResult(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
-	req := crud.NewCountRequest(spaceName).Opts(countOpts)
+	req := crud.MakeCountRequest(spaceName).Opts(countOpts)
 	resp := crud.CountResult{}
 
 	testCrudRequestPrepareData(t, conn)
@@ -659,7 +668,7 @@ func TestBaseResult(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
-	req := crud.NewSelectRequest(spaceName).Opts(selectOpts)
+	req := crud.MakeSelectRequest(spaceName).Opts(selectOpts)
 	resp := crud.Result{}
 
 	testCrudRequestPrepareData(t, conn)
@@ -702,7 +711,7 @@ func TestManyResult(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
-	req := crud.NewReplaceManyRequest(spaceName).Tuples(tuples).Opts(opManyOpts)
+	req := crud.MakeReplaceManyRequest(spaceName).Tuples(tuples).Opts(opManyOpts)
 	resp := crud.Result{}
 
 	testCrudRequestPrepareData(t, conn)
@@ -727,7 +736,7 @@ func TestStorageInfoResult(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
-	req := crud.NewStorageInfoRequest().Opts(baseOpts)
+	req := crud.MakeStorageInfoRequest().Opts(baseOpts)
 	resp := crud.StorageInfoResult{}
 
 	err := conn.Do(req).GetTyped(&resp)

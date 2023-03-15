@@ -25,9 +25,9 @@ type lenArgs struct {
 	Opts     LenOpts
 }
 
-// NewLenRequest returns a new empty LenRequest.
-func NewLenRequest(space string) *LenRequest {
-	req := new(LenRequest)
+// MakeLenRequest returns a new empty LenRequest.
+func MakeLenRequest(space string) LenRequest {
+	req := LenRequest{}
 	req.impl = newCall("crud.len")
 	req.space = space
 	req.opts = LenOpts{}
@@ -36,20 +36,20 @@ func NewLenRequest(space string) *LenRequest {
 
 // Opts sets the options for the LenRequest request.
 // Note: default value is nil.
-func (req *LenRequest) Opts(opts LenOpts) *LenRequest {
+func (req LenRequest) Opts(opts LenOpts) LenRequest {
 	req.opts = opts
 	return req
 }
 
 // Body fills an encoder with the call request body.
-func (req *LenRequest) Body(res tarantool.SchemaResolver, enc *encoder) error {
+func (req LenRequest) Body(res tarantool.SchemaResolver, enc *encoder) error {
 	args := lenArgs{Space: req.space, Opts: req.opts}
 	req.impl = req.impl.Args(args)
 	return req.impl.Body(res, enc)
 }
 
 // Context sets a passed context to CRUD request.
-func (req *LenRequest) Context(ctx context.Context) *LenRequest {
+func (req LenRequest) Context(ctx context.Context) LenRequest {
 	req.impl = req.impl.Context(ctx)
 
 	return req

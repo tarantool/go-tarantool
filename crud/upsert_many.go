@@ -31,9 +31,9 @@ type upsertManyArgs struct {
 	Opts                 UpsertManyOpts
 }
 
-// NewUpsertManyRequest returns a new empty UpsertManyRequest.
-func NewUpsertManyRequest(space string) *UpsertManyRequest {
-	req := new(UpsertManyRequest)
+// MakeUpsertManyRequest returns a new empty UpsertManyRequest.
+func MakeUpsertManyRequest(space string) UpsertManyRequest {
+	req := UpsertManyRequest{}
 	req.impl = newCall("crud.upsert_many")
 	req.space = space
 	req.tuplesOperationsData = []TupleOperationsData{}
@@ -44,20 +44,20 @@ func NewUpsertManyRequest(space string) *UpsertManyRequest {
 // TuplesOperationsData sets tuples and operations for
 // the UpsertManyRequest request.
 // Note: default value is nil.
-func (req *UpsertManyRequest) TuplesOperationsData(tuplesOperationData []TupleOperationsData) *UpsertManyRequest {
+func (req UpsertManyRequest) TuplesOperationsData(tuplesOperationData []TupleOperationsData) UpsertManyRequest {
 	req.tuplesOperationsData = tuplesOperationData
 	return req
 }
 
 // Opts sets the options for the UpsertManyRequest request.
 // Note: default value is nil.
-func (req *UpsertManyRequest) Opts(opts UpsertManyOpts) *UpsertManyRequest {
+func (req UpsertManyRequest) Opts(opts UpsertManyOpts) UpsertManyRequest {
 	req.opts = opts
 	return req
 }
 
 // Body fills an encoder with the call request body.
-func (req *UpsertManyRequest) Body(res tarantool.SchemaResolver, enc *encoder) error {
+func (req UpsertManyRequest) Body(res tarantool.SchemaResolver, enc *encoder) error {
 	args := upsertManyArgs{Space: req.space, TuplesOperationsData: req.tuplesOperationsData,
 		Opts: req.opts}
 	req.impl = req.impl.Args(args)
@@ -65,7 +65,7 @@ func (req *UpsertManyRequest) Body(res tarantool.SchemaResolver, enc *encoder) e
 }
 
 // Context sets a passed context to CRUD request.
-func (req *UpsertManyRequest) Context(ctx context.Context) *UpsertManyRequest {
+func (req UpsertManyRequest) Context(ctx context.Context) UpsertManyRequest {
 	req.impl = req.impl.Context(ctx)
 
 	return req
@@ -96,9 +96,9 @@ type upsertObjectManyArgs struct {
 	Opts                  UpsertObjectManyOpts
 }
 
-// NewUpsertObjectManyRequest returns a new empty UpsertObjectManyRequest.
-func NewUpsertObjectManyRequest(space string) *UpsertObjectManyRequest {
-	req := new(UpsertObjectManyRequest)
+// MakeUpsertObjectManyRequest returns a new empty UpsertObjectManyRequest.
+func MakeUpsertObjectManyRequest(space string) UpsertObjectManyRequest {
+	req := UpsertObjectManyRequest{}
 	req.impl = newCall("crud.upsert_object_many")
 	req.space = space
 	req.objectsOperationsData = []ObjectOperationsData{}
@@ -109,21 +109,21 @@ func NewUpsertObjectManyRequest(space string) *UpsertObjectManyRequest {
 // ObjectOperationsData sets objects and operations
 // for the UpsertObjectManyRequest request.
 // Note: default value is nil.
-func (req *UpsertObjectManyRequest) ObjectsOperationsData(
-	objectsOperationData []ObjectOperationsData) *UpsertObjectManyRequest {
+func (req UpsertObjectManyRequest) ObjectsOperationsData(
+	objectsOperationData []ObjectOperationsData) UpsertObjectManyRequest {
 	req.objectsOperationsData = objectsOperationData
 	return req
 }
 
 // Opts sets the options for the UpsertObjectManyRequest request.
 // Note: default value is nil.
-func (req *UpsertObjectManyRequest) Opts(opts UpsertObjectManyOpts) *UpsertObjectManyRequest {
+func (req UpsertObjectManyRequest) Opts(opts UpsertObjectManyOpts) UpsertObjectManyRequest {
 	req.opts = opts
 	return req
 }
 
 // Body fills an encoder with the call request body.
-func (req *UpsertObjectManyRequest) Body(res tarantool.SchemaResolver, enc *encoder) error {
+func (req UpsertObjectManyRequest) Body(res tarantool.SchemaResolver, enc *encoder) error {
 	args := upsertObjectManyArgs{Space: req.space, ObjectsOperationsData: req.objectsOperationsData,
 		Opts: req.opts}
 	req.impl = req.impl.Args(args)
@@ -131,7 +131,7 @@ func (req *UpsertObjectManyRequest) Body(res tarantool.SchemaResolver, enc *enco
 }
 
 // Context sets a passed context to CRUD request.
-func (req *UpsertObjectManyRequest) Context(ctx context.Context) *UpsertObjectManyRequest {
+func (req UpsertObjectManyRequest) Context(ctx context.Context) UpsertObjectManyRequest {
 	req.impl = req.impl.Context(ctx)
 
 	return req

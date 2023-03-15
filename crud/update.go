@@ -26,12 +26,11 @@ type updateArgs struct {
 	Opts       UpdateOpts
 }
 
-// NewUpdateRequest returns a new empty UpdateRequest.
-func NewUpdateRequest(space string) *UpdateRequest {
-	req := new(UpdateRequest)
+// MakeUpdateRequest returns a new empty UpdateRequest.
+func MakeUpdateRequest(space string) UpdateRequest {
+	req := UpdateRequest{}
 	req.impl = newCall("crud.update")
 	req.space = space
-	req.key = []interface{}{}
 	req.operations = []Operation{}
 	req.opts = UpdateOpts{}
 	return req
@@ -39,27 +38,30 @@ func NewUpdateRequest(space string) *UpdateRequest {
 
 // Key sets the key for the UpdateRequest request.
 // Note: default value is nil.
-func (req *UpdateRequest) Key(key Tuple) *UpdateRequest {
+func (req UpdateRequest) Key(key Tuple) UpdateRequest {
 	req.key = key
 	return req
 }
 
 // Operations sets the operations for UpdateRequest request.
 // Note: default value is nil.
-func (req *UpdateRequest) Operations(operations []Operation) *UpdateRequest {
+func (req UpdateRequest) Operations(operations []Operation) UpdateRequest {
 	req.operations = operations
 	return req
 }
 
 // Opts sets the options for the UpdateRequest request.
 // Note: default value is nil.
-func (req *UpdateRequest) Opts(opts UpdateOpts) *UpdateRequest {
+func (req UpdateRequest) Opts(opts UpdateOpts) UpdateRequest {
 	req.opts = opts
 	return req
 }
 
 // Body fills an encoder with the call request body.
-func (req *UpdateRequest) Body(res tarantool.SchemaResolver, enc *encoder) error {
+func (req UpdateRequest) Body(res tarantool.SchemaResolver, enc *encoder) error {
+	if req.key == nil {
+		req.key = []interface{}{}
+	}
 	args := updateArgs{Space: req.space, Key: req.key,
 		Operations: req.operations, Opts: req.opts}
 	req.impl = req.impl.Args(args)
@@ -67,7 +69,7 @@ func (req *UpdateRequest) Body(res tarantool.SchemaResolver, enc *encoder) error
 }
 
 // Context sets a passed context to CRUD request.
-func (req *UpdateRequest) Context(ctx context.Context) *UpdateRequest {
+func (req UpdateRequest) Context(ctx context.Context) UpdateRequest {
 	req.impl = req.impl.Context(ctx)
 
 	return req
