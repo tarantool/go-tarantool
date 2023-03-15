@@ -25,9 +25,9 @@ type truncateArgs struct {
 	Opts     TruncateOpts
 }
 
-// NewTruncateRequest returns a new empty TruncateRequest.
-func NewTruncateRequest(space string) *TruncateRequest {
-	req := new(TruncateRequest)
+// MakeTruncateRequest returns a new empty TruncateRequest.
+func MakeTruncateRequest(space string) TruncateRequest {
+	req := TruncateRequest{}
 	req.impl = newCall("crud.truncate")
 	req.space = space
 	req.opts = TruncateOpts{}
@@ -36,20 +36,20 @@ func NewTruncateRequest(space string) *TruncateRequest {
 
 // Opts sets the options for the TruncateRequest request.
 // Note: default value is nil.
-func (req *TruncateRequest) Opts(opts TruncateOpts) *TruncateRequest {
+func (req TruncateRequest) Opts(opts TruncateOpts) TruncateRequest {
 	req.opts = opts
 	return req
 }
 
 // Body fills an encoder with the call request body.
-func (req *TruncateRequest) Body(res tarantool.SchemaResolver, enc *encoder) error {
+func (req TruncateRequest) Body(res tarantool.SchemaResolver, enc *encoder) error {
 	args := truncateArgs{Space: req.space, Opts: req.opts}
 	req.impl = req.impl.Args(args)
 	return req.impl.Body(res, enc)
 }
 
 // Context sets a passed context to CRUD request.
-func (req *TruncateRequest) Context(ctx context.Context) *TruncateRequest {
+func (req TruncateRequest) Context(ctx context.Context) TruncateRequest {
 	req.impl = req.impl.Context(ctx)
 
 	return req

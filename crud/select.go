@@ -83,9 +83,9 @@ type selectArgs struct {
 	Opts       SelectOpts
 }
 
-// NewSelectRequest returns a new empty SelectRequest.
-func NewSelectRequest(space string) *SelectRequest {
-	req := new(SelectRequest)
+// MakeSelectRequest returns a new empty SelectRequest.
+func MakeSelectRequest(space string) SelectRequest {
+	req := SelectRequest{}
 	req.impl = newCall("crud.select")
 	req.space = space
 	req.conditions = nil
@@ -95,27 +95,27 @@ func NewSelectRequest(space string) *SelectRequest {
 
 // Conditions sets the conditions for the SelectRequest request.
 // Note: default value is nil.
-func (req *SelectRequest) Conditions(conditions []Condition) *SelectRequest {
+func (req SelectRequest) Conditions(conditions []Condition) SelectRequest {
 	req.conditions = conditions
 	return req
 }
 
 // Opts sets the options for the SelectRequest request.
 // Note: default value is nil.
-func (req *SelectRequest) Opts(opts SelectOpts) *SelectRequest {
+func (req SelectRequest) Opts(opts SelectOpts) SelectRequest {
 	req.opts = opts
 	return req
 }
 
 // Body fills an encoder with the call request body.
-func (req *SelectRequest) Body(res tarantool.SchemaResolver, enc *encoder) error {
+func (req SelectRequest) Body(res tarantool.SchemaResolver, enc *encoder) error {
 	args := selectArgs{Space: req.space, Conditions: req.conditions, Opts: req.opts}
 	req.impl = req.impl.Args(args)
 	return req.impl.Body(res, enc)
 }
 
 // Context sets a passed context to CRUD request.
-func (req *SelectRequest) Context(ctx context.Context) *SelectRequest {
+func (req SelectRequest) Context(ctx context.Context) SelectRequest {
 	req.impl = req.impl.Context(ctx)
 
 	return req

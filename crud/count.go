@@ -76,9 +76,9 @@ type countArgs struct {
 	Opts       CountOpts
 }
 
-// NewCountRequest returns a new empty CountRequest.
-func NewCountRequest(space string) *CountRequest {
-	req := new(CountRequest)
+// MakeCountRequest returns a new empty CountRequest.
+func MakeCountRequest(space string) CountRequest {
+	req := CountRequest{}
 	req.impl = newCall("crud.count")
 	req.space = space
 	req.conditions = nil
@@ -88,27 +88,27 @@ func NewCountRequest(space string) *CountRequest {
 
 // Conditions sets the conditions for the CountRequest request.
 // Note: default value is nil.
-func (req *CountRequest) Conditions(conditions []Condition) *CountRequest {
+func (req CountRequest) Conditions(conditions []Condition) CountRequest {
 	req.conditions = conditions
 	return req
 }
 
 // Opts sets the options for the CountRequest request.
 // Note: default value is nil.
-func (req *CountRequest) Opts(opts CountOpts) *CountRequest {
+func (req CountRequest) Opts(opts CountOpts) CountRequest {
 	req.opts = opts
 	return req
 }
 
 // Body fills an encoder with the call request body.
-func (req *CountRequest) Body(res tarantool.SchemaResolver, enc *encoder) error {
+func (req CountRequest) Body(res tarantool.SchemaResolver, enc *encoder) error {
 	args := countArgs{Space: req.space, Conditions: req.conditions, Opts: req.opts}
 	req.impl = req.impl.Args(args)
 	return req.impl.Body(res, enc)
 }
 
 // Context sets a passed context to CRUD request.
-func (req *CountRequest) Context(ctx context.Context) *CountRequest {
+func (req CountRequest) Context(ctx context.Context) CountRequest {
 	req.impl = req.impl.Context(ctx)
 
 	return req

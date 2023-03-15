@@ -63,39 +63,41 @@ type getArgs struct {
 	Opts     GetOpts
 }
 
-// NewGetRequest returns a new empty GetRequest.
-func NewGetRequest(space string) *GetRequest {
-	req := new(GetRequest)
+// MakeGetRequest returns a new empty GetRequest.
+func MakeGetRequest(space string) GetRequest {
+	req := GetRequest{}
 	req.impl = newCall("crud.get")
 	req.space = space
-	req.key = []interface{}{}
 	req.opts = GetOpts{}
 	return req
 }
 
 // Key sets the key for the GetRequest request.
 // Note: default value is nil.
-func (req *GetRequest) Key(key Tuple) *GetRequest {
+func (req GetRequest) Key(key Tuple) GetRequest {
 	req.key = key
 	return req
 }
 
 // Opts sets the options for the GetRequest request.
 // Note: default value is nil.
-func (req *GetRequest) Opts(opts GetOpts) *GetRequest {
+func (req GetRequest) Opts(opts GetOpts) GetRequest {
 	req.opts = opts
 	return req
 }
 
 // Body fills an encoder with the call request body.
-func (req *GetRequest) Body(res tarantool.SchemaResolver, enc *encoder) error {
+func (req GetRequest) Body(res tarantool.SchemaResolver, enc *encoder) error {
+	if req.key == nil {
+		req.key = []interface{}{}
+	}
 	args := getArgs{Space: req.space, Key: req.key, Opts: req.opts}
 	req.impl = req.impl.Args(args)
 	return req.impl.Body(res, enc)
 }
 
 // Context sets a passed context to CRUD request.
-func (req *GetRequest) Context(ctx context.Context) *GetRequest {
+func (req GetRequest) Context(ctx context.Context) GetRequest {
 	req.impl = req.impl.Context(ctx)
 
 	return req

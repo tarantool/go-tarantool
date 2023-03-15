@@ -24,39 +24,41 @@ type replaceArgs struct {
 	Opts     ReplaceOpts
 }
 
-// NewReplaceRequest returns a new empty ReplaceRequest.
-func NewReplaceRequest(space string) *ReplaceRequest {
-	req := new(ReplaceRequest)
+// MakeReplaceRequest returns a new empty ReplaceRequest.
+func MakeReplaceRequest(space string) ReplaceRequest {
+	req := ReplaceRequest{}
 	req.impl = newCall("crud.replace")
 	req.space = space
-	req.tuple = []interface{}{}
 	req.opts = ReplaceOpts{}
 	return req
 }
 
 // Tuple sets the tuple for the ReplaceRequest request.
 // Note: default value is nil.
-func (req *ReplaceRequest) Tuple(tuple Tuple) *ReplaceRequest {
+func (req ReplaceRequest) Tuple(tuple Tuple) ReplaceRequest {
 	req.tuple = tuple
 	return req
 }
 
 // Opts sets the options for the ReplaceRequest request.
 // Note: default value is nil.
-func (req *ReplaceRequest) Opts(opts ReplaceOpts) *ReplaceRequest {
+func (req ReplaceRequest) Opts(opts ReplaceOpts) ReplaceRequest {
 	req.opts = opts
 	return req
 }
 
 // Body fills an encoder with the call request body.
-func (req *ReplaceRequest) Body(res tarantool.SchemaResolver, enc *encoder) error {
+func (req ReplaceRequest) Body(res tarantool.SchemaResolver, enc *encoder) error {
+	if req.tuple == nil {
+		req.tuple = []interface{}{}
+	}
 	args := replaceArgs{Space: req.space, Tuple: req.tuple, Opts: req.opts}
 	req.impl = req.impl.Args(args)
 	return req.impl.Body(res, enc)
 }
 
 // Context sets a passed context to CRUD request.
-func (req *ReplaceRequest) Context(ctx context.Context) *ReplaceRequest {
+func (req ReplaceRequest) Context(ctx context.Context) ReplaceRequest {
 	req.impl = req.impl.Context(ctx)
 
 	return req
@@ -80,39 +82,41 @@ type replaceObjectArgs struct {
 	Opts     ReplaceObjectOpts
 }
 
-// NewReplaceObjectRequest returns a new empty ReplaceObjectRequest.
-func NewReplaceObjectRequest(space string) *ReplaceObjectRequest {
-	req := new(ReplaceObjectRequest)
+// MakeReplaceObjectRequest returns a new empty ReplaceObjectRequest.
+func MakeReplaceObjectRequest(space string) ReplaceObjectRequest {
+	req := ReplaceObjectRequest{}
 	req.impl = newCall("crud.replace_object")
 	req.space = space
-	req.object = MapObject{}
 	req.opts = ReplaceObjectOpts{}
 	return req
 }
 
 // Object sets the tuple for the ReplaceObjectRequest request.
 // Note: default value is nil.
-func (req *ReplaceObjectRequest) Object(object Object) *ReplaceObjectRequest {
+func (req ReplaceObjectRequest) Object(object Object) ReplaceObjectRequest {
 	req.object = object
 	return req
 }
 
 // Opts sets the options for the ReplaceObjectRequest request.
 // Note: default value is nil.
-func (req *ReplaceObjectRequest) Opts(opts ReplaceObjectOpts) *ReplaceObjectRequest {
+func (req ReplaceObjectRequest) Opts(opts ReplaceObjectOpts) ReplaceObjectRequest {
 	req.opts = opts
 	return req
 }
 
 // Body fills an encoder with the call request body.
-func (req *ReplaceObjectRequest) Body(res tarantool.SchemaResolver, enc *encoder) error {
+func (req ReplaceObjectRequest) Body(res tarantool.SchemaResolver, enc *encoder) error {
+	if req.object == nil {
+		req.object = MapObject{}
+	}
 	args := replaceObjectArgs{Space: req.space, Object: req.object, Opts: req.opts}
 	req.impl = req.impl.Args(args)
 	return req.impl.Body(res, enc)
 }
 
 // Context sets a passed context to CRUD request.
-func (req *ReplaceObjectRequest) Context(ctx context.Context) *ReplaceObjectRequest {
+func (req ReplaceObjectRequest) Context(ctx context.Context) ReplaceObjectRequest {
 	req.impl = req.impl.Context(ctx)
 
 	return req
