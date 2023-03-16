@@ -48,7 +48,7 @@ jobs:
 
     steps:
       - name: Clone the connector
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Setup tt
         run: |
@@ -89,7 +89,7 @@ jobs:
         run: echo "/opt/tarantool/bin" >> $GITHUB_PATH
 
       - name: Setup golang for the connector and tests
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v3
         with:
           go-version: ${{ matrix.golang }}
 
@@ -167,14 +167,14 @@ jobs:
       - name: Clone the connector
         # `ref` as merge request is needed for pull_request_target because this
         # target runs in the context of the base commit of the pull request.
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         if: github.event_name == 'pull_request_target'
         with:
           ref: refs/pull/${{ github.event.pull_request.number }}/merge
 
       - name: Clone the connector
         if: github.event_name != 'pull_request_target'
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Setup Tarantool ${{ matrix.sdk-version }}
         run: |
@@ -184,7 +184,7 @@ jobs:
           rm -f ${ARCHIVE_NAME}
 
       - name: Setup golang for the connector and tests
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v3
         with:
           go-version: 1.13
 
