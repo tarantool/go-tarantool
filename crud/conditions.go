@@ -23,6 +23,6 @@ type Condition struct {
 	// is needed.
 	_msgpack struct{} `msgpack:",asArray"` //nolint: structcheck,unused
 	Operator Operator
-	Field    interface{} // Field name, field number or index name.
+	Field    string // Field name or index name.
 	Value    interface{}
 }
