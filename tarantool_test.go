@@ -2609,6 +2609,39 @@ func TestConnectionDoSelectRequest_pagination_pos(t *testing.T) {
 	testConnectionDoSelectRequestCheck(t, resp, err, true, 2, 1012)
 }
 
+func TestConnection_Call(t *testing.T) {
+	var resp *Response
+	var err error
+
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	defer conn.Close()
+
+	resp, err = conn.Call("simple_concat", []interface{}{"1"})
+	if err != nil {
+		t.Errorf("Failed to use Call")
+	}
+	if val, ok := resp.Data[0].(string); !ok || val != "11" {
+		t.Errorf("result is not {{1}} : %v", resp.Data)
+	}
+}
+
+func TestCallRequest(t *testing.T) {
+	var resp *Response
+	var err error
+
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	defer conn.Close()
+
+	req := NewCallRequest("simple_concat").Args([]interface{}{"1"})
+	resp, err = conn.Do(req).Get()
+	if err != nil {
+		t.Errorf("Failed to use Call")
+	}
+	if val, ok := resp.Data[0].(string); !ok || val != "11" {
+		t.Errorf("result is not {{1}} : %v", resp.Data)
+	}
+}
+
 func TestClientRequestObjectsWithNilContext(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()

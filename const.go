@@ -21,6 +21,7 @@ const (
 	IdRequestCode        = 73
 	WatchRequestCode     = 74
 	UnwatchRequestCode   = 75
+	CallRequestCode      = Call17RequestCode
 
 	KeyCode         = 0x00
 	KeySync         = 0x01

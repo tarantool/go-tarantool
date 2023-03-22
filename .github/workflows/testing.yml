@@ -99,11 +99,6 @@ jobs:
           make test
           make testrace
 
-      - name: Run regression tests with call_17
-        run: |
-          make test TAGS="go_tarantool_call_17"
-          make testrace TAGS="go_tarantool_call_17"
-
       - name: Run fuzzing tests
         if: ${{ matrix.fuzzing }}
         run: make fuzzing TAGS="go_tarantool_decimal_fuzzing"
@@ -186,14 +181,6 @@ jobs:
           source tarantool-enterprise/env.sh
           make test
           make testrace
-        env:
-          TEST_TNT_SSL: ${{matrix.ssl}}
-
-      - name: Run regression tests with call_17
-        run: |
-          source tarantool-enterprise/env.sh
-          make test TAGS="go_tarantool_call_17"
-          make testrace TAGS="go_tarantool_call_17"
         env:
           TEST_TNT_SSL: ${{matrix.ssl}}
 
@@ -362,12 +349,6 @@ jobs:
           cd "${SRCDIR}"
           make test
           make testrace
-
-      - name: Run regression tests with call_17
-        run: |
-          cd "${SRCDIR}"
-          make test TAGS="go_tarantool_call_17"
-          make testrace TAGS="go_tarantool_call_17"
 
       - name: Run fuzzing tests
         if: ${{ matrix.fuzzing }}

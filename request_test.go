@@ -180,6 +180,8 @@ func TestRequestsCodes(t *testing.T) {
 		{req: NewInsertRequest(validSpace), code: InsertRequestCode},
 		{req: NewReplaceRequest(validSpace), code: ReplaceRequestCode},
 		{req: NewDeleteRequest(validSpace), code: DeleteRequestCode},
+		{req: NewCallRequest(validExpr), code: CallRequestCode},
+		{req: NewCallRequest(validExpr), code: Call17RequestCode},
 		{req: NewCall16Request(validExpr), code: Call16RequestCode},
 		{req: NewCall17Request(validExpr), code: Call17RequestCode},
 		{req: NewEvalRequest(validExpr), code: EvalRequestCode},
@@ -213,6 +215,7 @@ func TestRequestsAsync(t *testing.T) {
 		{req: NewInsertRequest(validSpace), async: false},
 		{req: NewReplaceRequest(validSpace), async: false},
 		{req: NewDeleteRequest(validSpace), async: false},
+		{req: NewCallRequest(validExpr), async: false},
 		{req: NewCall16Request(validExpr), async: false},
 		{req: NewCall17Request(validExpr), async: false},
 		{req: NewEvalRequest(validExpr), async: false},
@@ -246,6 +249,7 @@ func TestRequestsCtx_default(t *testing.T) {
 		{req: NewInsertRequest(validSpace), expected: nil},
 		{req: NewReplaceRequest(validSpace), expected: nil},
 		{req: NewDeleteRequest(validSpace), expected: nil},
+		{req: NewCallRequest(validExpr), expected: nil},
 		{req: NewCall16Request(validExpr), expected: nil},
 		{req: NewCall17Request(validExpr), expected: nil},
 		{req: NewEvalRequest(validExpr), expected: nil},
@@ -280,6 +284,7 @@ func TestRequestsCtx_setter(t *testing.T) {
 		{req: NewInsertRequest(validSpace).Context(ctx), expected: ctx},
 		{req: NewReplaceRequest(validSpace).Context(ctx), expected: ctx},
 		{req: NewDeleteRequest(validSpace).Context(ctx), expected: ctx},
+		{req: NewCallRequest(validExpr).Context(ctx), expected: ctx},
 		{req: NewCall16Request(validExpr).Context(ctx), expected: ctx},
 		{req: NewCall17Request(validExpr).Context(ctx), expected: ctx},
 		{req: NewEvalRequest(validExpr).Context(ctx), expected: ctx},
@@ -598,7 +603,7 @@ func TestCallRequestsSetters(t *testing.T) {
 		return
 	}
 
-	req := NewCall16Request(validExpr).
+	req := NewCallRequest(validExpr).
 		Args(args)
 	req16 := NewCall16Request(validExpr).
 		Args(args)
