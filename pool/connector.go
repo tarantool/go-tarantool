@@ -99,16 +99,14 @@ func (c *ConnectorAdapter) Upsert(space interface{},
 }
 
 // Call calls registered Tarantool function.
-// It uses request code for Tarantool >= 1.7 if go-tarantool
-// was build with go_tarantool_call_17 tag.
-// Otherwise, uses request code for Tarantool 1.6.
+// It uses request code for Tarantool >= 1.7, result is an array.
 func (c *ConnectorAdapter) Call(functionName string,
 	args interface{}) (*tarantool.Response, error) {
 	return c.pool.Call(functionName, args, c.mode)
 }
 
 // Call16 calls registered Tarantool function.
-// It uses request code for Tarantool 1.6, so result is converted to array of arrays
+// It uses request code for Tarantool 1.6, result is an array of arrays.
 // Deprecated since Tarantool 1.7.2.
 func (c *ConnectorAdapter) Call16(functionName string,
 	args interface{}) (*tarantool.Response, error) {
@@ -116,8 +114,7 @@ func (c *ConnectorAdapter) Call16(functionName string,
 }
 
 // Call17 calls registered Tarantool function.
-// It uses request code for Tarantool >= 1.7, so result is not converted
-// (though, keep in mind, result is always array)
+// It uses request code for Tarantool >= 1.7, result is an array.
 func (c *ConnectorAdapter) Call17(functionName string,
 	args interface{}) (*tarantool.Response, error) {
 	return c.pool.Call17(functionName, args, c.mode)
@@ -174,16 +171,14 @@ func (c *ConnectorAdapter) UpdateTyped(space, index interface{},
 }
 
 // CallTyped calls registered function.
-// It uses request code for Tarantool >= 1.7 if go-tarantool
-// was build with go_tarantool_call_17 tag.
-// Otherwise, uses request code for Tarantool 1.6.
+// It uses request code for Tarantool >= 1.7, result is an array.
 func (c *ConnectorAdapter) CallTyped(functionName string,
 	args interface{}, result interface{}) error {
 	return c.pool.CallTyped(functionName, args, result, c.mode)
 }
 
 // Call16Typed calls registered function.
-// It uses request code for Tarantool 1.6, so result is converted to array of arrays
+// It uses request code for Tarantool 1.6, result is an array of arrays.
 // Deprecated since Tarantool 1.7.2.
 func (c *ConnectorAdapter) Call16Typed(functionName string,
 	args interface{}, result interface{}) error {
@@ -191,8 +186,7 @@ func (c *ConnectorAdapter) Call16Typed(functionName string,
 }
 
 // Call17Typed calls registered function.
-// It uses request code for Tarantool >= 1.7, so result is not converted
-// (though, keep in mind, result is always array)
+// It uses request code for Tarantool >= 1.7, result is an array.
 func (c *ConnectorAdapter) Call17Typed(functionName string,
 	args interface{}, result interface{}) error {
 	return c.pool.Call17Typed(functionName, args, result, c.mode)
@@ -247,16 +241,14 @@ func (c *ConnectorAdapter) UpsertAsync(space interface{}, tuple interface{},
 }
 
 // CallAsync sends a call to registered Tarantool function and returns Future.
-// It uses request code for Tarantool >= 1.7 if go-tarantool
-// was build with go_tarantool_call_17 tag.
-// Otherwise, uses request code for Tarantool 1.6.
+// It uses request code for Tarantool >= 1.7, future's result is an array.
 func (c *ConnectorAdapter) CallAsync(functionName string,
 	args interface{}) *tarantool.Future {
 	return c.pool.CallAsync(functionName, args, c.mode)
 }
 
 // Call16Async sends a call to registered Tarantool function and returns Future.
-// It uses request code for Tarantool 1.6, so future's result is always array of arrays.
+// It uses request code for Tarantool 1.6, so future's result is an array of arrays.
 // Deprecated since Tarantool 1.7.2.
 func (c *ConnectorAdapter) Call16Async(functionName string,
 	args interface{}) *tarantool.Future {
@@ -264,8 +256,7 @@ func (c *ConnectorAdapter) Call16Async(functionName string,
 }
 
 // Call17Async sends a call to registered Tarantool function and returns Future.
-// It uses request code for Tarantool >= 1.7, so future's result will not be converted
-// (though, keep in mind, result is always array)
+// It uses request code for Tarantool >= 1.7, future's result is an array.
 func (c *ConnectorAdapter) Call17Async(functionName string,
 	args interface{}) *tarantool.Future {
 	return c.pool.Call17Async(functionName, args, c.mode)

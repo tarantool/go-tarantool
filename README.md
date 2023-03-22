@@ -30,6 +30,7 @@ faster than other packages according to public benchmarks.
     * [multi package](#multi-package)
     * [pool package](#pool-package)
     * [msgpack.v5](#msgpackv5)
+    * [Call = Call17](#call--call17)
 * [Contributing](#contributing)
 * [Alternative connectors](#alternative-connectors)
 
@@ -66,13 +67,7 @@ This allows us to introduce new features without losing backward compatibility.
    ```
    go_tarantool_ssl_disable
    ```
-2. To change the default `Call` behavior from `Call16` to `Call17`, you can use
-   the build tag:
-   ```
-   go_tarantool_call_17
-   ```
-   **Note:** In future releases, `Call17` may be used as default `Call` behavior.
-3. To run fuzz tests with decimals, you can use the build tag:
+2. To run fuzz tests with decimals, you can use the build tag:
    ```
    go_tarantool_decimal_fuzzing
    ```
@@ -187,6 +182,13 @@ There are also changes in the logic that can lead to errors in the old code,
 [UseLooseInterfaceDecoding](https://pkg.go.dev/github.com/vmihailenco/msgpack/v5#Decoder.UseLooseInterfaceDecoding), [UseCompactInts](https://pkg.go.dev/github.com/vmihailenco/msgpack/v5#Encoder.UseCompactInts) etc), it is still impossible
 to achieve full compliance of behavior between `msgpack.v5` and `msgpack.v2`. So
 we don't go this way. We use standard settings if it possible.
+
+#### Call = Call17
+
+Call requests uses `IPROTO_CALL` instead of `IPROTO_CALL_16`.
+
+So now `Call` = `Call17` and `NewCallRequest` = `NewCall17Request`. A result
+of the requests is an array instead of array of arrays.
 
 ## Contributing
 
