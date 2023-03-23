@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -39,7 +40,7 @@ func TestOptsClonePreservesRequiredProtocolFeatures(t *testing.T) {
 }
 
 func TestPrepareExecuteBlackbox(t *testing.T) {
-	ttShutdown, _, err := setTarantoolCluster("3301", "3302", "3303")
+	//ttShutdown, _, err := setTarantoolCluster("3301", "3302", "3303")
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	db, err := connection_pool.ConnectWithWritableAwareDefaults(ctx, cancel, true, connection_pool.BasicAuth{"admin", "pass"},
 		"localhost:3301",
@@ -56,7 +57,7 @@ func TestPrepareExecuteBlackbox(t *testing.T) {
 				panic("still connected")
 			}
 		}
-		ttShutdown()
+		//ttShutdown()
 	}(db)
 	if err != nil {
 		panic(fmt.Sprintf("Could not connect to cluster %v", err))
@@ -70,6 +71,7 @@ func TestPrepareExecuteBlackbox(t *testing.T) {
 		}()
 	}
 	wg.Wait()
+	time.Sleep(180 * time.Second)
 }
 
 func execPrepareExecute(ctx context.Context, db Connector) {
@@ -149,6 +151,8 @@ func setTarantoolCluster(ports ...string) (func(), []test_helpers.TarantoolInsta
 	tts := make([]test_helpers.TarantoolInstance, len(ports))
 	for i, p := range ports {
 		var err error
+		_ = os.MkdirAll(fmt.Sprintf("/tmp/tarantool_data/%v/memtx", p), 0777)
+		_ = os.MkdirAll(fmt.Sprintf("/tmp/tarantool_data/%v/wal", p), 0777)
 		tts[i], err = test_helpers.StartTarantool(test_helpers.StartOpts{
 			InitScript:   fmt.Sprintf("./.testdata/tarantool_bootstrap_%v.lua", p),
 			Listen:       fmt.Sprintf("127.0.0.1:%v", p),
