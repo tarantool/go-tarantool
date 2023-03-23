@@ -3,7 +3,7 @@ package crud
 import (
 	"context"
 
-	"github.com/tarantool/go-tarantool"
+	"github.com/ice-blockchain/go-tarantool"
 )
 
 // DeleteOpts describes options for `crud.delete` method.

@@ -3,7 +3,7 @@ package crud
 import (
 	"context"
 
-	"github.com/tarantool/go-tarantool"
+	"github.com/ice-blockchain/go-tarantool"
 )
 
 // InsertOpts describes options for `crud.insert` method.

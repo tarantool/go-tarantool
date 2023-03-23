@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/tarantool/go-tarantool"
-	. "github.com/tarantool/go-tarantool/datetime"
-	"github.com/tarantool/go-tarantool/test_helpers"
+	. "github.com/ice-blockchain/go-tarantool"
+	. "github.com/ice-blockchain/go-tarantool/datetime"
+	"github.com/ice-blockchain/go-tarantool/test_helpers"
 )
 
 var noTimezoneLoc = time.FixedZone(NoTimezone, 0)

@@ -6,8 +6,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tarantool/go-tarantool"
-	. "github.com/tarantool/go-tarantool/settings"
+
+	"github.com/ice-blockchain/go-tarantool"
+	. "github.com/ice-blockchain/go-tarantool/settings"
 )
 
 type ValidSchemeResolver struct {

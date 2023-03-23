@@ -3,7 +3,7 @@ package crud
 import (
 	"context"
 
-	"github.com/tarantool/go-tarantool"
+	"github.com/ice-blockchain/go-tarantool"
 )
 
 // SelectOpts describes options for `crud.select` method.

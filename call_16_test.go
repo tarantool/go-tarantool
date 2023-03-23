@@ -6,8 +6,8 @@ package tarantool_test
 import (
 	"testing"
 
-	. "github.com/tarantool/go-tarantool"
-	"github.com/tarantool/go-tarantool/test_helpers"
+	. "github.com/ice-blockchain/go-tarantool"
+	"github.com/ice-blockchain/go-tarantool/test_helpers"
 )
 
 func TestConnection_Call(t *testing.T) {

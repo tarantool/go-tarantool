@@ -3,7 +3,7 @@ package connection_pool
 import (
 	"sync"
 
-	"github.com/tarantool/go-tarantool"
+	"github.com/ice-blockchain/go-tarantool"
 )
 
 // watcherContainer is a very simple implementation of a thread-safe container

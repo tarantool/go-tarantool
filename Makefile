@@ -13,7 +13,7 @@ BENCH_REFERENCE_REPO := ${BENCH_PATH}/go-tarantool
 BENCH_OPTIONS := -bench=. -run=^Benchmark -benchmem -benchtime=${DURATION} -count=${COUNT}
 GO_TARANTOOL_URL := https://github.com/tarantool/go-tarantool
 GO_TARANTOOL_DIR := ${PROJECT_DIR}/${BENCH_PATH}/go-tarantool
-TAGS :=
+TAGS := go_tarantool_msgpack_v5,go_tarantool_ssl_disable
 TTCTL := tt
 ifeq (,$(shell which tt 2>/dev/null))
 	TTCTL := tarantoolctl

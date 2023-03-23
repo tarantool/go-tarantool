@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	. "github.com/tarantool/go-tarantool"
+	. "github.com/ice-blockchain/go-tarantool"
 )
 
 func TestProtocolInfoClonePreservesFeatures(t *testing.T) {

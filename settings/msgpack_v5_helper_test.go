@@ -6,8 +6,9 @@ package settings_test
 import (
 	"io"
 
-	"github.com/tarantool/go-tarantool"
 	"github.com/vmihailenco/msgpack/v5"
+
+	"github.com/ice-blockchain/go-tarantool"
 )
 
 type encoder = msgpack.Encoder

@@ -18,7 +18,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/tarantool/go-tarantool"
+	"github.com/ice-blockchain/go-tarantool"
 )
 
 const (
@@ -531,4 +531,14 @@ func (connMulti *ConnectionMulti) Do(req tarantool.Request) *tarantool.Future {
 		return connectedReq.Conn().Do(req)
 	}
 	return connMulti.getCurrentConnection().Do(req)
+}
+
+func (connMulti *ConnectionMulti) PrepareExecute(sql string, args map[string]interface{}) (resp *tarantool.Response, err error) {
+	return connMulti.getCurrentConnection().PrepareExecute(sql, args)
+}
+func (connMulti *ConnectionMulti) PrepareExecuteTyped(sql string, args map[string]interface{}, result interface{}) (err error) {
+	return connMulti.getCurrentConnection().PrepareExecuteTyped(sql, args, result)
+}
+func (connMulti *ConnectionMulti) UpsertTyped(space, tuple, ops, result interface{}) (err error) {
+	return connMulti.getCurrentConnection().UpsertTyped(space, tuple, ops, result)
 }

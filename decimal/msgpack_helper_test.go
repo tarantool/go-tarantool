@@ -4,7 +4,7 @@
 package decimal_test
 
 import (
-	. "github.com/tarantool/go-tarantool/decimal"
+	. "github.com/ice-blockchain/go-tarantool/decimal"
 
 	"gopkg.in/vmihailenco/msgpack.v2"
 )

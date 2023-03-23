@@ -4,8 +4,9 @@
 package tarantool_test
 
 import (
-	"github.com/tarantool/go-tarantool"
 	"gopkg.in/vmihailenco/msgpack.v2"
+
+	"github.com/ice-blockchain/go-tarantool"
 )
 
 type encoder = msgpack.Encoder

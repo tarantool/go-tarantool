@@ -5,8 +5,8 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/tarantool/go-tarantool"
-	"github.com/tarantool/go-tarantool/connection_pool"
+	"github.com/ice-blockchain/go-tarantool"
+	"github.com/ice-blockchain/go-tarantool/connection_pool"
 )
 
 type ListenOnInstanceArgs struct {

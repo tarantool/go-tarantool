@@ -6,8 +6,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	. "github.com/tarantool/go-tarantool"
-	"github.com/tarantool/go-tarantool/test_helpers"
+
+	. "github.com/ice-blockchain/go-tarantool"
+	"github.com/ice-blockchain/go-tarantool/test_helpers"
 )
 
 var samples = map[string]BoxError{

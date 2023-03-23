@@ -10,9 +10,10 @@ import (
 	"time"
 
 	"github.com/shopspring/decimal"
-	. "github.com/tarantool/go-tarantool"
-	. "github.com/tarantool/go-tarantool/decimal"
-	"github.com/tarantool/go-tarantool/test_helpers"
+
+	. "github.com/ice-blockchain/go-tarantool"
+	. "github.com/ice-blockchain/go-tarantool/decimal"
+	"github.com/ice-blockchain/go-tarantool/test_helpers"
 )
 
 var isDecimalSupported = false

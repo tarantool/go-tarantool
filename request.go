@@ -214,6 +214,9 @@ func (conn *Connection) Update(space, index interface{}, key, ops interface{}) (
 func (conn *Connection) Upsert(space interface{}, tuple, ops interface{}) (resp *Response, err error) {
 	return conn.UpsertAsync(space, tuple, ops).Get()
 }
+func (conn *Connection) UpsertTyped(space interface{}, tuple, ops, result interface{}) (err error) {
+	return conn.UpsertAsync(space, tuple, ops).GetTyped(result)
+}
 
 // Call calls registered Tarantool function.
 // It uses request code for Tarantool >= 1.7 if go-tarantool

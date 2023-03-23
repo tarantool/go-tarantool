@@ -7,8 +7,9 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tarantool/go-tarantool"
-	. "github.com/tarantool/go-tarantool/connection_pool"
+
+	"github.com/ice-blockchain/go-tarantool"
+	. "github.com/ice-blockchain/go-tarantool/connection_pool"
 )
 
 var testMode Mode = RW

@@ -11,6 +11,7 @@ import (
 	"log"
 	"math"
 	"runtime"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -172,6 +173,9 @@ type Connection struct {
 	shutdownWatcher Watcher
 	// requestCnt is a counter of active requests.
 	requestCnt int64
+
+	sqlPreparedStatementCache sync.Map //map[string]*Prepared
+	cacheMx                   sync.Mutex
 }
 
 var _ = Connector(&Connection{}) // Check compatibility with connector interface.
@@ -1250,6 +1254,56 @@ func (conn *Connection) NewPrepared(expr string) (*Prepared, error) {
 		return nil, err
 	}
 	return NewPreparedFromResponse(conn, resp)
+}
+
+func (conn *Connection) prepareExecute(f func(future *Future) (*Response, error), expr string, args map[string]interface{}) (*Response, error) {
+	if preparedStatement, prepareErr := conn.sqlPreparedStatement(expr); prepareErr != nil {
+		return nil, prepareErr
+	} else {
+		executeReq := NewExecutePreparedRequest(preparedStatement).Args(args)
+		fut := conn.Do(executeReq)
+		r, err := f(fut)
+		if err != nil {
+			if ter, ok := err.(Error); ok &&
+				(ter.Code == ER_WRONG_QUERY_ID || (ter.Code == ER_SQL_EXECUTE && strings.Contains(ter.Msg, "statement has expired"))) {
+				conn.cacheMx.Lock()
+				conn.sqlPreparedStatementCache.Delete(expr)
+				conn.cacheMx.Unlock()
+				return conn.prepareExecute(f, expr, args)
+			}
+		}
+		return r, err
+	}
+}
+
+func (conn *Connection) PrepareExecute(sql string, args map[string]interface{}) (resp *Response, err error) {
+	return conn.prepareExecute(func(fut *Future) (*Response, error) { return fut.Get() }, sql, args)
+}
+
+func (conn *Connection) PrepareExecuteTyped(sql string, args map[string]interface{}, result interface{}) (err error) {
+	_, err = conn.prepareExecute(func(fut *Future) (*Response, error) { return nil, fut.GetTyped(result) }, sql, args)
+	return
+}
+
+func (conn *Connection) PrepareExecuteAsync(sql string, args map[string]interface{}) (resp *Future) {
+	_, _ = conn.prepareExecute(func(fut *Future) (*Response, error) { resp = fut; return nil, nil }, sql, args)
+	return
+}
+func (conn *Connection) sqlPreparedStatement(sql string) (prepared *Prepared, err error) {
+	if preparedIf, ok := conn.sqlPreparedStatementCache.Load(sql); ok {
+		prepared = preparedIf.(*Prepared)
+	} else {
+		conn.cacheMx.Lock()
+		defer conn.cacheMx.Unlock()
+		if preparedIf, ok = conn.sqlPreparedStatementCache.Load(sql); ok {
+			prepared = preparedIf.(*Prepared)
+		} else {
+			if prepared, err = conn.NewPrepared(sql); err == nil {
+				conn.sqlPreparedStatementCache.Store(sql, prepared)
+			}
+		}
+	}
+	return
 }
 
 // NewStream creates new Stream object for connection.

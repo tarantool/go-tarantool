@@ -4,8 +4,9 @@
 package decimal_test
 
 import (
-	. "github.com/tarantool/go-tarantool/decimal"
 	"github.com/vmihailenco/msgpack/v5"
+
+	. "github.com/ice-blockchain/go-tarantool/decimal"
 )
 
 type encoder = msgpack.Encoder

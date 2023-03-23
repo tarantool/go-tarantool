@@ -4,8 +4,9 @@
 package datetime_test
 
 import (
-	. "github.com/tarantool/go-tarantool/datetime"
 	"github.com/vmihailenco/msgpack/v5"
+
+	. "github.com/ice-blockchain/go-tarantool/datetime"
 )
 
 type encoder = msgpack.Encoder

@@ -3,7 +3,7 @@ package test_helpers
 import (
 	"context"
 
-	"github.com/tarantool/go-tarantool"
+	"github.com/ice-blockchain/go-tarantool"
 )
 
 type StrangerRequest struct {

@@ -4,7 +4,7 @@
 package datetime_test
 
 import (
-	. "github.com/tarantool/go-tarantool/datetime"
+	. "github.com/ice-blockchain/go-tarantool/datetime"
 
 	"gopkg.in/vmihailenco/msgpack.v2"
 )

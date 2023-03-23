@@ -13,8 +13,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/tarantool/go-tarantool"
-	"github.com/tarantool/go-tarantool/queue"
+	"github.com/ice-blockchain/go-tarantool"
+	"github.com/ice-blockchain/go-tarantool/queue"
 )
 
 type dummyData struct {

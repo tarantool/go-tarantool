@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ice-blockchain/go-tarantool"
+	"github.com/ice-blockchain/go-tarantool/crud"
+	"github.com/ice-blockchain/go-tarantool/test_helpers"
 	"github.com/stretchr/testify/require"
-	"github.com/tarantool/go-tarantool"
-	"github.com/tarantool/go-tarantool/crud"
-	"github.com/tarantool/go-tarantool/test_helpers"
 )
 
 var server = "127.0.0.1:3013"

@@ -8,7 +8,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tarantool/go-tarantool"
+
+	"github.com/ice-blockchain/go-tarantool"
 )
 
 // ConnectWithValidation tries to connect to a Tarantool instance.

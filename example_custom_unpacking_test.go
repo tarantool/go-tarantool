@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/tarantool/go-tarantool"
+	"github.com/ice-blockchain/go-tarantool"
 )
 
 type Tuple2 struct {

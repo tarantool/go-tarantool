@@ -3,8 +3,8 @@ package crud_test
 import (
 	"testing"
 
+	"github.com/ice-blockchain/go-tarantool/crud"
 	"github.com/stretchr/testify/require"
-	"github.com/tarantool/go-tarantool/crud"
 )
 
 func TestErrorMany(t *testing.T) {

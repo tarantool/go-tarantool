@@ -9,8 +9,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	. "github.com/tarantool/go-tarantool"
-	"github.com/tarantool/go-tarantool/test_helpers"
+	. "github.com/ice-blockchain/go-tarantool"
+	"github.com/ice-blockchain/go-tarantool/test_helpers"
 )
 
 const invalidSpaceMsg = "invalid space"

@@ -11,13 +11,15 @@
 package connection_pool
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
+	"runtime"
 	"sync"
 	"time"
 
-	"github.com/tarantool/go-tarantool"
+	"github.com/ice-blockchain/go-tarantool"
 )
 
 var (
@@ -107,6 +109,31 @@ type connState struct {
 	notify chan tarantool.ConnEvent
 	conn   *tarantool.Connection
 	role   Role
+}
+type BasicAuth struct {
+	User, Pass string
+}
+
+func ConnectWithWritableAwareDefaults(ctx context.Context, cancel context.CancelFunc, requiresWrite bool, auth BasicAuth, addresses ...string) (tarantool.Connector, error) {
+	conOpts := tarantool.Opts{
+		Timeout:       10 * time.Second,
+		MaxReconnects: 10,
+		User:          auth.User,
+		Pass:          auth.Pass,
+		Concurrency:   128 * uint32(runtime.GOMAXPROCS(-1)),
+	}
+	poolOpts := OptsPool{
+		CheckTimeout: 2 * time.Second,
+	}
+	pool, err := ConnectWithOpts(addresses, conOpts, poolOpts)
+	if err != nil {
+		return nil, err
+	}
+	mode := RO
+	if requiresWrite {
+		mode = RW
+	}
+	return NewConnectorAdapter(pool, mode), nil
 }
 
 // ConnectWithOpts creates pool for instances with addresses addrs
@@ -341,6 +368,14 @@ func (connPool *ConnectionPool) Upsert(space interface{}, tuple, ops interface{}
 	return conn.Upsert(space, tuple, ops)
 }
 
+func (connPool *ConnectionPool) UpsertTyped(space, tuple, ops, result interface{}, mode ...Mode) (err error) {
+	conn, err := connPool.getConnByMode(RW, mode)
+	if err != nil {
+		return err
+	}
+	return conn.UpsertTyped(space, tuple, ops, result)
+}
+
 // Call16 calls registered Tarantool function.
 // It uses request code for Tarantool >= 1.7 if go-tarantool
 // was build with go_tarantool_call_17 tag.
@@ -516,6 +551,20 @@ func (connPool *ConnectionPool) ExecuteTyped(expr string, args interface{}, resu
 	}
 
 	return conn.ExecuteTyped(expr, args, result)
+}
+func (connPool *ConnectionPool) PrepareExecuteTyped(sql string, args map[string]interface{}, result interface{}, userMode Mode) (err error) {
+	conn, err := connPool.getNextConnection(userMode)
+	if err != nil {
+		return err
+	}
+	return conn.PrepareExecuteTyped(sql, args, result)
+}
+func (connPool *ConnectionPool) PrepareExecute(sql string, args map[string]interface{}, userMode Mode) (r *tarantool.Response, err error) {
+	conn, err := connPool.getNextConnection(userMode)
+	if err != nil {
+		return nil, err
+	}
+	return conn.PrepareExecute(sql, args)
 }
 
 // SelectAsync sends select request to Tarantool and returns Future.

@@ -5,7 +5,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	. "github.com/tarantool/go-tarantool"
+
+	. "github.com/ice-blockchain/go-tarantool"
 )
 
 func TestAuth_String(t *testing.T) {

@@ -3,8 +3,8 @@ package connection_pool_test
 import (
 	"testing"
 
-	"github.com/tarantool/go-tarantool"
-	. "github.com/tarantool/go-tarantool/connection_pool"
+	"github.com/ice-blockchain/go-tarantool"
+	. "github.com/ice-blockchain/go-tarantool/connection_pool"
 )
 
 const (

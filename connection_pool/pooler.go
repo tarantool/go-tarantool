@@ -3,7 +3,7 @@ package connection_pool
 import (
 	"time"
 
-	"github.com/tarantool/go-tarantool"
+	"github.com/ice-blockchain/go-tarantool"
 )
 
 // Pooler is the interface that must be implemented by a connection pool.
@@ -35,6 +35,7 @@ type Pooler interface {
 		mode Mode) (*tarantool.Response, error)
 	Execute(expr string, args interface{},
 		mode Mode) (*tarantool.Response, error)
+	PrepareExecute(sql string, args map[string]interface{}, mode Mode) (resp *tarantool.Response, err error)
 
 	GetTyped(space, index interface{}, key interface{}, result interface{},
 		mode ...Mode) error
@@ -48,6 +49,7 @@ type Pooler interface {
 		mode ...Mode) error
 	UpdateTyped(space, index interface{}, key, ops interface{},
 		result interface{}, mode ...Mode) error
+	UpsertTyped(space, tuple, ops, result interface{}, mode ...Mode) (err error)
 	CallTyped(functionName string, args interface{}, result interface{},
 		mode Mode) error
 	Call16Typed(functionName string, args interface{}, result interface{},
@@ -58,6 +60,8 @@ type Pooler interface {
 		mode Mode) error
 	ExecuteTyped(expr string, args interface{}, result interface{},
 		mode Mode) (tarantool.SQLInfo, []tarantool.ColumnMetaData, error)
+	PrepareExecuteTyped(sql string, args map[string]interface{}, result interface{},
+		mode Mode) (err error)
 
 	SelectAsync(space, index interface{}, offset, limit, iterator uint32,
 		key interface{}, mode ...Mode) *tarantool.Future

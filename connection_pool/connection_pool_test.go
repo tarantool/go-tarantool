@@ -12,9 +12,10 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tarantool/go-tarantool"
-	"github.com/tarantool/go-tarantool/connection_pool"
-	"github.com/tarantool/go-tarantool/test_helpers"
+
+	"github.com/ice-blockchain/go-tarantool"
+	"github.com/ice-blockchain/go-tarantool/connection_pool"
+	"github.com/ice-blockchain/go-tarantool/test_helpers"
 )
 
 var spaceNo = uint32(520)

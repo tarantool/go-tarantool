@@ -12,8 +12,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tarantool/go-tarantool"
-	. "github.com/tarantool/go-tarantool/datetime"
+	"github.com/ice-blockchain/go-tarantool"
+	. "github.com/ice-blockchain/go-tarantool/datetime"
 )
 
 // Example demonstrates how to use tuples with datetime. To enable support of

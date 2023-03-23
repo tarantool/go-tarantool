@@ -22,6 +22,7 @@ func newDecoder(r io.Reader) *decoder {
 	dec.SetMapDecoder(func(dec *msgpack.Decoder) (interface{}, error) {
 		return dec.DecodeUntypedMap()
 	})
+	dec.UseLooseInterfaceDecoding(true)
 	return dec
 }
 
