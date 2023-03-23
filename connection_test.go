@@ -42,7 +42,7 @@ func TestOptsClonePreservesRequiredProtocolFeatures(t *testing.T) {
 func TestPrepareExecuteBlackbox(t *testing.T) {
 	//ttShutdown, _, err := setTarantoolCluster("3301", "3302", "3303")
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-	db, err := connection_pool.ConnectWithWritableAwareDefaults(ctx, cancel, true, connection_pool.BasicAuth{"admin", "pass"},
+	db, err := connection_pool.ConnectWithWritableAndRetryableDefaults(ctx, cancel, true, connection_pool.BasicAuth{"admin", "pass"},
 		"localhost:3301",
 		"localhost:3302",
 		"localhost:3303",
@@ -73,15 +73,17 @@ func TestPrepareExecuteBlackbox(t *testing.T) {
 	wg.Wait()
 	time.Sleep(180 * time.Second)
 }
-
 func execPrepareExecute(ctx context.Context, db Connector) {
+	execPrepareExecuteWithCallback(ctx, db, func() {}, func() {})
+}
+func execPrepareExecuteWithCallback(ctx context.Context, db Connector, afterWrite, afterRead func()) {
 	for ctx != nil && ctx.Err() == nil {
 		id := uuid.New().String()
 		id2 := uuid.New().String()
 		if db == nil || ctx == nil {
 			return
 		}
-		if r, rErr := db.PrepareExecute("INSERT into test_table(id, name, type) values (:id,:name,:type)", map[string]interface{}{"name": id2, "type": 3, "id": id}); (rErr != nil && !errors.Is(rErr, ctx.Err())) || r.Code != OkCode {
+		if r, rErr := db.PrepareExecute("INSERT into test_table(id, name, type) values (:id,:name,:type)", map[string]interface{}{"name": id2, "type": 3, "id": id}); (rErr != nil && !errors.Is(rErr, ctx.Err())) || (r != nil && r.Code != OkCode) {
 			if r == nil || r.Code != ER_TUPLE_FOUND {
 				panic(errors.New(fmt.Sprintf("Insert failed because: %v --- %v\n", rErr, r)))
 			}
@@ -89,14 +91,15 @@ func execPrepareExecute(ctx context.Context, db Connector) {
 		if db == nil || ctx == nil {
 			return
 		}
-		if r, rErr := db.PrepareExecute("SELECT * from test_table where name=:name and type=:type", map[string]interface{}{"name": id2, "type": 3}); (rErr != nil && !errors.Is(rErr, ctx.Err())) || r.Code != OkCode {
+		afterWrite()
+		if r, rErr := db.PrepareExecute("SELECT * from test_table where name=:name and type=:type", map[string]interface{}{"name": id2, "type": 3}); (rErr != nil && !errors.Is(rErr, ctx.Err())) || (r != nil && r.Code != OkCode) {
 			//if r, rErr := db.Select("TEST_TABLE", "T_IDX_1", 0, 1, tarantool.IterEq, []interface{}{id2, 3}); (rErr != nil && !errors.Is(rErr, ctx.Err())) || r.Code != tarantool.OkCode {
 			panic(errors.New(fmt.Sprintf("Query failed because: %v------%v\n", rErr, r)))
 		} else {
 			if rErr != nil && !errors.Is(rErr, ctx.Err()) {
 				panic(rErr)
 			}
-			if len(r.Tuples()) != 0 {
+			if r != nil && len(r.Tuples()) != 0 {
 				single := r.Tuples()[0]
 				if single[0].(string) != id {
 					panic(errors.New(fmt.Sprintf("expected:%v actual:%v", id, single[0].(string))))
@@ -108,7 +111,8 @@ func execPrepareExecute(ctx context.Context, db Connector) {
 		if db == nil || ctx == nil {
 			return
 		}
-		if r, rErr := db.PrepareExecute("DELETE from test_table where name=:name and type=:type", map[string]interface{}{"name": id2, "type": 3}); (rErr != nil && !errors.Is(rErr, ctx.Err())) || r.Code != OkCode {
+		afterRead()
+		if r, rErr := db.PrepareExecute("DELETE from test_table where name=:name and type=:type", map[string]interface{}{"name": id2, "type": 3}); (rErr != nil && !errors.Is(rErr, ctx.Err())) || (r != nil && r.Code != OkCode) {
 			//if r, rErr := db.Delete("TEST_TABLE", "T_IDX_1", []interface{}{id2, 3}); (rErr != nil && !errors.Is(rErr, ctx.Err())) || r.Code != tarantool.OkCode {
 			if r == nil || r.Code != ER_TUPLE_NOT_FOUND {
 				panic(errors.New(fmt.Sprintf("Delete failed because: %v --- %v\n", rErr, r)))
@@ -121,7 +125,7 @@ func execPrepareExecute(ctx context.Context, db Connector) {
 func TestPrepareExecuteConnectionReestablished(t *testing.T) {
 	ttShutdown, _, err := setTarantoolCluster("3301", "3302", "3303")
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-	db, err := connection_pool.ConnectWithWritableAwareDefaults(ctx, cancel, true, connection_pool.BasicAuth{"admin", "pass"},
+	db, err := connection_pool.ConnectWithWritableAndRetryableDefaults(ctx, cancel, true, connection_pool.BasicAuth{"admin", "pass"},
 		"localhost:3301",
 		"localhost:3302",
 		"localhost:3303",
@@ -145,6 +149,42 @@ func TestPrepareExecuteConnectionReestablished(t *testing.T) {
 	ttShutdown()
 	ttShutdown, _, err = setTarantoolCluster("3301", "3302", "3303")
 	execPrepareExecute(ctx, db)
+}
+
+func TestMonitorConnections(t *testing.T) {
+	ttShutdown, ttInstances, err := setTarantoolCluster("3301", "3302", "3303")
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	db, err := connection_pool.ConnectWithWritableAndRetryableDefaults(ctx, cancel, true, connection_pool.BasicAuth{"admin", "pass"},
+		"localhost:3301",
+		"localhost:3302",
+		"localhost:3303",
+		"bogus:2322",
+	)
+	defer func(db Connector) {
+		if db != nil {
+			if cErr := db.Close(); cErr != nil {
+				panic(cErr)
+			}
+			if db.ConnectedNow() {
+				panic("still connected")
+			}
+		}
+		ttShutdown()
+	}(db)
+	if err != nil {
+		panic(fmt.Sprintf("Could not connect to cluster %v", err))
+	}
+	execPrepareExecuteWithCallback(ctx, db, func() {
+		// disable write-node
+		test_helpers.StopTarantool(ttInstances[0])
+	}, func() {
+		// re-enable it before DELETEs  - it should be added to pool and delete will not fail
+		_, newInst, err := setTarantoolCluster("3301")
+		if err != nil {
+			panic(err)
+		}
+		ttInstances[0] = newInst[0]
+	})
 }
 
 func setTarantoolCluster(ports ...string) (func(), []test_helpers.TarantoolInstance, error) {

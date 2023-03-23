@@ -11,11 +11,9 @@
 package connection_pool
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"log"
-	"runtime"
 	"sync"
 	"time"
 
@@ -113,28 +111,6 @@ type connState struct {
 }
 type BasicAuth struct {
 	User, Pass string
-}
-
-func ConnectWithWritableAwareDefaults(ctx context.Context, cancel context.CancelFunc, requiresWrite bool, auth BasicAuth, addresses ...string) (tarantool.Connector, error) {
-	conOpts := tarantool.Opts{
-		Timeout:       10 * time.Second,
-		MaxReconnects: 10,
-		User:          auth.User,
-		Pass:          auth.Pass,
-		Concurrency:   128 * uint32(runtime.GOMAXPROCS(-1)),
-	}
-	poolOpts := OptsPool{
-		CheckTimeout: 2 * time.Second,
-	}
-	pool, err := ConnectWithOpts(addresses, conOpts, poolOpts)
-	if err != nil {
-		return nil, err
-	}
-	mode := RO
-	if requiresWrite {
-		mode = RW
-	}
-	return NewConnectorAdapter(pool, mode), nil
 }
 
 // ConnectWithOpts creates pool for instances with addresses addrs

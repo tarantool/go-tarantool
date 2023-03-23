@@ -1,8 +1,10 @@
 package connection_pool
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"runtime"
 	"time"
 
 	"github.com/ice-blockchain/go-tarantool"
@@ -21,6 +23,28 @@ var _ tarantool.Connector = (*ConnectorAdapter)(nil)
 // specified mode.
 func NewConnectorAdapter(pool Pooler, mode Mode) *ConnectorAdapter {
 	return &ConnectorAdapter{pool: pool, mode: mode}
+}
+
+func ConnectWithWritableAndRetryableDefaults(ctx context.Context, cancel context.CancelFunc, requiresWrite bool, auth BasicAuth, addresses ...string) (tarantool.Connector, error) {
+	conOpts := tarantool.Opts{
+		Timeout:       10 * time.Second,
+		MaxReconnects: 10,
+		User:          auth.User,
+		Pass:          auth.Pass,
+		Concurrency:   128 * uint32(runtime.GOMAXPROCS(-1)),
+	}
+	poolOpts := OptsPool{
+		CheckTimeout: 2 * time.Second,
+	}
+	pool, err := ConnectWithOpts(addresses, conOpts, poolOpts)
+	if err != nil {
+		return nil, err
+	}
+	mode := RO
+	if requiresWrite {
+		mode = RW
+	}
+	return NewRWBalancedConnector(NewRetriablePool(ctx, cancel, pool), mode), nil
 }
 
 // ConnectedNow reports if connections is established at the moment.
