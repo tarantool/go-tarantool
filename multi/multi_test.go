@@ -92,30 +92,49 @@ func TestConnSuccessfully(t *testing.T) {
 }
 
 func TestReconnect(t *testing.T) {
-	multiConn, _ := Connect([]string{server1, server2}, connOpts)
+	sleep := 100 * time.Millisecond
+	sleepCnt := 50
+	servers := []string{server1, server2}
+	multiConn, _ := Connect(servers, connOpts)
 	if multiConn == nil {
 		t.Errorf("conn is nil after Connect")
 		return
 	}
-	timer := time.NewTimer(300 * time.Millisecond)
-	<-timer.C
-	defer multiConn.Close()
+	test_helpers.StopTarantoolWithCleanup(instances[0])
 
-	conn, _ := multiConn.getConnectionFromPool(server1)
-	conn.Close()
+	for i := 0; i < sleepCnt; i++ {
+		_, ok := multiConn.getConnectionFromPool(servers[0])
+		if !ok {
+			break
+		}
+		time.Sleep(sleep)
+	}
 
-	if multiConn.getCurrentConnection().Addr() == server1 {
+	_, ok := multiConn.getConnectionFromPool(servers[0])
+	if ok {
+		t.Fatalf("failed to close conn")
+	}
+
+	if multiConn.getCurrentConnection().Addr() == servers[0] {
 		t.Errorf("conn has incorrect addr: %s after disconnect server1", multiConn.getCurrentConnection().Addr())
 	}
-	if !multiConn.ConnectedNow() {
-		t.Errorf("incorrect multiConn status after reconnecting")
+
+	err := test_helpers.RestartTarantool(&instances[0])
+	if err != nil {
+		t.Fatalf("failed to restart Tarantool: %s", err)
 	}
 
-	timer = time.NewTimer(100 * time.Millisecond)
-	<-timer.C
-	conn, _ = multiConn.getConnectionFromPool(server1)
-	if !conn.ConnectedNow() {
-		t.Errorf("incorrect conn status after reconnecting")
+	for i := 0; i < sleepCnt; i++ {
+		_, ok := multiConn.getConnectionFromPool(servers[0])
+		if ok {
+			break
+		}
+		time.Sleep(sleep)
+	}
+
+	_, ok = multiConn.getConnectionFromPool(servers[0])
+	if !ok {
+		t.Fatalf("incorrect conn status after reconnecting")
 	}
 }
 
