@@ -10,11 +10,23 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [1.11.0] - 2023-05-18
+
+The release adds pagination support and wrappers for the
+[crud](https://github.com/tarantool/crud) module.
+
+### Added
+
 - Support pagination (#246)
 - A Makefile target to test with race detector (#218)
 - Support CRUD API (#108)
 - An ability to replace a base network connection to a Tarantool
   instance (#265)
+- Missed iterator constant (#285)
 
 ### Changed
 
@@ -23,6 +35,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 ### Fixed
 
 - Several non-critical data race issues (#218)
+- Build on Apple M1 with OpenSSL (#260)
 - ConnectionPool does not properly handle disconnection with Opts.Reconnect
   set (#272)
 - Watcher events loss with a small per-request timeout (#284)
