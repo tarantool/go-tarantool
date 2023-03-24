@@ -3,6 +3,7 @@ package tarantool
 import (
 	"context"
 
+	"github.com/tarantool/go-iproto"
 	"github.com/vmihailenco/msgpack/v5"
 )
 
@@ -35,8 +36,8 @@ func (req *BroadcastRequest) Context(ctx context.Context) *BroadcastRequest {
 }
 
 // Code returns IPROTO code for the broadcast request.
-func (req *BroadcastRequest) Code() int32 {
-	return req.call.Code()
+func (req *BroadcastRequest) Type() iproto.Type {
+	return req.call.Type()
 }
 
 // Body fills an msgpack.Encoder with the broadcast request body.
@@ -66,7 +67,7 @@ type watchRequest struct {
 // newWatchRequest returns a new watchRequest.
 func newWatchRequest(key string) *watchRequest {
 	req := new(watchRequest)
-	req.requestCode = WatchRequestCode
+	req.rtype = iproto.IPROTO_WATCH
 	req.async = true
 	req.key = key
 	return req
@@ -77,7 +78,7 @@ func (req *watchRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 	if err := enc.EncodeMapLen(1); err != nil {
 		return err
 	}
-	if err := enc.EncodeUint(KeyEvent); err != nil {
+	if err := enc.EncodeUint(uint64(iproto.IPROTO_EVENT_KEY)); err != nil {
 		return err
 	}
 	return enc.EncodeString(req.key)
@@ -100,7 +101,7 @@ type unwatchRequest struct {
 // newUnwatchRequest returns a new unwatchRequest.
 func newUnwatchRequest(key string) *unwatchRequest {
 	req := new(unwatchRequest)
-	req.requestCode = UnwatchRequestCode
+	req.rtype = iproto.IPROTO_UNWATCH
 	req.async = true
 	req.key = key
 	return req
@@ -111,7 +112,7 @@ func (req *unwatchRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error 
 	if err := enc.EncodeMapLen(1); err != nil {
 		return err
 	}
-	if err := enc.EncodeUint(KeyEvent); err != nil {
+	if err := enc.EncodeUint(uint64(iproto.IPROTO_EVENT_KEY)); err != nil {
 		return err
 	}
 	return enc.EncodeString(req.key)

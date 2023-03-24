@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/tarantool/go-iproto"
 	"github.com/vmihailenco/msgpack/v5"
 )
 
@@ -46,7 +47,7 @@ func fillBegin(enc *msgpack.Encoder, txnIsolation TxnIsolationLevel, timeout tim
 	}
 
 	if hasTimeout {
-		err = enc.EncodeUint(KeyTimeout)
+		err = enc.EncodeUint(uint64(iproto.IPROTO_TIMEOUT))
 		if err != nil {
 			return err
 		}
@@ -58,7 +59,7 @@ func fillBegin(enc *msgpack.Encoder, txnIsolation TxnIsolationLevel, timeout tim
 	}
 
 	if hasIsolationLevel {
-		err = enc.EncodeUint(KeyTxnIsolation)
+		err = enc.EncodeUint(uint64(iproto.IPROTO_TXN_ISOLATION))
 		if err != nil {
 			return err
 		}
@@ -92,7 +93,7 @@ type BeginRequest struct {
 // NewBeginRequest returns a new BeginRequest.
 func NewBeginRequest() *BeginRequest {
 	req := new(BeginRequest)
-	req.requestCode = BeginRequestCode
+	req.rtype = iproto.IPROTO_BEGIN
 	req.txnIsolation = DefaultIsolationLevel
 	return req
 }
@@ -136,7 +137,7 @@ type CommitRequest struct {
 // NewCommitRequest returns a new CommitRequest.
 func NewCommitRequest() *CommitRequest {
 	req := new(CommitRequest)
-	req.requestCode = CommitRequestCode
+	req.rtype = iproto.IPROTO_COMMIT
 	return req
 }
 
@@ -166,7 +167,7 @@ type RollbackRequest struct {
 // NewRollbackRequest returns a new RollbackRequest.
 func NewRollbackRequest() *RollbackRequest {
 	req := new(RollbackRequest)
-	req.requestCode = RollbackRequestCode
+	req.rtype = iproto.IPROTO_ROLLBACK
 	return req
 }
 

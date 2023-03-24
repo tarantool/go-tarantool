@@ -17,6 +17,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tarantool/go-iproto"
 	"github.com/vmihailenco/msgpack/v5"
 
 	. "github.com/tarantool/go-tarantool/v2"
@@ -910,8 +911,8 @@ func TestClient(t *testing.T) {
 	}
 	//resp, err = conn.Insert(spaceNo, []interface{}{uint(1), "hello", "world"})
 	resp, err = conn.Insert(spaceNo, &Tuple{Id: 1, Msg: "hello", Name: "world"})
-	if tntErr, ok := err.(Error); !ok || tntErr.Code != ErrTupleFound {
-		t.Errorf("Expected ErrTupleFound but got: %v", err)
+	if tntErr, ok := err.(Error); !ok || tntErr.Code != iproto.ER_TUPLE_FOUND {
+		t.Errorf("Expected %s but got: %v", iproto.ER_TUPLE_FOUND, err)
 	}
 	if len(resp.Data) != 0 {
 		t.Errorf("Response Body len != 0")
@@ -1685,7 +1686,8 @@ func TestStressSQL(t *testing.T) {
 	if resp == nil {
 		t.Fatal("Response is nil after Execute")
 	}
-	if resp.Code != ErSpaceExistsCode {
+
+	if iproto.Error(resp.Code) != iproto.ER_SPACE_EXISTS {
 		t.Fatalf("Unexpected response code: %d", resp.Code)
 	}
 	if resp.SQLInfo.AffectedCount != 0 {
@@ -2682,8 +2684,8 @@ type waitCtxRequest struct {
 	wg  sync.WaitGroup
 }
 
-func (req *waitCtxRequest) Code() int32 {
-	return NewPingRequest().Code()
+func (req *waitCtxRequest) Type() iproto.Type {
+	return NewPingRequest().Type()
 }
 
 func (req *waitCtxRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {

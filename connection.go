@@ -15,6 +15,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/tarantool/go-iproto"
 	"github.com/vmihailenco/msgpack/v5"
 )
 
@@ -167,7 +168,7 @@ type Connection struct {
 	opts    Opts
 	state   uint32
 	dec     *msgpack.Decoder
-	lenbuf  [PacketLengthBytes]byte
+	lenbuf  [packetLengthBytes]byte
 
 	lastStreamId uint64
 
@@ -410,8 +411,8 @@ func Connect(addr string, opts Opts) (conn *Connection, err error) {
 		ter, ok := err.(Error)
 		if conn.opts.Reconnect <= 0 {
 			return nil, err
-		} else if ok && (ter.Code == ErrNoSuchUser ||
-			ter.Code == ErrPasswordMismatch) {
+		} else if ok && (ter.Code == iproto.ER_NO_SUCH_USER ||
+			ter.Code == iproto.ER_CREDS_MISMATCH) {
 			// Reported auth errors immediately.
 			return nil, err
 		} else {
@@ -595,7 +596,7 @@ func pack(h *smallWBuf, enc *msgpack.Encoder, reqid uint32,
 	hMapLen := byte(0x82) // 2 element map.
 	if streamId != ignoreStreamId {
 		hMapLen = byte(0x83) // 3 element map.
-		streamBytes[0] = KeyStreamId
+		streamBytes[0] = byte(iproto.IPROTO_STREAM_ID)
 		if streamId > math.MaxUint32 {
 			streamBytesLen = streamBytesLenUint64
 			streamBytes[1] = uint64Code
@@ -610,8 +611,8 @@ func pack(h *smallWBuf, enc *msgpack.Encoder, reqid uint32,
 	hBytes := append([]byte{
 		uint32Code, 0, 0, 0, 0, // Length.
 		hMapLen,
-		KeyCode, byte(req.Code()), // Request code.
-		KeySync, uint32Code,
+		byte(iproto.IPROTO_REQUEST_TYPE), byte(req.Type()), // Request type.
+		byte(iproto.IPROTO_SYNC), uint32Code,
 		byte(reqid >> 24), byte(reqid >> 16),
 		byte(reqid >> 8), byte(reqid),
 	}, streamBytes[:streamBytesLen]...)
@@ -813,13 +814,13 @@ func readWatchEvent(reader io.Reader) (connWatchEvent, error) {
 			return event, err
 		}
 
-		switch cd {
-		case KeyEvent:
+		switch iproto.Key(cd) {
+		case iproto.IPROTO_EVENT_KEY:
 			if event.key, err = d.DecodeString(); err != nil {
 				return event, err
 			}
 			keyExist = true
-		case KeyEventData:
+		case iproto.IPROTO_EVENT_DATA:
 			if event.value, err = d.DecodeInterface(); err != nil {
 				return event, err
 			}
@@ -857,7 +858,7 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 		}
 
 		var fut *Future = nil
-		if resp.Code == EventCode {
+		if iproto.Type(resp.Code) == iproto.IPROTO_EVENT {
 			if event, err := readWatchEvent(&resp.buf); err == nil {
 				events <- event
 			} else {

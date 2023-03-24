@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/tarantool/go-iproto"
 	"github.com/vmihailenco/msgpack/v5"
 
 	"github.com/tarantool/go-tarantool/v2"
@@ -22,7 +23,7 @@ const validSpace = "test" // Any valid value != default.
 const defaultSpace = 0    // And valid too.
 const defaultIndex = 0    // And valid too.
 
-const CrudRequestCode = tarantool.Call17RequestCode
+const CrudRequestType = iproto.IPROTO_CALL
 
 var reqObject = crud.MapObject{
 	"id": uint(24),
@@ -166,37 +167,37 @@ func BenchmarkSelectRequest(b *testing.B) {
 
 func TestRequestsCodes(t *testing.T) {
 	tests := []struct {
-		req  tarantool.Request
-		code int32
+		req   tarantool.Request
+		rtype iproto.Type
 	}{
-		{req: crud.MakeInsertRequest(validSpace), code: CrudRequestCode},
-		{req: crud.MakeInsertObjectRequest(validSpace), code: CrudRequestCode},
-		{req: crud.MakeInsertManyRequest(validSpace), code: CrudRequestCode},
-		{req: crud.MakeInsertObjectManyRequest(validSpace), code: CrudRequestCode},
-		{req: crud.MakeGetRequest(validSpace), code: CrudRequestCode},
-		{req: crud.MakeUpdateRequest(validSpace), code: CrudRequestCode},
-		{req: crud.MakeDeleteRequest(validSpace), code: CrudRequestCode},
-		{req: crud.MakeReplaceRequest(validSpace), code: CrudRequestCode},
-		{req: crud.MakeReplaceObjectRequest(validSpace), code: CrudRequestCode},
-		{req: crud.MakeReplaceManyRequest(validSpace), code: CrudRequestCode},
-		{req: crud.MakeReplaceObjectManyRequest(validSpace), code: CrudRequestCode},
-		{req: crud.MakeUpsertRequest(validSpace), code: CrudRequestCode},
-		{req: crud.MakeUpsertObjectRequest(validSpace), code: CrudRequestCode},
-		{req: crud.MakeUpsertManyRequest(validSpace), code: CrudRequestCode},
-		{req: crud.MakeUpsertObjectManyRequest(validSpace), code: CrudRequestCode},
-		{req: crud.MakeMinRequest(validSpace), code: CrudRequestCode},
-		{req: crud.MakeMaxRequest(validSpace), code: CrudRequestCode},
-		{req: crud.MakeSelectRequest(validSpace), code: CrudRequestCode},
-		{req: crud.MakeTruncateRequest(validSpace), code: CrudRequestCode},
-		{req: crud.MakeLenRequest(validSpace), code: CrudRequestCode},
-		{req: crud.MakeCountRequest(validSpace), code: CrudRequestCode},
-		{req: crud.MakeStorageInfoRequest(), code: CrudRequestCode},
-		{req: crud.MakeStatsRequest(), code: CrudRequestCode},
+		{req: crud.MakeInsertRequest(validSpace), rtype: CrudRequestType},
+		{req: crud.MakeInsertObjectRequest(validSpace), rtype: CrudRequestType},
+		{req: crud.MakeInsertManyRequest(validSpace), rtype: CrudRequestType},
+		{req: crud.MakeInsertObjectManyRequest(validSpace), rtype: CrudRequestType},
+		{req: crud.MakeGetRequest(validSpace), rtype: CrudRequestType},
+		{req: crud.MakeUpdateRequest(validSpace), rtype: CrudRequestType},
+		{req: crud.MakeDeleteRequest(validSpace), rtype: CrudRequestType},
+		{req: crud.MakeReplaceRequest(validSpace), rtype: CrudRequestType},
+		{req: crud.MakeReplaceObjectRequest(validSpace), rtype: CrudRequestType},
+		{req: crud.MakeReplaceManyRequest(validSpace), rtype: CrudRequestType},
+		{req: crud.MakeReplaceObjectManyRequest(validSpace), rtype: CrudRequestType},
+		{req: crud.MakeUpsertRequest(validSpace), rtype: CrudRequestType},
+		{req: crud.MakeUpsertObjectRequest(validSpace), rtype: CrudRequestType},
+		{req: crud.MakeUpsertManyRequest(validSpace), rtype: CrudRequestType},
+		{req: crud.MakeUpsertObjectManyRequest(validSpace), rtype: CrudRequestType},
+		{req: crud.MakeMinRequest(validSpace), rtype: CrudRequestType},
+		{req: crud.MakeMaxRequest(validSpace), rtype: CrudRequestType},
+		{req: crud.MakeSelectRequest(validSpace), rtype: CrudRequestType},
+		{req: crud.MakeTruncateRequest(validSpace), rtype: CrudRequestType},
+		{req: crud.MakeLenRequest(validSpace), rtype: CrudRequestType},
+		{req: crud.MakeCountRequest(validSpace), rtype: CrudRequestType},
+		{req: crud.MakeStorageInfoRequest(), rtype: CrudRequestType},
+		{req: crud.MakeStatsRequest(), rtype: CrudRequestType},
 	}
 
 	for _, test := range tests {
-		if code := test.req.Code(); code != test.code {
-			t.Errorf("An invalid request code 0x%x, expected 0x%x", code, test.code)
+		if rtype := test.req.Type(); rtype != test.rtype {
+			t.Errorf("An invalid request type 0x%x, expected 0x%x", rtype, test.rtype)
 		}
 	}
 }

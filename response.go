@@ -3,6 +3,7 @@ package tarantool
 import (
 	"fmt"
 
+	"github.com/tarantool/go-iproto"
 	"github.com/vmihailenco/msgpack/v5"
 )
 
@@ -52,18 +53,18 @@ func (meta *ColumnMetaData) DecodeMsgpack(d *msgpack.Decoder) error {
 		if mv, err = d.DecodeInterface(); err != nil {
 			return fmt.Errorf("failed to decode meta data")
 		}
-		switch mk {
-		case KeyFieldName:
+		switch iproto.MetadataKey(mk) {
+		case iproto.IPROTO_FIELD_NAME:
 			meta.FieldName = mv.(string)
-		case KeyFieldType:
+		case iproto.IPROTO_FIELD_TYPE:
 			meta.FieldType = mv.(string)
-		case KeyFieldColl:
+		case iproto.IPROTO_FIELD_COLL:
 			meta.FieldCollation = mv.(string)
-		case KeyFieldIsNullable:
+		case iproto.IPROTO_FIELD_IS_NULLABLE:
 			meta.FieldIsNullable = mv.(bool)
-		case KeyIsAutoincrement:
+		case iproto.IPROTO_FIELD_IS_AUTOINCREMENT:
 			meta.FieldIsAutoincrement = mv.(bool)
-		case KeyFieldSpan:
+		case iproto.IPROTO_FIELD_SPAN:
 			meta.FieldSpan = mv.(string)
 		default:
 			return fmt.Errorf("failed to decode meta data")
@@ -86,12 +87,12 @@ func (info *SQLInfo) DecodeMsgpack(d *msgpack.Decoder) error {
 		if mk, err = d.DecodeUint64(); err != nil {
 			return fmt.Errorf("failed to decode meta data")
 		}
-		switch mk {
-		case KeySQLInfoRowCount:
+		switch iproto.SqlInfoKey(mk) {
+		case iproto.SQL_INFO_ROW_COUNT:
 			if info.AffectedCount, err = d.DecodeUint64(); err != nil {
 				return fmt.Errorf("failed to decode meta data")
 			}
-		case KeySQLInfoAutoincrementIds:
+		case iproto.SQL_INFO_AUTOINCREMENT_IDS:
 			if err = d.Decode(&info.InfoAutoincrementIds); err != nil {
 				return fmt.Errorf("failed to decode meta data")
 			}
@@ -125,14 +126,14 @@ func (resp *Response) decodeHeader(d *msgpack.Decoder) (err error) {
 		if cd, err = resp.smallInt(d); err != nil {
 			return
 		}
-		switch cd {
-		case KeySync:
+		switch iproto.Key(cd) {
+		case iproto.IPROTO_SYNC:
 			var rid uint64
 			if rid, err = d.DecodeUint64(); err != nil {
 				return
 			}
 			resp.RequestId = uint32(rid)
-		case KeyCode:
+		case iproto.IPROTO_REQUEST_TYPE:
 			var rcode uint64
 			if rcode, err = d.DecodeUint64(); err != nil {
 				return
@@ -171,8 +172,8 @@ func (resp *Response) decodeBody() (err error) {
 			if cd, err = resp.smallInt(d); err != nil {
 				return err
 			}
-			switch cd {
-			case KeyData:
+			switch iproto.Key(cd) {
+			case iproto.IPROTO_DATA:
 				var res interface{}
 				var ok bool
 				if res, err = d.DecodeInterface(); err != nil {
@@ -181,35 +182,35 @@ func (resp *Response) decodeBody() (err error) {
 				if resp.Data, ok = res.([]interface{}); !ok {
 					return fmt.Errorf("result is not array: %v", res)
 				}
-			case KeyError:
+			case iproto.IPROTO_ERROR:
 				if errorExtendedInfo, err = decodeBoxError(d); err != nil {
 					return err
 				}
-			case KeyError24:
+			case iproto.IPROTO_ERROR_24:
 				if resp.Error, err = d.DecodeString(); err != nil {
 					return err
 				}
-			case KeySQLInfo:
+			case iproto.IPROTO_SQL_INFO:
 				if err = d.Decode(&resp.SQLInfo); err != nil {
 					return err
 				}
-			case KeyMetaData:
+			case iproto.IPROTO_METADATA:
 				if err = d.Decode(&resp.MetaData); err != nil {
 					return err
 				}
-			case KeyStmtID:
+			case iproto.IPROTO_STMT_ID:
 				if stmtID, err = d.DecodeUint64(); err != nil {
 					return err
 				}
-			case KeyBindCount:
+			case iproto.IPROTO_BIND_COUNT:
 				if bindCount, err = d.DecodeUint64(); err != nil {
 					return err
 				}
-			case KeyVersion:
+			case iproto.IPROTO_VERSION:
 				if err = d.Decode(&serverProtocolInfo.Version); err != nil {
 					return err
 				}
-			case KeyFeatures:
+			case iproto.IPROTO_FEATURES:
 				if larr, err = d.DecodeArrayLen(); err != nil {
 					return err
 				}
@@ -221,7 +222,7 @@ func (resp *Response) decodeBody() (err error) {
 					}
 					serverProtocolInfo.Features[i] = feature
 				}
-			case KeyAuthType:
+			case iproto.IPROTO_AUTH_TYPE:
 				var auth string
 				if auth, err = d.DecodeString(); err != nil {
 					return err
@@ -236,7 +237,7 @@ func (resp *Response) decodeBody() (err error) {
 				if !found {
 					return fmt.Errorf("unknown auth type %s", auth)
 				}
-			case KeyPos:
+			case iproto.IPROTO_POSITION:
 				if resp.Pos, err = d.DecodeBytes(); err != nil {
 					return fmt.Errorf("unable to decode a position: %w", err)
 				}
@@ -267,8 +268,8 @@ func (resp *Response) decodeBody() (err error) {
 		}
 
 		if resp.Code != OkCode && resp.Code != PushCode {
-			resp.Code &^= ErrorCodeBit
-			err = Error{resp.Code, resp.Error, errorExtendedInfo}
+			resp.Code &^= uint32(iproto.IPROTO_TYPE_ERROR)
+			err = Error{iproto.Error(resp.Code), resp.Error, errorExtendedInfo}
 		}
 	}
 	return
@@ -296,28 +297,28 @@ func (resp *Response) decodeBodyTyped(res interface{}) (err error) {
 			if cd, err = resp.smallInt(d); err != nil {
 				return err
 			}
-			switch cd {
-			case KeyData:
+			switch iproto.Key(cd) {
+			case iproto.IPROTO_DATA:
 				if err = d.Decode(res); err != nil {
 					return err
 				}
-			case KeyError:
+			case iproto.IPROTO_ERROR:
 				if errorExtendedInfo, err = decodeBoxError(d); err != nil {
 					return err
 				}
-			case KeyError24:
+			case iproto.IPROTO_ERROR_24:
 				if resp.Error, err = d.DecodeString(); err != nil {
 					return err
 				}
-			case KeySQLInfo:
+			case iproto.IPROTO_SQL_INFO:
 				if err = d.Decode(&resp.SQLInfo); err != nil {
 					return err
 				}
-			case KeyMetaData:
+			case iproto.IPROTO_METADATA:
 				if err = d.Decode(&resp.MetaData); err != nil {
 					return err
 				}
-			case KeyPos:
+			case iproto.IPROTO_POSITION:
 				if resp.Pos, err = d.DecodeBytes(); err != nil {
 					return fmt.Errorf("unable to decode a position: %w", err)
 				}
@@ -328,8 +329,8 @@ func (resp *Response) decodeBodyTyped(res interface{}) (err error) {
 			}
 		}
 		if resp.Code != OkCode && resp.Code != PushCode {
-			resp.Code &^= ErrorCodeBit
-			err = Error{resp.Code, resp.Error, errorExtendedInfo}
+			resp.Code &^= uint32(iproto.IPROTO_TYPE_ERROR)
+			err = Error{iproto.Error(resp.Code), resp.Error, errorExtendedInfo}
 		}
 	}
 	return

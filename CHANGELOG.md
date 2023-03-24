@@ -10,6 +10,8 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Added
 
+- Type() method to the Request interface (#158)
+
 ### Changed
 
 - connection_pool renamed to pool (#239)
@@ -23,6 +25,8 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 - pool/RoundRobinStrategy (#158)
 - DeadlineIO (#158)
 - UUID_extId (#158)
+- IPROTO constants (#158)
+- Code() method from the Request interface (#158)
 
 ### Fixed
 

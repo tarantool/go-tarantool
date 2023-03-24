@@ -8,42 +8,43 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/tarantool/go-iproto"
 	"github.com/vmihailenco/msgpack/v5"
 )
 
 func fillSearch(enc *msgpack.Encoder, spaceNo, indexNo uint32, key interface{}) error {
-	if err := enc.EncodeUint(KeySpaceNo); err != nil {
+	if err := enc.EncodeUint(uint64(iproto.IPROTO_SPACE_ID)); err != nil {
 		return err
 	}
 	if err := enc.EncodeUint(uint64(spaceNo)); err != nil {
 		return err
 	}
-	if err := enc.EncodeUint(KeyIndexNo); err != nil {
+	if err := enc.EncodeUint(uint64(iproto.IPROTO_INDEX_ID)); err != nil {
 		return err
 	}
 	if err := enc.EncodeUint(uint64(indexNo)); err != nil {
 		return err
 	}
-	if err := enc.EncodeUint(KeyKey); err != nil {
+	if err := enc.EncodeUint(uint64(iproto.IPROTO_KEY)); err != nil {
 		return err
 	}
 	return enc.Encode(key)
 }
 
 func fillIterator(enc *msgpack.Encoder, offset, limit, iterator uint32) error {
-	if err := enc.EncodeUint(KeyIterator); err != nil {
+	if err := enc.EncodeUint(uint64(iproto.IPROTO_ITERATOR)); err != nil {
 		return err
 	}
 	if err := enc.EncodeUint(uint64(iterator)); err != nil {
 		return err
 	}
-	if err := enc.EncodeUint(KeyOffset); err != nil {
+	if err := enc.EncodeUint(uint64(iproto.IPROTO_OFFSET)); err != nil {
 		return err
 	}
 	if err := enc.EncodeUint(uint64(offset)); err != nil {
 		return err
 	}
-	if err := enc.EncodeUint(KeyLimit); err != nil {
+	if err := enc.EncodeUint(uint64(iproto.IPROTO_LIMIT)); err != nil {
 		return err
 	}
 	return enc.EncodeUint(uint64(limit))
@@ -53,13 +54,13 @@ func fillInsert(enc *msgpack.Encoder, spaceNo uint32, tuple interface{}) error {
 	if err := enc.EncodeMapLen(2); err != nil {
 		return err
 	}
-	if err := enc.EncodeUint(KeySpaceNo); err != nil {
+	if err := enc.EncodeUint(uint64(iproto.IPROTO_SPACE_ID)); err != nil {
 		return err
 	}
 	if err := enc.EncodeUint(uint64(spaceNo)); err != nil {
 		return err
 	}
-	if err := enc.EncodeUint(KeyTuple); err != nil {
+	if err := enc.EncodeUint(uint64(iproto.IPROTO_TUPLE)); err != nil {
 		return err
 	}
 	return enc.Encode(tuple)
@@ -84,7 +85,7 @@ func fillSelect(enc *msgpack.Encoder, spaceNo, indexNo, offset, limit, iterator 
 		return err
 	}
 	if fetchPos {
-		if err := enc.EncodeUint(KeyFetchPos); err != nil {
+		if err := enc.EncodeUint(uint64(iproto.IPROTO_FETCH_POSITION)); err != nil {
 			return err
 		}
 		if err := enc.EncodeBool(fetchPos); err != nil {
@@ -93,14 +94,14 @@ func fillSelect(enc *msgpack.Encoder, spaceNo, indexNo, offset, limit, iterator 
 	}
 	if after != nil {
 		if pos, ok := after.([]byte); ok {
-			if err := enc.EncodeUint(KeyAfterPos); err != nil {
+			if err := enc.EncodeUint(uint64(iproto.IPROTO_AFTER_POSITION)); err != nil {
 				return err
 			}
 			if err := enc.EncodeString(string(pos)); err != nil {
 				return err
 			}
 		} else {
-			if err := enc.EncodeUint(KeyAfterTuple); err != nil {
+			if err := enc.EncodeUint(uint64(iproto.IPROTO_AFTER_TUPLE)); err != nil {
 				return err
 			}
 			if err := enc.Encode(after); err != nil {
@@ -116,19 +117,19 @@ func fillUpdate(enc *msgpack.Encoder, spaceNo, indexNo uint32, key, ops interfac
 	if err := fillSearch(enc, spaceNo, indexNo, key); err != nil {
 		return err
 	}
-	enc.EncodeUint(KeyTuple)
+	enc.EncodeUint(uint64(iproto.IPROTO_TUPLE))
 	return enc.Encode(ops)
 }
 
 func fillUpsert(enc *msgpack.Encoder, spaceNo uint32, tuple, ops interface{}) error {
 	enc.EncodeMapLen(3)
-	enc.EncodeUint(KeySpaceNo)
+	enc.EncodeUint(uint64(iproto.IPROTO_SPACE_ID))
 	enc.EncodeUint(uint64(spaceNo))
-	enc.EncodeUint(KeyTuple)
+	enc.EncodeUint(uint64(iproto.IPROTO_TUPLE))
 	if err := enc.Encode(tuple); err != nil {
 		return err
 	}
-	enc.EncodeUint(KeyDefTuple)
+	enc.EncodeUint(uint64(iproto.IPROTO_OPS))
 	return enc.Encode(ops)
 }
 
@@ -139,25 +140,25 @@ func fillDelete(enc *msgpack.Encoder, spaceNo, indexNo uint32, key interface{}) 
 
 func fillCall(enc *msgpack.Encoder, functionName string, args interface{}) error {
 	enc.EncodeMapLen(2)
-	enc.EncodeUint(KeyFunctionName)
+	enc.EncodeUint(uint64(iproto.IPROTO_FUNCTION_NAME))
 	enc.EncodeString(functionName)
-	enc.EncodeUint(KeyTuple)
+	enc.EncodeUint(uint64(iproto.IPROTO_TUPLE))
 	return enc.Encode(args)
 }
 
 func fillEval(enc *msgpack.Encoder, expr string, args interface{}) error {
 	enc.EncodeMapLen(2)
-	enc.EncodeUint(KeyExpression)
+	enc.EncodeUint(uint64(iproto.IPROTO_EXPR))
 	enc.EncodeString(expr)
-	enc.EncodeUint(KeyTuple)
+	enc.EncodeUint(uint64(iproto.IPROTO_TUPLE))
 	return enc.Encode(args)
 }
 
 func fillExecute(enc *msgpack.Encoder, expr string, args interface{}) error {
 	enc.EncodeMapLen(2)
-	enc.EncodeUint(KeySQLText)
+	enc.EncodeUint(uint64(iproto.IPROTO_SQL_TEXT))
 	enc.EncodeString(expr)
-	enc.EncodeUint(KeySQLBind)
+	enc.EncodeUint(uint64(iproto.IPROTO_SQL_BIND))
 	return encodeSQLBind(enc, args)
 }
 
@@ -594,8 +595,8 @@ func encodeSQLBind(enc *msgpack.Encoder, from interface{}) error {
 // Request is an interface that provides the necessary data to create a request
 // that will be sent to a tarantool instance.
 type Request interface {
-	// Code returns a IPROTO code for the request.
-	Code() int32
+	// Type returns a IPROTO type of the request.
+	Type() iproto.Type
 	// Body fills an msgpack.Encoder with a request body.
 	Body(resolver SchemaResolver, enc *msgpack.Encoder) error
 	// Ctx returns a context of the request.
@@ -613,14 +614,14 @@ type ConnectedRequest interface {
 }
 
 type baseRequest struct {
-	requestCode int32
-	async       bool
-	ctx         context.Context
+	rtype iproto.Type
+	async bool
+	ctx   context.Context
 }
 
-// Code returns a IPROTO code for the request.
-func (req *baseRequest) Code() int32 {
-	return req.requestCode
+// Type returns a IPROTO type for the request.
+func (req *baseRequest) Type() iproto.Type {
+	return req.rtype
 }
 
 // Async returns true if the request does not require a response.
@@ -682,9 +683,9 @@ func newPapSha256AuthRequest(user, password string) authRequest {
 	}
 }
 
-// Code returns a IPROTO code for the request.
-func (req authRequest) Code() int32 {
-	return AuthRequestCode
+// Type returns a IPROTO type for the request.
+func (req authRequest) Type() iproto.Type {
+	return iproto.IPROTO_AUTH
 }
 
 // Async returns true if the request does not require a response.
@@ -700,8 +701,8 @@ func (req authRequest) Ctx() context.Context {
 // Body fills an encoder with the auth request body.
 func (req authRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 	return enc.Encode(map[uint32]interface{}{
-		KeyUserName: req.user,
-		KeyTuple:    []interface{}{req.auth.String(), req.pass},
+		uint32(iproto.IPROTO_USER_NAME): req.user,
+		uint32(iproto.IPROTO_TUPLE):     []interface{}{req.auth.String(), req.pass},
 	})
 }
 
@@ -714,7 +715,7 @@ type PingRequest struct {
 // NewPingRequest returns a new PingRequest.
 func NewPingRequest() *PingRequest {
 	req := new(PingRequest)
-	req.requestCode = PingRequestCode
+	req.rtype = iproto.IPROTO_PING
 	return req
 }
 
@@ -746,7 +747,7 @@ type SelectRequest struct {
 // NewSelectRequest returns a new empty SelectRequest.
 func NewSelectRequest(space interface{}) *SelectRequest {
 	req := new(SelectRequest)
-	req.requestCode = SelectRequestCode
+	req.rtype = iproto.IPROTO_SELECT
 	req.setSpace(space)
 	req.isIteratorSet = false
 	req.fetchPos = false
@@ -852,7 +853,7 @@ type InsertRequest struct {
 // NewInsertRequest returns a new empty InsertRequest.
 func NewInsertRequest(space interface{}) *InsertRequest {
 	req := new(InsertRequest)
-	req.requestCode = InsertRequestCode
+	req.rtype = iproto.IPROTO_INSERT
 	req.setSpace(space)
 	req.tuple = []interface{}{}
 	return req
@@ -896,7 +897,7 @@ type ReplaceRequest struct {
 // NewReplaceRequest returns a new empty ReplaceRequest.
 func NewReplaceRequest(space interface{}) *ReplaceRequest {
 	req := new(ReplaceRequest)
-	req.requestCode = ReplaceRequestCode
+	req.rtype = iproto.IPROTO_REPLACE
 	req.setSpace(space)
 	req.tuple = []interface{}{}
 	return req
@@ -940,7 +941,7 @@ type DeleteRequest struct {
 // NewDeleteRequest returns a new empty DeleteRequest.
 func NewDeleteRequest(space interface{}) *DeleteRequest {
 	req := new(DeleteRequest)
-	req.requestCode = DeleteRequestCode
+	req.rtype = iproto.IPROTO_DELETE
 	req.setSpace(space)
 	req.key = []interface{}{}
 	return req
@@ -992,7 +993,7 @@ type UpdateRequest struct {
 // NewUpdateRequest returns a new empty UpdateRequest.
 func NewUpdateRequest(space interface{}) *UpdateRequest {
 	req := new(UpdateRequest)
-	req.requestCode = UpdateRequestCode
+	req.rtype = iproto.IPROTO_UPDATE
 	req.setSpace(space)
 	req.key = []interface{}{}
 	req.ops = []interface{}{}
@@ -1054,7 +1055,7 @@ type UpsertRequest struct {
 // NewUpsertRequest returns a new empty UpsertRequest.
 func NewUpsertRequest(space interface{}) *UpsertRequest {
 	req := new(UpsertRequest)
-	req.requestCode = UpsertRequestCode
+	req.rtype = iproto.IPROTO_UPSERT
 	req.setSpace(space)
 	req.tuple = []interface{}{}
 	req.ops = []interface{}{}
@@ -1110,7 +1111,7 @@ type CallRequest struct {
 // Tarantool >= 1.7.
 func NewCallRequest(function string) *CallRequest {
 	req := new(CallRequest)
-	req.requestCode = CallRequestCode
+	req.rtype = iproto.IPROTO_CALL
 	req.function = function
 	return req
 }
@@ -1147,7 +1148,7 @@ func (req *CallRequest) Context(ctx context.Context) *CallRequest {
 // Deprecated since Tarantool 1.7.2.
 func NewCall16Request(function string) *CallRequest {
 	req := NewCallRequest(function)
-	req.requestCode = Call16RequestCode
+	req.rtype = iproto.IPROTO_CALL_16
 	return req
 }
 
@@ -1155,7 +1156,7 @@ func NewCall16Request(function string) *CallRequest {
 // Tarantool >= 1.7.
 func NewCall17Request(function string) *CallRequest {
 	req := NewCallRequest(function)
-	req.requestCode = Call17RequestCode
+	req.rtype = iproto.IPROTO_CALL
 	return req
 }
 
@@ -1170,7 +1171,7 @@ type EvalRequest struct {
 // NewEvalRequest returns a new empty EvalRequest.
 func NewEvalRequest(expr string) *EvalRequest {
 	req := new(EvalRequest)
-	req.requestCode = EvalRequestCode
+	req.rtype = iproto.IPROTO_EVAL
 	req.expr = expr
 	req.args = []interface{}{}
 	return req
@@ -1210,7 +1211,7 @@ type ExecuteRequest struct {
 // NewExecuteRequest returns a new empty ExecuteRequest.
 func NewExecuteRequest(expr string) *ExecuteRequest {
 	req := new(ExecuteRequest)
-	req.requestCode = ExecuteRequestCode
+	req.rtype = iproto.IPROTO_EXECUTE
 	req.expr = expr
 	req.args = []interface{}{}
 	return req

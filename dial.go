@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/tarantool/go-iproto"
 	"github.com/vmihailenco/msgpack/v5"
 )
 
@@ -261,7 +262,7 @@ func identify(w writeFlusher, r io.Reader) (ProtocolInfo, error) {
 
 	resp, err := readResponse(r)
 	if err != nil {
-		if resp.Code == ErrUnknownRequestType {
+		if iproto.Error(resp.Code) == iproto.ER_UNKNOWN_REQUEST_TYPE {
 			// IPROTO_ID requests are not supported by server.
 			return info, nil
 		}
@@ -368,7 +369,7 @@ func writeRequest(w writeFlusher, req Request) error {
 
 // readResponse reads a response from the reader.
 func readResponse(r io.Reader) (Response, error) {
-	var lenbuf [PacketLengthBytes]byte
+	var lenbuf [packetLengthBytes]byte
 
 	respBytes, err := read(r, lenbuf[:])
 	if err != nil {

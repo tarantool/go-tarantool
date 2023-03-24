@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"github.com/tarantool/go-iproto"
 	"github.com/vmihailenco/msgpack/v5"
 
 	"github.com/tarantool/go-tarantool/v2"
@@ -40,34 +41,34 @@ func TestRequestsAPI(t *testing.T) {
 	tests := []struct {
 		req   tarantool.Request
 		async bool
-		code  int32
+		rtype iproto.Type
 	}{
-		{req: NewErrorMarshalingEnabledSetRequest(false), async: false, code: tarantool.UpdateRequestCode},
-		{req: NewErrorMarshalingEnabledGetRequest(), async: false, code: tarantool.SelectRequestCode},
-		{req: NewSQLDefaultEngineSetRequest("memtx"), async: false, code: tarantool.UpdateRequestCode},
-		{req: NewSQLDefaultEngineGetRequest(), async: false, code: tarantool.SelectRequestCode},
-		{req: NewSQLDeferForeignKeysSetRequest(false), async: false, code: tarantool.UpdateRequestCode},
-		{req: NewSQLDeferForeignKeysGetRequest(), async: false, code: tarantool.SelectRequestCode},
-		{req: NewSQLFullColumnNamesSetRequest(false), async: false, code: tarantool.UpdateRequestCode},
-		{req: NewSQLFullColumnNamesGetRequest(), async: false, code: tarantool.SelectRequestCode},
-		{req: NewSQLFullMetadataSetRequest(false), async: false, code: tarantool.UpdateRequestCode},
-		{req: NewSQLFullMetadataGetRequest(), async: false, code: tarantool.SelectRequestCode},
-		{req: NewSQLParserDebugSetRequest(false), async: false, code: tarantool.UpdateRequestCode},
-		{req: NewSQLParserDebugGetRequest(), async: false, code: tarantool.SelectRequestCode},
-		{req: NewSQLRecursiveTriggersSetRequest(false), async: false, code: tarantool.UpdateRequestCode},
-		{req: NewSQLRecursiveTriggersGetRequest(), async: false, code: tarantool.SelectRequestCode},
-		{req: NewSQLReverseUnorderedSelectsSetRequest(false), async: false, code: tarantool.UpdateRequestCode},
-		{req: NewSQLReverseUnorderedSelectsGetRequest(), async: false, code: tarantool.SelectRequestCode},
-		{req: NewSQLSelectDebugSetRequest(false), async: false, code: tarantool.UpdateRequestCode},
-		{req: NewSQLSelectDebugGetRequest(), async: false, code: tarantool.SelectRequestCode},
-		{req: NewSQLVDBEDebugSetRequest(false), async: false, code: tarantool.UpdateRequestCode},
-		{req: NewSQLVDBEDebugGetRequest(), async: false, code: tarantool.SelectRequestCode},
-		{req: NewSessionSettingsGetRequest(), async: false, code: tarantool.SelectRequestCode},
+		{req: NewErrorMarshalingEnabledSetRequest(false), async: false, rtype: iproto.IPROTO_UPDATE},
+		{req: NewErrorMarshalingEnabledGetRequest(), async: false, rtype: iproto.IPROTO_SELECT},
+		{req: NewSQLDefaultEngineSetRequest("memtx"), async: false, rtype: iproto.IPROTO_UPDATE},
+		{req: NewSQLDefaultEngineGetRequest(), async: false, rtype: iproto.IPROTO_SELECT},
+		{req: NewSQLDeferForeignKeysSetRequest(false), async: false, rtype: iproto.IPROTO_UPDATE},
+		{req: NewSQLDeferForeignKeysGetRequest(), async: false, rtype: iproto.IPROTO_SELECT},
+		{req: NewSQLFullColumnNamesSetRequest(false), async: false, rtype: iproto.IPROTO_UPDATE},
+		{req: NewSQLFullColumnNamesGetRequest(), async: false, rtype: iproto.IPROTO_SELECT},
+		{req: NewSQLFullMetadataSetRequest(false), async: false, rtype: iproto.IPROTO_UPDATE},
+		{req: NewSQLFullMetadataGetRequest(), async: false, rtype: iproto.IPROTO_SELECT},
+		{req: NewSQLParserDebugSetRequest(false), async: false, rtype: iproto.IPROTO_UPDATE},
+		{req: NewSQLParserDebugGetRequest(), async: false, rtype: iproto.IPROTO_SELECT},
+		{req: NewSQLRecursiveTriggersSetRequest(false), async: false, rtype: iproto.IPROTO_UPDATE},
+		{req: NewSQLRecursiveTriggersGetRequest(), async: false, rtype: iproto.IPROTO_SELECT},
+		{req: NewSQLReverseUnorderedSelectsSetRequest(false), async: false, rtype: iproto.IPROTO_UPDATE},
+		{req: NewSQLReverseUnorderedSelectsGetRequest(), async: false, rtype: iproto.IPROTO_SELECT},
+		{req: NewSQLSelectDebugSetRequest(false), async: false, rtype: iproto.IPROTO_UPDATE},
+		{req: NewSQLSelectDebugGetRequest(), async: false, rtype: iproto.IPROTO_SELECT},
+		{req: NewSQLVDBEDebugSetRequest(false), async: false, rtype: iproto.IPROTO_UPDATE},
+		{req: NewSQLVDBEDebugGetRequest(), async: false, rtype: iproto.IPROTO_SELECT},
+		{req: NewSessionSettingsGetRequest(), async: false, rtype: iproto.IPROTO_SELECT},
 	}
 
 	for _, test := range tests {
 		require.Equal(t, test.async, test.req.Async())
-		require.Equal(t, test.code, test.req.Code())
+		require.Equal(t, test.rtype, test.req.Type())
 
 		var reqBuf bytes.Buffer
 		enc := msgpack.NewEncoder(&reqBuf)
