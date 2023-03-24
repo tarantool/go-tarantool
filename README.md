@@ -31,6 +31,8 @@ faster than other packages according to public benchmarks.
     * [pool package](#pool-package)
     * [msgpack.v5](#msgpackv5)
     * [Call = Call17](#call--call17)
+    * [IPROTO constants](#iproto-constants)
+    * [Request interface](#request-interface)
 * [Contributing](#contributing)
 * [Alternative connectors](#alternative-connectors)
 
@@ -189,6 +191,14 @@ Call requests uses `IPROTO_CALL` instead of `IPROTO_CALL_16`.
 
 So now `Call` = `Call17` and `NewCallRequest` = `NewCall17Request`. A result
 of the requests is an array instead of array of arrays.
+
+#### IPROTO constants
+
+IPROTO constants have been moved to a separate package [go-iproto](https://github.com/tarantool/go-iproto).
+
+#### Request interface
+
+* The method `Code() uint32` replaced by the `Type() iproto.Type`.
 
 ## Contributing
 

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/tarantool/go-iproto"
 	"github.com/vmihailenco/msgpack/v5"
 
 	. "github.com/tarantool/go-tarantool/v2"
@@ -169,37 +170,37 @@ func TestRequestsInvalidIndex(t *testing.T) {
 	assertBodyCall(t, requests, invalidIndexMsg)
 }
 
-func TestRequestsCodes(t *testing.T) {
+func TestRequestsTypes(t *testing.T) {
 	tests := []struct {
-		req  Request
-		code int32
+		req   Request
+		rtype iproto.Type
 	}{
-		{req: NewSelectRequest(validSpace), code: SelectRequestCode},
-		{req: NewUpdateRequest(validSpace), code: UpdateRequestCode},
-		{req: NewUpsertRequest(validSpace), code: UpsertRequestCode},
-		{req: NewInsertRequest(validSpace), code: InsertRequestCode},
-		{req: NewReplaceRequest(validSpace), code: ReplaceRequestCode},
-		{req: NewDeleteRequest(validSpace), code: DeleteRequestCode},
-		{req: NewCallRequest(validExpr), code: CallRequestCode},
-		{req: NewCallRequest(validExpr), code: Call17RequestCode},
-		{req: NewCall16Request(validExpr), code: Call16RequestCode},
-		{req: NewCall17Request(validExpr), code: Call17RequestCode},
-		{req: NewEvalRequest(validExpr), code: EvalRequestCode},
-		{req: NewExecuteRequest(validExpr), code: ExecuteRequestCode},
-		{req: NewPingRequest(), code: PingRequestCode},
-		{req: NewPrepareRequest(validExpr), code: PrepareRequestCode},
-		{req: NewUnprepareRequest(validStmt), code: PrepareRequestCode},
-		{req: NewExecutePreparedRequest(validStmt), code: ExecuteRequestCode},
-		{req: NewBeginRequest(), code: BeginRequestCode},
-		{req: NewCommitRequest(), code: CommitRequestCode},
-		{req: NewRollbackRequest(), code: RollbackRequestCode},
-		{req: NewIdRequest(validProtocolInfo), code: IdRequestCode},
-		{req: NewBroadcastRequest(validKey), code: CallRequestCode},
+		{req: NewSelectRequest(validSpace), rtype: iproto.IPROTO_SELECT},
+		{req: NewUpdateRequest(validSpace), rtype: iproto.IPROTO_UPDATE},
+		{req: NewUpsertRequest(validSpace), rtype: iproto.IPROTO_UPSERT},
+		{req: NewInsertRequest(validSpace), rtype: iproto.IPROTO_INSERT},
+		{req: NewReplaceRequest(validSpace), rtype: iproto.IPROTO_REPLACE},
+		{req: NewDeleteRequest(validSpace), rtype: iproto.IPROTO_DELETE},
+		{req: NewCallRequest(validExpr), rtype: iproto.IPROTO_CALL},
+		{req: NewCall16Request(validExpr), rtype: iproto.IPROTO_CALL_16},
+		{req: NewCall17Request(validExpr), rtype: iproto.IPROTO_CALL},
+		{req: NewEvalRequest(validExpr), rtype: iproto.IPROTO_EVAL},
+		{req: NewExecuteRequest(validExpr), rtype: iproto.IPROTO_EXECUTE},
+		{req: NewPingRequest(), rtype: iproto.IPROTO_PING},
+		{req: NewPrepareRequest(validExpr), rtype: iproto.IPROTO_PREPARE},
+		{req: NewUnprepareRequest(validStmt), rtype: iproto.IPROTO_PREPARE},
+		{req: NewExecutePreparedRequest(validStmt), rtype: iproto.IPROTO_EXECUTE},
+		{req: NewBeginRequest(), rtype: iproto.IPROTO_BEGIN},
+		{req: NewCommitRequest(), rtype: iproto.IPROTO_COMMIT},
+		{req: NewRollbackRequest(), rtype: iproto.IPROTO_ROLLBACK},
+		{req: NewIdRequest(validProtocolInfo), rtype: iproto.IPROTO_ID},
+		{req: NewBroadcastRequest(validKey), rtype: iproto.IPROTO_CALL},
 	}
 
 	for _, test := range tests {
-		if code := test.req.Code(); code != test.code {
-			t.Errorf("An invalid request code 0x%x, expected 0x%x", code, test.code)
+		if rtype := test.req.Type(); rtype != test.rtype {
+			t.Errorf("An invalid request type 0x%x, expected 0x%x",
+				rtype, test.rtype)
 		}
 	}
 }

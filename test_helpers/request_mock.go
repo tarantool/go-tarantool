@@ -3,6 +3,7 @@ package test_helpers
 import (
 	"context"
 
+	"github.com/tarantool/go-iproto"
 	"github.com/vmihailenco/msgpack/v5"
 
 	"github.com/tarantool/go-tarantool/v2"
@@ -15,8 +16,8 @@ func NewStrangerRequest() *StrangerRequest {
 	return &StrangerRequest{}
 }
 
-func (sr *StrangerRequest) Code() int32 {
-	return 0
+func (sr *StrangerRequest) Type() iproto.Type {
+	return iproto.Type(0)
 }
 
 func (sr *StrangerRequest) Async() bool {

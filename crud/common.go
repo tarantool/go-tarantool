@@ -56,6 +56,8 @@ package crud
 import (
 	"context"
 
+	"github.com/tarantool/go-iproto"
+
 	"github.com/tarantool/go-tarantool/v2"
 )
 
@@ -67,9 +69,9 @@ func newCall(method string) *tarantool.CallRequest {
 	return tarantool.NewCall17Request(method)
 }
 
-// Code returns IPROTO code for CRUD request.
-func (req baseRequest) Code() int32 {
-	return req.impl.Code()
+// Type returns IPROTO type for CRUD request.
+func (req baseRequest) Type() iproto.Type {
+	return req.impl.Type()
 }
 
 // Ctx returns a context of CRUD request.

@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"github.com/tarantool/go-iproto"
+
 	"github.com/tarantool/go-tarantool/v2"
 	"github.com/tarantool/go-tarantool/v2/crud"
 	"github.com/tarantool/go-tarantool/v2/test_helpers"
@@ -399,9 +401,9 @@ func getCrudError(req tarantool.Request, crudError interface{}) (interface{}, er
 	var err []interface{}
 	var ok bool
 
-	code := req.Code()
+	rtype := req.Type()
 	if crudError != nil {
-		if code == tarantool.Call17RequestCode {
+		if rtype == iproto.IPROTO_CALL {
 			return crudError, nil
 		}
 

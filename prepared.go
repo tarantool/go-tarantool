@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/tarantool/go-iproto"
 	"github.com/vmihailenco/msgpack/v5"
 )
 
@@ -22,21 +23,21 @@ type Prepared struct {
 
 func fillPrepare(enc *msgpack.Encoder, expr string) error {
 	enc.EncodeMapLen(1)
-	enc.EncodeUint(KeySQLText)
+	enc.EncodeUint(uint64(iproto.IPROTO_SQL_TEXT))
 	return enc.EncodeString(expr)
 }
 
 func fillUnprepare(enc *msgpack.Encoder, stmt Prepared) error {
 	enc.EncodeMapLen(1)
-	enc.EncodeUint(KeyStmtID)
+	enc.EncodeUint(uint64(iproto.IPROTO_STMT_ID))
 	return enc.EncodeUint(uint64(stmt.StatementID))
 }
 
 func fillExecutePrepared(enc *msgpack.Encoder, stmt Prepared, args interface{}) error {
 	enc.EncodeMapLen(2)
-	enc.EncodeUint(KeyStmtID)
+	enc.EncodeUint(uint64(iproto.IPROTO_STMT_ID))
 	enc.EncodeUint(uint64(stmt.StatementID))
-	enc.EncodeUint(KeySQLBind)
+	enc.EncodeUint(uint64(iproto.IPROTO_SQL_BIND))
 	return encodeSQLBind(enc, args)
 }
 
@@ -69,7 +70,7 @@ type PrepareRequest struct {
 // NewPrepareRequest returns a new empty PrepareRequest.
 func NewPrepareRequest(expr string) *PrepareRequest {
 	req := new(PrepareRequest)
-	req.requestCode = PrepareRequestCode
+	req.rtype = iproto.IPROTO_PREPARE
 	req.expr = expr
 	return req
 }
@@ -100,7 +101,7 @@ type UnprepareRequest struct {
 // NewUnprepareRequest returns a new empty UnprepareRequest.
 func NewUnprepareRequest(stmt *Prepared) *UnprepareRequest {
 	req := new(UnprepareRequest)
-	req.requestCode = PrepareRequestCode
+	req.rtype = iproto.IPROTO_PREPARE
 	req.stmt = stmt
 	return req
 }
@@ -137,7 +138,7 @@ type ExecutePreparedRequest struct {
 // NewExecutePreparedRequest returns a new empty preparedExecuteRequest.
 func NewExecutePreparedRequest(stmt *Prepared) *ExecutePreparedRequest {
 	req := new(ExecutePreparedRequest)
-	req.requestCode = ExecuteRequestCode
+	req.rtype = iproto.IPROTO_EXECUTE
 	req.stmt = stmt
 	req.args = []interface{}{}
 	return req

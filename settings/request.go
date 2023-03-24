@@ -60,6 +60,7 @@ package settings
 import (
 	"context"
 
+	"github.com/tarantool/go-iproto"
 	"github.com/vmihailenco/msgpack/v5"
 
 	"github.com/tarantool/go-tarantool/v2"
@@ -85,9 +86,9 @@ func (req *SetRequest) Context(ctx context.Context) *SetRequest {
 	return req
 }
 
-// Code returns IPROTO code for set session settings request.
-func (req *SetRequest) Code() int32 {
-	return req.impl.Code()
+// Type returns IPROTO type for set session settings request.
+func (req *SetRequest) Type() iproto.Type {
+	return req.impl.Type()
 }
 
 // Body fills an encoder with set session settings request body.
@@ -125,9 +126,9 @@ func (req *GetRequest) Context(ctx context.Context) *GetRequest {
 	return req
 }
 
-// Code returns IPROTO code for get session settings request.
-func (req *GetRequest) Code() int32 {
-	return req.impl.Code()
+// Type returns IPROTO type for get session settings request.
+func (req *GetRequest) Type() iproto.Type {
+	return req.impl.Type()
 }
 
 // Body fills an encoder with get session settings request body.

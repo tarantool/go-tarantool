@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/tarantool/go-iproto"
 	"github.com/vmihailenco/msgpack/v5"
 )
 
@@ -106,12 +107,12 @@ type IdRequest struct {
 func fillId(enc *msgpack.Encoder, protocolInfo ProtocolInfo) error {
 	enc.EncodeMapLen(2)
 
-	enc.EncodeUint(KeyVersion)
+	enc.EncodeUint(uint64(iproto.IPROTO_VERSION))
 	if err := enc.Encode(protocolInfo.Version); err != nil {
 		return err
 	}
 
-	enc.EncodeUint(KeyFeatures)
+	enc.EncodeUint(uint64(iproto.IPROTO_FEATURES))
 
 	t := len(protocolInfo.Features)
 	if err := enc.EncodeArrayLen(t); err != nil {
@@ -130,7 +131,7 @@ func fillId(enc *msgpack.Encoder, protocolInfo ProtocolInfo) error {
 // NewIdRequest returns a new IdRequest.
 func NewIdRequest(protocolInfo ProtocolInfo) *IdRequest {
 	req := new(IdRequest)
-	req.requestCode = IdRequestCode
+	req.rtype = iproto.IPROTO_ID
 	req.protocolInfo = protocolInfo.Clone()
 	return req
 }
