@@ -151,6 +151,7 @@ func (space *Space) DecodeMsgpack(d *msgpack.Decoder) error {
 	return nil
 }
 
+// Field is a schema field.
 type Field struct {
 	Id   uint32
 	Name string
@@ -266,6 +267,7 @@ func (index *Index) DecodeMsgpack(d *msgpack.Decoder) error {
 	return nil
 }
 
+// IndexFields is an index field.
 type IndexField struct {
 	Id   uint32
 	Type string
