@@ -22,6 +22,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 - msgpack.v2 support (#236)
 - pool/RoundRobinStrategy (#158)
 - DeadlineIO (#158)
+- UUID_extId (#158)
 
 ### Fixed
 

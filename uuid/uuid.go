@@ -22,7 +22,7 @@ import (
 )
 
 // UUID external type.
-const UUID_extId = 2
+const uuid_extID = 2
 
 func encodeUUID(e *msgpack.Encoder, v reflect.Value) error {
 	id := v.Interface().(uuid.UUID)
@@ -63,12 +63,12 @@ func decodeUUID(d *msgpack.Decoder, v reflect.Value) error {
 
 func init() {
 	msgpack.Register(reflect.TypeOf((*uuid.UUID)(nil)).Elem(), encodeUUID, decodeUUID)
-	msgpack.RegisterExtEncoder(UUID_extId, uuid.UUID{},
+	msgpack.RegisterExtEncoder(uuid_extID, uuid.UUID{},
 		func(e *msgpack.Encoder, v reflect.Value) ([]byte, error) {
 			uuid := v.Interface().(uuid.UUID)
 			return uuid.MarshalBinary()
 		})
-	msgpack.RegisterExtDecoder(UUID_extId, uuid.UUID{},
+	msgpack.RegisterExtDecoder(uuid_extID, uuid.UUID{},
 		func(d *msgpack.Decoder, v reflect.Value, extLen int) error {
 			return decodeUUID(d, v)
 		})
