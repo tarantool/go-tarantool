@@ -1,10 +1,9 @@
-package pool_test
+package pool
 
 import (
 	"testing"
 
 	"github.com/tarantool/go-tarantool/v2"
-	. "github.com/tarantool/go-tarantool/v2/pool"
 )
 
 const (
@@ -13,7 +12,7 @@ const (
 )
 
 func TestRoundRobinAddDelete(t *testing.T) {
-	rr := NewEmptyRoundRobin(10)
+	rr := newRoundRobinStrategy(10)
 
 	addrs := []string{validAddr1, validAddr2}
 	conns := []*tarantool.Connection{&tarantool.Connection{}, &tarantool.Connection{}}
@@ -33,7 +32,7 @@ func TestRoundRobinAddDelete(t *testing.T) {
 }
 
 func TestRoundRobinAddDuplicateDelete(t *testing.T) {
-	rr := NewEmptyRoundRobin(10)
+	rr := newRoundRobinStrategy(10)
 
 	conn1 := &tarantool.Connection{}
 	conn2 := &tarantool.Connection{}
@@ -53,7 +52,7 @@ func TestRoundRobinAddDuplicateDelete(t *testing.T) {
 }
 
 func TestRoundRobinGetNextConnection(t *testing.T) {
-	rr := NewEmptyRoundRobin(10)
+	rr := newRoundRobinStrategy(10)
 
 	addrs := []string{validAddr1, validAddr2}
 	conns := []*tarantool.Connection{&tarantool.Connection{}, &tarantool.Connection{}}
@@ -71,7 +70,7 @@ func TestRoundRobinGetNextConnection(t *testing.T) {
 }
 
 func TestRoundRobinStrategy_GetConnections(t *testing.T) {
-	rr := NewEmptyRoundRobin(10)
+	rr := newRoundRobinStrategy(10)
 
 	addrs := []string{validAddr1, validAddr2}
 	conns := []*tarantool.Connection{&tarantool.Connection{}, &tarantool.Connection{}}

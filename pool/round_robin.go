@@ -6,7 +6,7 @@ import (
 	"github.com/tarantool/go-tarantool/v2"
 )
 
-type RoundRobinStrategy struct {
+type roundRobinStrategy struct {
 	conns       []*tarantool.Connection
 	indexByAddr map[string]uint
 	mutex       sync.RWMutex
@@ -14,8 +14,8 @@ type RoundRobinStrategy struct {
 	current     uint
 }
 
-func NewEmptyRoundRobin(size int) *RoundRobinStrategy {
-	return &RoundRobinStrategy{
+func newRoundRobinStrategy(size int) *roundRobinStrategy {
+	return &roundRobinStrategy{
 		conns:       make([]*tarantool.Connection, 0, size),
 		indexByAddr: make(map[string]uint),
 		size:        0,
@@ -23,7 +23,7 @@ func NewEmptyRoundRobin(size int) *RoundRobinStrategy {
 	}
 }
 
-func (r *RoundRobinStrategy) GetConnByAddr(addr string) *tarantool.Connection {
+func (r *roundRobinStrategy) GetConnByAddr(addr string) *tarantool.Connection {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
 
@@ -35,7 +35,7 @@ func (r *RoundRobinStrategy) GetConnByAddr(addr string) *tarantool.Connection {
 	return r.conns[index]
 }
 
-func (r *RoundRobinStrategy) DeleteConnByAddr(addr string) *tarantool.Connection {
+func (r *roundRobinStrategy) DeleteConnByAddr(addr string) *tarantool.Connection {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
@@ -63,14 +63,14 @@ func (r *RoundRobinStrategy) DeleteConnByAddr(addr string) *tarantool.Connection
 	return conn
 }
 
-func (r *RoundRobinStrategy) IsEmpty() bool {
+func (r *roundRobinStrategy) IsEmpty() bool {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
 
 	return r.size == 0
 }
 
-func (r *RoundRobinStrategy) GetNextConnection() *tarantool.Connection {
+func (r *roundRobinStrategy) GetNextConnection() *tarantool.Connection {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
 
@@ -80,7 +80,7 @@ func (r *RoundRobinStrategy) GetNextConnection() *tarantool.Connection {
 	return r.conns[r.nextIndex()]
 }
 
-func (r *RoundRobinStrategy) GetConnections() []*tarantool.Connection {
+func (r *roundRobinStrategy) GetConnections() []*tarantool.Connection {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
 
@@ -90,7 +90,7 @@ func (r *RoundRobinStrategy) GetConnections() []*tarantool.Connection {
 	return ret
 }
 
-func (r *RoundRobinStrategy) AddConn(addr string, conn *tarantool.Connection) {
+func (r *roundRobinStrategy) AddConn(addr string, conn *tarantool.Connection) {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
@@ -103,7 +103,7 @@ func (r *RoundRobinStrategy) AddConn(addr string, conn *tarantool.Connection) {
 	}
 }
 
-func (r *RoundRobinStrategy) nextIndex() uint {
+func (r *roundRobinStrategy) nextIndex() uint {
 	ret := r.current % r.size
 	r.current++
 	return ret
