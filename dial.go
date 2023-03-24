@@ -111,7 +111,7 @@ func (t TtDialer) Dial(address string, opts DialOpts) (Conn, error) {
 		return nil, fmt.Errorf("failed to dial: %w", err)
 	}
 
-	dc := &DeadlineIO{to: opts.IoTimeout, c: conn.net}
+	dc := &deadlineIO{to: opts.IoTimeout, c: conn.net}
 	conn.reader = bufio.NewReaderSize(dc, 128*1024)
 	conn.writer = bufio.NewWriterSize(dc, 128*1024)
 
