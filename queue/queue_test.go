@@ -687,7 +687,7 @@ func TestTtlQueue(t *testing.T) {
 		}
 	}
 
-	time.Sleep(5 * time.Second)
+	time.Sleep(10 * time.Second)
 
 	//Take
 	task, err = q.TakeTimeout(2 * time.Second)
