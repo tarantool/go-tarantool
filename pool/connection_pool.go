@@ -97,9 +97,9 @@ type ConnectionPool struct {
 
 	state            state
 	done             chan struct{}
-	roPool           *RoundRobinStrategy
-	rwPool           *RoundRobinStrategy
-	anyPool          *RoundRobinStrategy
+	roPool           *roundRobinStrategy
+	rwPool           *roundRobinStrategy
+	anyPool          *roundRobinStrategy
 	poolsMutex       sync.RWMutex
 	watcherContainer watcherContainer
 }
@@ -141,9 +141,9 @@ func ConnectWithOpts(addrs []string, connOpts tarantool.Opts, opts Opts) (connPo
 	}
 
 	size := len(addrs)
-	rwPool := NewEmptyRoundRobin(size)
-	roPool := NewEmptyRoundRobin(size)
-	anyPool := NewEmptyRoundRobin(size)
+	rwPool := newRoundRobinStrategy(size)
+	roPool := newRoundRobinStrategy(size)
+	anyPool := newRoundRobinStrategy(size)
 
 	connPool = &ConnectionPool{
 		addrs:    make(map[string]*endpoint),

@@ -20,6 +20,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 - multi subpackage (#240)
 - msgpack.v2 support (#236)
+- pool/RoundRobinStrategy (#158)
 
 ### Fixed
 
