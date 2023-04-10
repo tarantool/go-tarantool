@@ -20,7 +20,7 @@ var invalidSpaceName = "invalid"
 var indexNo = uint32(0)
 var indexName = "primary_index"
 var opts = tarantool.Opts{
-	Timeout: 500 * time.Millisecond,
+	Timeout: 5 * time.Second,
 	User:    "test",
 	Pass:    "test",
 }

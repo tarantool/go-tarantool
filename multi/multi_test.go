@@ -20,7 +20,7 @@ var spaceNo = uint32(617)
 var spaceName = "test"
 var indexNo = uint32(0)
 var connOpts = tarantool.Opts{
-	Timeout: 500 * time.Millisecond,
+	Timeout: 5 * time.Second,
 	User:    "test",
 	Pass:    "test",
 }

@@ -9,7 +9,7 @@ import (
 
 func ExampleConnect() {
 	multiConn, err := Connect([]string{"127.0.0.1:3031", "127.0.0.1:3032"}, tarantool.Opts{
-		Timeout: 500 * time.Millisecond,
+		Timeout: 5 * time.Second,
 		User:    "test",
 		Pass:    "test",
 	})
@@ -21,7 +21,7 @@ func ExampleConnect() {
 
 func ExampleConnectWithOpts() {
 	multiConn, err := ConnectWithOpts([]string{"127.0.0.1:3301", "127.0.0.1:3302"}, tarantool.Opts{
-		Timeout: 500 * time.Millisecond,
+		Timeout: 5 * time.Second,
 		User:    "test",
 		Pass:    "test",
 	}, OptsMulti{

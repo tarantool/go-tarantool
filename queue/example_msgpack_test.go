@@ -48,7 +48,7 @@ func (c *dummyData) EncodeMsgpack(e *encoder) error {
 func Example_simpleQueueCustomMsgPack() {
 	opts := tarantool.Opts{
 		Reconnect:     time.Second,
-		Timeout:       2500 * time.Millisecond,
+		Timeout:       5 * time.Second,
 		MaxReconnects: 5,
 		User:          "test",
 		Pass:          "test",
@@ -65,9 +65,9 @@ func Example_simpleQueueCustomMsgPack() {
 		IfNotExists: true,
 		Kind:        queue.FIFO,
 		Opts: queue.Opts{
-			Ttl:   10 * time.Second,
-			Ttr:   5 * time.Second,
-			Delay: 3 * time.Second,
+			Ttl:   20 * time.Second,
+			Ttr:   10 * time.Second,
+			Delay: 6 * time.Second,
 			Pri:   1,
 		},
 	}

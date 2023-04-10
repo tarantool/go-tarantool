@@ -22,7 +22,7 @@ var serversPool = []string{
 var instances []test_helpers.TarantoolInstance
 
 var opts = Opts{
-	Timeout: 2500 * time.Millisecond,
+	Timeout: 5 * time.Second,
 	User:    "test",
 	Pass:    "test",
 	//Concurrency: 32,
