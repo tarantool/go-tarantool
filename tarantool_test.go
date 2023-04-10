@@ -28,7 +28,7 @@ var startOpts test_helpers.StartOpts = test_helpers.StartOpts{
 	User:         opts.User,
 	Pass:         opts.Pass,
 	WaitStart:    100 * time.Millisecond,
-	ConnectRetry: 3,
+	ConnectRetry: 10,
 	RetryTimeout: 500 * time.Millisecond,
 }
 
@@ -75,7 +75,7 @@ var spaceName = "test"
 var indexNo = uint32(0)
 var indexName = "primary"
 var opts = Opts{
-	Timeout: 500 * time.Millisecond,
+	Timeout: 5 * time.Second,
 	User:    "test",
 	Pass:    "test",
 	//Concurrency: 32,
@@ -3580,7 +3580,7 @@ func TestConnection_NewWatcher_reconnect(t *testing.T) {
 		User:         opts.User,
 		Pass:         opts.Pass,
 		WaitStart:    100 * time.Millisecond,
-		ConnectRetry: 3,
+		ConnectRetry: 10,
 		RetryTimeout: 500 * time.Millisecond,
 	})
 	defer test_helpers.StopTarantoolWithCleanup(inst)

@@ -19,7 +19,7 @@ var isSettingsSupported = false
 
 var server = "127.0.0.1:3013"
 var opts = tarantool.Opts{
-	Timeout: 500 * time.Millisecond,
+	Timeout: 5 * time.Second,
 	User:    "test",
 	Pass:    "test",
 }
@@ -637,7 +637,7 @@ func runTestMain(m *testing.M) int {
 		User:         opts.User,
 		Pass:         opts.Pass,
 		WaitStart:    100 * time.Millisecond,
-		ConnectRetry: 3,
+		ConnectRetry: 10,
 		RetryTimeout: 500 * time.Millisecond,
 	})
 

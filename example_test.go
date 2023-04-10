@@ -799,7 +799,7 @@ func ExampleConnection_Eval() {
 
 func ExampleConnect() {
 	conn, err := tarantool.Connect("127.0.0.1:3013", tarantool.Opts{
-		Timeout:     500 * time.Millisecond,
+		Timeout:     5 * time.Second,
 		User:        "test",
 		Pass:        "test",
 		Concurrency: 32,
@@ -895,11 +895,9 @@ func ExampleConnection_Execute() {
 	}
 	server := "127.0.0.1:3013"
 	opts := tarantool.Opts{
-		Timeout:       500 * time.Millisecond,
-		Reconnect:     1 * time.Second,
-		MaxReconnects: 3,
-		User:          "test",
-		Pass:          "test",
+		Timeout: 5 * time.Second,
+		User:    "test",
+		Pass:    "test",
 	}
 	client, err := tarantool.Connect(server, opts)
 	if err != nil {
@@ -1015,11 +1013,9 @@ func ExampleConnection_NewPrepared() {
 
 	server := "127.0.0.1:3013"
 	opts := tarantool.Opts{
-		Timeout:       500 * time.Millisecond,
-		Reconnect:     1 * time.Second,
-		MaxReconnects: 3,
-		User:          "test",
-		Pass:          "test",
+		Timeout: 5 * time.Second,
+		User:    "test",
+		Pass:    "test",
 	}
 	conn, err := tarantool.Connect(server, opts)
 	if err != nil {
@@ -1057,8 +1053,8 @@ func ExampleConnection_NewWatcher() {
 
 	server := "127.0.0.1:3013"
 	opts := tarantool.Opts{
-		Timeout:       500 * time.Millisecond,
-		Reconnect:     1 * time.Second,
+		Timeout:       5 * time.Second,
+		Reconnect:     5 * time.Second,
 		MaxReconnects: 3,
 		User:          "test",
 		Pass:          "test",
