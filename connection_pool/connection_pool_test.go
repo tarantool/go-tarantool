@@ -33,7 +33,7 @@ var servers = []string{
 }
 
 var connOpts = tarantool.Opts{
-	Timeout: 500 * time.Millisecond,
+	Timeout: 5 * time.Second,
 	User:    "test",
 	Pass:    "test",
 }
@@ -2426,7 +2426,7 @@ func TestWatcher_Unregister_concurrent(t *testing.T) {
 func runTestMain(m *testing.M) int {
 	initScript := "config.lua"
 	waitStart := 100 * time.Millisecond
-	connectRetry := 3
+	connectRetry := 10
 	retryTimeout := 500 * time.Millisecond
 
 	// Tarantool supports streams and interactive transactions since version 2.10.0

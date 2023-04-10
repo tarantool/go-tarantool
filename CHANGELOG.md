@@ -29,6 +29,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 - Connect() panics on concurrent schema update (#278)
 - Wrong Ttr setup by Queue.Cfg() (#278)
 - Flaky queue/Example_connectionPool (#278)
+- Flaky queue/Example_simpleQueueCustomMsgPack (#277)
 
 ## [1.10.0] - 2022-12-31
 

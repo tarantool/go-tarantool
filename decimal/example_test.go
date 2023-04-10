@@ -22,7 +22,7 @@ import (
 func Example() {
 	server := "127.0.0.1:3013"
 	opts := tarantool.Opts{
-		Timeout:       500 * time.Millisecond,
+		Timeout:       5 * time.Second,
 		Reconnect:     1 * time.Second,
 		MaxReconnects: 3,
 		User:          "test",

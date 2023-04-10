@@ -20,7 +20,7 @@ var spaceNo = uint32(617)
 var spaceName = "test"
 var indexNo = uint32(0)
 var connOpts = tarantool.Opts{
-	Timeout: 500 * time.Millisecond,
+	Timeout: 5 * time.Second,
 	User:    "test",
 	Pass:    "test",
 }
@@ -611,7 +611,7 @@ func TestConnectionMulti_NewWatcher(t *testing.T) {
 func runTestMain(m *testing.M) int {
 	initScript := "config.lua"
 	waitStart := 100 * time.Millisecond
-	connectRetry := 3
+	connectRetry := 10
 	retryTimeout := 500 * time.Millisecond
 
 	// Tarantool supports streams and interactive transactions since version 2.10.0

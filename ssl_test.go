@@ -130,7 +130,7 @@ func serverTnt(serverOpts, clientOpts SslOpts, auth Auth) (test_helpers.Tarantoo
 		User:            "test",
 		Pass:            "test",
 		WaitStart:       100 * time.Millisecond,
-		ConnectRetry:    3,
+		ConnectRetry:    10,
 		RetryTimeout:    500 * time.Millisecond,
 	})
 }

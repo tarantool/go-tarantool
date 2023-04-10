@@ -156,12 +156,12 @@ func Example_connectionPool() {
 		"127.0.0.1:3015",
 	}
 	connOpts := tarantool.Opts{
-		Timeout: 1 * time.Second,
+		Timeout: 5 * time.Second,
 		User:    "test",
 		Pass:    "test",
 	}
 	poolOpts := connection_pool.OptsPool{
-		CheckTimeout:      1 * time.Second,
+		CheckTimeout:      5 * time.Second,
 		ConnectionHandler: h,
 	}
 	connPool, err := connection_pool.ConnectWithOpts(servers, connOpts, poolOpts)

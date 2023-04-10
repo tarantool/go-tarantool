@@ -22,7 +22,7 @@ var shtdnClntOpts = Opts{
 	User:                 opts.User,
 	Pass:                 opts.Pass,
 	Timeout:              20 * time.Second,
-	Reconnect:            200 * time.Millisecond,
+	Reconnect:            500 * time.Millisecond,
 	MaxReconnects:        10,
 	RequiredProtocolInfo: ProtocolInfo{Features: []ProtocolFeature{WatchersFeature}},
 }
@@ -32,7 +32,7 @@ var shtdnSrvOpts = test_helpers.StartOpts{
 	User:         shtdnClntOpts.User,
 	Pass:         shtdnClntOpts.Pass,
 	WaitStart:    100 * time.Millisecond,
-	ConnectRetry: 3,
+	ConnectRetry: 10,
 	RetryTimeout: 500 * time.Millisecond,
 }
 

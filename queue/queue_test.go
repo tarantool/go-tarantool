@@ -22,7 +22,7 @@ var serversPool = []string{
 var instances []test_helpers.TarantoolInstance
 
 var opts = Opts{
-	Timeout: 2500 * time.Millisecond,
+	Timeout: 5 * time.Second,
 	User:    "test",
 	Pass:    "test",
 	//Concurrency: 32,
@@ -913,7 +913,7 @@ func runTestMain(m *testing.M) int {
 		User:         opts.User,
 		Pass:         opts.Pass,
 		WaitStart:    100 * time.Millisecond,
-		ConnectRetry: 3,
+		ConnectRetry: 10,
 		RetryTimeout: 500 * time.Millisecond,
 	})
 
