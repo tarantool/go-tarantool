@@ -11,6 +11,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 ### Added
 
 - Type() method to the Request interface (#158)
+- Enumeration types for RLimitAction/iterators (#158)
 
 ### Changed
 

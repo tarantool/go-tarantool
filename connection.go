@@ -236,6 +236,19 @@ type connShard struct {
 	enc             *msgpack.Encoder
 }
 
+// RLimitActions is an enumeration type for an action to do when a rate limit
+// is reached.
+type RLimitAction int
+
+const (
+	// RLimitDrop immediately aborts the request.
+	RLimitDrop RLimitAction = iota
+	// RLimitWait waits during timeout period for some request to be answered.
+	// If no request answered during timeout period, this request is aborted.
+	// If no timeout period is set, it will wait forever.
+	RLimitWait
+)
+
 // Opts is a way to configure Connection
 type Opts struct {
 	// Auth is an authentication method.
@@ -274,14 +287,9 @@ type Opts struct {
 	// It is disabled by default.
 	// See RLimitAction for possible actions when RateLimit.reached.
 	RateLimit uint
-	// RLimitAction tells what to do when RateLimit reached:
-	//   RLimitDrop - immediately abort request,
-	//   RLimitWait - wait during timeout period for some request to be answered.
-	//                If no request answered during timeout period, this request
-	//                is aborted.
-	//                If no timeout period is set, it will wait forever.
+	// RLimitAction tells what to do when RateLimit is reached.
 	// It is required if RateLimit is specified.
-	RLimitAction uint
+	RLimitAction RLimitAction
 	// Concurrency is amount of separate mutexes for request
 	// queues and buffers inside of connection.
 	// It is rounded up to nearest power of 2.

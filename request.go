@@ -31,7 +31,7 @@ func fillSearch(enc *msgpack.Encoder, spaceNo, indexNo uint32, key interface{}) 
 	return enc.Encode(key)
 }
 
-func fillIterator(enc *msgpack.Encoder, offset, limit, iterator uint32) error {
+func fillIterator(enc *msgpack.Encoder, offset, limit uint32, iterator Iter) error {
 	if err := enc.EncodeUint(uint64(iproto.IPROTO_ITERATOR)); err != nil {
 		return err
 	}
@@ -66,7 +66,7 @@ func fillInsert(enc *msgpack.Encoder, spaceNo uint32, tuple interface{}) error {
 	return enc.Encode(tuple)
 }
 
-func fillSelect(enc *msgpack.Encoder, spaceNo, indexNo, offset, limit, iterator uint32,
+func fillSelect(enc *msgpack.Encoder, spaceNo, indexNo, offset, limit uint32, iterator Iter,
 	key, after interface{}, fetchPos bool) error {
 	mapLen := 6
 	if fetchPos {
@@ -174,7 +174,7 @@ func (conn *Connection) Ping() (resp *Response, err error) {
 // Select performs select to box space.
 //
 // It is equal to conn.SelectAsync(...).Get().
-func (conn *Connection) Select(space, index interface{}, offset, limit, iterator uint32, key interface{}) (resp *Response, err error) {
+func (conn *Connection) Select(space, index interface{}, offset, limit uint32, iterator Iter, key interface{}) (resp *Response, err error) {
 	return conn.SelectAsync(space, index, offset, limit, iterator, key).Get()
 }
 
@@ -292,7 +292,7 @@ func (conn *Connection) GetTyped(space, index interface{}, key interface{}, resu
 // SelectTyped performs select to box space and fills typed result.
 //
 // It is equal to conn.SelectAsync(space, index, offset, limit, iterator, key).GetTyped(&result)
-func (conn *Connection) SelectTyped(space, index interface{}, offset, limit, iterator uint32, key interface{}, result interface{}) (err error) {
+func (conn *Connection) SelectTyped(space, index interface{}, offset, limit uint32, iterator Iter, key interface{}, result interface{}) (err error) {
 	return conn.SelectAsync(space, index, offset, limit, iterator, key).GetTyped(result)
 }
 
@@ -369,7 +369,7 @@ func (conn *Connection) ExecuteTyped(expr string, args interface{}, result inter
 }
 
 // SelectAsync sends select request to Tarantool and returns Future.
-func (conn *Connection) SelectAsync(space, index interface{}, offset, limit, iterator uint32, key interface{}) *Future {
+func (conn *Connection) SelectAsync(space, index interface{}, offset, limit uint32, iterator Iter, key interface{}) *Future {
 	req := NewSelectRequest(space).
 		Index(index).
 		Offset(offset).
@@ -740,7 +740,8 @@ func (req *PingRequest) Context(ctx context.Context) *PingRequest {
 type SelectRequest struct {
 	spaceIndexRequest
 	isIteratorSet, fetchPos bool
-	offset, limit, iterator uint32
+	offset, limit           uint32
+	iterator                Iter
 	key, after              interface{}
 }
 
@@ -781,7 +782,7 @@ func (req *SelectRequest) Limit(limit uint32) *SelectRequest {
 
 // Iterator set the iterator for the select request.
 // Note: default value is IterAll if key is not set or IterEq otherwise.
-func (req *SelectRequest) Iterator(iterator uint32) *SelectRequest {
+func (req *SelectRequest) Iterator(iterator Iter) *SelectRequest {
 	req.iterator = iterator
 	req.isIteratorSet = true
 	return req

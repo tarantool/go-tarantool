@@ -24,7 +24,7 @@ func RefImplPingBody(enc *msgpack.Encoder) error {
 
 // RefImplSelectBody is reference implementation for filling of a select
 // request's body.
-func RefImplSelectBody(enc *msgpack.Encoder, space, index, offset, limit, iterator uint32,
+func RefImplSelectBody(enc *msgpack.Encoder, space, index, offset, limit uint32, iterator Iter,
 	key, after interface{}, fetchPos bool) error {
 	return fillSelect(enc, space, index, offset, limit, iterator, key, after, fetchPos)
 }
