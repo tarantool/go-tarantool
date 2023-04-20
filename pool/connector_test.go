@@ -125,13 +125,14 @@ func TestConnectorConfiguredTimeoutWithError(t *testing.T) {
 
 type baseRequestMock struct {
 	Pooler
-	called                  int
-	functionName            string
-	offset, limit, iterator uint32
-	space, index            interface{}
-	args, tuple, key, ops   interface{}
-	result                  interface{}
-	mode                    Mode
+	called                int
+	functionName          string
+	offset, limit         uint32
+	iterator              tarantool.Iter
+	space, index          interface{}
+	args, tuple, key, ops interface{}
+	result                interface{}
+	mode                  Mode
 }
 
 var reqResp *tarantool.Response = &tarantool.Response{}
@@ -141,7 +142,7 @@ var reqFuture *tarantool.Future = &tarantool.Future{}
 var reqFunctionName string = "any_name"
 var reqOffset uint32 = 1
 var reqLimit uint32 = 2
-var reqIterator uint32 = 3
+var reqIterator tarantool.Iter = tarantool.IterLt
 var reqSpace interface{} = []interface{}{1}
 var reqIndex interface{} = []interface{}{2}
 var reqArgs interface{} = []interface{}{3}
@@ -188,7 +189,7 @@ type selectMock struct {
 }
 
 func (m *selectMock) Select(space, index interface{},
-	offset, limit, iterator uint32, key interface{},
+	offset, limit uint32, iterator tarantool.Iter, key interface{},
 	mode ...Mode) (*tarantool.Response, error) {
 	m.called++
 	m.space = space
@@ -224,7 +225,7 @@ type selectTypedMock struct {
 }
 
 func (m *selectTypedMock) SelectTyped(space, index interface{},
-	offset, limit, iterator uint32, key interface{},
+	offset, limit uint32, iterator tarantool.Iter, key interface{},
 	result interface{}, mode ...Mode) error {
 	m.called++
 	m.space = space
@@ -262,7 +263,7 @@ type selectAsyncMock struct {
 }
 
 func (m *selectAsyncMock) SelectAsync(space, index interface{},
-	offset, limit, iterator uint32, key interface{},
+	offset, limit uint32, iterator tarantool.Iter, key interface{},
 	mode ...Mode) *tarantool.Future {
 	m.called++
 	m.space = space

@@ -373,7 +373,9 @@ func (connPool *ConnectionPool) Ping(userMode Mode) (*tarantool.Response, error)
 }
 
 // Select performs select to box space.
-func (connPool *ConnectionPool) Select(space, index interface{}, offset, limit, iterator uint32, key interface{}, userMode ...Mode) (resp *tarantool.Response, err error) {
+func (connPool *ConnectionPool) Select(space, index interface{},
+	offset, limit uint32,
+	iterator tarantool.Iter, key interface{}, userMode ...Mode) (resp *tarantool.Response, err error) {
 	conn, err := connPool.getConnByMode(ANY, userMode)
 	if err != nil {
 		return nil, err
@@ -503,7 +505,9 @@ func (connPool *ConnectionPool) GetTyped(space, index interface{}, key interface
 }
 
 // SelectTyped performs select to box space and fills typed result.
-func (connPool *ConnectionPool) SelectTyped(space, index interface{}, offset, limit, iterator uint32, key interface{}, result interface{}, userMode ...Mode) (err error) {
+func (connPool *ConnectionPool) SelectTyped(space, index interface{},
+	offset, limit uint32,
+	iterator tarantool.Iter, key interface{}, result interface{}, userMode ...Mode) (err error) {
 	conn, err := connPool.getConnByMode(ANY, userMode)
 	if err != nil {
 		return err
@@ -609,7 +613,9 @@ func (connPool *ConnectionPool) ExecuteTyped(expr string, args interface{}, resu
 }
 
 // SelectAsync sends select request to Tarantool and returns Future.
-func (connPool *ConnectionPool) SelectAsync(space, index interface{}, offset, limit, iterator uint32, key interface{}, userMode ...Mode) *tarantool.Future {
+func (connPool *ConnectionPool) SelectAsync(space, index interface{},
+	offset, limit uint32,
+	iterator tarantool.Iter, key interface{}, userMode ...Mode) *tarantool.Future {
 	conn, err := connPool.getConnByMode(ANY, userMode)
 	if err != nil {
 		return newErrorFuture(err)

@@ -8,7 +8,7 @@ type Connector interface {
 	Ping() (resp *Response, err error)
 	ConfiguredTimeout() time.Duration
 
-	Select(space, index interface{}, offset, limit, iterator uint32, key interface{}) (resp *Response, err error)
+	Select(space, index interface{}, offset, limit uint32, iterator Iter, key interface{}) (resp *Response, err error)
 	Insert(space interface{}, tuple interface{}) (resp *Response, err error)
 	Replace(space interface{}, tuple interface{}) (resp *Response, err error)
 	Delete(space, index interface{}, key interface{}) (resp *Response, err error)
@@ -21,7 +21,7 @@ type Connector interface {
 	Execute(expr string, args interface{}) (resp *Response, err error)
 
 	GetTyped(space, index interface{}, key interface{}, result interface{}) (err error)
-	SelectTyped(space, index interface{}, offset, limit, iterator uint32, key interface{}, result interface{}) (err error)
+	SelectTyped(space, index interface{}, offset, limit uint32, iterator Iter, key interface{}, result interface{}) (err error)
 	InsertTyped(space interface{}, tuple interface{}, result interface{}) (err error)
 	ReplaceTyped(space interface{}, tuple interface{}, result interface{}) (err error)
 	DeleteTyped(space, index interface{}, key interface{}, result interface{}) (err error)
@@ -32,7 +32,7 @@ type Connector interface {
 	EvalTyped(expr string, args interface{}, result interface{}) (err error)
 	ExecuteTyped(expr string, args interface{}, result interface{}) (SQLInfo, []ColumnMetaData, error)
 
-	SelectAsync(space, index interface{}, offset, limit, iterator uint32, key interface{}) *Future
+	SelectAsync(space, index interface{}, offset, limit uint32, iterator Iter, key interface{}) *Future
 	InsertAsync(space interface{}, tuple interface{}) *Future
 	ReplaceAsync(space interface{}, tuple interface{}) *Future
 	DeleteAsync(space, index interface{}, key interface{}) *Future

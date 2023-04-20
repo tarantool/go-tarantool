@@ -13,7 +13,7 @@ type Pooler interface {
 	Ping(mode Mode) (*tarantool.Response, error)
 	ConfiguredTimeout(mode Mode) (time.Duration, error)
 
-	Select(space, index interface{}, offset, limit, iterator uint32,
+	Select(space, index interface{}, offset, limit uint32, iterator tarantool.Iter,
 		key interface{}, mode ...Mode) (*tarantool.Response, error)
 	Insert(space interface{}, tuple interface{},
 		mode ...Mode) (*tarantool.Response, error)
@@ -38,7 +38,7 @@ type Pooler interface {
 
 	GetTyped(space, index interface{}, key interface{}, result interface{},
 		mode ...Mode) error
-	SelectTyped(space, index interface{}, offset, limit, iterator uint32,
+	SelectTyped(space, index interface{}, offset, limit uint32, iterator tarantool.Iter,
 		key interface{}, result interface{}, mode ...Mode) error
 	InsertTyped(space interface{}, tuple interface{}, result interface{},
 		mode ...Mode) error
@@ -59,7 +59,7 @@ type Pooler interface {
 	ExecuteTyped(expr string, args interface{}, result interface{},
 		mode Mode) (tarantool.SQLInfo, []tarantool.ColumnMetaData, error)
 
-	SelectAsync(space, index interface{}, offset, limit, iterator uint32,
+	SelectAsync(space, index interface{}, offset, limit uint32, iterator tarantool.Iter,
 		key interface{}, mode ...Mode) *tarantool.Future
 	InsertAsync(space interface{}, tuple interface{},
 		mode ...Mode) *tarantool.Future

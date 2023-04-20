@@ -63,7 +63,7 @@ func (c *ConnectorAdapter) ConfiguredTimeout() time.Duration {
 
 // Select performs select to box space.
 func (c *ConnectorAdapter) Select(space, index interface{},
-	offset, limit, iterator uint32,
+	offset, limit uint32, iterator tarantool.Iter,
 	key interface{}) (*tarantool.Response, error) {
 	return c.pool.Select(space, index, offset, limit, iterator, key, c.mode)
 }
@@ -141,7 +141,7 @@ func (c *ConnectorAdapter) GetTyped(space, index interface{},
 
 // SelectTyped performs select to box space and fills typed result.
 func (c *ConnectorAdapter) SelectTyped(space, index interface{},
-	offset, limit, iterator uint32,
+	offset, limit uint32, iterator tarantool.Iter,
 	key interface{}, result interface{}) error {
 	return c.pool.SelectTyped(space, index, offset, limit, iterator, key, result, c.mode)
 }
@@ -206,7 +206,7 @@ func (c *ConnectorAdapter) ExecuteTyped(expr string, args interface{},
 
 // SelectAsync sends select request to Tarantool and returns Future.
 func (c *ConnectorAdapter) SelectAsync(space, index interface{},
-	offset, limit, iterator uint32, key interface{}) *tarantool.Future {
+	offset, limit uint32, iterator tarantool.Iter, key interface{}) *tarantool.Future {
 	return c.pool.SelectAsync(space, index, offset, limit, iterator, key, c.mode)
 }
 
