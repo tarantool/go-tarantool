@@ -73,20 +73,18 @@ jobs:
         id: cache-latest
         uses: actions/cache@v3
         with:
-          path: "/opt/tarantool"
+          path: "${GITHUB_WORKSPACE}/bin"
           key: cache-latest-${{ env.LATEST_COMMIT }}
 
       - name: Setup Tarantool 2.x latest
         if: matrix.tarantool == '2.x-latest' && steps.cache-latest.outputs.cache-hit != 'true'
         run: |
-          # mkdir could be removed after:
-          # https://github.com/tarantool/tt/issues/282
-          sudo mkdir -p /opt/tarantool
-          sudo tt install tarantool=master
+          tt init
+          sudo tt install tarantool master
 
       - name: Add Tarantool 2.x latest to PATH
         if: matrix.tarantool == '2.x-latest'
-        run: echo "/opt/tarantool/bin" >> $GITHUB_PATH
+        run: echo "${GITHUB_WORKSPACE}/bin" >> $GITHUB_PATH
 
       - name: Setup golang for the connector and tests
         uses: actions/setup-go@v3
