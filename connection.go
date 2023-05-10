@@ -1066,6 +1066,10 @@ func (conn *Connection) putFuture(fut *Future, req Request, streamId uint64) {
 	}
 	shard.bufmut.Unlock()
 
+	if firstWritten {
+		conn.dirtyShard <- shardn
+	}
+
 	if req.Async() {
 		if fut = conn.fetchFuture(reqid); fut != nil {
 			resp := &Response{
@@ -1075,10 +1079,6 @@ func (conn *Connection) putFuture(fut *Future, req Request, streamId uint64) {
 			fut.SetResponse(resp)
 			conn.markDone(fut)
 		}
-	}
-
-	if firstWritten {
-		conn.dirtyShard <- shardn
 	}
 }
 
