@@ -23,6 +23,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 - Several non-critical data race issues (#218)
 - ConnectionPool does not properly handle disconnection with Opts.Reconnect
   set (#272)
+- Watcher events loss with a small per-request timeout (#284)
 
 ## [1.10.0] - 2022-12-31
 
