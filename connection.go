@@ -1456,10 +1456,13 @@ func (conn *Connection) newWatcherImpl(key string, callback WatchCallback) (Watc
 				st <- state
 
 				if sendAck {
-					conn.Do(newWatchRequest(key)).Get()
 					// We expect a reconnect and re-subscribe if it fails to
 					// send the watch request. So it looks ok do not check a
-					// result.
+					// result. But we need to make sure that the re-watch
+					// request will not be finished by a small per-request
+					// timeout.
+					req := newWatchRequest(key).Context(context.Background())
+					conn.Do(req).Get()
 				}
 			}
 
@@ -1477,7 +1480,12 @@ func (conn *Connection) newWatcherImpl(key string, callback WatchCallback) (Watc
 					if !conn.ClosedNow() {
 						// conn.ClosedNow() check is a workaround for calling
 						// Unregister from connectionClose().
-						conn.Do(newUnwatchRequest(key)).Get()
+						//
+						// We need to make sure that the unwatch request will
+						// not be finished by a small per-request timeout to
+						// avoid lost of the request.
+						req := newUnwatchRequest(key).Context(context.Background())
+						conn.Do(req).Get()
 					}
 					conn.watchMap.Delete(key)
 					close(state.unready)
