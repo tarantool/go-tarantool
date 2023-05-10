@@ -3835,7 +3835,7 @@ func TestConnection_NewWatcher_concurrent(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(testConcurrency)
 
-	var ret error
+	errors := make(chan error, testConcurrency)
 	for i := 0; i < testConcurrency; i++ {
 		go func(i int) {
 			defer wg.Done()
@@ -3846,21 +3846,22 @@ func TestConnection_NewWatcher_concurrent(t *testing.T) {
 				close(events)
 			})
 			if err != nil {
-				ret = err
+				errors <- err
 			} else {
 				select {
 				case <-events:
 				case <-time.After(time.Second):
-					ret = fmt.Errorf("Unable to get an event %d", i)
+					errors <- fmt.Errorf("Unable to get an event %d", i)
 				}
 				watcher.Unregister()
 			}
 		}(i)
 	}
 	wg.Wait()
+	close(errors)
 
-	if ret != nil {
-		t.Fatalf("An error found: %s", ret)
+	for err := range errors {
+		t.Errorf("An error found: %s", err)
 	}
 }
 
