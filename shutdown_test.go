@@ -418,9 +418,12 @@ func TestGracefulShutdownCloseConcurrent(t *testing.T) {
 
 			// Do not wait till Tarantool register out watcher,
 			// test everything is ok even on async.
-
-			conn := test_helpers.ConnectWithValidation(t, shtdnServer, shtdnClntOpts)
-			defer conn.Close()
+			conn, err := Connect(shtdnServer, shtdnClntOpts)
+			if err != nil {
+				t.Errorf("Failed to connect: %s", err)
+			} else {
+				defer conn.Close()
+			}
 
 			// Wait till all connections created.
 			srvToStop.Done()
