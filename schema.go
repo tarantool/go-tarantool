@@ -325,8 +325,13 @@ func (conn *Connection) loadSchema() (err error) {
 		return err
 	}
 	for _, index := range indexes {
-		schema.SpacesById[index.SpaceId].IndexesById[index.Id] = index
-		schema.SpacesById[index.SpaceId].Indexes[index.Name] = index
+		spaceId := index.SpaceId
+		if _, ok := schema.SpacesById[spaceId]; ok {
+			schema.SpacesById[spaceId].IndexesById[index.Id] = index
+			schema.SpacesById[spaceId].Indexes[index.Name] = index
+		} else {
+			return errors.New("concurrent schema update")
+		}
 	}
 
 	conn.lockShards()

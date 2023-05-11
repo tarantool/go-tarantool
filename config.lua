@@ -181,6 +181,23 @@ local function push_func(cnt)
 end
 rawset(_G, 'push_func', push_func)
 
+local function create_spaces()
+    for i=1,10 do
+        local s = box.schema.space.create('test' .. tostring(i), {
+            id = 700 + i,
+            if_not_exists = true,
+        })
+        local idx = s:create_index('test' .. tostring(i) .. 'primary', {
+            type = 'tree',
+            parts = {1, 'uint'},
+            if_not_exists = true
+        })
+        idx:drop()
+        s:drop()
+    end
+end
+rawset(_G, 'create_spaces', create_spaces)
+
 local function tarantool_version_at_least(wanted_major, wanted_minor, wanted_patch)
     -- https://github.com/tarantool/crud/blob/733528be02c1ffa3dacc12c034ee58c9903127fc/test/helper.lua#L316-L337
     local major_minor_patch = _TARANTOOL:split('-', 1)[1]

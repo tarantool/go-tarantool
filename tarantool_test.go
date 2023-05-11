@@ -3894,6 +3894,29 @@ func TestWatcher_Unregister_concurrent(t *testing.T) {
 	wg.Wait()
 }
 
+func TestConnect_schema_update(t *testing.T) {
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	defer conn.Close()
+
+	for i := 0; i < 100; i++ {
+		fut := conn.Do(NewCallRequest("create_spaces"))
+
+		if conn, err := Connect(server, opts); err != nil {
+			if err.Error() != "concurrent schema update" {
+				t.Errorf("unexpected error: %s", err)
+			}
+		} else if conn == nil {
+			t.Errorf("conn is nil")
+		} else {
+			conn.Close()
+		}
+
+		if _, err := fut.Get(); err != nil {
+			t.Errorf("Failed to call create_spaces: %s", err)
+		}
+	}
+}
+
 // runTestMain is a body of TestMain function
 // (see https://pkg.go.dev/testing#hdr-Main).
 // Using defer + os.Exit is not works so TestMain body

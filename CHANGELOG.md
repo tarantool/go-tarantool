@@ -24,6 +24,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 - ConnectionPool does not properly handle disconnection with Opts.Reconnect
   set (#272)
 - Watcher events loss with a small per-request timeout (#284)
+- Connect() panics on concurrent schema update (#278)
 
 ## [1.10.0] - 2022-12-31
 
