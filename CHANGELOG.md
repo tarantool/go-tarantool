@@ -26,6 +26,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 - ConnectionPool does not properly handle disconnection with Opts.Reconnect
   set (#272)
 - Connect() panics on concurrent schema update (#278)
+- Wrong Ttr setup by Queue.Cfg() (#278)
 
 ## [1.10.0] - 2022-12-31
 

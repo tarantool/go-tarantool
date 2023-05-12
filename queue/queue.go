@@ -143,7 +143,7 @@ func (opts CfgOpts) toMap() map[string]interface{} {
 	ret := make(map[string]interface{})
 	ret["in_replicaset"] = opts.InReplicaset
 	if opts.Ttr != 0 {
-		ret["ttr"] = opts.Ttr
+		ret["ttr"] = opts.Ttr.Seconds()
 	}
 	return ret
 }
