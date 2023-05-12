@@ -18,6 +18,8 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Changed
 
+- queue module version bumped to 1.3.0 (#278)
+
 ### Fixed
 
 - Several non-critical data race issues (#218)
