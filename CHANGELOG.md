@@ -27,6 +27,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
   set (#272)
 - Watcher events loss with a small per-request timeout (#284)
 - Connect() panics on concurrent schema update (#278)
+- Wrong Ttr setup by Queue.Cfg() (#278)
 
 ## [1.10.0] - 2022-12-31
 
