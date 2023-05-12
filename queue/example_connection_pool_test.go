@@ -61,6 +61,13 @@ func (h *QueueConnectionHandler) Discovered(conn *tarantool.Connection,
 
 	// Set up a queue module configuration for an instance.
 	q := queue.New(conn, h.name)
+
+	// Set up a queue module configuration for an instance. Ideally, this
+	// should be done before box.cfg({}) or you need to wait some time
+	// before start a work.
+	//
+	// See:
+	// https://github.com/tarantool/queue/issues/206
 	opts := queue.CfgOpts{InReplicaset: true, Ttr: 60 * time.Second}
 
 	if h.err = q.Cfg(opts); h.err != nil {

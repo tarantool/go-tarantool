@@ -25,6 +25,9 @@ end
 
 local queue = require('queue')
 rawset(_G, 'queue', queue)
+-- queue.cfg({in_replicaset = true}) should be called before box.cfg({})
+-- https://github.com/tarantool/queue/issues/206
+queue.cfg({in_replicaset = true, ttr = 60})
 
 local listen = os.getenv("TEST_TNT_LISTEN")
 box.cfg{
