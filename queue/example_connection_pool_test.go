@@ -18,12 +18,12 @@ type QueueConnectionHandler struct {
 	name string
 	cfg  queue.Cfg
 
-	uuid          uuid.UUID
-	registered    bool
-	err           error
-	mutex         sync.Mutex
-	masterUpdated chan struct{}
-	masterCnt     int32
+	uuid       uuid.UUID
+	registered bool
+	err        error
+	mutex      sync.Mutex
+	updated    chan struct{}
+	masterCnt  int32
 }
 
 // QueueConnectionHandler implements the ConnectionHandler interface.
@@ -32,9 +32,9 @@ var _ connection_pool.ConnectionHandler = &QueueConnectionHandler{}
 // NewQueueConnectionHandler creates a QueueConnectionHandler object.
 func NewQueueConnectionHandler(name string, cfg queue.Cfg) *QueueConnectionHandler {
 	return &QueueConnectionHandler{
-		name:          name,
-		cfg:           cfg,
-		masterUpdated: make(chan struct{}, 10),
+		name:    name,
+		cfg:     cfg,
+		updated: make(chan struct{}, 10),
 	}
 }
 
@@ -53,14 +53,23 @@ func (h *QueueConnectionHandler) Discovered(conn *tarantool.Connection,
 	}
 
 	master := role == connection_pool.MasterRole
-	if master {
-		defer func() {
-			h.masterUpdated <- struct{}{}
-		}()
+
+	q := queue.New(conn, h.name)
+
+	// Check is queue ready to work.
+	if state, err := q.State(); err != nil {
+		h.updated <- struct{}{}
+		h.err = err
+		return err
+	} else if master && state != queue.RunningState {
+		return fmt.Errorf("queue state is not RUNNING: %d", state)
+	} else if !master && state != queue.InitState && state != queue.WaitingState {
+		return fmt.Errorf("queue state is not INIT and not WAITING: %d", state)
 	}
 
-	// Set up a queue module configuration for an instance.
-	q := queue.New(conn, h.name)
+	defer func() {
+		h.updated <- struct{}{}
+	}()
 
 	// Set up a queue module configuration for an instance. Ideally, this
 	// should be done before box.cfg({}) or you need to wait some time
@@ -79,10 +88,6 @@ func (h *QueueConnectionHandler) Discovered(conn *tarantool.Connection,
 		return nil
 	}
 
-	if h.err = q.Create(h.cfg); h.err != nil {
-		return h.err
-	}
-
 	if !h.registered {
 		// We register a shared session at the first time.
 		if h.uuid, h.err = q.Identify(nil); h.err != nil {
@@ -94,6 +99,10 @@ func (h *QueueConnectionHandler) Discovered(conn *tarantool.Connection,
 		if _, h.err = q.Identify(&h.uuid); h.err != nil {
 			return h.err
 		}
+	}
+
+	if h.err = q.Create(h.cfg); h.err != nil {
+		return h.err
 	}
 
 	fmt.Printf("Master %s is ready to work!\n", conn.Addr())
@@ -113,7 +122,7 @@ func (h *QueueConnectionHandler) Deactivated(conn *tarantool.Connection,
 
 // Closes closes a QueueConnectionHandler object.
 func (h *QueueConnectionHandler) Close() {
-	close(h.masterUpdated)
+	close(h.updated)
 }
 
 // Example demonstrates how to use the queue package with the connection_pool
@@ -162,8 +171,10 @@ func Example_connectionPool() {
 	}
 	defer connPool.Close()
 
-	// Wait for a master instance identification in the queue.
-	<-h.masterUpdated
+	// Wait for a queue initialization and master instance identification in
+	// the queue.
+	<-h.updated
+	<-h.updated
 	if h.err != nil {
 		fmt.Printf("Unable to identify in the pool: %s", h.err)
 		return
@@ -184,14 +195,17 @@ func Example_connectionPool() {
 
 	// Switch a master instance in the pool.
 	roles := []bool{true, false}
-	err = test_helpers.SetClusterRO(servers, connOpts, roles)
-	if err != nil {
-		fmt.Printf("Unable to set cluster roles: %s", err)
-		return
+	for {
+		err := test_helpers.SetClusterRO(servers, connOpts, roles)
+		if err == nil {
+			break
+		}
 	}
 
-	// Wait for a new master instance re-identification.
-	<-h.masterUpdated
+	// Wait for a replica instance connection and a new master instance
+	// re-identification.
+	<-h.updated
+	<-h.updated
 	h.mutex.Lock()
 	err = h.err
 	h.mutex.Unlock()
@@ -211,17 +225,24 @@ func Example_connectionPool() {
 		time.Sleep(poolOpts.CheckTimeout)
 	}
 
-	// Take a data from the new master instance.
-	task, err := q.Take()
-	if err != nil {
-		fmt.Println("Unable to got task:", err)
-	} else if task == nil {
-		fmt.Println("task == nil")
-	} else if task.Data() == nil {
-		fmt.Println("task.Data() == nil")
-	} else {
-		task.Ack()
-		fmt.Println("Got data:", task.Data())
+	for {
+		// Take a data from the new master instance.
+		task, err := q.Take()
+
+		if err == connection_pool.ErrNoRwInstance {
+			// It may be not registered yet by the pool.
+			continue
+		} else if err != nil {
+			fmt.Println("Unable to got task:", err)
+		} else if task == nil {
+			fmt.Println("task == nil")
+		} else if task.Data() == nil {
+			fmt.Println("task.Data() == nil")
+		} else {
+			task.Ack()
+			fmt.Println("Got data:", task.Data())
+		}
+		break
 	}
 
 	// Output:
