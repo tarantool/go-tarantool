@@ -27,7 +27,7 @@ clean:
 .PHONY: deps
 deps: clean
 	( cd ./queue/testdata; $(TTCTL) rocks install queue 1.3.0 )
-	( cd ./crud/testdata; $(TTCTL) rocks install crud 1.0.0 )
+	( cd ./crud/testdata; $(TTCTL) rocks install crud 1.1.1 )
 
 .PHONY: datetime-timezones
 datetime-timezones:
