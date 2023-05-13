@@ -104,6 +104,33 @@ var object = crud.MapObject{
 	"name": "bla",
 }
 
+func connect(t testing.TB) *tarantool.Connection {
+	for i := 0; i < 10; i++ {
+		conn, err := tarantool.Connect(server, opts)
+		if err != nil {
+			t.Fatalf("Failed to connect: %s", err)
+		}
+
+		ret := struct {
+			_msgpack struct{} `msgpack:",asArray"` //nolint: structcheck,unused
+			Result   bool
+		}{}
+		err = conn.Do(tarantool.NewCall17Request("is_ready")).GetTyped(&ret)
+		if err != nil {
+			t.Fatalf("Failed to check is_ready: %s", err)
+		}
+
+		if ret.Result {
+			return conn
+		}
+
+		time.Sleep(time.Second)
+	}
+
+	t.Fatalf("Failed to wait for a ready state connect.")
+	return nil
+}
+
 var testProcessDataCases = []struct {
 	name            string
 	expectedRespLen int
@@ -454,7 +481,7 @@ func testCrudRequestCheck(t *testing.T, req tarantool.Request,
 }
 
 func TestCrudGenerateData(t *testing.T) {
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := connect(t)
 	defer conn.Close()
 
 	for _, testCase := range testGenerateDataCases {
@@ -477,7 +504,7 @@ func TestCrudGenerateData(t *testing.T) {
 }
 
 func TestCrudProcessData(t *testing.T) {
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := connect(t)
 	defer conn.Close()
 
 	for _, testCase := range testProcessDataCases {
@@ -527,7 +554,7 @@ func TestUnflattenRows(t *testing.T) {
 		tpls       []interface{}
 	)
 
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := connect(t)
 	defer conn.Close()
 
 	// Do `replace`.
@@ -586,7 +613,7 @@ func TestUnflattenRows(t *testing.T) {
 }
 
 func TestResultWithErr(t *testing.T) {
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := connect(t)
 	defer conn.Close()
 
 	for _, testCase := range testResultWithErrCases {
@@ -601,7 +628,7 @@ func TestResultWithErr(t *testing.T) {
 }
 
 func TestBoolResult(t *testing.T) {
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := connect(t)
 	defer conn.Close()
 
 	req := crud.MakeTruncateRequest(spaceName).Opts(baseOpts)
@@ -624,7 +651,7 @@ func TestBoolResult(t *testing.T) {
 }
 
 func TestNumberResult(t *testing.T) {
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := connect(t)
 	defer conn.Close()
 
 	req := crud.MakeCountRequest(spaceName).Opts(countOpts)
@@ -665,7 +692,7 @@ func TestBaseResult(t *testing.T) {
 		},
 	}
 
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := connect(t)
 	defer conn.Close()
 
 	req := crud.MakeSelectRequest(spaceName).Opts(selectOpts)
@@ -708,7 +735,7 @@ func TestManyResult(t *testing.T) {
 		},
 	}
 
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := connect(t)
 	defer conn.Close()
 
 	req := crud.MakeReplaceManyRequest(spaceName).Tuples(tuples).Opts(opManyOpts)
@@ -733,7 +760,7 @@ func TestManyResult(t *testing.T) {
 }
 
 func TestStorageInfoResult(t *testing.T) {
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := connect(t)
 	defer conn.Close()
 
 	req := crud.MakeStorageInfoRequest().Opts(baseOpts)
