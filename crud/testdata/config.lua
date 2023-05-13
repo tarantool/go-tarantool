@@ -59,6 +59,16 @@ s:create_index('bucket_id', {
     unique = false,
 })
 
+local function is_ready_false()
+	return false
+end
+
+local function is_ready_true()
+	return true
+end
+
+rawset(_G, 'is_ready', is_ready_false)
+
 -- Setup vshard.
 _G.vshard = vshard
 box.once('guest', function()
@@ -93,7 +103,5 @@ box.schema.user.grant('test', 'execute', 'universe', nil, { if_not_exists = true
 box.schema.user.grant('test', 'create,read,write,drop,alter', 'space', nil, { if_not_exists = true })
 box.schema.user.grant('test', 'create', 'sequence', nil, { if_not_exists = true })
 
--- Set listen only when every other thing is configured.
-box.cfg{
-    listen = os.getenv("TEST_TNT_LISTEN"),
-}
+-- Set is_ready = is_ready_true only when every other thing is configured.
+rawset(_G, 'is_ready', is_ready_true)
