@@ -938,13 +938,22 @@ func runTestMain(m *testing.M) int {
 
 	defer test_helpers.StopTarantoolInstances(instances)
 
-	roles := []bool{false, true}
-	connOpts := Opts{
-		Timeout: 500 * time.Millisecond,
-		User:    "test",
-		Pass:    "test",
+	for i := 0; i < 10; i++ {
+		// We need to skip bootstrap errors and to make sure that cluster is
+		// configured.
+		roles := []bool{false, true}
+		connOpts := Opts{
+			Timeout: 500 * time.Millisecond,
+			User:    "test",
+			Pass:    "test",
+		}
+
+		err = test_helpers.SetClusterRO(serversPool, connOpts, roles)
+		if err == nil {
+			break
+		}
+		time.Sleep(time.Second)
 	}
-	err = test_helpers.SetClusterRO(serversPool, connOpts, roles)
 
 	if err != nil {
 		log.Fatalf("Failed to set roles in tarantool pool: %s", err)
