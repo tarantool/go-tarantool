@@ -14,6 +14,8 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Fixed
 
+- crud tests with Tarantool 3.0 (#293)
+
 ## [1.11.0] - 2023-05-18
 
 The release adds pagination support and wrappers for the

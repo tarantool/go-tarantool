@@ -75,12 +75,22 @@ box.once('guest', function()
     box.schema.user.grant('guest', 'super')
 end)
 local uri = 'guest@127.0.0.1:3013'
+local box_info = box.info()
+
+local replicaset_uuid
+if box_info.replicaset then
+    -- Since Tarantool 3.0.
+    replicaset_uuid = box_info.replicaset.uuid
+else
+    replicaset_uuid = box_info.cluster.uuid
+end
+
 local cfg = {
     bucket_count = 300,
     sharding = {
-        [box.info().cluster.uuid] = {
+        [replicaset_uuid] = {
             replicas = {
-                [box.info().uuid] = {
+                [box_info.uuid] = {
                     uri = uri,
                     name = 'storage',
                     master = true,
@@ -89,7 +99,7 @@ local cfg = {
         },
     },
 }
-vshard.storage.cfg(cfg, box.info().uuid)
+vshard.storage.cfg(cfg, box_info.uuid)
 vshard.router.cfg(cfg)
 vshard.router.bootstrap()
 
