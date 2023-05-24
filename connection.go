@@ -37,10 +37,10 @@ const (
 	Disconnected
 	// ReconnectFailed signals that attempt to reconnect has failed.
 	ReconnectFailed
-	// Either reconnect attempts exhausted, or explicit Close is called.
-	Closed
 	// Shutdown signals that shutdown callback is processing.
 	Shutdown
+	// Either reconnect attempts exhausted, or explicit Close is called.
+	Closed
 
 	// LogReconnectFailed is logged when reconnect attempt failed.
 	LogReconnectFailed ConnLogKind = iota + 1
@@ -108,6 +108,11 @@ func (d defaultLogger) Report(event ConnLogKind, conn *Connection, v ...interfac
 //
 // - In "Disconnected" state it rejects queries with ClientError{Code:
 // ErrConnectionNotReady}
+//
+// - In "Shutdown" state it rejects queries with ClientError{Code:
+// ErrConnectionShutdown}. The state indicates that a graceful shutdown
+// in progress. The connection waits for all active requests to
+// complete.
 //
 // - In "Closed" state it rejects queries with ClientError{Code:
 // ErrConnectionClosed}. Connection could become "Closed" when
