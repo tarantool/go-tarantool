@@ -15,6 +15,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 ### Fixed
 
 - crud tests with Tarantool 3.0 (#293)
+- SQL tests with Tarantool 3.0 (#295)
 
 ## [1.11.0] - 2023-05-18
 

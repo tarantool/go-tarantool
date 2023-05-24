@@ -481,7 +481,14 @@ func TestSQLReverseUnorderedSelectsSetting(t *testing.T) {
 	require.Equal(t, []interface{}{[]interface{}{"sql_reverse_unordered_selects", false}}, resp.Data)
 
 	// Select multiple records.
-	resp, err = conn.Execute("SELECT * FROM data;", []interface{}{})
+	query := "SELECT * FROM seqscan data;"
+	if isSeqScanOld, err := test_helpers.IsTarantoolVersionLess(3, 0, 0); err != nil {
+		t.Fatal("Could not check the Tarantool version")
+	} else if isSeqScanOld {
+		query = "SELECT * FROM data;"
+	}
+
+	resp, err = conn.Execute(query, []interface{}{})
 	require.Nil(t, err)
 	require.NotNil(t, resp)
 	require.EqualValues(t, []interface{}{"1"}, resp.Data[0])
@@ -500,7 +507,7 @@ func TestSQLReverseUnorderedSelectsSetting(t *testing.T) {
 	require.Equal(t, []interface{}{[]interface{}{"sql_reverse_unordered_selects", true}}, resp.Data)
 
 	// Select multiple records.
-	resp, err = conn.Execute("SELECT * FROM data;", []interface{}{})
+	resp, err = conn.Execute(query, []interface{}{})
 	require.Nil(t, err)
 	require.NotNil(t, resp)
 	require.EqualValues(t, []interface{}{"2"}, resp.Data[0])
