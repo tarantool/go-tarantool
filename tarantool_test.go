@@ -1330,7 +1330,8 @@ const (
 	selectPosQuery           = "SELECT id, name FROM SQL_SPACE WHERE id=? AND name=?;"
 	updateQuery              = "UPDATE SQL_SPACE SET name=? WHERE id=?;"
 	enableFullMetaDataQuery  = "SET SESSION \"sql_full_metadata\" = true;"
-	selectSpanDifQuery       = "SELECT id||id, name, id FROM SQL_SPACE WHERE name=?;"
+	selectSpanDifQueryNew    = "SELECT id||id, name, id FROM seqscan SQL_SPACE WHERE name=?;"
+	selectSpanDifQueryOld    = "SELECT id||id, name, id FROM SQL_SPACE WHERE name=?;"
 	alterTableQuery          = "ALTER TABLE SQL_SPACE RENAME TO SQL_SPACE2;"
 	insertIncrQuery          = "INSERT INTO SQL_SPACE2 VALUES (?, ?);"
 	deleteQuery              = "DELETE FROM SQL_SPACE2 WHERE name=?;"
@@ -1351,6 +1352,13 @@ func TestSQL(t *testing.T) {
 		Query string
 		Args  interface{}
 		Resp  Response
+	}
+
+	selectSpanDifQuery := selectSpanDifQueryNew
+	if isSeqScanOld, err := test_helpers.IsTarantoolVersionLess(3, 0, 0); err != nil {
+		t.Fatal("Could not check the Tarantool version")
+	} else if isSeqScanOld {
+		selectSpanDifQuery = selectSpanDifQueryOld
 	}
 
 	testCases := []testCase{
@@ -1498,7 +1506,7 @@ func TestSQL(t *testing.T) {
 
 	for i, test := range testCases {
 		resp, err := conn.Execute(test.Query, test.Args)
-		assert.NoError(t, err, "Failed to Execute, Query number: %d", i)
+		assert.NoError(t, err, "Failed to Execute, query: %s", test.Query)
 		assert.NotNil(t, resp, "Response is nil after Execute\nQuery number: %d", i)
 		for j := range resp.Data {
 			assert.Equal(t, resp.Data[j], test.Resp.Data[j], "Response data is wrong")
