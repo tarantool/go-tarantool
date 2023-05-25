@@ -1115,3 +1115,39 @@ func ExamplePingRequest_Context() {
 	// Ping Resp <nil>
 	// Ping Error context is done
 }
+
+// ExampleConnection_CloseGraceful_force demonstrates how to force close
+// a connection with graceful close in progress after a while.
+func ExampleConnection_CloseGraceful_force() {
+	conn := example_connect(opts)
+
+	eval := `local fiber = require('fiber')
+	local time = ...
+	fiber.sleep(time)
+`
+	req := tarantool.NewEvalRequest(eval).Args([]interface{}{10})
+	fut := conn.Do(req)
+
+	done := make(chan struct{})
+	go func() {
+		conn.CloseGraceful()
+		fmt.Println("Connection.CloseGraceful() done!")
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		fmt.Println("Force Connection.Close()!")
+		conn.Close()
+	}
+	<-done
+
+	fmt.Println("Result:")
+	fmt.Println(fut.Get())
+	// Output:
+	// Force Connection.Close()!
+	// Connection.CloseGraceful() done!
+	// Result:
+	// <nil> connection closed by client (0x4001)
+}
