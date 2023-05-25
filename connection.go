@@ -462,6 +462,13 @@ func (conn *Connection) Close() error {
 	return conn.closeConnection(err, true)
 }
 
+// CloseGraceful closes Connection gracefully. It waits for all requests to
+// complete.
+// After this method called, there is no way to reopen this Connection.
+func (conn *Connection) CloseGraceful() error {
+	return conn.shutdown(true)
+}
+
 // Addr returns a configured address of Tarantool socket.
 func (conn *Connection) Addr() string {
 	return conn.addr
@@ -1532,17 +1539,27 @@ func shutdownEventCallback(event WatchEvent) {
 	// step 2.
 	val, ok := event.Value.(bool)
 	if ok && val {
-		go event.Conn.shutdown()
+		go event.Conn.shutdown(false)
 	}
 }
 
-func (conn *Connection) shutdown() {
+func (conn *Connection) shutdown(forever bool) error {
 	// Forbid state changes.
 	conn.mutex.Lock()
 	defer conn.mutex.Unlock()
 
 	if !atomic.CompareAndSwapUint32(&conn.state, connConnected, connShutdown) {
-		return
+		if forever {
+			err := ClientError{ErrConnectionClosed, "connection closed by client"}
+			return conn.closeConnection(err, true)
+		}
+		return nil
+	}
+
+	if forever {
+		// We don't want to reconnect any more.
+		conn.opts.Reconnect = 0
+		conn.opts.MaxReconnects = 0
 	}
 
 	conn.cond.Broadcast()
@@ -1551,7 +1568,7 @@ func (conn *Connection) shutdown() {
 	c := conn.c
 	for {
 		if (atomic.LoadUint32(&conn.state) != connShutdown) || (c != conn.c) {
-			return
+			return nil
 		}
 		if atomic.LoadInt64(&conn.requestCnt) == 0 {
 			break
@@ -1563,14 +1580,19 @@ func (conn *Connection) shutdown() {
 		conn.cond.Wait()
 	}
 
-	// Start to reconnect based on common rules, same as in net.box.
-	// Reconnect also closes the connection: server waits until all
-	// subscribed connections are terminated.
-	// See https://www.tarantool.io/en/doc/latest/dev_guide/internals/iproto/graceful_shutdown/
-	// step 3.
-	conn.reconnectImpl(
-		ClientError{
+	if forever {
+		err := ClientError{ErrConnectionClosed, "connection closed by client"}
+		return conn.closeConnection(err, true)
+	} else {
+		// Start to reconnect based on common rules, same as in net.box.
+		// Reconnect also closes the connection: server waits until all
+		// subscribed connections are terminated.
+		// See https://www.tarantool.io/en/doc/latest/dev_guide/internals/iproto/graceful_shutdown/
+		// step 3.
+		conn.reconnectImpl(ClientError{
 			ErrConnectionClosed,
 			"connection closed after server shutdown",
 		}, conn.c)
+		return nil
+	}
 }

@@ -10,6 +10,9 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Added
 
+- Connection.CloseGraceful() unlike Connection.Close() waits for all
+  requests to complete (#257)
+
 ### Changed
 
 ### Fixed

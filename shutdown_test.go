@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	. "github.com/tarantool/go-tarantool"
 	"github.com/tarantool/go-tarantool/test_helpers"
@@ -141,6 +142,48 @@ func TestGracefulShutdown(t *testing.T) {
 	defer conn.Close()
 
 	testGracefulShutdown(t, conn, &inst)
+}
+
+func TestCloseGraceful(t *testing.T) {
+	opts := Opts{
+		User:    shtdnClntOpts.User,
+		Pass:    shtdnClntOpts.Pass,
+		Timeout: shtdnClntOpts.Timeout,
+	}
+
+	inst, err := test_helpers.StartTarantool(shtdnSrvOpts)
+	require.Nil(t, err)
+	defer test_helpers.StopTarantoolWithCleanup(inst)
+
+	conn := test_helpers.ConnectWithValidation(t, shtdnServer, opts)
+	defer conn.Close()
+
+	// Send request with sleep.
+	evalSleep := 3 // In seconds.
+	require.Lessf(t,
+		time.Duration(evalSleep)*time.Second,
+		shtdnClntOpts.Timeout,
+		"test request won't be failed by timeout")
+
+	req := NewEvalRequest(evalBody).Args([]interface{}{evalSleep, evalMsg})
+	fut := conn.Do(req)
+
+	go func() {
+		// CloseGraceful closes the connection gracefully.
+		conn.CloseGraceful()
+		// Connection is closed.
+		assert.Equal(t, true, conn.ClosedNow())
+	}()
+
+	// Check that a request rejected if graceful shutdown in progress.
+	time.Sleep((time.Duration(evalSleep) * time.Second) / 2)
+	_, err = conn.Do(NewPingRequest()).Get()
+	assert.ErrorContains(t, err, "server shutdown in progress")
+
+	// Check that a previous request was successful.
+	resp, err := fut.Get()
+	assert.Nilf(t, err, "sleep request no error")
+	assert.NotNilf(t, resp, "sleep response exists")
 }
 
 func TestGracefulShutdownWithReconnect(t *testing.T) {
