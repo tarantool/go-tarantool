@@ -281,6 +281,64 @@ func TestClose(t *testing.T) {
 	require.Nil(t, err)
 }
 
+func TestCloseGraceful(t *testing.T) {
+	server1 := servers[0]
+	server2 := servers[1]
+
+	connPool, err := connection_pool.Connect([]string{server1, server2}, connOpts)
+	require.Nilf(t, err, "failed to connect")
+	require.NotNilf(t, connPool, "conn is nil after Connect")
+
+	args := test_helpers.CheckStatusesArgs{
+		ConnPool:           connPool,
+		Mode:               connection_pool.ANY,
+		Servers:            []string{server1, server2},
+		ExpectedPoolStatus: true,
+		ExpectedStatuses: map[string]bool{
+			server1: true,
+			server2: true,
+		},
+	}
+
+	err = test_helpers.CheckPoolStatuses(args)
+	require.Nil(t, err)
+
+	eval := `local fiber = require('fiber')
+	local time = ...
+	fiber.sleep(time)
+`
+	evalSleep := 3 // In seconds.
+	req := tarantool.NewEvalRequest(eval).Args([]interface{}{evalSleep})
+	fut := connPool.Do(req, connection_pool.ANY)
+	go func() {
+		connPool.CloseGraceful()
+	}()
+
+	// Check that a request rejected if graceful shutdown in progress.
+	time.Sleep((time.Duration(evalSleep) * time.Second) / 2)
+	_, err = connPool.Do(tarantool.NewPingRequest(), connection_pool.ANY).Get()
+	require.ErrorContains(t, err, "can't find healthy instance in pool")
+
+	// Check that a previous request was successful.
+	resp, err := fut.Get()
+	require.Nilf(t, err, "sleep request no error")
+	require.NotNilf(t, resp, "sleep response exists")
+
+	args = test_helpers.CheckStatusesArgs{
+		ConnPool:           connPool,
+		Mode:               connection_pool.ANY,
+		Servers:            []string{server1, server2},
+		ExpectedPoolStatus: false,
+		ExpectedStatuses: map[string]bool{
+			server1: false,
+			server2: false,
+		},
+	}
+
+	err = test_helpers.Retry(test_helpers.CheckPoolStatuses, args, defaultCountRetry, defaultTimeoutRetry)
+	require.Nil(t, err)
+}
+
 type testHandler struct {
 	discovered, deactivated uint32
 	errs                    []error
@@ -572,9 +630,8 @@ func TestGetPoolInfo(t *testing.T) {
 
 	srvs[0] = "x"
 	connPool.GetAddrs()[1] = "y"
-	for i, addr := range connPool.GetAddrs() {
-		require.Equal(t, expected[i], addr)
-	}
+
+	require.ElementsMatch(t, expected, connPool.GetAddrs())
 }
 
 func TestCall17(t *testing.T) {

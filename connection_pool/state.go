@@ -10,6 +10,7 @@ type state uint32
 const (
 	unknownState state = iota
 	connectedState
+	shutdownState
 	closedState
 )
 
