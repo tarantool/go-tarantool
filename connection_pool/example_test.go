@@ -926,3 +926,43 @@ func ExampleConnectorAdapter() {
 	// Ping Data []
 	// Ping Error <nil>
 }
+
+// ExampleConnectionPool_CloseGraceful_force demonstrates how to force close
+// a connection pool with graceful close in progress after a while.
+func ExampleConnectionPool_CloseGraceful_force() {
+	pool, err := examplePool(testRoles, connOpts)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	eval := `local fiber = require('fiber')
+	local time = ...
+	fiber.sleep(time)
+`
+	req := tarantool.NewEvalRequest(eval).Args([]interface{}{10})
+	fut := pool.Do(req, connection_pool.ANY)
+
+	done := make(chan struct{})
+	go func() {
+		pool.CloseGraceful()
+		fmt.Println("ConnectionPool.CloseGraceful() done!")
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(3 * time.Second):
+		fmt.Println("Force ConnectionPool.Close()!")
+		pool.Close()
+	}
+	<-done
+
+	fmt.Println("Result:")
+	fmt.Println(fut.Get())
+	// Output:
+	// Force ConnectionPool.Close()!
+	// ConnectionPool.CloseGraceful() done!
+	// Result:
+	// <nil> connection closed by client (0x4001)
+}
