@@ -10,6 +10,18 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [1.12.0] - 2023-06-07
+
+The release introduces the ability to gracefully close Connection
+and ConnectionPool and also provides methods for adding or removing an endpoint
+from a ConnectionPool.
+
+### Added
+
 - Connection.CloseGraceful() unlike Connection.Close() waits for all
   requests to complete (#257)
 - ConnectionPool.CloseGraceful() unlike ConnectionPool.Close() waits for all
