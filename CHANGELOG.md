@@ -14,6 +14,8 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
   requests to complete (#257)
 - ConnectionPool.CloseGraceful() unlike ConnectionPool.Close() waits for all
   requests to complete (#257)
+- ConnectionPool.Add()/ConnectionPool.Remove() to add/remove endpoints
+  from a pool (#290)
 
 ### Changed
 

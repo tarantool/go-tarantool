@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tarantool/go-tarantool"
 	"github.com/tarantool/go-tarantool/connection_pool"
@@ -240,6 +241,305 @@ func TestDisconnectAll(t *testing.T) {
 
 	err = test_helpers.Retry(test_helpers.CheckPoolStatuses, args, defaultCountRetry, defaultTimeoutRetry)
 	require.Nil(t, err)
+}
+
+func TestAdd(t *testing.T) {
+	connPool, err := connection_pool.Connect([]string{servers[0]}, connOpts)
+	require.Nilf(t, err, "failed to connect")
+	require.NotNilf(t, connPool, "conn is nil after Connect")
+
+	defer connPool.Close()
+
+	for _, server := range servers[1:] {
+		err = connPool.Add(server)
+		require.Nil(t, err)
+	}
+
+	args := test_helpers.CheckStatusesArgs{
+		ConnPool:           connPool,
+		Mode:               connection_pool.ANY,
+		Servers:            servers,
+		ExpectedPoolStatus: true,
+		ExpectedStatuses: map[string]bool{
+			servers[0]: true,
+			servers[1]: true,
+			servers[2]: true,
+			servers[3]: true,
+			servers[4]: true,
+		},
+	}
+
+	err = test_helpers.Retry(test_helpers.CheckPoolStatuses, args,
+		defaultCountRetry, defaultTimeoutRetry)
+	require.Nil(t, err)
+}
+
+func TestAdd_exist(t *testing.T) {
+	connPool, err := connection_pool.Connect([]string{servers[0]}, connOpts)
+	require.Nilf(t, err, "failed to connect")
+	require.NotNilf(t, connPool, "conn is nil after Connect")
+
+	defer connPool.Close()
+
+	err = connPool.Add(servers[0])
+	require.ErrorContains(t, err, "endpoint exist")
+
+	args := test_helpers.CheckStatusesArgs{
+		ConnPool:           connPool,
+		Mode:               connection_pool.ANY,
+		Servers:            servers,
+		ExpectedPoolStatus: true,
+		ExpectedStatuses: map[string]bool{
+			servers[0]: true,
+		},
+	}
+
+	err = test_helpers.Retry(test_helpers.CheckPoolStatuses, args,
+		defaultCountRetry, defaultTimeoutRetry)
+	require.Nil(t, err)
+}
+
+func TestAdd_unreachable(t *testing.T) {
+	connPool, err := connection_pool.Connect([]string{servers[0]}, connOpts)
+	require.Nilf(t, err, "failed to connect")
+	require.NotNilf(t, connPool, "conn is nil after Connect")
+
+	defer connPool.Close()
+
+	err = connPool.Add("127.0.0.2:6667")
+	// The OS-dependent error so we just check for existence.
+	require.NotNil(t, err)
+
+	args := test_helpers.CheckStatusesArgs{
+		ConnPool:           connPool,
+		Mode:               connection_pool.ANY,
+		Servers:            servers,
+		ExpectedPoolStatus: true,
+		ExpectedStatuses: map[string]bool{
+			servers[0]: true,
+		},
+	}
+
+	err = test_helpers.Retry(test_helpers.CheckPoolStatuses, args,
+		defaultCountRetry, defaultTimeoutRetry)
+	require.Nil(t, err)
+}
+
+func TestAdd_afterClose(t *testing.T) {
+	connPool, err := connection_pool.Connect([]string{servers[0]}, connOpts)
+	require.Nilf(t, err, "failed to connect")
+	require.NotNilf(t, connPool, "conn is nil after Connect")
+
+	connPool.Close()
+	err = connPool.Add(servers[0])
+	assert.Equal(t, err, connection_pool.ErrClosed)
+}
+
+func TestAdd_Close_concurrent(t *testing.T) {
+	connPool, err := connection_pool.Connect([]string{servers[0]}, connOpts)
+	require.Nilf(t, err, "failed to connect")
+	require.NotNilf(t, connPool, "conn is nil after Connect")
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		err = connPool.Add(servers[0])
+		if err != nil {
+			assert.Equal(t, err, connection_pool.ErrClosed)
+		}
+	}()
+
+	connPool.Close()
+
+	wg.Wait()
+}
+
+func TestAdd_CloseGraceful_concurrent(t *testing.T) {
+	connPool, err := connection_pool.Connect([]string{servers[0]}, connOpts)
+	require.Nilf(t, err, "failed to connect")
+	require.NotNilf(t, connPool, "conn is nil after Connect")
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		err = connPool.Add(servers[0])
+		if err != nil {
+			assert.Equal(t, err, connection_pool.ErrClosed)
+		}
+	}()
+
+	connPool.CloseGraceful()
+
+	wg.Wait()
+}
+
+func TestRemove(t *testing.T) {
+	connPool, err := connection_pool.Connect(servers, connOpts)
+	require.Nilf(t, err, "failed to connect")
+	require.NotNilf(t, connPool, "conn is nil after Connect")
+
+	defer connPool.Close()
+
+	for _, server := range servers[1:] {
+		err = connPool.Remove(server)
+		require.Nil(t, err)
+	}
+
+	args := test_helpers.CheckStatusesArgs{
+		ConnPool:           connPool,
+		Mode:               connection_pool.ANY,
+		Servers:            servers,
+		ExpectedPoolStatus: true,
+		ExpectedStatuses: map[string]bool{
+			servers[0]: true,
+		},
+	}
+
+	err = test_helpers.Retry(test_helpers.CheckPoolStatuses, args,
+		defaultCountRetry, defaultTimeoutRetry)
+	require.Nil(t, err)
+}
+
+func TestRemove_double(t *testing.T) {
+	connPool, err := connection_pool.Connect([]string{servers[0], servers[1]}, connOpts)
+	require.Nilf(t, err, "failed to connect")
+	require.NotNilf(t, connPool, "conn is nil after Connect")
+
+	defer connPool.Close()
+
+	err = connPool.Remove(servers[1])
+	require.Nil(t, err)
+	err = connPool.Remove(servers[1])
+	require.ErrorContains(t, err, "endpoint not exist")
+
+	args := test_helpers.CheckStatusesArgs{
+		ConnPool:           connPool,
+		Mode:               connection_pool.ANY,
+		Servers:            servers,
+		ExpectedPoolStatus: true,
+		ExpectedStatuses: map[string]bool{
+			servers[0]: true,
+		},
+	}
+
+	err = test_helpers.Retry(test_helpers.CheckPoolStatuses, args,
+		defaultCountRetry, defaultTimeoutRetry)
+	require.Nil(t, err)
+}
+
+func TestRemove_unknown(t *testing.T) {
+	connPool, err := connection_pool.Connect([]string{servers[0], servers[1]}, connOpts)
+	require.Nilf(t, err, "failed to connect")
+	require.NotNilf(t, connPool, "conn is nil after Connect")
+
+	defer connPool.Close()
+
+	err = connPool.Remove("not_exist:6667")
+	require.ErrorContains(t, err, "endpoint not exist")
+
+	args := test_helpers.CheckStatusesArgs{
+		ConnPool:           connPool,
+		Mode:               connection_pool.ANY,
+		Servers:            servers,
+		ExpectedPoolStatus: true,
+		ExpectedStatuses: map[string]bool{
+			servers[0]: true,
+			servers[1]: true,
+		},
+	}
+
+	err = test_helpers.Retry(test_helpers.CheckPoolStatuses, args,
+		defaultCountRetry, defaultTimeoutRetry)
+	require.Nil(t, err)
+}
+
+func TestRemove_concurrent(t *testing.T) {
+	connPool, err := connection_pool.Connect([]string{servers[0], servers[1]}, connOpts)
+	require.Nilf(t, err, "failed to connect")
+	require.NotNilf(t, connPool, "conn is nil after Connect")
+
+	defer connPool.Close()
+
+	const concurrency = 10
+	var (
+		wg   sync.WaitGroup
+		ok   uint32
+		errs uint32
+	)
+
+	wg.Add(concurrency)
+	for i := 0; i < concurrency; i++ {
+		go func() {
+			defer wg.Done()
+			err := connPool.Remove(servers[1])
+			if err == nil {
+				atomic.AddUint32(&ok, 1)
+			} else {
+				assert.ErrorContains(t, err, "endpoint not exist")
+				atomic.AddUint32(&errs, 1)
+			}
+		}()
+	}
+
+	wg.Wait()
+	assert.Equal(t, uint32(1), ok)
+	assert.Equal(t, uint32(concurrency-1), errs)
+
+	args := test_helpers.CheckStatusesArgs{
+		ConnPool:           connPool,
+		Mode:               connection_pool.ANY,
+		Servers:            servers,
+		ExpectedPoolStatus: true,
+		ExpectedStatuses: map[string]bool{
+			servers[0]: true,
+		},
+	}
+
+	err = test_helpers.Retry(test_helpers.CheckPoolStatuses, args,
+		defaultCountRetry, defaultTimeoutRetry)
+	require.Nil(t, err)
+}
+
+func TestRemove_Close_concurrent(t *testing.T) {
+	connPool, err := connection_pool.Connect([]string{servers[0], servers[1]}, connOpts)
+	require.Nilf(t, err, "failed to connect")
+	require.NotNilf(t, connPool, "conn is nil after Connect")
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		err = connPool.Remove(servers[1])
+		assert.Nil(t, err)
+	}()
+
+	connPool.Close()
+
+	wg.Wait()
+}
+
+func TestRemove_CloseGraceful_concurrent(t *testing.T) {
+	connPool, err := connection_pool.Connect([]string{servers[0], servers[1]}, connOpts)
+	require.Nilf(t, err, "failed to connect")
+	require.NotNilf(t, connPool, "conn is nil after Connect")
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		err = connPool.Remove(servers[1])
+		assert.Nil(t, err)
+	}()
+
+	connPool.CloseGraceful()
+
+	wg.Wait()
 }
 
 func TestClose(t *testing.T) {
