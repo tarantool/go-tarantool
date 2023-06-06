@@ -345,9 +345,9 @@ func TestAdd_Close_concurrent(t *testing.T) {
 	go func() {
 		defer wg.Done()
 
-		err = connPool.Add(servers[0])
+		err = connPool.Add(servers[1])
 		if err != nil {
-			assert.Equal(t, err, connection_pool.ErrClosed)
+			assert.Equal(t, connection_pool.ErrClosed, err)
 		}
 	}()
 
@@ -366,9 +366,9 @@ func TestAdd_CloseGraceful_concurrent(t *testing.T) {
 	go func() {
 		defer wg.Done()
 
-		err = connPool.Add(servers[0])
+		err = connPool.Add(servers[1])
 		if err != nil {
-			assert.Equal(t, err, connection_pool.ErrClosed)
+			assert.Equal(t, connection_pool.ErrClosed, err)
 		}
 	}()
 
