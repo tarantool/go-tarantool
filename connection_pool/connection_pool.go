@@ -30,6 +30,7 @@ var (
 	ErrNoRwInstance      = errors.New("can't find rw instance in pool")
 	ErrNoRoInstance      = errors.New("can't find ro instance in pool")
 	ErrNoHealthyInstance = errors.New("can't find healthy instance in pool")
+	ErrExists            = errors.New("endpoint exists")
 	ErrClosed            = errors.New("pool is closed")
 )
 
@@ -233,7 +234,7 @@ func (pool *ConnectionPool) Add(addr string) error {
 	}
 	if _, ok := pool.addrs[addr]; ok {
 		pool.addrsMutex.Unlock()
-		return errors.New("endpoint exist")
+		return ErrExists
 	}
 	pool.addrs[addr] = e
 	pool.addrsMutex.Unlock()

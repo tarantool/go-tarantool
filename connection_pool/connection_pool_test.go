@@ -282,7 +282,7 @@ func TestAdd_exist(t *testing.T) {
 	defer connPool.Close()
 
 	err = connPool.Add(servers[0])
-	require.ErrorContains(t, err, "endpoint exist")
+	require.Equal(t, connection_pool.ErrExists, err)
 
 	args := test_helpers.CheckStatusesArgs{
 		ConnPool:           connPool,
