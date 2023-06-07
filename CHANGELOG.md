@@ -14,6 +14,8 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Fixed
 
+- Flaky decimal/TestSelect (#300)
+
 ## [1.12.0] - 2023-06-07
 
 The release introduces the ability to gracefully close Connection

@@ -19,7 +19,7 @@ var isDecimalSupported = false
 
 var server = "127.0.0.1:3013"
 var opts = Opts{
-	Timeout: 500 * time.Millisecond,
+	Timeout: 5 * time.Second,
 	User:    "test",
 	Pass:    "test",
 }
