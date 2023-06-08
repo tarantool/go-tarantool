@@ -1908,7 +1908,7 @@ func TestSchema(t *testing.T) {
 	if space.Engine != "memtx" {
 		t.Errorf("space 616 engine should be memtx")
 	}
-	if space.FieldsCount != 7 {
+	if space.FieldsCount != 8 {
 		t.Errorf("space 616 has incorrect fields count")
 	}
 
@@ -1918,10 +1918,10 @@ func TestSchema(t *testing.T) {
 	if space.Fields == nil {
 		t.Errorf("space.Fields is nill")
 	}
-	if len(space.FieldsById) != 6 {
+	if len(space.FieldsById) != 7 {
 		t.Errorf("space.FieldsById len is incorrect")
 	}
-	if len(space.Fields) != 6 {
+	if len(space.Fields) != 7 {
 		t.Errorf("space.Fields len is incorrect")
 	}
 
@@ -2042,6 +2042,39 @@ func TestSchema(t *testing.T) {
 	_, _, err = schema.ResolveSpaceIndex("schematest", "secondary22")
 	if err == nil {
 		t.Errorf("ResolveSpaceIndex didn't returned error with not existing index name")
+	}
+}
+
+func TestSchema_IsNullable(t *testing.T) {
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	defer conn.Close()
+
+	schema := conn.Schema
+	if schema.Spaces == nil {
+		t.Errorf("schema.Spaces is nil")
+	}
+
+	var space *Space
+	var ok bool
+	if space, ok = schema.SpacesById[616]; !ok {
+		t.Errorf("space with id = 616 was not found in schema.SpacesById")
+	}
+
+	var field, field_nullable *Field
+	for i := 0; i <= 5; i++ {
+		name := fmt.Sprintf("name%d", i)
+		if field, ok = space.Fields[name]; !ok {
+			t.Errorf("field name = %s was not found", name)
+		}
+		if field.IsNullable {
+			t.Errorf("field %s has incorrect IsNullable", name)
+		}
+	}
+	if field_nullable, ok = space.Fields["nullable"]; !ok {
+		t.Errorf("field name = nullable was not found")
+	}
+	if !field_nullable.IsNullable {
+		t.Errorf("field nullable has incorrect IsNullable")
 	}
 }
 
