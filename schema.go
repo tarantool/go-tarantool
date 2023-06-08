@@ -153,9 +153,10 @@ func (space *Space) DecodeMsgpack(d *msgpack.Decoder) error {
 
 // Field is a schema field.
 type Field struct {
-	Id   uint32
-	Name string
-	Type string
+	Id         uint32
+	Name       string
+	Type       string
+	IsNullable bool
 }
 
 func (field *Field) DecodeMsgpack(d *msgpack.Decoder) error {
@@ -175,6 +176,10 @@ func (field *Field) DecodeMsgpack(d *msgpack.Decoder) error {
 			}
 		case "type":
 			if field.Type, err = d.DecodeString(); err != nil {
+				return err
+			}
+		case "is_nullable":
+			if field.IsNullable, err = d.DecodeBool(); err != nil {
 				return err
 			}
 		default:
