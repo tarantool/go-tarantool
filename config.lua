@@ -16,7 +16,7 @@ box.once("init", function()
         id = 616,
         temporary = true,
         if_not_exists = true,
-        field_count = 7,
+        field_count = 8,
         format = {
             {name = "name0", type = "unsigned"},
             {name = "name1", type = "unsigned"},
@@ -24,6 +24,7 @@ box.once("init", function()
             {name = "name3", type = "unsigned"},
             {name = "name4", type = "unsigned"},
             {name = "name5", type = "string"},
+            {name = "nullable", is_nullable = true},
         },
     })
     st:create_index('primary', {
