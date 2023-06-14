@@ -115,17 +115,19 @@ jobs:
 
   run-tests-ee:
     # The same as for run-tests-ce, but it does not run on pull requests from
-    # forks by default. Tests will run only when the pull request is labeled
-    # with `full-ci`. To avoid security problems, the label must be reset
-    # manually for every run.
+    # forks and on forks by default. Tests from forks will run only when the
+    # pull request is labeled with `full-ci`. To avoid security problems, the
+    # label must be reset manually for every run.
     #
     # We need to use `pull_request_target` because it has access to base
     # repository secrets unlike `pull_request`.
-    if: (github.event_name == 'push') ||
-      (github.event_name == 'pull_request_target' &&
-        github.event.pull_request.head.repo.full_name != github.repository &&
-        github.event.label.name == 'full-ci') ||
-      (github.event_name == 'workflow_dispatch')
+    if: |
+      github.repository == 'tarantool/go-tarantool' &&
+      (github.event_name == 'push' ||
+        (github.event_name == 'pull_request_target' &&
+          github.event.pull_request.head.repo.full_name != github.repository &&
+          github.event.label.name == 'full-ci')) ||
+      github.event_name == 'workflow_dispatch'
 
     runs-on: ubuntu-latest
 
