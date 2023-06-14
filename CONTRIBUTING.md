@@ -5,7 +5,7 @@
 Clone the repository and install dependencies.
 
 ```sh
-$ git clone git@github.com:/tarantool/go-tarantool
+$ git clone https://github.com/tarantool/go-tarantool
 $ cd go-tarantool
 $ go get .
 ```
@@ -36,8 +36,8 @@ afterwards.
 
 If you want to run the tests with specific build tags:
 ```bash
-make test TAGS=go_tarantool_ssl_disable,go_tarantool_msgpack_v5
-make testrace TAGS=go_tarantool_ssl_disable,go_tarantool_msgpack_v5
+make test TAGS=go_tarantool_ssl_disable
+make testrace TAGS=go_tarantool_ssl_disable
 ```
 
 If you have Tarantool Enterprise Edition 2.10 or newer, you can run additional
@@ -52,9 +52,9 @@ If you want to run the tests for a specific package:
 ```bash
 make test-<SUBDIR>
 ```
-For example, for running tests in `multi`, `uuid` and `main` packages, call
+For example, for running tests in `pool`, `uuid` and `main` packages, call
 ```bash
-make test-multi test-uuid test-main
+make test-pool test-uuid test-main
 ```
 
 To run [fuzz tests](https://go.dev/doc/tutorial/fuzz) for the main package and each subpackage:
