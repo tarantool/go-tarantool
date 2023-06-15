@@ -23,7 +23,6 @@ import (
 var spaceNo = uint32(520)
 var spaceName = "testPool"
 var indexNo = uint32(0)
-var indexName = "pk"
 
 var ports = []string{"3013", "3014", "3015", "3016", "3017"}
 var host = "127.0.0.1"
@@ -1647,7 +1646,12 @@ func TestInsert(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, servers[2], connOpts)
 	defer conn.Close()
 
-	resp, err = conn.Select(spaceNo, indexNo, 0, 1, tarantool.IterEq, []interface{}{"rw_insert_key"})
+	sel := tarantool.NewSelectRequest(spaceNo).
+		Index(indexNo).
+		Limit(1).
+		Iterator(tarantool.IterEq).
+		Key([]interface{}{"rw_insert_key"})
+	resp, err = conn.Do(sel).Get()
 	require.Nilf(t, err, "failed to Select")
 	require.NotNilf(t, resp, "response is nil after Select")
 	require.Equalf(t, len(resp.Data), 1, "response Body len != 1 after Select")
@@ -1682,7 +1686,12 @@ func TestInsert(t *testing.T) {
 	require.Truef(t, ok, "unexpected body of Insert (1)")
 	require.Equalf(t, "preferRW_insert_value", value, "unexpected body of Insert (1)")
 
-	resp, err = conn.Select(spaceNo, indexNo, 0, 1, tarantool.IterEq, []interface{}{"preferRW_insert_key"})
+	sel = tarantool.NewSelectRequest(spaceNo).
+		Index(indexNo).
+		Limit(1).
+		Iterator(tarantool.IterEq).
+		Key([]interface{}{"preferRW_insert_key"})
+	resp, err = conn.Do(sel).Get()
 	require.Nilf(t, err, "failed to Select")
 	require.NotNilf(t, resp, "response is nil after Select")
 	require.Equalf(t, len(resp.Data), 1, "response Body len != 1 after Select")
@@ -1717,7 +1726,8 @@ func TestDelete(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, servers[2], connOpts)
 	defer conn.Close()
 
-	resp, err := conn.Insert(spaceNo, []interface{}{"delete_key", "delete_value"})
+	ins := tarantool.NewInsertRequest(spaceNo).Tuple([]interface{}{"delete_key", "delete_value"})
+	resp, err := conn.Do(ins).Get()
 	require.Nilf(t, err, "failed to Insert")
 	require.NotNilf(t, resp, "response is nil after Insert")
 	require.Equalf(t, len(resp.Data), 1, "response Body len != 1 after Insert")
@@ -1752,7 +1762,12 @@ func TestDelete(t *testing.T) {
 	require.Truef(t, ok, "unexpected body of Delete (1)")
 	require.Equalf(t, "delete_value", value, "unexpected body of Delete (1)")
 
-	resp, err = conn.Select(spaceNo, indexNo, 0, 1, tarantool.IterEq, []interface{}{"delete_key"})
+	sel := tarantool.NewSelectRequest(spaceNo).
+		Index(indexNo).
+		Limit(1).
+		Iterator(tarantool.IterEq).
+		Key([]interface{}{"delete_key"})
+	resp, err = conn.Do(sel).Get()
 	require.Nilf(t, err, "failed to Select")
 	require.NotNilf(t, resp, "response is nil after Select")
 	require.Equalf(t, 0, len(resp.Data), "response Body len != 0 after Select")
@@ -1780,7 +1795,12 @@ func TestUpsert(t *testing.T) {
 	require.Nilf(t, err, "failed to Upsert")
 	require.NotNilf(t, resp, "response is nil after Upsert")
 
-	resp, err = conn.Select(spaceNo, indexNo, 0, 1, tarantool.IterEq, []interface{}{"upsert_key"})
+	sel := tarantool.NewSelectRequest(spaceNo).
+		Index(indexNo).
+		Limit(1).
+		Iterator(tarantool.IterEq).
+		Key([]interface{}{"upsert_key"})
+	resp, err = conn.Do(sel).Get()
 	require.Nilf(t, err, "failed to Select")
 	require.NotNilf(t, resp, "response is nil after Select")
 	require.Equalf(t, len(resp.Data), 1, "response Body len != 1 after Select")
@@ -1805,7 +1825,7 @@ func TestUpsert(t *testing.T) {
 	require.Nilf(t, err, "failed to Upsert")
 	require.NotNilf(t, resp, "response is nil after Upsert")
 
-	resp, err = conn.Select(spaceNo, indexNo, 0, 1, tarantool.IterEq, []interface{}{"upsert_key"})
+	resp, err = conn.Do(sel).Get()
 	require.Nilf(t, err, "failed to Select")
 	require.NotNilf(t, resp, "response is nil after Select")
 	require.Equalf(t, len(resp.Data), 1, "response Body len != 1 after Select")
@@ -1840,7 +1860,9 @@ func TestUpdate(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, servers[2], connOpts)
 	defer conn.Close()
 
-	resp, err := conn.Insert(spaceNo, []interface{}{"update_key", "update_value"})
+	ins := tarantool.NewInsertRequest(spaceNo).
+		Tuple([]interface{}{"update_key", "update_value"})
+	resp, err := conn.Do(ins).Get()
 	require.Nilf(t, err, "failed to Insert")
 	require.NotNilf(t, resp, "response is nil after Insert")
 	require.Equalf(t, len(resp.Data), 1, "response Body len != 1 after Insert")
@@ -1862,7 +1884,12 @@ func TestUpdate(t *testing.T) {
 	require.Nilf(t, err, "failed to Update")
 	require.NotNilf(t, resp, "response is nil after Update")
 
-	resp, err = conn.Select(spaceNo, indexNo, 0, 1, tarantool.IterEq, []interface{}{"update_key"})
+	sel := tarantool.NewSelectRequest(spaceNo).
+		Index(indexNo).
+		Limit(1).
+		Iterator(tarantool.IterEq).
+		Key([]interface{}{"update_key"})
+	resp, err = conn.Do(sel).Get()
 	require.Nilf(t, err, "failed to Select")
 	require.NotNilf(t, resp, "response is nil after Select")
 	require.Equalf(t, len(resp.Data), 1, "response Body len != 1 after Select")
@@ -1887,7 +1914,7 @@ func TestUpdate(t *testing.T) {
 	require.Nilf(t, err, "failed to Update")
 	require.NotNilf(t, resp, "response is nil after Update")
 
-	resp, err = conn.Select(spaceNo, indexNo, 0, 1, tarantool.IterEq, []interface{}{"update_key"})
+	resp, err = conn.Do(sel).Get()
 	require.Nilf(t, err, "failed to Select")
 	require.NotNilf(t, resp, "response is nil after Select")
 	require.Equalf(t, len(resp.Data), 1, "response Body len != 1 after Select")
@@ -1922,7 +1949,9 @@ func TestReplace(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, servers[2], connOpts)
 	defer conn.Close()
 
-	resp, err := conn.Insert(spaceNo, []interface{}{"replace_key", "replace_value"})
+	ins := tarantool.NewInsertRequest(spaceNo).
+		Tuple([]interface{}{"replace_key", "replace_value"})
+	resp, err := conn.Do(ins).Get()
 	require.Nilf(t, err, "failed to Insert")
 	require.NotNilf(t, resp, "response is nil after Insert")
 	require.Equalf(t, len(resp.Data), 1, "response Body len != 1 after Insert")
@@ -1944,7 +1973,12 @@ func TestReplace(t *testing.T) {
 	require.Nilf(t, err, "failed to Replace")
 	require.NotNilf(t, resp, "response is nil after Replace")
 
-	resp, err = conn.Select(spaceNo, indexNo, 0, 1, tarantool.IterEq, []interface{}{"new_key"})
+	sel := tarantool.NewSelectRequest(spaceNo).
+		Index(indexNo).
+		Limit(1).
+		Iterator(tarantool.IterEq).
+		Key([]interface{}{"new_key"})
+	resp, err = conn.Do(sel).Get()
 	require.Nilf(t, err, "failed to Select")
 	require.NotNilf(t, resp, "response is nil after Select")
 	require.Equalf(t, len(resp.Data), 1, "response Body len != 1 after Select")
@@ -1966,7 +2000,7 @@ func TestReplace(t *testing.T) {
 	require.Nilf(t, err, "failed to Replace")
 	require.NotNilf(t, resp, "response is nil after Replace")
 
-	resp, err = conn.Select(spaceNo, indexNo, 0, 1, tarantool.IterEq, []interface{}{"new_key"})
+	resp, err = conn.Do(sel).Get()
 	require.Nilf(t, err, "failed to Select")
 	require.NotNilf(t, resp, "response is nil after Select")
 	require.Equalf(t, len(resp.Data), 1, "response Body len != 1 after Select")

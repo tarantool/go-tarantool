@@ -37,7 +37,9 @@ func Example() {
 		log.Fatalf("Failed to prepare uuid: %s", uuidErr)
 	}
 
-	resp, err := client.Replace(spaceNo, []interface{}{id})
+	resp, err := client.Do(tarantool.NewReplaceRequest(spaceNo).
+		Tuple([]interface{}{id}),
+	).Get()
 
 	fmt.Println("UUID tuple replace")
 	fmt.Println("Error", err)

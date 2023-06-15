@@ -20,6 +20,15 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 - Use msgpack/v5 instead of msgpack.v2 (#236)
 - Call/NewCallRequest = Call17/NewCall17Request (#235)
 
+### Deprecated
+
+- All Connection.<Request>, Connection.<Request>Typed and
+  Connection.<Request>Async methods. Instead you should use requests objects +
+  Connection.Do() (#241)
+- All ConnectionPool.<Request>, ConnectionPool.<Request>Typed and
+  ConnectionPool.<Request>Async methods. Instead you should use requests
+  objects + ConnectionPool.Do() (#241)
+
 ### Removed
 
 - multi subpackage (#240)

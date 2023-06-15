@@ -45,7 +45,9 @@ func Example() {
 	index := "primary"
 
 	// Replace a tuple with datetime.
-	resp, err := conn.Replace(space, []interface{}{dt})
+	resp, err := conn.Do(tarantool.NewReplaceRequest(space).
+		Tuple([]interface{}{dt}),
+	).Get()
 	if err != nil {
 		fmt.Printf("Error in replace is %v", err)
 		return
@@ -58,7 +60,13 @@ func Example() {
 	// Select a tuple with datetime.
 	var offset uint32 = 0
 	var limit uint32 = 1
-	resp, err = conn.Select(space, index, offset, limit, tarantool.IterEq, []interface{}{dt})
+	resp, err = conn.Do(tarantool.NewSelectRequest(space).
+		Index(index).
+		Offset(offset).
+		Limit(limit).
+		Iterator(tarantool.IterEq).
+		Key([]interface{}{dt}),
+	).Get()
 	if err != nil {
 		fmt.Printf("Error in select is %v", err)
 		return
@@ -69,7 +77,10 @@ func Example() {
 	fmt.Printf("Data: %v\n", respDt.ToTime())
 
 	// Delete a tuple with datetime.
-	resp, err = conn.Delete(space, index, []interface{}{dt})
+	resp, err = conn.Do(tarantool.NewDeleteRequest(space).
+		Index(index).
+		Key([]interface{}{dt}),
+	).Get()
 	if err != nil {
 		fmt.Printf("Error in delete is %v", err)
 		return

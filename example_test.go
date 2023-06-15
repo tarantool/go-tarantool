@@ -18,7 +18,7 @@ type Tuple struct {
 	Name     string
 }
 
-func example_connect(opts tarantool.Opts) *tarantool.Connection {
+func exampleConnect(opts tarantool.Opts) *tarantool.Connection {
 	conn, err := tarantool.Connect(server, opts)
 	if err != nil {
 		panic("Connection is not established: " + err.Error())
@@ -44,214 +44,340 @@ func ExampleSslOpts() {
 	}
 }
 
-func ExampleConnection_Select() {
-	conn := example_connect(opts)
-	defer conn.Close()
-
-	conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
-	conn.Replace(spaceNo, []interface{}{uint(1112), "hallo", "werld"})
-
-	resp, err := conn.Select(617, 0, 0, 100, tarantool.IterEq, []interface{}{uint(1111)})
-
-	if err != nil {
-		fmt.Printf("error in select is %v", err)
-		return
-	}
-	fmt.Printf("response is %#v\n", resp.Data)
-	resp, err = conn.Select("test", "primary", 0, 100, tarantool.IterEq, tarantool.IntKey{1111})
-	if err != nil {
-		fmt.Printf("error in select is %v", err)
-		return
-	}
-	fmt.Printf("response is %#v\n", resp.Data)
-
-	// Output:
-	// response is []interface {}{[]interface {}{0x457, "hello", "world"}}
-	// response is []interface {}{[]interface {}{0x457, "hello", "world"}}
-}
-
-func ExampleConnection_SelectTyped() {
-	conn := example_connect(opts)
-	defer conn.Close()
-	var res []Tuple
-
-	err := conn.SelectTyped(617, 0, 0, 100, tarantool.IterEq, tarantool.IntKey{1111}, &res)
-
-	if err != nil {
-		fmt.Printf("error in select is %v", err)
-		return
-	}
-	fmt.Printf("response is %v\n", res)
-	err = conn.SelectTyped("test", "primary", 0, 100, tarantool.IterEq, tarantool.IntKey{1111}, &res)
-	if err != nil {
-		fmt.Printf("error in select is %v", err)
-		return
-	}
-	fmt.Printf("response is %v\n", res)
-	// Output:
-	// response is [{{} 1111 hello world}]
-	// response is [{{} 1111 hello world}]
-}
-
-func ExampleConnection_SelectAsync() {
-	conn := example_connect(opts)
-	defer conn.Close()
-	spaceNo := uint32(617)
-
-	conn.Insert(spaceNo, []interface{}{uint(16), "test", "one"})
-	conn.Insert(spaceNo, []interface{}{uint(17), "test", "one"})
-	conn.Insert(spaceNo, []interface{}{uint(18), "test", "one"})
-
-	var futs [3]*tarantool.Future
-	futs[0] = conn.SelectAsync("test", "primary", 0, 2, tarantool.IterLe, tarantool.UintKey{16})
-	futs[1] = conn.SelectAsync("test", "primary", 0, 1, tarantool.IterEq, tarantool.UintKey{17})
-	futs[2] = conn.SelectAsync("test", "primary", 0, 1, tarantool.IterEq, tarantool.UintKey{18})
-	var t []Tuple
-	err := futs[0].GetTyped(&t)
-	fmt.Println("Future", 0, "Error", err)
-	fmt.Println("Future", 0, "Data", t)
-
-	resp, err := futs[1].Get()
-	fmt.Println("Future", 1, "Error", err)
-	fmt.Println("Future", 1, "Data", resp.Data)
-
-	resp, err = futs[2].Get()
-	fmt.Println("Future", 2, "Error", err)
-	fmt.Println("Future", 2, "Data", resp.Data)
-	// Output:
-	// Future 0 Error <nil>
-	// Future 0 Data [{{} 16 val 16 bla} {{} 15 val 15 bla}]
-	// Future 1 Error <nil>
-	// Future 1 Data [[17 val 17 bla]]
-	// Future 2 Error <nil>
-	// Future 2 Data [[18 val 18 bla]]
-}
-
-func ExampleConnection_GetTyped() {
-	conn := example_connect(opts)
-	defer conn.Close()
-
-	const space = "test"
-	const index = "primary"
-	conn.Replace(space, []interface{}{uint(1111), "hello", "world"})
-
-	var t Tuple
-	err := conn.GetTyped(space, index, []interface{}{1111}, &t)
-	fmt.Println("Error", err)
-	fmt.Println("Data", t)
-	// Output:
-	// Error <nil>
-	// Data {{} 1111 hello world}
-}
-
 func ExampleIntKey() {
-	conn := example_connect(opts)
+	conn := exampleConnect(opts)
 	defer conn.Close()
 
 	const space = "test"
 	const index = "primary"
-	conn.Replace(space, []interface{}{int(1111), "hello", "world"})
+	tuple := []interface{}{int(1111), "hello", "world"}
+	conn.Do(tarantool.NewReplaceRequest(space).Tuple(tuple)).Get()
 
-	var t Tuple
-	err := conn.GetTyped(space, index, tarantool.IntKey{1111}, &t)
+	var t []Tuple
+	err := conn.Do(tarantool.NewSelectRequest(space).
+		Index(index).
+		Iterator(tarantool.IterEq).
+		Key(tarantool.IntKey{1111}),
+	).GetTyped(&t)
 	fmt.Println("Error", err)
 	fmt.Println("Data", t)
 	// Output:
 	// Error <nil>
-	// Data {{} 1111 hello world}
+	// Data [{{} 1111 hello world}]
 }
 
 func ExampleUintKey() {
-	conn := example_connect(opts)
+	conn := exampleConnect(opts)
 	defer conn.Close()
 
 	const space = "test"
 	const index = "primary"
-	conn.Replace(space, []interface{}{uint(1111), "hello", "world"})
+	tuple := []interface{}{uint(1111), "hello", "world"}
+	conn.Do(tarantool.NewReplaceRequest(space).Tuple(tuple)).Get()
 
-	var t Tuple
-	err := conn.GetTyped(space, index, tarantool.UintKey{1111}, &t)
+	var t []Tuple
+	err := conn.Do(tarantool.NewSelectRequest(space).
+		Index(index).
+		Iterator(tarantool.IterEq).
+		Key(tarantool.UintKey{1111}),
+	).GetTyped(&t)
 	fmt.Println("Error", err)
 	fmt.Println("Data", t)
 	// Output:
 	// Error <nil>
-	// Data {{} 1111 hello world}
+	// Data [{{} 1111 hello world}]
 }
 
 func ExampleStringKey() {
-	conn := example_connect(opts)
+	conn := exampleConnect(opts)
 	defer conn.Close()
 
 	const space = "teststring"
 	const index = "primary"
-	conn.Replace(space, []interface{}{"any", []byte{0x01, 0x02}})
+	tuple := []interface{}{"any", []byte{0x01, 0x02}}
+	conn.Do(tarantool.NewReplaceRequest(space).Tuple(tuple)).Get()
 
-	t := struct {
+	t := []struct {
 		Key   string
 		Value []byte
 	}{}
-	err := conn.GetTyped(space, index, tarantool.StringKey{"any"}, &t)
+	err := conn.Do(tarantool.NewSelectRequest(space).
+		Index(index).
+		Iterator(tarantool.IterEq).
+		Key(tarantool.StringKey{"any"}),
+	).GetTyped(&t)
 	fmt.Println("Error", err)
 	fmt.Println("Data", t)
 	// Output:
 	// Error <nil>
-	// Data {any [1 2]}
+	// Data [{any [1 2]}]
 }
 
 func ExampleIntIntKey() {
-	conn := example_connect(opts)
+	conn := exampleConnect(opts)
 	defer conn.Close()
 
 	const space = "testintint"
 	const index = "primary"
-	conn.Replace(space, []interface{}{1, 2, "foo"})
+	tuple := []interface{}{1, 2, "foo"}
+	conn.Do(tarantool.NewReplaceRequest(space).Tuple(tuple)).Get()
 
-	t := struct {
+	t := []struct {
 		Key1  int
 		Key2  int
 		Value string
 	}{}
-	err := conn.GetTyped(space, index, tarantool.IntIntKey{1, 2}, &t)
+	err := conn.Do(tarantool.NewSelectRequest(space).
+		Index(index).
+		Iterator(tarantool.IterEq).
+		Key(tarantool.IntIntKey{1, 2}),
+	).GetTyped(&t)
 	fmt.Println("Error", err)
 	fmt.Println("Data", t)
 	// Output:
 	// Error <nil>
-	// Data {1 2 foo}
+	// Data [{1 2 foo}]
+}
+
+func ExamplePingRequest() {
+	conn := exampleConnect(opts)
+	defer conn.Close()
+
+	// Ping a Tarantool instance to check connection.
+	resp, err := conn.Do(tarantool.NewPingRequest()).Get()
+	fmt.Println("Ping Code", resp.Code)
+	fmt.Println("Ping Data", resp.Data)
+	fmt.Println("Ping Error", err)
+	// Output:
+	// Ping Code 0
+	// Ping Data []
+	// Ping Error <nil>
+}
+
+// To pass contexts to request objects, use the Context() method.
+// Pay attention that when using context with request objects,
+// the timeout option for Connection will not affect the lifetime
+// of the request. For those purposes use context.WithTimeout() as
+// the root context.
+func ExamplePingRequest_Context() {
+	conn := exampleConnect(opts)
+	defer conn.Close()
+
+	timeout := time.Nanosecond
+
+	// This way you may set the a common timeout for requests with a context.
+	rootCtx, cancelRoot := context.WithTimeout(context.Background(), timeout)
+	defer cancelRoot()
+
+	// This context will be canceled with the root after commonTimeout.
+	ctx, cancel := context.WithCancel(rootCtx)
+	defer cancel()
+
+	req := tarantool.NewPingRequest().Context(ctx)
+
+	// Ping a Tarantool instance to check connection.
+	resp, err := conn.Do(req).Get()
+	fmt.Println("Ping Resp", resp)
+	fmt.Println("Ping Error", err)
+	// Output:
+	// Ping Resp <nil>
+	// Ping Error context is done
 }
 
 func ExampleSelectRequest() {
-	conn := example_connect(opts)
+	conn := exampleConnect(opts)
 	defer conn.Close()
 
-	req := tarantool.NewSelectRequest(617).
+	for i := 1111; i <= 1112; i++ {
+		conn.Do(tarantool.NewReplaceRequest(spaceNo).
+			Tuple([]interface{}{uint(i), "hello", "world"}),
+		).Get()
+	}
+
+	key := []interface{}{uint(1111)}
+	resp, err := conn.Do(tarantool.NewSelectRequest(617).
 		Limit(100).
-		Key(tarantool.IntKey{1111})
-	resp, err := conn.Do(req).Get()
+		Iterator(tarantool.IterEq).
+		Key(key),
+	).Get()
+
 	if err != nil {
-		fmt.Printf("error in do select request is %v", err)
+		fmt.Printf("error in select is %v", err)
 		return
 	}
 	fmt.Printf("response is %#v\n", resp.Data)
 
-	req = tarantool.NewSelectRequest("test").
+	var res []Tuple
+	err = conn.Do(tarantool.NewSelectRequest("test").
 		Index("primary").
 		Limit(100).
-		Key(tarantool.IntKey{1111})
-	fut := conn.Do(req)
-	resp, err = fut.Get()
+		Iterator(tarantool.IterEq).
+		Key(key),
+	).GetTyped(&res)
 	if err != nil {
-		fmt.Printf("error in do async select request is %v", err)
+		fmt.Printf("error in select is %v", err)
 		return
 	}
-	fmt.Printf("response is %#v\n", resp.Data)
+	fmt.Printf("response is %v\n", res)
+
 	// Output:
 	// response is []interface {}{[]interface {}{0x457, "hello", "world"}}
-	// response is []interface {}{[]interface {}{0x457, "hello", "world"}}
+	// response is [{{} 1111 hello world}]
+}
+
+func ExampleInsertRequest() {
+	conn := exampleConnect(opts)
+	defer conn.Close()
+
+	// Insert a new tuple { 31, 1 }.
+	resp, err := conn.Do(tarantool.NewInsertRequest(spaceNo).
+		Tuple([]interface{}{uint(31), "test", "one"}),
+	).Get()
+	fmt.Println("Insert 31")
+	fmt.Println("Error", err)
+	fmt.Println("Code", resp.Code)
+	fmt.Println("Data", resp.Data)
+	// Insert a new tuple { 32, 1 }.
+	resp, err = conn.Do(tarantool.NewInsertRequest("test").
+		Tuple(&Tuple{Id: 32, Msg: "test", Name: "one"}),
+	).Get()
+	fmt.Println("Insert 32")
+	fmt.Println("Error", err)
+	fmt.Println("Code", resp.Code)
+	fmt.Println("Data", resp.Data)
+
+	// Delete tuple with primary key { 31 }.
+	conn.Do(tarantool.NewDeleteRequest("test").
+		Index("primary").
+		Key([]interface{}{uint(31)}),
+	).Get()
+	// Delete tuple with primary key { 32 }.
+	conn.Do(tarantool.NewDeleteRequest("test").
+		Index(indexNo).
+		Key([]interface{}{uint(31)}),
+	).Get()
+	// Output:
+	// Insert 31
+	// Error <nil>
+	// Code 0
+	// Data [[31 test one]]
+	// Insert 32
+	// Error <nil>
+	// Code 0
+	// Data [[32 test one]]
+}
+
+func ExampleDeleteRequest() {
+	conn := exampleConnect(opts)
+	defer conn.Close()
+
+	// Insert a new tuple { 35, 1 }.
+	conn.Do(tarantool.NewInsertRequest(spaceNo).
+		Tuple([]interface{}{uint(35), "test", "one"}),
+	).Get()
+	// Insert a new tuple { 36, 1 }.
+	conn.Do(tarantool.NewInsertRequest("test").
+		Tuple(&Tuple{Id: 36, Msg: "test", Name: "one"}),
+	).Get()
+
+	// Delete tuple with primary key { 35 }.
+	resp, err := conn.Do(tarantool.NewDeleteRequest(spaceNo).
+		Index(indexNo).
+		Key([]interface{}{uint(35)}),
+	).Get()
+	fmt.Println("Delete 35")
+	fmt.Println("Error", err)
+	fmt.Println("Code", resp.Code)
+	fmt.Println("Data", resp.Data)
+
+	// Delete tuple with primary key { 36 }.
+	resp, err = conn.Do(tarantool.NewDeleteRequest("test").
+		Index("primary").
+		Key([]interface{}{uint(36)}),
+	).Get()
+	fmt.Println("Delete 36")
+	fmt.Println("Error", err)
+	fmt.Println("Code", resp.Code)
+	fmt.Println("Data", resp.Data)
+	// Output:
+	// Delete 35
+	// Error <nil>
+	// Code 0
+	// Data [[35 test one]]
+	// Delete 36
+	// Error <nil>
+	// Code 0
+	// Data [[36 test one]]
+}
+
+func ExampleReplaceRequest() {
+	conn := exampleConnect(opts)
+	defer conn.Close()
+
+	// Insert a new tuple { 13, 1 }.
+	conn.Do(tarantool.NewInsertRequest(spaceNo).
+		Tuple([]interface{}{uint(13), "test", "one"}),
+	).Get()
+
+	// Replace a tuple with primary key 13.
+	// Note, Tuple is defined within tests, and has EncdodeMsgpack and
+	// DecodeMsgpack methods.
+	resp, err := conn.Do(tarantool.NewReplaceRequest(spaceNo).
+		Tuple([]interface{}{uint(13), 1}),
+	).Get()
+	fmt.Println("Replace 13")
+	fmt.Println("Error", err)
+	fmt.Println("Code", resp.Code)
+	fmt.Println("Data", resp.Data)
+	resp, err = conn.Do(tarantool.NewReplaceRequest("test").
+		Tuple([]interface{}{uint(13), 1}),
+	).Get()
+	fmt.Println("Replace 13")
+	fmt.Println("Error", err)
+	fmt.Println("Code", resp.Code)
+	fmt.Println("Data", resp.Data)
+	resp, err = conn.Do(tarantool.NewReplaceRequest("test").
+		Tuple(&Tuple{Id: 13, Msg: "test", Name: "eleven"}),
+	).Get()
+	fmt.Println("Replace 13")
+	fmt.Println("Error", err)
+	fmt.Println("Code", resp.Code)
+	fmt.Println("Data", resp.Data)
+	resp, err = conn.Do(tarantool.NewReplaceRequest("test").
+		Tuple(&Tuple{Id: 13, Msg: "test", Name: "twelve"}),
+	).Get()
+	fmt.Println("Replace 13")
+	fmt.Println("Error", err)
+	fmt.Println("Code", resp.Code)
+	fmt.Println("Data", resp.Data)
+	// Output:
+	// Replace 13
+	// Error <nil>
+	// Code 0
+	// Data [[13 1]]
+	// Replace 13
+	// Error <nil>
+	// Code 0
+	// Data [[13 1]]
+	// Replace 13
+	// Error <nil>
+	// Code 0
+	// Data [[13 test eleven]]
+	// Replace 13
+	// Error <nil>
+	// Code 0
+	// Data [[13 test twelve]]
 }
 
 func ExampleUpdateRequest() {
-	conn := example_connect(opts)
+	conn := exampleConnect(opts)
 	defer conn.Close()
+
+	for i := 1111; i <= 1112; i++ {
+		conn.Do(tarantool.NewReplaceRequest(spaceNo).
+			Tuple([]interface{}{uint(i), "hello", "world"}),
+		).Get()
+	}
 
 	req := tarantool.NewUpdateRequest(617).
 		Key(tarantool.IntKey{1111}).
@@ -280,7 +406,7 @@ func ExampleUpdateRequest() {
 }
 
 func ExampleUpsertRequest() {
-	conn := example_connect(opts)
+	conn := exampleConnect(opts)
 	defer conn.Close()
 
 	var req tarantool.Request
@@ -320,8 +446,174 @@ func ExampleUpsertRequest() {
 	// response is []interface {}{[]interface {}{0x459, "first", "updated"}}
 }
 
+func ExampleCallRequest() {
+	conn := exampleConnect(opts)
+	defer conn.Close()
+
+	// Call a function 'simple_concat' with arguments.
+	resp, err := conn.Do(tarantool.NewCallRequest("simple_concat").
+		Args([]interface{}{"1"}),
+	).Get()
+	fmt.Println("Call simple_concat()")
+	fmt.Println("Error", err)
+	fmt.Println("Code", resp.Code)
+	fmt.Println("Data", resp.Data)
+	// Output:
+	// Call simple_concat()
+	// Error <nil>
+	// Code 0
+	// Data [11]
+}
+
+func ExampleEvalRequest() {
+	conn := exampleConnect(opts)
+	defer conn.Close()
+
+	// Run raw Lua code.
+	resp, err := conn.Do(tarantool.NewEvalRequest("return 1 + 2")).Get()
+	fmt.Println("Eval 'return 1 + 2'")
+	fmt.Println("Error", err)
+	fmt.Println("Code", resp.Code)
+	fmt.Println("Data", resp.Data)
+	// Output:
+	// Eval 'return 1 + 2'
+	// Error <nil>
+	// Code 0
+	// Data [3]
+}
+
+// To use SQL to query a tarantool instance, use ExecuteRequest.
+//
+// Pay attention that with different types of queries (DDL, DQL, DML etc.)
+// some fields of the response structure (MetaData and InfoAutoincrementIds
+// in SQLInfo) may be nil.
+func ExampleExecuteRequest() {
+	// Tarantool supports SQL since version 2.0.0
+	isLess, _ := test_helpers.IsTarantoolVersionLess(2, 0, 0)
+	if isLess {
+		return
+	}
+
+	conn := exampleConnect(opts)
+	defer conn.Close()
+
+	req := tarantool.NewExecuteRequest(
+		"CREATE TABLE SQL_TEST (id INTEGER PRIMARY KEY, name STRING)")
+	resp, err := conn.Do(req).Get()
+	fmt.Println("Execute")
+	fmt.Println("Error", err)
+	fmt.Println("Code", resp.Code)
+	fmt.Println("Data", resp.Data)
+	fmt.Println("MetaData", resp.MetaData)
+	fmt.Println("SQL Info", resp.SQLInfo)
+
+	// There are 4 options to pass named parameters to an SQL query:
+	// 1) The simple map;
+	sqlBind1 := map[string]interface{}{
+		"id":   1,
+		"name": "test",
+	}
+
+	// 2) Any type of structure;
+	sqlBind2 := struct {
+		Id   int
+		Name string
+	}{1, "test"}
+
+	// 3) It is possible to use []tarantool.KeyValueBind;
+	sqlBind3 := []interface{}{
+		tarantool.KeyValueBind{Key: "id", Value: 1},
+		tarantool.KeyValueBind{Key: "name", Value: "test"},
+	}
+
+	// 4) []interface{} slice with tarantool.KeyValueBind items inside;
+	sqlBind4 := []tarantool.KeyValueBind{
+		{"id", 1},
+		{"name", "test"},
+	}
+
+	// 1)
+	req = tarantool.NewExecuteRequest(
+		"CREATE TABLE SQL_TEST (id INTEGER PRIMARY KEY, name STRING)")
+	req = req.Args(sqlBind1)
+	resp, err = conn.Do(req).Get()
+	fmt.Println("Execute")
+	fmt.Println("Error", err)
+	fmt.Println("Code", resp.Code)
+	fmt.Println("Data", resp.Data)
+	fmt.Println("MetaData", resp.MetaData)
+	fmt.Println("SQL Info", resp.SQLInfo)
+
+	// 2)
+	req = req.Args(sqlBind2)
+	resp, err = conn.Do(req).Get()
+	fmt.Println("Execute")
+	fmt.Println("Error", err)
+	fmt.Println("Code", resp.Code)
+	fmt.Println("Data", resp.Data)
+	fmt.Println("MetaData", resp.MetaData)
+	fmt.Println("SQL Info", resp.SQLInfo)
+
+	// 3)
+	req = req.Args(sqlBind3)
+	resp, err = conn.Do(req).Get()
+	fmt.Println("Execute")
+	fmt.Println("Error", err)
+	fmt.Println("Code", resp.Code)
+	fmt.Println("Data", resp.Data)
+	fmt.Println("MetaData", resp.MetaData)
+	fmt.Println("SQL Info", resp.SQLInfo)
+
+	// 4)
+	req = req.Args(sqlBind4)
+	resp, err = conn.Do(req).Get()
+	fmt.Println("Execute")
+	fmt.Println("Error", err)
+	fmt.Println("Code", resp.Code)
+	fmt.Println("Data", resp.Data)
+	fmt.Println("MetaData", resp.MetaData)
+	fmt.Println("SQL Info", resp.SQLInfo)
+
+	// The way to pass positional arguments to an SQL query.
+	req = tarantool.NewExecuteRequest(
+		"SELECT id FROM SQL_TEST WHERE id=? AND name=?").
+		Args([]interface{}{2, "test"})
+	resp, err = conn.Do(req).Get()
+	fmt.Println("Execute")
+	fmt.Println("Error", err)
+	fmt.Println("Code", resp.Code)
+	fmt.Println("Data", resp.Data)
+	fmt.Println("MetaData", resp.MetaData)
+	fmt.Println("SQL Info", resp.SQLInfo)
+
+	// The way to pass SQL expression with using custom packing/unpacking for
+	// a type.
+	var res []Tuple
+	req = tarantool.NewExecuteRequest(
+		"SELECT id, name, name FROM SQL_TEST WHERE id=?").
+		Args([]interface{}{2})
+	err = conn.Do(req).GetTyped(&res)
+	fmt.Println("ExecuteTyped")
+	fmt.Println("Error", err)
+	fmt.Println("Data", res)
+
+	// For using different types of parameters (positioned/named), collect all
+	// items in []interface{}.
+	// All "named" items must be passed with tarantool.KeyValueBind{}.
+	req = tarantool.NewExecuteRequest(
+		"SELECT id FROM SQL_TEST WHERE id=? AND name=?").
+		Args([]interface{}{tarantool.KeyValueBind{"id", 1}, "test"})
+	resp, err = conn.Do(req).Get()
+	fmt.Println("Execute")
+	fmt.Println("Error", err)
+	fmt.Println("Code", resp.Code)
+	fmt.Println("Data", resp.Data)
+	fmt.Println("MetaData", resp.MetaData)
+	fmt.Println("SQL Info", resp.SQLInfo)
+}
+
 func ExampleProtocolVersion() {
-	conn := example_connect(opts)
+	conn := exampleConnect(opts)
 	defer conn.Close()
 
 	clientProtocolInfo := conn.ClientProtocolInfo()
@@ -359,7 +651,7 @@ func ExampleCommitRequest() {
 	}
 
 	txnOpts := getTestTxnOpts()
-	conn := example_connect(txnOpts)
+	conn := exampleConnect(txnOpts)
 	defer conn.Close()
 
 	stream, _ := conn.NewStream()
@@ -436,7 +728,7 @@ func ExampleRollbackRequest() {
 	}
 
 	txnOpts := getTestTxnOpts()
-	conn := example_connect(txnOpts)
+	conn := exampleConnect(txnOpts)
 	defer conn.Close()
 
 	stream, _ := conn.NewStream()
@@ -513,7 +805,7 @@ func ExampleBeginRequest_TxnIsolation() {
 	}
 
 	txnOpts := getTestTxnOpts()
-	conn := example_connect(txnOpts)
+	conn := exampleConnect(txnOpts)
 	defer conn.Close()
 
 	stream, _ := conn.NewStream()
@@ -581,12 +873,13 @@ func ExampleBeginRequest_TxnIsolation() {
 }
 
 func ExampleFuture_GetIterator() {
-	conn := example_connect(opts)
+	conn := exampleConnect(opts)
 	defer conn.Close()
 
 	const timeout = 3 * time.Second
-	// Or any other Connection.*Async() call.
-	fut := conn.Call17Async("push_func", []interface{}{4})
+	fut := conn.Do(tarantool.NewCallRequest("push_func").
+		Args([]interface{}{4}),
+	)
 
 	var it tarantool.ResponseIterator
 	for it = fut.GetIterator().WithTimeout(timeout); it.Next(); {
@@ -613,190 +906,6 @@ func ExampleFuture_GetIterator() {
 	// response: 4
 }
 
-func ExampleConnection_Ping() {
-	conn := example_connect(opts)
-	defer conn.Close()
-
-	// Ping a Tarantool instance to check connection.
-	resp, err := conn.Ping()
-	fmt.Println("Ping Code", resp.Code)
-	fmt.Println("Ping Data", resp.Data)
-	fmt.Println("Ping Error", err)
-	// Output:
-	// Ping Code 0
-	// Ping Data []
-	// Ping Error <nil>
-}
-
-func ExampleConnection_Insert() {
-	conn := example_connect(opts)
-	defer conn.Close()
-
-	// Insert a new tuple { 31, 1 }.
-	resp, err := conn.Insert(spaceNo, []interface{}{uint(31), "test", "one"})
-	fmt.Println("Insert 31")
-	fmt.Println("Error", err)
-	fmt.Println("Code", resp.Code)
-	fmt.Println("Data", resp.Data)
-	// Insert a new tuple { 32, 1 }.
-	resp, err = conn.Insert("test", &Tuple{Id: 32, Msg: "test", Name: "one"})
-	fmt.Println("Insert 32")
-	fmt.Println("Error", err)
-	fmt.Println("Code", resp.Code)
-	fmt.Println("Data", resp.Data)
-
-	// Delete tuple with primary key { 31 }.
-	conn.Delete("test", "primary", []interface{}{uint(31)})
-	// Delete tuple with primary key { 32 }.
-	conn.Delete(spaceNo, indexNo, []interface{}{uint(32)})
-	// Output:
-	// Insert 31
-	// Error <nil>
-	// Code 0
-	// Data [[31 test one]]
-	// Insert 32
-	// Error <nil>
-	// Code 0
-	// Data [[32 test one]]
-
-}
-
-func ExampleConnection_Delete() {
-	conn := example_connect(opts)
-	defer conn.Close()
-
-	// Insert a new tuple { 35, 1 }.
-	conn.Insert(spaceNo, []interface{}{uint(35), "test", "one"})
-	// Insert a new tuple { 36, 1 }.
-	conn.Insert("test", &Tuple{Id: 36, Msg: "test", Name: "one"})
-
-	// Delete tuple with primary key { 35 }.
-	resp, err := conn.Delete(spaceNo, indexNo, []interface{}{uint(35)})
-	fmt.Println("Delete 35")
-	fmt.Println("Error", err)
-	fmt.Println("Code", resp.Code)
-	fmt.Println("Data", resp.Data)
-
-	// Delete tuple with primary key { 36 }.
-	resp, err = conn.Delete("test", "primary", []interface{}{uint(36)})
-	fmt.Println("Delete 36")
-	fmt.Println("Error", err)
-	fmt.Println("Code", resp.Code)
-	fmt.Println("Data", resp.Data)
-	// Output:
-	// Delete 35
-	// Error <nil>
-	// Code 0
-	// Data [[35 test one]]
-	// Delete 36
-	// Error <nil>
-	// Code 0
-	// Data [[36 test one]]
-}
-
-func ExampleConnection_Replace() {
-	conn := example_connect(opts)
-	defer conn.Close()
-
-	// Insert a new tuple { 13, 1 }.
-	conn.Insert(spaceNo, []interface{}{uint(13), "test", "one"})
-
-	// Replace a tuple with primary key 13.
-	// Note, Tuple is defined within tests, and has EncdodeMsgpack and
-	// DecodeMsgpack methods.
-	resp, err := conn.Replace(spaceNo, []interface{}{uint(13), 1})
-	fmt.Println("Replace 13")
-	fmt.Println("Error", err)
-	fmt.Println("Code", resp.Code)
-	fmt.Println("Data", resp.Data)
-	resp, err = conn.Replace("test", []interface{}{uint(13), 1})
-	fmt.Println("Replace 13")
-	fmt.Println("Error", err)
-	fmt.Println("Code", resp.Code)
-	fmt.Println("Data", resp.Data)
-	resp, err = conn.Replace("test", &Tuple{Id: 13, Msg: "test", Name: "eleven"})
-	fmt.Println("Replace 13")
-	fmt.Println("Error", err)
-	fmt.Println("Code", resp.Code)
-	fmt.Println("Data", resp.Data)
-	resp, err = conn.Replace("test", &Tuple{Id: 13, Msg: "test", Name: "twelve"})
-	fmt.Println("Replace 13")
-	fmt.Println("Error", err)
-	fmt.Println("Code", resp.Code)
-	fmt.Println("Data", resp.Data)
-	// Output:
-	// Replace 13
-	// Error <nil>
-	// Code 0
-	// Data [[13 1]]
-	// Replace 13
-	// Error <nil>
-	// Code 0
-	// Data [[13 1]]
-	// Replace 13
-	// Error <nil>
-	// Code 0
-	// Data [[13 test eleven]]
-	// Replace 13
-	// Error <nil>
-	// Code 0
-	// Data [[13 test twelve]]
-}
-
-func ExampleConnection_Update() {
-	conn := example_connect(opts)
-	defer conn.Close()
-
-	// Insert a new tuple { 14, 1 }.
-	conn.Insert(spaceNo, []interface{}{uint(14), "test", "one"})
-
-	// Update tuple with primary key { 14 }.
-	resp, err := conn.Update(spaceName, indexName, []interface{}{uint(14)}, []interface{}{[]interface{}{"=", 1, "bye"}})
-	fmt.Println("Update 14")
-	fmt.Println("Error", err)
-	fmt.Println("Code", resp.Code)
-	fmt.Println("Data", resp.Data)
-	// Output:
-	// Update 14
-	// Error <nil>
-	// Code 0
-	// Data [[14 bye bla]]
-}
-
-func ExampleConnection_Call() {
-	conn := example_connect(opts)
-	defer conn.Close()
-
-	// Call a function 'simple_concat' with arguments.
-	resp, err := conn.Call17("simple_concat", []interface{}{"1"})
-	fmt.Println("Call simple_concat()")
-	fmt.Println("Error", err)
-	fmt.Println("Code", resp.Code)
-	fmt.Println("Data", resp.Data)
-	// Output:
-	// Call simple_concat()
-	// Error <nil>
-	// Code 0
-	// Data [11]
-}
-
-func ExampleConnection_Eval() {
-	conn := example_connect(opts)
-	defer conn.Close()
-
-	// Run raw Lua code.
-	resp, err := conn.Eval("return 1 + 2", []interface{}{})
-	fmt.Println("Eval 'return 1 + 2'")
-	fmt.Println("Error", err)
-	fmt.Println("Code", resp.Code)
-	fmt.Println("Data", resp.Data)
-	// Output:
-	// Eval 'return 1 + 2'
-	// Error <nil>
-	// Code 0
-	// Data [3]
-}
-
 func ExampleConnect() {
 	conn, err := tarantool.Connect("127.0.0.1:3013", tarantool.Opts{
 		Timeout:     5 * time.Second,
@@ -818,7 +927,7 @@ func ExampleConnect() {
 
 // Example demonstrates how to retrieve information with space schema.
 func ExampleSchema() {
-	conn := example_connect(opts)
+	conn := exampleConnect(opts)
 	defer conn.Close()
 
 	schema := conn.Schema
@@ -840,7 +949,7 @@ func ExampleSchema() {
 
 // Example demonstrates how to retrieve information with space schema.
 func ExampleSpace() {
-	conn := example_connect(opts)
+	conn := exampleConnect(opts)
 	defer conn.Close()
 
 	// Save Schema to a local variable to avoid races
@@ -881,126 +990,6 @@ func ExampleSpace() {
 	// &{0 unsigned} &{2 string}
 	// SpaceField 1 name0 unsigned
 	// SpaceField 2 name3 unsigned
-}
-
-// To use SQL to query a tarantool instance, call Execute.
-//
-// Pay attention that with different types of queries (DDL, DQL, DML etc.)
-// some fields of the response structure (MetaData and InfoAutoincrementIds in SQLInfo) may be nil.
-func ExampleConnection_Execute() {
-	// Tarantool supports SQL since version 2.0.0
-	isLess, _ := test_helpers.IsTarantoolVersionLess(2, 0, 0)
-	if isLess {
-		return
-	}
-	server := "127.0.0.1:3013"
-	opts := tarantool.Opts{
-		Timeout: 5 * time.Second,
-		User:    "test",
-		Pass:    "test",
-	}
-	client, err := tarantool.Connect(server, opts)
-	if err != nil {
-		fmt.Printf("Failed to connect: %s", err.Error())
-	}
-
-	resp, err := client.Execute("CREATE TABLE SQL_TEST (id INTEGER PRIMARY KEY, name STRING)", []interface{}{})
-	fmt.Println("Execute")
-	fmt.Println("Error", err)
-	fmt.Println("Code", resp.Code)
-	fmt.Println("Data", resp.Data)
-	fmt.Println("MetaData", resp.MetaData)
-	fmt.Println("SQL Info", resp.SQLInfo)
-
-	// there are 4 options to pass named parameters to an SQL query
-	// the simple map:
-	sqlBind1 := map[string]interface{}{
-		"id":   1,
-		"name": "test",
-	}
-
-	// any type of structure
-	sqlBind2 := struct {
-		Id   int
-		Name string
-	}{1, "test"}
-
-	// it is possible to use []tarantool.KeyValueBind
-	sqlBind3 := []interface{}{
-		tarantool.KeyValueBind{Key: "id", Value: 1},
-		tarantool.KeyValueBind{Key: "name", Value: "test"},
-	}
-
-	// or []interface{} slice with tarantool.KeyValueBind items inside
-	sqlBind4 := []tarantool.KeyValueBind{
-		{"id", 1},
-		{"name", "test"},
-	}
-
-	// the next usage
-	resp, err = client.Execute("SELECT id FROM SQL_TEST WHERE id=:id AND name=:name", sqlBind1)
-	fmt.Println("Execute")
-	fmt.Println("Error", err)
-	fmt.Println("Code", resp.Code)
-	fmt.Println("Data", resp.Data)
-	fmt.Println("MetaData", resp.MetaData)
-	fmt.Println("SQL Info", resp.SQLInfo)
-
-	// the same as
-	resp, err = client.Execute("SELECT id FROM SQL_TEST WHERE id=:id AND name=:name", sqlBind2)
-	fmt.Println("Execute")
-	fmt.Println("Error", err)
-	fmt.Println("Code", resp.Code)
-	fmt.Println("Data", resp.Data)
-	fmt.Println("MetaData", resp.MetaData)
-	fmt.Println("SQL Info", resp.SQLInfo)
-
-	// the same as
-	resp, err = client.Execute("SELECT id FROM SQL_TEST WHERE id=:id AND name=:name", sqlBind3)
-	fmt.Println("Execute")
-	fmt.Println("Error", err)
-	fmt.Println("Code", resp.Code)
-	fmt.Println("Data", resp.Data)
-	fmt.Println("MetaData", resp.MetaData)
-	fmt.Println("SQL Info", resp.SQLInfo)
-
-	// the same as
-	resp, err = client.Execute("SELECT id FROM SQL_TEST WHERE id=:id AND name=:name", sqlBind4)
-	fmt.Println("Execute")
-	fmt.Println("Error", err)
-	fmt.Println("Code", resp.Code)
-	fmt.Println("Data", resp.Data)
-	fmt.Println("MetaData", resp.MetaData)
-	fmt.Println("SQL Info", resp.SQLInfo)
-
-	// the way to pass positional arguments to an SQL query
-	resp, err = client.Execute("SELECT id FROM SQL_TEST WHERE id=? AND name=?", []interface{}{2, "test"})
-	fmt.Println("Execute")
-	fmt.Println("Error", err)
-	fmt.Println("Code", resp.Code)
-	fmt.Println("Data", resp.Data)
-	fmt.Println("MetaData", resp.MetaData)
-	fmt.Println("SQL Info", resp.SQLInfo)
-
-	// the way to pass SQL expression with using custom packing/unpacking for a type
-	var res []Tuple
-	sqlInfo, metaData, err := client.ExecuteTyped("SELECT id, name, name FROM SQL_TEST WHERE id=?", []interface{}{2}, &res)
-	fmt.Println("ExecuteTyped")
-	fmt.Println("Error", err)
-	fmt.Println("Data", res)
-	fmt.Println("MetaData", metaData)
-	fmt.Println("SQL Info", sqlInfo)
-
-	// for using different types of parameters (positioned/named), collect all items in []interface{}
-	// all "named" items must be passed with tarantool.KeyValueBind{}
-	resp, err = client.Execute("SELECT id FROM SQL_TEST WHERE id=:id AND name=?",
-		[]interface{}{tarantool.KeyValueBind{"id", 1}, "test"})
-	fmt.Println("Execute")
-	fmt.Println("Error", err)
-	fmt.Println("Code", resp.Code)
-	fmt.Println("Data", resp.Data)
-	fmt.Println("MetaData", resp.MetaData)
-	fmt.Println("SQL Info", resp.SQLInfo)
 }
 
 // To use prepared statements to query a tarantool instance, call NewPrepared.
@@ -1086,40 +1075,10 @@ func ExampleConnection_NewWatcher() {
 	time.Sleep(time.Second)
 }
 
-// To pass contexts to request objects, use the Context() method.
-// Pay attention that when using context with request objects,
-// the timeout option for Connection will not affect the lifetime
-// of the request. For those purposes use context.WithTimeout() as
-// the root context.
-func ExamplePingRequest_Context() {
-	conn := example_connect(opts)
-	defer conn.Close()
-
-	timeout := time.Nanosecond
-
-	// this way you may set the common timeout for requests with context
-	rootCtx, cancelRoot := context.WithTimeout(context.Background(), timeout)
-	defer cancelRoot()
-
-	// this context will be canceled with the root after commonTimeout
-	ctx, cancel := context.WithCancel(rootCtx)
-	defer cancel()
-
-	req := tarantool.NewPingRequest().Context(ctx)
-
-	// Ping a Tarantool instance to check connection.
-	resp, err := conn.Do(req).Get()
-	fmt.Println("Ping Resp", resp)
-	fmt.Println("Ping Error", err)
-	// Output:
-	// Ping Resp <nil>
-	// Ping Error context is done
-}
-
 // ExampleConnection_CloseGraceful_force demonstrates how to force close
 // a connection with graceful close in progress after a while.
 func ExampleConnection_CloseGraceful_force() {
-	conn := example_connect(opts)
+	conn := exampleConnect(opts)
 
 	eval := `local fiber = require('fiber')
 	local time = ...

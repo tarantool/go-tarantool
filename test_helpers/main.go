@@ -106,7 +106,7 @@ func isReady(server string, opts *tarantool.Opts) error {
 	}
 	defer conn.Close()
 
-	resp, err = conn.Ping()
+	resp, err = conn.Do(tarantool.NewPingRequest()).Get()
 	if err != nil {
 		return err
 	}

@@ -82,7 +82,8 @@ func ProcessListenOnInstance(args interface{}) error {
 	}
 
 	for i := 0; i < listenArgs.ServersNumber; i++ {
-		resp, err := listenArgs.ConnPool.Eval("return box.cfg.listen", []interface{}{}, listenArgs.Mode)
+		req := tarantool.NewEvalRequest("return box.cfg.listen")
+		resp, err := listenArgs.ConnPool.Do(req, listenArgs.Mode).Get()
 		if err != nil {
 			return fmt.Errorf("fail to Eval: %s", err.Error())
 		}
@@ -138,7 +139,7 @@ func InsertOnInstance(server string, connOpts tarantool.Opts, space interface{},
 	}
 	defer conn.Close()
 
-	resp, err := conn.Insert(space, tuple)
+	resp, err := conn.Do(tarantool.NewInsertRequest(space).Tuple(tuple)).Get()
 	if err != nil {
 		return fmt.Errorf("Failed to Insert: %s", err.Error())
 	}
@@ -195,8 +196,9 @@ func SetInstanceRO(server string, connOpts tarantool.Opts, isReplica bool) error
 
 	defer conn.Close()
 
-	_, err = conn.Call17("box.cfg", []interface{}{map[string]bool{"read_only": isReplica}})
-	if err != nil {
+	req := tarantool.NewCallRequest("box.cfg").
+		Args([]interface{}{map[string]bool{"read_only": isReplica}})
+	if _, err := conn.Do(req).Get(); err != nil {
 		return err
 	}
 

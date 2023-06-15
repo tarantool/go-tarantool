@@ -167,6 +167,9 @@ func fillPing(enc *msgpack.Encoder) error {
 }
 
 // Ping sends empty request to Tarantool to check connection.
+//
+// Deprecated: the method will be removed in the next major version,
+// use a PingRequest object + Do() instead.
 func (conn *Connection) Ping() (resp *Response, err error) {
 	return conn.Do(NewPingRequest()).Get()
 }
@@ -174,6 +177,9 @@ func (conn *Connection) Ping() (resp *Response, err error) {
 // Select performs select to box space.
 //
 // It is equal to conn.SelectAsync(...).Get().
+//
+// Deprecated: the method will be removed in the next major version,
+// use a SelectRequest object + Do() instead.
 func (conn *Connection) Select(space, index interface{}, offset, limit uint32, iterator Iter, key interface{}) (resp *Response, err error) {
 	return conn.SelectAsync(space, index, offset, limit, iterator, key).Get()
 }
@@ -182,6 +188,9 @@ func (conn *Connection) Select(space, index interface{}, offset, limit uint32, i
 // Tarantool will reject Insert when tuple with same primary key exists.
 //
 // It is equal to conn.InsertAsync(space, tuple).Get().
+//
+// Deprecated: the method will be removed in the next major version,
+// use an InsertRequest object + Do() instead.
 func (conn *Connection) Insert(space interface{}, tuple interface{}) (resp *Response, err error) {
 	return conn.InsertAsync(space, tuple).Get()
 }
@@ -190,6 +199,9 @@ func (conn *Connection) Insert(space interface{}, tuple interface{}) (resp *Resp
 // If tuple with same primary key exists, it will be replaced.
 //
 // It is equal to conn.ReplaceAsync(space, tuple).Get().
+//
+// Deprecated: the method will be removed in the next major version,
+// use a ReplaceRequest object + Do() instead.
 func (conn *Connection) Replace(space interface{}, tuple interface{}) (resp *Response, err error) {
 	return conn.ReplaceAsync(space, tuple).Get()
 }
@@ -198,6 +210,9 @@ func (conn *Connection) Replace(space interface{}, tuple interface{}) (resp *Res
 // Result will contain array with deleted tuple.
 //
 // It is equal to conn.DeleteAsync(space, tuple).Get().
+//
+// Deprecated: the method will be removed in the next major version,
+// use a DeleteRequest object + Do() instead.
 func (conn *Connection) Delete(space, index interface{}, key interface{}) (resp *Response, err error) {
 	return conn.DeleteAsync(space, index, key).Get()
 }
@@ -206,6 +221,9 @@ func (conn *Connection) Delete(space, index interface{}, key interface{}) (resp 
 // Result will contain array with updated tuple.
 //
 // It is equal to conn.UpdateAsync(space, tuple).Get().
+//
+// Deprecated: the method will be removed in the next major version,
+// use a UpdateRequest object + Do() instead.
 func (conn *Connection) Update(space, index interface{}, key, ops interface{}) (resp *Response, err error) {
 	return conn.UpdateAsync(space, index, key, ops).Get()
 }
@@ -214,6 +232,9 @@ func (conn *Connection) Update(space, index interface{}, key, ops interface{}) (
 // Result will not contain any tuple.
 //
 // It is equal to conn.UpsertAsync(space, tuple, ops).Get().
+//
+// Deprecated: the method will be removed in the next major version,
+// use a UpsertRequest object + Do() instead.
 func (conn *Connection) Upsert(space interface{}, tuple, ops interface{}) (resp *Response, err error) {
 	return conn.UpsertAsync(space, tuple, ops).Get()
 }
@@ -222,6 +243,9 @@ func (conn *Connection) Upsert(space interface{}, tuple, ops interface{}) (resp 
 // It uses request code for Tarantool >= 1.7, result is an array.
 //
 // It is equal to conn.CallAsync(functionName, args).Get().
+//
+// Deprecated: the method will be removed in the next major version,
+// use a CallRequest object + Do() instead.
 func (conn *Connection) Call(functionName string, args interface{}) (resp *Response, err error) {
 	return conn.CallAsync(functionName, args).Get()
 }
@@ -231,6 +255,9 @@ func (conn *Connection) Call(functionName string, args interface{}) (resp *Respo
 // Deprecated since Tarantool 1.7.2.
 //
 // It is equal to conn.Call16Async(functionName, args).Get().
+//
+// Deprecated: the method will be removed in the next major version,
+// use a Call16Request object + Do() instead.
 func (conn *Connection) Call16(functionName string, args interface{}) (resp *Response, err error) {
 	return conn.Call16Async(functionName, args).Get()
 }
@@ -239,6 +266,9 @@ func (conn *Connection) Call16(functionName string, args interface{}) (resp *Res
 // It uses request code for Tarantool >= 1.7, result is an array.
 //
 // It is equal to conn.Call17Async(functionName, args).Get().
+//
+// Deprecated: the method will be removed in the next major version,
+// use a Call17Request object + Do() instead.
 func (conn *Connection) Call17(functionName string, args interface{}) (resp *Response, err error) {
 	return conn.Call17Async(functionName, args).Get()
 }
@@ -246,6 +276,9 @@ func (conn *Connection) Call17(functionName string, args interface{}) (resp *Res
 // Eval passes Lua expression for evaluation.
 //
 // It is equal to conn.EvalAsync(space, tuple).Get().
+//
+// Deprecated: the method will be removed in the next major version,
+// use an EvalRequest object + Do() instead.
 func (conn *Connection) Eval(expr string, args interface{}) (resp *Response, err error) {
 	return conn.EvalAsync(expr, args).Get()
 }
@@ -254,6 +287,9 @@ func (conn *Connection) Eval(expr string, args interface{}) (resp *Response, err
 //
 // It is equal to conn.ExecuteAsync(expr, args).Get().
 // Since 1.6.0
+//
+// Deprecated: the method will be removed in the next major version,
+// use an ExecuteRequest object + Do() instead.
 func (conn *Connection) Execute(expr string, args interface{}) (resp *Response, err error) {
 	return conn.ExecuteAsync(expr, args).Get()
 }
@@ -283,6 +319,9 @@ func (s *single) DecodeMsgpack(d *msgpack.Decoder) error {
 // to box space and fills typed result.
 //
 // It is equal to conn.SelectAsync(space, index, 0, 1, IterEq, key).GetTyped(&result)
+//
+// Deprecated: the method will be removed in the next major version,
+// use a SelectRequest object + Do() instead.
 func (conn *Connection) GetTyped(space, index interface{}, key interface{}, result interface{}) (err error) {
 	s := single{res: result}
 	err = conn.SelectAsync(space, index, 0, 1, IterEq, key).GetTyped(&s)
@@ -292,6 +331,9 @@ func (conn *Connection) GetTyped(space, index interface{}, key interface{}, resu
 // SelectTyped performs select to box space and fills typed result.
 //
 // It is equal to conn.SelectAsync(space, index, offset, limit, iterator, key).GetTyped(&result)
+//
+// Deprecated: the method will be removed in the next major version,
+// use a SelectRequest object + Do() instead.
 func (conn *Connection) SelectTyped(space, index interface{}, offset, limit uint32, iterator Iter, key interface{}, result interface{}) (err error) {
 	return conn.SelectAsync(space, index, offset, limit, iterator, key).GetTyped(result)
 }
@@ -300,6 +342,9 @@ func (conn *Connection) SelectTyped(space, index interface{}, offset, limit uint
 // Tarantool will reject Insert when tuple with same primary key exists.
 //
 // It is equal to conn.InsertAsync(space, tuple).GetTyped(&result).
+//
+// Deprecated: the method will be removed in the next major version,
+// use an InsertRequest object + Do() instead.
 func (conn *Connection) InsertTyped(space interface{}, tuple interface{}, result interface{}) (err error) {
 	return conn.InsertAsync(space, tuple).GetTyped(result)
 }
@@ -308,6 +353,9 @@ func (conn *Connection) InsertTyped(space interface{}, tuple interface{}, result
 // If tuple with same primary key exists, it will be replaced.
 //
 // It is equal to conn.ReplaceAsync(space, tuple).GetTyped(&result).
+//
+// Deprecated: the method will be removed in the next major version,
+// use a ReplaceRequest object + Do() instead.
 func (conn *Connection) ReplaceTyped(space interface{}, tuple interface{}, result interface{}) (err error) {
 	return conn.ReplaceAsync(space, tuple).GetTyped(result)
 }
@@ -315,6 +363,9 @@ func (conn *Connection) ReplaceTyped(space interface{}, tuple interface{}, resul
 // DeleteTyped performs deletion of a tuple by key and fills result with deleted tuple.
 //
 // It is equal to conn.DeleteAsync(space, tuple).GetTyped(&result).
+//
+// Deprecated: the method will be removed in the next major version,
+// use a DeleteRequest object + Do() instead.
 func (conn *Connection) DeleteTyped(space, index interface{}, key interface{}, result interface{}) (err error) {
 	return conn.DeleteAsync(space, index, key).GetTyped(result)
 }
@@ -322,6 +373,9 @@ func (conn *Connection) DeleteTyped(space, index interface{}, key interface{}, r
 // UpdateTyped performs update of a tuple by key and fills result with updated tuple.
 //
 // It is equal to conn.UpdateAsync(space, tuple, ops).GetTyped(&result).
+//
+// Deprecated: the method will be removed in the next major version,
+// use a UpdateRequest object + Do() instead.
 func (conn *Connection) UpdateTyped(space, index interface{}, key, ops interface{}, result interface{}) (err error) {
 	return conn.UpdateAsync(space, index, key, ops).GetTyped(result)
 }
@@ -330,6 +384,9 @@ func (conn *Connection) UpdateTyped(space, index interface{}, key, ops interface
 // It uses request code for Tarantool >= 1.7, result is an array.
 //
 // It is equal to conn.Call16Async(functionName, args).GetTyped(&result).
+//
+// Deprecated: the method will be removed in the next major version,
+// use a CallRequest object + Do() instead.
 func (conn *Connection) CallTyped(functionName string, args interface{}, result interface{}) (err error) {
 	return conn.CallAsync(functionName, args).GetTyped(result)
 }
@@ -339,6 +396,9 @@ func (conn *Connection) CallTyped(functionName string, args interface{}, result 
 // Deprecated since Tarantool 1.7.2.
 //
 // It is equal to conn.Call16Async(functionName, args).GetTyped(&result).
+//
+// Deprecated: the method will be removed in the next major version,
+// use a Call16Request object + Do() instead.
 func (conn *Connection) Call16Typed(functionName string, args interface{}, result interface{}) (err error) {
 	return conn.Call16Async(functionName, args).GetTyped(result)
 }
@@ -347,6 +407,9 @@ func (conn *Connection) Call16Typed(functionName string, args interface{}, resul
 // It uses request code for Tarantool >= 1.7, result is an array.
 //
 // It is equal to conn.Call17Async(functionName, args).GetTyped(&result).
+//
+// Deprecated: the method will be removed in the next major version,
+// use a Call17Request object + Do() instead.
 func (conn *Connection) Call17Typed(functionName string, args interface{}, result interface{}) (err error) {
 	return conn.Call17Async(functionName, args).GetTyped(result)
 }
@@ -354,6 +417,9 @@ func (conn *Connection) Call17Typed(functionName string, args interface{}, resul
 // EvalTyped passes Lua expression for evaluation.
 //
 // It is equal to conn.EvalAsync(space, tuple).GetTyped(&result).
+//
+// Deprecated: the method will be removed in the next major version,
+// use an EvalRequest object + Do() instead.
 func (conn *Connection) EvalTyped(expr string, args interface{}, result interface{}) (err error) {
 	return conn.EvalAsync(expr, args).GetTyped(result)
 }
@@ -362,6 +428,9 @@ func (conn *Connection) EvalTyped(expr string, args interface{}, result interfac
 //
 // In addition to error returns sql info and columns meta data
 // Since 1.6.0
+//
+// Deprecated: the method will be removed in the next major version,
+// use an ExecuteRequest object + Do() instead.
 func (conn *Connection) ExecuteTyped(expr string, args interface{}, result interface{}) (SQLInfo, []ColumnMetaData, error) {
 	fut := conn.ExecuteAsync(expr, args)
 	err := fut.GetTyped(&result)
@@ -369,6 +438,9 @@ func (conn *Connection) ExecuteTyped(expr string, args interface{}, result inter
 }
 
 // SelectAsync sends select request to Tarantool and returns Future.
+//
+// Deprecated: the method will be removed in the next major version,
+// use a SelectRequest object + Do() instead.
 func (conn *Connection) SelectAsync(space, index interface{}, offset, limit uint32, iterator Iter, key interface{}) *Future {
 	req := NewSelectRequest(space).
 		Index(index).
@@ -381,6 +453,9 @@ func (conn *Connection) SelectAsync(space, index interface{}, offset, limit uint
 
 // InsertAsync sends insert action to Tarantool and returns Future.
 // Tarantool will reject Insert when tuple with same primary key exists.
+//
+// Deprecated: the method will be removed in the next major version,
+// use an InsertRequest object + Do() instead.
 func (conn *Connection) InsertAsync(space interface{}, tuple interface{}) *Future {
 	req := NewInsertRequest(space).Tuple(tuple)
 	return conn.Do(req)
@@ -388,6 +463,9 @@ func (conn *Connection) InsertAsync(space interface{}, tuple interface{}) *Futur
 
 // ReplaceAsync sends "insert or replace" action to Tarantool and returns Future.
 // If tuple with same primary key exists, it will be replaced.
+//
+// Deprecated: the method will be removed in the next major version,
+// use a ReplaceRequest object + Do() instead.
 func (conn *Connection) ReplaceAsync(space interface{}, tuple interface{}) *Future {
 	req := NewReplaceRequest(space).Tuple(tuple)
 	return conn.Do(req)
@@ -395,6 +473,9 @@ func (conn *Connection) ReplaceAsync(space interface{}, tuple interface{}) *Futu
 
 // DeleteAsync sends deletion action to Tarantool and returns Future.
 // Future's result will contain array with deleted tuple.
+//
+// Deprecated: the method will be removed in the next major version,
+// use a DeleteRequest object + Do() instead.
 func (conn *Connection) DeleteAsync(space, index interface{}, key interface{}) *Future {
 	req := NewDeleteRequest(space).Index(index).Key(key)
 	return conn.Do(req)
@@ -402,6 +483,9 @@ func (conn *Connection) DeleteAsync(space, index interface{}, key interface{}) *
 
 // Update sends deletion of a tuple by key and returns Future.
 // Future's result will contain array with updated tuple.
+//
+// Deprecated: the method will be removed in the next major version,
+// use a UpdateRequest object + Do() instead.
 func (conn *Connection) UpdateAsync(space, index interface{}, key, ops interface{}) *Future {
 	req := NewUpdateRequest(space).Index(index).Key(key)
 	req.ops = ops
@@ -410,6 +494,9 @@ func (conn *Connection) UpdateAsync(space, index interface{}, key, ops interface
 
 // UpsertAsync sends "update or insert" action to Tarantool and returns Future.
 // Future's sesult will not contain any tuple.
+//
+// Deprecated: the method will be removed in the next major version,
+// use a UpsertRequest object + Do() instead.
 func (conn *Connection) UpsertAsync(space interface{}, tuple interface{}, ops interface{}) *Future {
 	req := NewUpsertRequest(space).Tuple(tuple)
 	req.ops = ops
@@ -418,6 +505,9 @@ func (conn *Connection) UpsertAsync(space interface{}, tuple interface{}, ops in
 
 // CallAsync sends a call to registered Tarantool function and returns Future.
 // It uses request code for Tarantool >= 1.7, so future's result is an array.
+//
+// Deprecated: the method will be removed in the next major version,
+// use a CallRequest object + Do() instead.
 func (conn *Connection) CallAsync(functionName string, args interface{}) *Future {
 	req := NewCallRequest(functionName).Args(args)
 	return conn.Do(req)
@@ -426,6 +516,9 @@ func (conn *Connection) CallAsync(functionName string, args interface{}) *Future
 // Call16Async sends a call to registered Tarantool function and returns Future.
 // It uses request code for Tarantool 1.6, so future's result is an array of arrays.
 // Deprecated since Tarantool 1.7.2.
+//
+// Deprecated: the method will be removed in the next major version,
+// use a Call16Request object + Do() instead.
 func (conn *Connection) Call16Async(functionName string, args interface{}) *Future {
 	req := NewCall16Request(functionName).Args(args)
 	return conn.Do(req)
@@ -433,12 +526,18 @@ func (conn *Connection) Call16Async(functionName string, args interface{}) *Futu
 
 // Call17Async sends a call to registered Tarantool function and returns Future.
 // It uses request code for Tarantool >= 1.7, so future's result is an array.
+//
+// Deprecated: the method will be removed in the next major version,
+// use a Call17Request object + Do() instead.
 func (conn *Connection) Call17Async(functionName string, args interface{}) *Future {
 	req := NewCall17Request(functionName).Args(args)
 	return conn.Do(req)
 }
 
 // EvalAsync sends a Lua expression for evaluation and returns Future.
+//
+// Deprecated: the method will be removed in the next major version,
+// use an EvalRequest object + Do() instead.
 func (conn *Connection) EvalAsync(expr string, args interface{}) *Future {
 	req := NewEvalRequest(expr).Args(args)
 	return conn.Do(req)
@@ -446,6 +545,9 @@ func (conn *Connection) EvalAsync(expr string, args interface{}) *Future {
 
 // ExecuteAsync sends a sql expression for execution and returns Future.
 // Since 1.6.0
+//
+// Deprecated: the method will be removed in the next major version,
+// use an ExecuteRequest object + Do() instead.
 func (conn *Connection) ExecuteAsync(expr string, args interface{}) *Future {
 	req := NewExecuteRequest(expr).Args(args)
 	return conn.Do(req)
