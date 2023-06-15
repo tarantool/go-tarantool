@@ -406,8 +406,9 @@ func TestDatetimeTarantoolInterval(t *testing.T) {
 		for _, dtj := range datetimes {
 			t.Run(fmt.Sprintf("%s_to_%s", dti.ToTime(), dtj.ToTime()),
 				func(t *testing.T) {
-					resp, err := conn.Call17("call_datetime_interval",
-						[]interface{}{dti, dtj})
+					req := NewCallRequest("call_datetime_interval").
+						Args([]interface{}{dti, dtj})
+					resp, err := conn.Do(req).Get()
 					if err != nil {
 						t.Fatalf("Unable to call call_datetime_interval: %s", err)
 					}
@@ -541,7 +542,8 @@ func TestCustomTimezone(t *testing.T) {
 		t.Fatalf("Unable to create datetime: %s", err.Error())
 	}
 
-	resp, err := conn.Replace(spaceTuple1, []interface{}{dt, "payload"})
+	req := NewReplaceRequest(spaceTuple1).Tuple([]interface{}{dt, "payload"})
+	resp, err := conn.Do(req).Get()
 	if err != nil {
 		t.Fatalf("Datetime replace failed %s", err.Error())
 	}
@@ -558,7 +560,8 @@ func TestCustomTimezone(t *testing.T) {
 			t.Fatalf("Expected offset %d instead of %d", customOffset, offset)
 		}
 
-		_, err = conn.Delete(spaceTuple1, 0, []interface{}{dt})
+		req := NewDeleteRequest(spaceTuple1).Key([]interface{}{dt})
+		_, err = conn.Do(req).Get()
 		if err != nil {
 			t.Fatalf("Datetime delete failed: %s", err.Error())
 		}
@@ -577,7 +580,8 @@ func tupleInsertSelectDelete(t *testing.T, conn *Connection, tm time.Time) {
 	}
 
 	// Insert tuple with datetime.
-	_, err = conn.Insert(spaceTuple1, []interface{}{dt, "payload"})
+	ins := NewInsertRequest(spaceTuple1).Tuple([]interface{}{dt, "payload"})
+	_, err = conn.Do(ins).Get()
 	if err != nil {
 		t.Fatalf("Datetime insert failed: %s", err.Error())
 	}
@@ -585,7 +589,13 @@ func tupleInsertSelectDelete(t *testing.T, conn *Connection, tm time.Time) {
 	// Select tuple with datetime.
 	var offset uint32 = 0
 	var limit uint32 = 1
-	resp, err := conn.Select(spaceTuple1, index, offset, limit, IterEq, []interface{}{dt})
+	sel := NewSelectRequest(spaceTuple1).
+		Index(index).
+		Offset(offset).
+		Limit(limit).
+		Iterator(IterEq).
+		Key([]interface{}{dt})
+	resp, err := conn.Do(sel).Get()
 	if err != nil {
 		t.Fatalf("Datetime select failed: %s", err.Error())
 	}
@@ -595,7 +605,8 @@ func tupleInsertSelectDelete(t *testing.T, conn *Connection, tm time.Time) {
 	assertDatetimeIsEqual(t, resp.Data, tm)
 
 	// Delete tuple with datetime.
-	resp, err = conn.Delete(spaceTuple1, index, []interface{}{dt})
+	del := NewDeleteRequest(spaceTuple1).Index(index).Key([]interface{}{dt})
+	resp, err = conn.Do(del).Get()
 	if err != nil {
 		t.Fatalf("Datetime delete failed: %s", err.Error())
 	}
@@ -738,7 +749,8 @@ func TestDatetimeReplace(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unable to create Datetime from %s: %s", tm, err)
 	}
-	resp, err := conn.Replace(spaceTuple1, []interface{}{dt, "payload"})
+	rep := NewReplaceRequest(spaceTuple1).Tuple([]interface{}{dt, "payload"})
+	resp, err := conn.Do(rep).Get()
 	if err != nil {
 		t.Fatalf("Datetime replace failed: %s", err)
 	}
@@ -747,7 +759,12 @@ func TestDatetimeReplace(t *testing.T) {
 	}
 	assertDatetimeIsEqual(t, resp.Data, tm)
 
-	resp, err = conn.Select(spaceTuple1, index, 0, 1, IterEq, []interface{}{dt})
+	sel := NewSelectRequest(spaceTuple1).
+		Index(index).
+		Limit(1).
+		Iterator(IterEq).
+		Key([]interface{}{dt})
+	resp, err = conn.Do(sel).Get()
 	if err != nil {
 		t.Fatalf("Datetime select failed: %s", err)
 	}
@@ -757,7 +774,8 @@ func TestDatetimeReplace(t *testing.T) {
 	assertDatetimeIsEqual(t, resp.Data, tm)
 
 	// Delete tuple with datetime.
-	_, err = conn.Delete(spaceTuple1, index, []interface{}{dt})
+	del := NewDeleteRequest(spaceTuple1).Index(index).Key([]interface{}{dt})
+	_, err = conn.Do(del).Get()
 	if err != nil {
 		t.Fatalf("Datetime delete failed: %s", err.Error())
 	}
@@ -907,7 +925,8 @@ func TestCustomEncodeDecodeTuple1(t *testing.T) {
 			{*dt2, "Moscow"},
 		},
 	}
-	resp, err := conn.Replace(spaceTuple2, &tuple)
+	rep := NewReplaceRequest(spaceTuple2).Tuple(&tuple)
+	resp, err := conn.Do(rep).Get()
 	if err != nil || resp.Code != 0 {
 		t.Fatalf("Failed to replace: %s", err.Error())
 	}
@@ -921,7 +940,8 @@ func TestCustomEncodeDecodeTuple1(t *testing.T) {
 	}
 
 	// Delete the tuple.
-	_, err = conn.Delete(spaceTuple2, index, []interface{}{cid})
+	del := NewDeleteRequest(spaceTuple2).Index(index).Key([]interface{}{cid})
+	_, err = conn.Do(del).Get()
 	if err != nil {
 		t.Fatalf("Datetime delete failed: %s", err.Error())
 	}
@@ -955,21 +975,22 @@ func TestCustomDecodeFunction(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
-	// Call function 'call_datetime_testdata' returning a table of custom tuples.
-	var tuples []Tuple2
-	err := conn.Call16Typed("call_datetime_testdata", []interface{}{1}, &tuples)
+	// Call function 'call_datetime_testdata' returning a custom tuples.
+	var tuple [][]Tuple2
+	call := NewCallRequest("call_datetime_testdata").Args([]interface{}{1})
+	err := conn.Do(call).GetTyped(&tuple)
 	if err != nil {
 		t.Fatalf("Failed to CallTyped: %s", err.Error())
 	}
 
-	if cid := tuples[0].Cid; cid != 5 {
+	if cid := tuple[0][0].Cid; cid != 5 {
 		t.Fatalf("Wrong Cid (%d), should be 5", cid)
 	}
-	if orig := tuples[0].Orig; orig != "Go!" {
+	if orig := tuple[0][0].Orig; orig != "Go!" {
 		t.Fatalf("Wrong Orig (%s), should be 'Hello, there!'", orig)
 	}
 
-	events := tuples[0].Events
+	events := tuple[0][0].Events
 	if len(events) != 3 {
 		t.Fatalf("Wrong a number of Events (%d), should be 3", len(events))
 	}
@@ -1003,12 +1024,19 @@ func TestCustomEncodeDecodeTuple5(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unable to create Datetime from %s: %s", tm, err)
 	}
-	_, err = conn.Insert(spaceTuple1, []interface{}{dt})
+
+	ins := NewInsertRequest(spaceTuple1).Tuple([]interface{}{dt})
+	_, err = conn.Do(ins).Get()
 	if err != nil {
 		t.Fatalf("Datetime insert failed: %s", err.Error())
 	}
 
-	resp, errSel := conn.Select(spaceTuple1, index, 0, 1, IterEq, []interface{}{dt})
+	sel := NewSelectRequest(spaceTuple1).
+		Index(index).
+		Limit(1).
+		Iterator(IterEq).
+		Key([]interface{}{dt})
+	resp, errSel := conn.Do(sel).Get()
 	if errSel != nil {
 		t.Errorf("Failed to Select: %s", errSel.Error())
 	}
@@ -1021,7 +1049,8 @@ func TestCustomEncodeDecodeTuple5(t *testing.T) {
 	}
 
 	// Teardown: delete a value.
-	_, err = conn.Delete(spaceTuple1, index, []interface{}{dt})
+	del := NewDeleteRequest(spaceTuple1).Index(index).Key([]interface{}{dt})
+	_, err = conn.Do(del).Get()
 	if err != nil {
 		t.Fatalf("Datetime delete failed: %s", err.Error())
 	}

@@ -68,7 +68,8 @@ func TestErrorMarshalingEnabledSetting(t *testing.T) {
 	require.Equal(t, []interface{}{[]interface{}{"error_marshaling_enabled", false}}, resp.Data)
 
 	// Get a box.Error value.
-	resp, err = conn.Eval("return box.error.new(box.error.UNKNOWN)", []interface{}{})
+	eval := tarantool.NewEvalRequest("return box.error.new(box.error.UNKNOWN)")
+	resp, err = conn.Do(eval).Get()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
 	require.IsType(t, "string", resp.Data[0])
@@ -86,7 +87,7 @@ func TestErrorMarshalingEnabledSetting(t *testing.T) {
 	require.Equal(t, []interface{}{[]interface{}{"error_marshaling_enabled", true}}, resp.Data)
 
 	// Get a box.Error value.
-	resp, err = conn.Eval("return box.error.new(box.error.UNKNOWN)", []interface{}{})
+	resp, err = conn.Do(eval).Get()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
 	_, ok := resp.Data[0].(*tarantool.BoxError)
@@ -116,13 +117,15 @@ func TestSQLDefaultEngineSetting(t *testing.T) {
 	require.Equal(t, []interface{}{[]interface{}{"sql_default_engine", "vinyl"}}, resp.Data)
 
 	// Create a space with "CREATE TABLE".
-	resp, err = conn.Execute("CREATE TABLE t1_vinyl(a INT PRIMARY KEY, b INT, c INT);", []interface{}{})
+	exec := tarantool.NewExecuteRequest("CREATE TABLE t1_vinyl(a INT PRIMARY KEY, b INT, c INT);")
+	resp, err = conn.Do(exec).Get()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
 	require.Equal(t, uint64(1), resp.SQLInfo.AffectedCount)
 
 	// Check new space engine.
-	resp, err = conn.Eval("return box.space['T1_VINYL'].engine", []interface{}{})
+	eval := tarantool.NewEvalRequest("return box.space['T1_VINYL'].engine")
+	resp, err = conn.Do(eval).Get()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
 	require.Equal(t, "vinyl", resp.Data[0])
@@ -140,13 +143,15 @@ func TestSQLDefaultEngineSetting(t *testing.T) {
 	require.Equal(t, []interface{}{[]interface{}{"sql_default_engine", "memtx"}}, resp.Data)
 
 	// Create a space with "CREATE TABLE".
-	resp, err = conn.Execute("CREATE TABLE t2_memtx(a INT PRIMARY KEY, b INT, c INT);", []interface{}{})
+	exec = tarantool.NewExecuteRequest("CREATE TABLE t2_memtx(a INT PRIMARY KEY, b INT, c INT);")
+	resp, err = conn.Do(exec).Get()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
 	require.Equal(t, uint64(1), resp.SQLInfo.AffectedCount)
 
 	// Check new space engine.
-	resp, err = conn.Eval("return box.space['T2_MEMTX'].engine", []interface{}{})
+	eval = tarantool.NewEvalRequest("return box.space['T2_MEMTX'].engine")
+	resp, err = conn.Do(eval).Get()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
 	require.Equal(t, "memtx", resp.Data[0])
@@ -163,13 +168,15 @@ func TestSQLDeferForeignKeysSetting(t *testing.T) {
 	defer conn.Close()
 
 	// Create a parent space.
-	resp, err = conn.Execute("CREATE TABLE parent(id INT PRIMARY KEY, y INT UNIQUE);", []interface{}{})
+	exec := tarantool.NewExecuteRequest("CREATE TABLE parent(id INT PRIMARY KEY, y INT UNIQUE);")
+	resp, err = conn.Do(exec).Get()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
 	require.Equal(t, uint64(1), resp.SQLInfo.AffectedCount)
 
 	// Create a space with reference to the parent space.
-	resp, err = conn.Execute("CREATE TABLE child(id INT PRIMARY KEY, x INT REFERENCES parent(y));", []interface{}{})
+	exec = tarantool.NewExecuteRequest("CREATE TABLE child(id INT PRIMARY KEY, x INT REFERENCES parent(y));")
+	resp, err = conn.Do(exec).Get()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
 	require.Equal(t, uint64(1), resp.SQLInfo.AffectedCount)
@@ -200,7 +207,7 @@ func TestSQLDeferForeignKeysSetting(t *testing.T) {
 
 	// Evaluate a scenario when foreign key not exists
 	// on INSERT, but exists on commit.
-	_, err = conn.Eval(deferEval, []interface{}{})
+	_, err = conn.Do(tarantool.NewEvalRequest(deferEval)).Get()
 	require.NotNil(t, err)
 	require.ErrorContains(t, err, "Failed to execute SQL statement: FOREIGN KEY constraint failed")
 
@@ -217,7 +224,7 @@ func TestSQLDeferForeignKeysSetting(t *testing.T) {
 
 	// Evaluate a scenario when foreign key not exists
 	// on INSERT, but exists on commit.
-	resp, err = conn.Eval(deferEval, []interface{}{})
+	resp, err = conn.Do(tarantool.NewEvalRequest(deferEval)).Get()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
 	require.Equal(t, true, resp.Data[0])
@@ -233,13 +240,15 @@ func TestSQLFullColumnNamesSetting(t *testing.T) {
 	defer conn.Close()
 
 	// Create a space.
-	resp, err = conn.Execute("CREATE TABLE fkname(id INT PRIMARY KEY, x INT);", []interface{}{})
+	exec := tarantool.NewExecuteRequest("CREATE TABLE fkname(id INT PRIMARY KEY, x INT);")
+	resp, err = conn.Do(exec).Get()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
 	require.Equal(t, uint64(1), resp.SQLInfo.AffectedCount)
 
 	// Fill it with some data.
-	resp, err = conn.Execute("INSERT INTO fkname VALUES (1, 1);", []interface{}{})
+	exec = tarantool.NewExecuteRequest("INSERT INTO fkname VALUES (1, 1);")
+	resp, err = conn.Do(exec).Get()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
 	require.Equal(t, uint64(1), resp.SQLInfo.AffectedCount)
@@ -257,7 +266,8 @@ func TestSQLFullColumnNamesSetting(t *testing.T) {
 	require.Equal(t, []interface{}{[]interface{}{"sql_full_column_names", false}}, resp.Data)
 
 	// Get a data with short column names in metadata.
-	resp, err = conn.Execute("SELECT x FROM fkname WHERE id = 1;", []interface{}{})
+	exec = tarantool.NewExecuteRequest("SELECT x FROM fkname WHERE id = 1;")
+	resp, err = conn.Do(exec).Get()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
 	require.Equal(t, "X", resp.MetaData[0].FieldName)
@@ -275,7 +285,8 @@ func TestSQLFullColumnNamesSetting(t *testing.T) {
 	require.Equal(t, []interface{}{[]interface{}{"sql_full_column_names", true}}, resp.Data)
 
 	// Get a data with full column names in metadata.
-	resp, err = conn.Execute("SELECT x FROM fkname WHERE id = 1;", []interface{}{})
+	exec = tarantool.NewExecuteRequest("SELECT x FROM fkname WHERE id = 1;")
+	resp, err = conn.Do(exec).Get()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
 	require.Equal(t, "FKNAME.X", resp.MetaData[0].FieldName)
@@ -291,13 +302,15 @@ func TestSQLFullMetadataSetting(t *testing.T) {
 	defer conn.Close()
 
 	// Create a space.
-	resp, err = conn.Execute("CREATE TABLE fmt(id INT PRIMARY KEY, x INT);", []interface{}{})
+	exec := tarantool.NewExecuteRequest("CREATE TABLE fmt(id INT PRIMARY KEY, x INT);")
+	resp, err = conn.Do(exec).Get()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
 	require.Equal(t, uint64(1), resp.SQLInfo.AffectedCount)
 
 	// Fill it with some data.
-	resp, err = conn.Execute("INSERT INTO fmt VALUES (1, 1);", []interface{}{})
+	exec = tarantool.NewExecuteRequest("INSERT INTO fmt VALUES (1, 1);")
+	resp, err = conn.Do(exec).Get()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
 	require.Equal(t, uint64(1), resp.SQLInfo.AffectedCount)
@@ -314,7 +327,8 @@ func TestSQLFullMetadataSetting(t *testing.T) {
 	require.Equal(t, []interface{}{[]interface{}{"sql_full_metadata", false}}, resp.Data)
 
 	// Get a data without additional fields in metadata.
-	resp, err = conn.Execute("SELECT x FROM fmt WHERE id = 1;", []interface{}{})
+	exec = tarantool.NewExecuteRequest("SELECT x FROM fmt WHERE id = 1;")
+	resp, err = conn.Do(exec).Get()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
 	require.Equal(t, "", resp.MetaData[0].FieldSpan)
@@ -332,7 +346,8 @@ func TestSQLFullMetadataSetting(t *testing.T) {
 	require.Equal(t, []interface{}{[]interface{}{"sql_full_metadata", true}}, resp.Data)
 
 	// Get a data with additional fields in metadata.
-	resp, err = conn.Execute("SELECT x FROM fmt WHERE id = 1;", []interface{}{})
+	exec = tarantool.NewExecuteRequest("SELECT x FROM fmt WHERE id = 1;")
+	resp, err = conn.Do(exec).Get()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
 	require.Equal(t, "x", resp.MetaData[0].FieldSpan)
@@ -386,22 +401,25 @@ func TestSQLRecursiveTriggersSetting(t *testing.T) {
 	defer conn.Close()
 
 	// Create a space.
-	resp, err = conn.Execute("CREATE TABLE rec(id INTEGER PRIMARY KEY, a INT, b INT);", []interface{}{})
+	exec := tarantool.NewExecuteRequest("CREATE TABLE rec(id INTEGER PRIMARY KEY, a INT, b INT);")
+	resp, err = conn.Do(exec).Get()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
 	require.Equal(t, uint64(1), resp.SQLInfo.AffectedCount)
 
 	// Fill it with some data.
-	resp, err = conn.Execute("INSERT INTO rec VALUES(1, 1, 2);", []interface{}{})
+	exec = tarantool.NewExecuteRequest("INSERT INTO rec VALUES(1, 1, 2);")
+	resp, err = conn.Do(exec).Get()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
 	require.Equal(t, uint64(1), resp.SQLInfo.AffectedCount)
 
 	// Create a recursive trigger (with infinite depth).
-	resp, err = conn.Execute(`
+	exec = tarantool.NewExecuteRequest(`
 		CREATE TRIGGER tr12 AFTER UPDATE ON rec FOR EACH ROW BEGIN
           UPDATE rec SET a=new.a+1, b=new.b+1;
-        END;`, []interface{}{})
+        END;`)
+	resp, err = conn.Do(exec).Get()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
 	require.Equal(t, uint64(1), resp.SQLInfo.AffectedCount)
@@ -419,7 +437,8 @@ func TestSQLRecursiveTriggersSetting(t *testing.T) {
 	require.Equal(t, []interface{}{[]interface{}{"sql_recursive_triggers", true}}, resp.Data)
 
 	// Trigger the recursion.
-	_, err = conn.Execute("UPDATE rec SET a=a+1, b=b+1;", []interface{}{})
+	exec = tarantool.NewExecuteRequest("UPDATE rec SET a=a+1, b=b+1;")
+	_, err = conn.Do(exec).Get()
 	require.NotNil(t, err)
 	require.ErrorContains(t, err, "Failed to execute SQL statement: too many levels of trigger recursion")
 
@@ -436,7 +455,8 @@ func TestSQLRecursiveTriggersSetting(t *testing.T) {
 	require.Equal(t, []interface{}{[]interface{}{"sql_recursive_triggers", false}}, resp.Data)
 
 	// Trigger the recursion.
-	resp, err = conn.Execute("UPDATE rec SET a=a+1, b=b+1;", []interface{}{})
+	exec = tarantool.NewExecuteRequest("UPDATE rec SET a=a+1, b=b+1;")
+	resp, err = conn.Do(exec).Get()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
 	require.Equal(t, uint64(1), resp.SQLInfo.AffectedCount)
@@ -452,18 +472,21 @@ func TestSQLReverseUnorderedSelectsSetting(t *testing.T) {
 	defer conn.Close()
 
 	// Create a space.
-	resp, err = conn.Execute("CREATE TABLE data(id STRING PRIMARY KEY);", []interface{}{})
+	exec := tarantool.NewExecuteRequest("CREATE TABLE data(id STRING PRIMARY KEY);")
+	resp, err = conn.Do(exec).Get()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
 	require.Equal(t, uint64(1), resp.SQLInfo.AffectedCount)
 
 	// Fill it with some data.
-	resp, err = conn.Execute("INSERT INTO data VALUES('1');", []interface{}{})
+	exec = tarantool.NewExecuteRequest("INSERT INTO data VALUES('1');")
+	resp, err = conn.Do(exec).Get()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
 	require.Equal(t, uint64(1), resp.SQLInfo.AffectedCount)
 
-	resp, err = conn.Execute("INSERT INTO data VALUES('2');", []interface{}{})
+	exec = tarantool.NewExecuteRequest("INSERT INTO data VALUES('2');")
+	resp, err = conn.Do(exec).Get()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
 	require.Equal(t, uint64(1), resp.SQLInfo.AffectedCount)
@@ -488,7 +511,7 @@ func TestSQLReverseUnorderedSelectsSetting(t *testing.T) {
 		query = "SELECT * FROM data;"
 	}
 
-	resp, err = conn.Execute(query, []interface{}{})
+	resp, err = conn.Do(tarantool.NewExecuteRequest(query)).Get()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
 	require.EqualValues(t, []interface{}{"1"}, resp.Data[0])
@@ -507,7 +530,7 @@ func TestSQLReverseUnorderedSelectsSetting(t *testing.T) {
 	require.Equal(t, []interface{}{[]interface{}{"sql_reverse_unordered_selects", true}}, resp.Data)
 
 	// Select multiple records.
-	resp, err = conn.Execute(query, []interface{}{})
+	resp, err = conn.Do(tarantool.NewExecuteRequest(query)).Get()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
 	require.EqualValues(t, []interface{}{"2"}, resp.Data[0])

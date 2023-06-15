@@ -81,7 +81,12 @@ func TestSelect(t *testing.T) {
 		t.Fatalf("Failed to prepare test uuid: %s", uuidErr)
 	}
 
-	resp, errSel := conn.Select(space, index, 0, 1, IterEq, []interface{}{id})
+	sel := NewSelectRequest(space).
+		Index(index).
+		Limit(1).
+		Iterator(IterEq).
+		Key([]interface{}{id})
+	resp, errSel := conn.Do(sel).Get()
 	if errSel != nil {
 		t.Fatalf("UUID select failed: %s", errSel.Error())
 	}
@@ -91,7 +96,7 @@ func TestSelect(t *testing.T) {
 	tupleValueIsId(t, resp.Data, id)
 
 	var tuples []TupleUUID
-	errTyp := conn.SelectTyped(space, index, 0, 1, IterEq, []interface{}{id}, &tuples)
+	errTyp := conn.Do(sel).GetTyped(&tuples)
 	if errTyp != nil {
 		t.Fatalf("Failed to SelectTyped: %s", errTyp.Error())
 	}
@@ -116,7 +121,8 @@ func TestReplace(t *testing.T) {
 		t.Errorf("Failed to prepare test uuid: %s", uuidErr)
 	}
 
-	respRep, errRep := conn.Replace(space, []interface{}{id})
+	rep := NewReplaceRequest(space).Tuple([]interface{}{id})
+	respRep, errRep := conn.Do(rep).Get()
 	if errRep != nil {
 		t.Errorf("UUID replace failed: %s", errRep)
 	}
@@ -125,7 +131,12 @@ func TestReplace(t *testing.T) {
 	}
 	tupleValueIsId(t, respRep.Data, id)
 
-	respSel, errSel := conn.Select(space, index, 0, 1, IterEq, []interface{}{id})
+	sel := NewSelectRequest(space).
+		Index(index).
+		Limit(1).
+		Iterator(IterEq).
+		Key([]interface{}{id})
+	respSel, errSel := conn.Do(sel).Get()
 	if errSel != nil {
 		t.Errorf("UUID select failed: %s", errSel)
 	}

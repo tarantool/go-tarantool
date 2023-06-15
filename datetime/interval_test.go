@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/tarantool/go-tarantool/v2"
 	. "github.com/tarantool/go-tarantool/v2/datetime"
 	"github.com/tarantool/go-tarantool/v2/test_helpers"
 )
@@ -118,7 +119,9 @@ func TestIntervalTarantoolEncoding(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(fmt.Sprintf("%v", tc), func(t *testing.T) {
-			resp, err := conn.Call17("call_interval_testdata", []interface{}{tc})
+			req := tarantool.NewCallRequest("call_interval_testdata").
+				Args([]interface{}{tc})
+			resp, err := conn.Do(req).Get()
 			if err != nil {
 				t.Fatalf("Unexpected error: %s", err.Error())
 			}

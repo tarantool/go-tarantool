@@ -363,6 +363,9 @@ func (pool *ConnectionPool) GetPoolInfo() map[string]*ConnectionInfo {
 }
 
 // Ping sends empty request to Tarantool to check connection.
+//
+// Deprecated: the method will be removed in the next major version,
+// use a PingRequest object + Do() instead.
 func (connPool *ConnectionPool) Ping(userMode Mode) (*tarantool.Response, error) {
 	conn, err := connPool.getNextConnection(userMode)
 	if err != nil {
@@ -373,6 +376,9 @@ func (connPool *ConnectionPool) Ping(userMode Mode) (*tarantool.Response, error)
 }
 
 // Select performs select to box space.
+//
+// Deprecated: the method will be removed in the next major version,
+// use a SelectRequest object + Do() instead.
 func (connPool *ConnectionPool) Select(space, index interface{},
 	offset, limit uint32,
 	iterator tarantool.Iter, key interface{}, userMode ...Mode) (resp *tarantool.Response, err error) {
@@ -386,6 +392,9 @@ func (connPool *ConnectionPool) Select(space, index interface{},
 
 // Insert performs insertion to box space.
 // Tarantool will reject Insert when tuple with same primary key exists.
+//
+// Deprecated: the method will be removed in the next major version,
+// use an InsertRequest object + Do() instead.
 func (connPool *ConnectionPool) Insert(space interface{}, tuple interface{}, userMode ...Mode) (resp *tarantool.Response, err error) {
 	conn, err := connPool.getConnByMode(RW, userMode)
 	if err != nil {
@@ -397,6 +406,9 @@ func (connPool *ConnectionPool) Insert(space interface{}, tuple interface{}, use
 
 // Replace performs "insert or replace" action to box space.
 // If tuple with same primary key exists, it will be replaced.
+//
+// Deprecated: the method will be removed in the next major version,
+// use a ReplaceRequest object + Do() instead.
 func (connPool *ConnectionPool) Replace(space interface{}, tuple interface{}, userMode ...Mode) (resp *tarantool.Response, err error) {
 	conn, err := connPool.getConnByMode(RW, userMode)
 	if err != nil {
@@ -408,6 +420,9 @@ func (connPool *ConnectionPool) Replace(space interface{}, tuple interface{}, us
 
 // Delete performs deletion of a tuple by key.
 // Result will contain array with deleted tuple.
+//
+// Deprecated: the method will be removed in the next major version,
+// use a DeleteRequest object + Do() instead.
 func (connPool *ConnectionPool) Delete(space, index interface{}, key interface{}, userMode ...Mode) (resp *tarantool.Response, err error) {
 	conn, err := connPool.getConnByMode(RW, userMode)
 	if err != nil {
@@ -419,6 +434,9 @@ func (connPool *ConnectionPool) Delete(space, index interface{}, key interface{}
 
 // Update performs update of a tuple by key.
 // Result will contain array with updated tuple.
+//
+// Deprecated: the method will be removed in the next major version,
+// use a UpdateRequest object + Do() instead.
 func (connPool *ConnectionPool) Update(space, index interface{}, key, ops interface{}, userMode ...Mode) (resp *tarantool.Response, err error) {
 	conn, err := connPool.getConnByMode(RW, userMode)
 	if err != nil {
@@ -430,6 +448,9 @@ func (connPool *ConnectionPool) Update(space, index interface{}, key, ops interf
 
 // Upsert performs "update or insert" action of a tuple by key.
 // Result will not contain any tuple.
+//
+// Deprecated: the method will be removed in the next major version,
+// use a UpsertRequest object + Do() instead.
 func (connPool *ConnectionPool) Upsert(space interface{}, tuple, ops interface{}, userMode ...Mode) (resp *tarantool.Response, err error) {
 	conn, err := connPool.getConnByMode(RW, userMode)
 	if err != nil {
@@ -441,6 +462,9 @@ func (connPool *ConnectionPool) Upsert(space interface{}, tuple, ops interface{}
 
 // Call calls registered Tarantool function.
 // It uses request code for Tarantool >= 1.7, result is an array.
+//
+// Deprecated: the method will be removed in the next major version,
+// use a CallRequest object + Do() instead.
 func (connPool *ConnectionPool) Call(functionName string, args interface{}, userMode Mode) (resp *tarantool.Response, err error) {
 	conn, err := connPool.getNextConnection(userMode)
 	if err != nil {
@@ -453,6 +477,9 @@ func (connPool *ConnectionPool) Call(functionName string, args interface{}, user
 // Call16 calls registered Tarantool function.
 // It uses request code for Tarantool 1.6, result is an array of arrays.
 // Deprecated since Tarantool 1.7.2.
+//
+// Deprecated: the method will be removed in the next major version,
+// use a Call16Request object + Do() instead.
 func (connPool *ConnectionPool) Call16(functionName string, args interface{}, userMode Mode) (resp *tarantool.Response, err error) {
 	conn, err := connPool.getNextConnection(userMode)
 	if err != nil {
@@ -464,6 +491,9 @@ func (connPool *ConnectionPool) Call16(functionName string, args interface{}, us
 
 // Call17 calls registered Tarantool function.
 // It uses request code for Tarantool >= 1.7, result is an array.
+//
+// Deprecated: the method will be removed in the next major version,
+// use a Call17Request object + Do() instead.
 func (connPool *ConnectionPool) Call17(functionName string, args interface{}, userMode Mode) (resp *tarantool.Response, err error) {
 	conn, err := connPool.getNextConnection(userMode)
 	if err != nil {
@@ -474,6 +504,9 @@ func (connPool *ConnectionPool) Call17(functionName string, args interface{}, us
 }
 
 // Eval passes lua expression for evaluation.
+//
+// Deprecated: the method will be removed in the next major version,
+// use an EvalRequest object + Do() instead.
 func (connPool *ConnectionPool) Eval(expr string, args interface{}, userMode Mode) (resp *tarantool.Response, err error) {
 	conn, err := connPool.getNextConnection(userMode)
 	if err != nil {
@@ -484,6 +517,9 @@ func (connPool *ConnectionPool) Eval(expr string, args interface{}, userMode Mod
 }
 
 // Execute passes sql expression to Tarantool for execution.
+//
+// Deprecated: the method will be removed in the next major version,
+// use an ExecuteRequest object + Do() instead.
 func (connPool *ConnectionPool) Execute(expr string, args interface{}, userMode Mode) (resp *tarantool.Response, err error) {
 	conn, err := connPool.getNextConnection(userMode)
 	if err != nil {
@@ -495,6 +531,9 @@ func (connPool *ConnectionPool) Execute(expr string, args interface{}, userMode 
 
 // GetTyped performs select (with limit = 1 and offset = 0)
 // to box space and fills typed result.
+//
+// Deprecated: the method will be removed in the next major version,
+// use a SelectRequest object + Do() instead.
 func (connPool *ConnectionPool) GetTyped(space, index interface{}, key interface{}, result interface{}, userMode ...Mode) (err error) {
 	conn, err := connPool.getConnByMode(ANY, userMode)
 	if err != nil {
@@ -505,6 +544,9 @@ func (connPool *ConnectionPool) GetTyped(space, index interface{}, key interface
 }
 
 // SelectTyped performs select to box space and fills typed result.
+//
+// Deprecated: the method will be removed in the next major version,
+// use a SelectRequest object + Do() instead.
 func (connPool *ConnectionPool) SelectTyped(space, index interface{},
 	offset, limit uint32,
 	iterator tarantool.Iter, key interface{}, result interface{}, userMode ...Mode) (err error) {
@@ -518,6 +560,9 @@ func (connPool *ConnectionPool) SelectTyped(space, index interface{},
 
 // InsertTyped performs insertion to box space.
 // Tarantool will reject Insert when tuple with same primary key exists.
+//
+// Deprecated: the method will be removed in the next major version,
+// use an InsertRequest object + Do() instead.
 func (connPool *ConnectionPool) InsertTyped(space interface{}, tuple interface{}, result interface{}, userMode ...Mode) (err error) {
 	conn, err := connPool.getConnByMode(RW, userMode)
 	if err != nil {
@@ -529,6 +574,9 @@ func (connPool *ConnectionPool) InsertTyped(space interface{}, tuple interface{}
 
 // ReplaceTyped performs "insert or replace" action to box space.
 // If tuple with same primary key exists, it will be replaced.
+//
+// Deprecated: the method will be removed in the next major version,
+// use a ReplaceRequest object + Do() instead.
 func (connPool *ConnectionPool) ReplaceTyped(space interface{}, tuple interface{}, result interface{}, userMode ...Mode) (err error) {
 	conn, err := connPool.getConnByMode(RW, userMode)
 	if err != nil {
@@ -539,6 +587,9 @@ func (connPool *ConnectionPool) ReplaceTyped(space interface{}, tuple interface{
 }
 
 // DeleteTyped performs deletion of a tuple by key and fills result with deleted tuple.
+//
+// Deprecated: the method will be removed in the next major version,
+// use a DeleteRequest object + Do() instead.
 func (connPool *ConnectionPool) DeleteTyped(space, index interface{}, key interface{}, result interface{}, userMode ...Mode) (err error) {
 	conn, err := connPool.getConnByMode(RW, userMode)
 	if err != nil {
@@ -549,6 +600,9 @@ func (connPool *ConnectionPool) DeleteTyped(space, index interface{}, key interf
 }
 
 // UpdateTyped performs update of a tuple by key and fills result with updated tuple.
+//
+// Deprecated: the method will be removed in the next major version,
+// use a UpdateRequest object + Do() instead.
 func (connPool *ConnectionPool) UpdateTyped(space, index interface{}, key, ops interface{}, result interface{}, userMode ...Mode) (err error) {
 	conn, err := connPool.getConnByMode(RW, userMode)
 	if err != nil {
@@ -560,6 +614,9 @@ func (connPool *ConnectionPool) UpdateTyped(space, index interface{}, key, ops i
 
 // CallTyped calls registered function.
 // It uses request code for Tarantool >= 1.7, result is an array.
+//
+// Deprecated: the method will be removed in the next major version,
+// use a CallRequest object + Do() instead.
 func (connPool *ConnectionPool) CallTyped(functionName string, args interface{}, result interface{}, userMode Mode) (err error) {
 	conn, err := connPool.getNextConnection(userMode)
 	if err != nil {
@@ -572,6 +629,9 @@ func (connPool *ConnectionPool) CallTyped(functionName string, args interface{},
 // Call16Typed calls registered function.
 // It uses request code for Tarantool 1.6, result is an array of arrays.
 // Deprecated since Tarantool 1.7.2.
+//
+// Deprecated: the method will be removed in the next major version,
+// use a Call16Request object + Do() instead.
 func (connPool *ConnectionPool) Call16Typed(functionName string, args interface{}, result interface{}, userMode Mode) (err error) {
 	conn, err := connPool.getNextConnection(userMode)
 	if err != nil {
@@ -583,6 +643,9 @@ func (connPool *ConnectionPool) Call16Typed(functionName string, args interface{
 
 // Call17Typed calls registered function.
 // It uses request code for Tarantool >= 1.7, result is an array.
+//
+// Deprecated: the method will be removed in the next major version,
+// use a Call17Request object + Do() instead.
 func (connPool *ConnectionPool) Call17Typed(functionName string, args interface{}, result interface{}, userMode Mode) (err error) {
 	conn, err := connPool.getNextConnection(userMode)
 	if err != nil {
@@ -593,6 +656,9 @@ func (connPool *ConnectionPool) Call17Typed(functionName string, args interface{
 }
 
 // EvalTyped passes lua expression for evaluation.
+//
+// Deprecated: the method will be removed in the next major version,
+// use an EvalRequest object + Do() instead.
 func (connPool *ConnectionPool) EvalTyped(expr string, args interface{}, result interface{}, userMode Mode) (err error) {
 	conn, err := connPool.getNextConnection(userMode)
 	if err != nil {
@@ -603,6 +669,9 @@ func (connPool *ConnectionPool) EvalTyped(expr string, args interface{}, result 
 }
 
 // ExecuteTyped passes sql expression to Tarantool for execution.
+//
+// Deprecated: the method will be removed in the next major version,
+// use an ExecuteRequest object + Do() instead.
 func (connPool *ConnectionPool) ExecuteTyped(expr string, args interface{}, result interface{}, userMode Mode) (tarantool.SQLInfo, []tarantool.ColumnMetaData, error) {
 	conn, err := connPool.getNextConnection(userMode)
 	if err != nil {
@@ -613,6 +682,9 @@ func (connPool *ConnectionPool) ExecuteTyped(expr string, args interface{}, resu
 }
 
 // SelectAsync sends select request to Tarantool and returns Future.
+//
+// Deprecated: the method will be removed in the next major version,
+// use a SelectRequest object + Do() instead.
 func (connPool *ConnectionPool) SelectAsync(space, index interface{},
 	offset, limit uint32,
 	iterator tarantool.Iter, key interface{}, userMode ...Mode) *tarantool.Future {
@@ -626,6 +698,9 @@ func (connPool *ConnectionPool) SelectAsync(space, index interface{},
 
 // InsertAsync sends insert action to Tarantool and returns Future.
 // Tarantool will reject Insert when tuple with same primary key exists.
+//
+// Deprecated: the method will be removed in the next major version,
+// use an InsertRequest object + Do() instead.
 func (connPool *ConnectionPool) InsertAsync(space interface{}, tuple interface{}, userMode ...Mode) *tarantool.Future {
 	conn, err := connPool.getConnByMode(RW, userMode)
 	if err != nil {
@@ -637,6 +712,9 @@ func (connPool *ConnectionPool) InsertAsync(space interface{}, tuple interface{}
 
 // ReplaceAsync sends "insert or replace" action to Tarantool and returns Future.
 // If tuple with same primary key exists, it will be replaced.
+//
+// Deprecated: the method will be removed in the next major version,
+// use a ReplaceRequest object + Do() instead.
 func (connPool *ConnectionPool) ReplaceAsync(space interface{}, tuple interface{}, userMode ...Mode) *tarantool.Future {
 	conn, err := connPool.getConnByMode(RW, userMode)
 	if err != nil {
@@ -648,6 +726,9 @@ func (connPool *ConnectionPool) ReplaceAsync(space interface{}, tuple interface{
 
 // DeleteAsync sends deletion action to Tarantool and returns Future.
 // Future's result will contain array with deleted tuple.
+//
+// Deprecated: the method will be removed in the next major version,
+// use a DeleteRequest object + Do() instead.
 func (connPool *ConnectionPool) DeleteAsync(space, index interface{}, key interface{}, userMode ...Mode) *tarantool.Future {
 	conn, err := connPool.getConnByMode(RW, userMode)
 	if err != nil {
@@ -659,6 +740,9 @@ func (connPool *ConnectionPool) DeleteAsync(space, index interface{}, key interf
 
 // UpdateAsync sends deletion of a tuple by key and returns Future.
 // Future's result will contain array with updated tuple.
+//
+// Deprecated: the method will be removed in the next major version,
+// use a UpdateRequest object + Do() instead.
 func (connPool *ConnectionPool) UpdateAsync(space, index interface{}, key, ops interface{}, userMode ...Mode) *tarantool.Future {
 	conn, err := connPool.getConnByMode(RW, userMode)
 	if err != nil {
@@ -670,6 +754,9 @@ func (connPool *ConnectionPool) UpdateAsync(space, index interface{}, key, ops i
 
 // UpsertAsync sends "update or insert" action to Tarantool and returns Future.
 // Future's sesult will not contain any tuple.
+//
+// Deprecated: the method will be removed in the next major version,
+// use a UpsertRequest object + Do() instead.
 func (connPool *ConnectionPool) UpsertAsync(space interface{}, tuple interface{}, ops interface{}, userMode ...Mode) *tarantool.Future {
 	conn, err := connPool.getConnByMode(RW, userMode)
 	if err != nil {
@@ -681,6 +768,9 @@ func (connPool *ConnectionPool) UpsertAsync(space interface{}, tuple interface{}
 
 // CallAsync sends a call to registered Tarantool function and returns Future.
 // It uses request code for Tarantool >= 1.7, future's result is an array.
+//
+// Deprecated: the method will be removed in the next major version,
+// use a CallRequest object + Do() instead.
 func (connPool *ConnectionPool) CallAsync(functionName string, args interface{}, userMode Mode) *tarantool.Future {
 	conn, err := connPool.getNextConnection(userMode)
 	if err != nil {
@@ -693,6 +783,9 @@ func (connPool *ConnectionPool) CallAsync(functionName string, args interface{},
 // Call16Async sends a call to registered Tarantool function and returns Future.
 // It uses request code for Tarantool 1.6, so future's result is an array of arrays.
 // Deprecated since Tarantool 1.7.2.
+//
+// Deprecated: the method will be removed in the next major version,
+// use a Call16Request object + Do() instead.
 func (connPool *ConnectionPool) Call16Async(functionName string, args interface{}, userMode Mode) *tarantool.Future {
 	conn, err := connPool.getNextConnection(userMode)
 	if err != nil {
@@ -704,6 +797,9 @@ func (connPool *ConnectionPool) Call16Async(functionName string, args interface{
 
 // Call17Async sends a call to registered Tarantool function and returns Future.
 // It uses request code for Tarantool >= 1.7, future's result is an array.
+//
+// Deprecated: the method will be removed in the next major version,
+// use a Call17Request object + Do() instead.
 func (connPool *ConnectionPool) Call17Async(functionName string, args interface{}, userMode Mode) *tarantool.Future {
 	conn, err := connPool.getNextConnection(userMode)
 	if err != nil {
@@ -714,6 +810,9 @@ func (connPool *ConnectionPool) Call17Async(functionName string, args interface{
 }
 
 // EvalAsync sends a lua expression for evaluation and returns Future.
+//
+// Deprecated: the method will be removed in the next major version,
+// use an EvalRequest object + Do() instead.
 func (connPool *ConnectionPool) EvalAsync(expr string, args interface{}, userMode Mode) *tarantool.Future {
 	conn, err := connPool.getNextConnection(userMode)
 	if err != nil {
@@ -725,6 +824,9 @@ func (connPool *ConnectionPool) EvalAsync(expr string, args interface{}, userMod
 
 // ExecuteAsync sends sql expression to Tarantool for execution and returns
 // Future.
+//
+// Deprecated: the method will be removed in the next major version,
+// use an ExecuteRequest object + Do() instead.
 func (connPool *ConnectionPool) ExecuteAsync(expr string, args interface{}, userMode Mode) *tarantool.Future {
 	conn, err := connPool.getNextConnection(userMode)
 	if err != nil {
@@ -842,7 +944,7 @@ func (connPool *ConnectionPool) Do(req tarantool.Request, userMode Mode) *tarant
 //
 
 func (connPool *ConnectionPool) getConnectionRole(conn *tarantool.Connection) (Role, error) {
-	resp, err := conn.Call17("box.info", []interface{}{})
+	resp, err := conn.Do(tarantool.NewCallRequest("box.info")).Get()
 	if err != nil {
 		return UnknownRole, err
 	}

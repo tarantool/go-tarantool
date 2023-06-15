@@ -93,7 +93,9 @@ func Example_customUnpacking() {
 	indexNo := uint32(0)
 
 	tuple := Tuple2{Cid: 777, Orig: "orig", Members: []Member{{"lol", "", 1}, {"wut", "", 3}}}
-	resp, err := conn.Replace(spaceNo, &tuple) // NOTE: insert a structure itself.
+	// Insert a structure itself.
+	initReq := tarantool.NewReplaceRequest(spaceNo).Tuple(&tuple)
+	resp, err := conn.Do(initReq).Get()
 	if err != nil {
 		log.Fatalf("Failed to insert: %s", err.Error())
 		return
@@ -102,7 +104,12 @@ func Example_customUnpacking() {
 	fmt.Println("Code", resp.Code)
 
 	var tuples1 []Tuple2
-	err = conn.SelectTyped(spaceNo, indexNo, 0, 1, tarantool.IterEq, []interface{}{777}, &tuples1)
+	selectReq := tarantool.NewSelectRequest(spaceNo).
+		Index(indexNo).
+		Limit(1).
+		Iterator(tarantool.IterEq).
+		Key([]interface{}{777})
+	err = conn.Do(selectReq).GetTyped(&tuples1)
 	if err != nil {
 		log.Fatalf("Failed to SelectTyped: %s", err.Error())
 		return
@@ -111,7 +118,7 @@ func Example_customUnpacking() {
 
 	// Same result in a "magic" way.
 	var tuples2 []Tuple3
-	err = conn.SelectTyped(spaceNo, indexNo, 0, 1, tarantool.IterEq, []interface{}{777}, &tuples2)
+	err = conn.Do(selectReq).GetTyped(&tuples2)
 	if err != nil {
 		log.Fatalf("Failed to SelectTyped: %s", err.Error())
 		return
@@ -120,7 +127,8 @@ func Example_customUnpacking() {
 
 	// Call a function "func_name" returning a table of custom tuples.
 	var tuples3 [][]Tuple3
-	err = conn.Call17Typed("func_name", []interface{}{}, &tuples3)
+	callReq := tarantool.NewCallRequest("func_name")
+	err = conn.Do(callReq).GetTyped(&tuples3)
 	if err != nil {
 		log.Fatalf("Failed to CallTyped: %s", err.Error())
 		return

@@ -197,20 +197,25 @@ func New(conn tarantool.Connector, name string) Queue {
 // Create creates a new queue with config.
 func (q *queue) Create(cfg Cfg) error {
 	cmd := "local name, type, cfg = ... ; queue.create_tube(name, type, cfg)"
-	_, err := q.conn.Eval(cmd, []interface{}{q.name, cfg.getType(), cfg.toMap()})
+	_, err := q.conn.Do(tarantool.NewEvalRequest(cmd).
+		Args([]interface{}{q.name, cfg.getType(), cfg.toMap()}),
+	).Get()
 	return err
 }
 
 // Set queue settings.
 func (q *queue) Cfg(opts CfgOpts) error {
-	_, err := q.conn.Call17(q.cmds.cfg, []interface{}{opts.toMap()})
+	req := tarantool.NewCallRequest(q.cmds.cfg).Args([]interface{}{opts.toMap()})
+	_, err := q.conn.Do(req).Get()
 	return err
 }
 
 // Exists checks existence of a tube.
 func (q *queue) Exists() (bool, error) {
 	cmd := "local name = ... ; return queue.tube[name] ~= nil"
-	resp, err := q.conn.Eval(cmd, []string{q.name})
+	resp, err := q.conn.Do(tarantool.NewEvalRequest(cmd).
+		Args([]string{q.name}),
+	).Get()
 	if err != nil {
 		return false, err
 	}
@@ -238,7 +243,8 @@ func (q *queue) Identify(u *uuid.UUID) (uuid.UUID, error) {
 		}
 	}
 
-	if resp, err := q.conn.Call17(q.cmds.identify, args); err == nil {
+	req := tarantool.NewCallRequest(q.cmds.identify).Args(args)
+	if resp, err := q.conn.Do(req).Get(); err == nil {
 		if us, ok := resp.Data[0].(string); ok {
 			return uuid.FromBytes([]byte(us))
 		} else {
@@ -264,7 +270,8 @@ func (q *queue) put(params ...interface{}) (*Task, error) {
 		result: params[0],
 		q:      q,
 	}
-	if err := q.conn.Call17Typed(q.cmds.put, params, &qd); err != nil {
+	req := tarantool.NewCallRequest(q.cmds.put).Args(params)
+	if err := q.conn.Do(req).GetTyped(&qd); err != nil {
 		return nil, err
 	}
 	return qd.task, nil
@@ -315,7 +322,8 @@ func (q *queue) take(params interface{}, result ...interface{}) (*Task, error) {
 	if len(result) > 0 {
 		qd.result = result[0]
 	}
-	if err := q.conn.Call17Typed(q.cmds.take, []interface{}{params}, &qd); err != nil {
+	req := tarantool.NewCallRequest(q.cmds.take).Args([]interface{}{params})
+	if err := q.conn.Do(req).GetTyped(&qd); err != nil {
 		return nil, err
 	}
 	return qd.task, nil
@@ -323,20 +331,21 @@ func (q *queue) take(params interface{}, result ...interface{}) (*Task, error) {
 
 // Drop queue.
 func (q *queue) Drop() error {
-	_, err := q.conn.Call17(q.cmds.drop, []interface{}{})
+	_, err := q.conn.Do(tarantool.NewCallRequest(q.cmds.drop)).Get()
 	return err
 }
 
 // ReleaseAll forcibly returns all taken tasks to a ready state.
 func (q *queue) ReleaseAll() error {
-	_, err := q.conn.Call17(q.cmds.releaseAll, []interface{}{})
+	_, err := q.conn.Do(tarantool.NewCallRequest(q.cmds.releaseAll)).Get()
 	return err
 }
 
 // Look at a task without changing its state.
 func (q *queue) Peek(taskId uint64) (*Task, error) {
 	qd := queueData{q: q}
-	if err := q.conn.Call17Typed(q.cmds.peek, []interface{}{taskId}, &qd); err != nil {
+	req := tarantool.NewCallRequest(q.cmds.peek).Args([]interface{}{taskId})
+	if err := q.conn.Do(req).GetTyped(&qd); err != nil {
 		return nil, err
 	}
 	return qd.task, nil
@@ -363,7 +372,8 @@ func (q *queue) _release(taskId uint64, cfg Opts) (string, error) {
 }
 func (q *queue) produce(cmd string, params ...interface{}) (string, error) {
 	qd := queueData{q: q}
-	if err := q.conn.Call17Typed(cmd, params, &qd); err != nil || qd.task == nil {
+	req := tarantool.NewCallRequest(cmd).Args(params)
+	if err := q.conn.Do(req).GetTyped(&qd); err != nil || qd.task == nil {
 		return "", err
 	}
 	return qd.task.status, nil
@@ -388,7 +398,8 @@ func (r *kickResult) DecodeMsgpack(d *msgpack.Decoder) (err error) {
 // Reverse the effect of a bury request on one or more tasks.
 func (q *queue) Kick(count uint64) (uint64, error) {
 	var r kickResult
-	err := q.conn.Call17Typed(q.cmds.kick, []interface{}{count}, &r)
+	req := tarantool.NewCallRequest(q.cmds.kick).Args([]interface{}{count})
+	err := q.conn.Do(req).GetTyped(&r)
 	return r.id, err
 }
 
@@ -400,7 +411,7 @@ func (q *queue) Delete(taskId uint64) error {
 
 // State returns a current queue state.
 func (q *queue) State() (State, error) {
-	resp, err := q.conn.Call17(q.cmds.state, []interface{}{})
+	resp, err := q.conn.Do(tarantool.NewCallRequest(q.cmds.state)).Get()
 	if err != nil {
 		return UnknownState, err
 	}
@@ -417,7 +428,8 @@ func (q *queue) State() (State, error) {
 // Return the number of tasks in a queue broken down by task_state, and the
 // number of requests broken down by the type of request.
 func (q *queue) Statistic() (interface{}, error) {
-	resp, err := q.conn.Call17(q.cmds.statistics, []interface{}{q.name})
+	req := tarantool.NewCallRequest(q.cmds.statistics).Args([]interface{}{q.name})
+	resp, err := q.conn.Do(req).Get()
 	if err != nil {
 		return nil, err
 	}

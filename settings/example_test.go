@@ -31,14 +31,16 @@ func Example_sqlFullColumnNames() {
 	}
 
 	// Create a space.
-	_, err = conn.Execute("CREATE TABLE example(id INT PRIMARY KEY, x INT);", []interface{}{})
+	req := tarantool.NewExecuteRequest("CREATE TABLE example(id INT PRIMARY KEY, x INT);")
+	_, err = conn.Do(req).Get()
 	if err != nil {
 		fmt.Printf("error in create table: %v\n", err)
 		return
 	}
 
 	// Insert some tuple into space.
-	_, err = conn.Execute("INSERT INTO example VALUES (1, 1);", []interface{}{})
+	req = tarantool.NewExecuteRequest("INSERT INTO example VALUES (1, 1);")
+	_, err = conn.Do(req).Get()
 	if err != nil {
 		fmt.Printf("error on insert: %v\n", err)
 		return
@@ -52,7 +54,8 @@ func Example_sqlFullColumnNames() {
 	}
 
 	// Get some data with SQL query.
-	resp, err = conn.Execute("SELECT x FROM example WHERE id = 1;", []interface{}{})
+	req = tarantool.NewExecuteRequest("SELECT x FROM example WHERE id = 1;")
+	_, err = conn.Do(req).Get()
 	if err != nil {
 		fmt.Printf("error on select: %v\n", err)
 		return
@@ -68,7 +71,7 @@ func Example_sqlFullColumnNames() {
 	}
 
 	// Get some data with SQL query.
-	resp, err = conn.Execute("SELECT x FROM example WHERE id = 1;", []interface{}{})
+	_, err = conn.Do(req).Get()
 	if err != nil {
 		fmt.Printf("error on select: %v\n", err)
 		return

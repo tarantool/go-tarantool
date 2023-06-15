@@ -489,7 +489,9 @@ func TestCrudGenerateData(t *testing.T) {
 	for _, testCase := range testGenerateDataCases {
 		t.Run(testCase.name, func(t *testing.T) {
 			for i := 1010; i < 1020; i++ {
-				conn.Delete(spaceName, nil, []interface{}{uint(i)})
+				req := tarantool.NewDeleteRequest(spaceName).
+					Key([]interface{}{uint(i)})
+				conn.Do(req).Get()
 			}
 
 			resp, err := conn.Do(testCase.req).Get()
@@ -499,7 +501,9 @@ func TestCrudGenerateData(t *testing.T) {
 			testSelectGeneratedData(t, conn, testCase.expectedTuplesCount)
 
 			for i := 1010; i < 1020; i++ {
-				conn.Delete(spaceName, nil, []interface{}{uint(i)})
+				req := tarantool.NewDeleteRequest(spaceName).
+					Key([]interface{}{uint(i)})
+				conn.Do(req).Get()
 			}
 		})
 	}
@@ -516,7 +520,9 @@ func TestCrudProcessData(t *testing.T) {
 			testCrudRequestCheck(t, testCase.req, resp,
 				err, testCase.expectedRespLen)
 			for i := 1010; i < 1020; i++ {
-				conn.Delete(spaceName, nil, []interface{}{uint(i)})
+				req := tarantool.NewDeleteRequest(spaceName).
+					Key([]interface{}{uint(i)})
+				conn.Do(req).Get()
 			}
 		})
 	}
@@ -648,7 +654,9 @@ func TestBoolResult(t *testing.T) {
 	}
 
 	for i := 1010; i < 1020; i++ {
-		conn.Delete(spaceName, nil, []interface{}{uint(i)})
+		req := tarantool.NewDeleteRequest(spaceName).
+			Key([]interface{}{uint(i)})
+		conn.Do(req).Get()
 	}
 }
 
@@ -671,7 +679,9 @@ func TestNumberResult(t *testing.T) {
 	}
 
 	for i := 1010; i < 1020; i++ {
-		conn.Delete(spaceName, nil, []interface{}{uint(i)})
+		req := tarantool.NewDeleteRequest(spaceName).
+			Key([]interface{}{uint(i)})
+		conn.Do(req).Get()
 	}
 }
 
@@ -714,7 +724,9 @@ func TestBaseResult(t *testing.T) {
 	}
 
 	for i := 1010; i < 1020; i++ {
-		conn.Delete(spaceName, nil, []interface{}{uint(i)})
+		req := tarantool.NewDeleteRequest(spaceName).
+			Key([]interface{}{uint(i)})
+		conn.Do(req).Get()
 	}
 }
 
@@ -757,7 +769,9 @@ func TestManyResult(t *testing.T) {
 	}
 
 	for i := 1010; i < 1020; i++ {
-		conn.Delete(spaceName, nil, []interface{}{uint(i)})
+		req := tarantool.NewDeleteRequest(spaceName).
+			Key([]interface{}{uint(i)})
+		conn.Do(req).Get()
 	}
 }
 

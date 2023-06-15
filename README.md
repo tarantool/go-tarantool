@@ -113,7 +113,9 @@ func main() {
 	if err != nil {
 		fmt.Println("Connection refused:", err)
 	}
-	resp, err := conn.Insert(999, []interface{}{99999, "BB"})
+	resp, err := conn.Do(tarantool.NewInsertRequest(999).
+		Tuple([]interface{}{99999, "BB"}),
+	).Get()
 	if err != nil {
 		fmt.Println("Error", err)
 		fmt.Println("Code", resp.Code)
@@ -138,12 +140,9 @@ starting a session. There are two parameters:
 **Observation 4:** The `err` structure will be `nil` if there is no error,
 otherwise it will have a description which can be retrieved with `err.Error()`.
 
-**Observation 5:** The `Insert` request, like almost all requests, is preceded by
-"`conn.`" which is the name of the object that was returned by `Connect()`.
-There are two parameters:
-
-* a space number (it could just as easily have been a space name), and
-* a tuple.
+**Observation 5:** The `Insert` request, like almost all requests, is preceded
+by the method `Do` of object `conn` which is the object that was returned
+by `Connect()`.
 
 ### Migration to v2
 
