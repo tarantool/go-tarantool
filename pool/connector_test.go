@@ -56,10 +56,10 @@ type closeMock struct {
 	retErr bool
 }
 
-func (m *closeMock) Close() []error {
+func (m *closeMock) Close() error {
 	m.called++
 	if m.retErr {
-		return []error{errors.New("err1"), errors.New("err2")}
+		return errors.New("err1")
 	}
 	return nil
 }
@@ -79,7 +79,7 @@ func TestConnectorCloseWithError(t *testing.T) {
 	err := c.Close()
 	require.NotNilf(t, err, "unexpected result")
 	require.Equalf(t, 1, m.called, "should be called only once")
-	require.Equal(t, "failed to close connection pool: err1: err2", err.Error())
+	require.Equal(t, "err1", err.Error())
 }
 
 type configuredTimeoutMock struct {

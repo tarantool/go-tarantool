@@ -1,8 +1,6 @@
 package pool
 
 import (
-	"errors"
-	"fmt"
 	"time"
 
 	"github.com/tarantool/go-tarantool/v2"
@@ -32,19 +30,9 @@ func (c *ConnectorAdapter) ConnectedNow() bool {
 	return ret
 }
 
-// ClosedNow reports if the connector is closed by user or all connections
-// in the specified mode closed.
+// Close closes all connections and the object.
 func (c *ConnectorAdapter) Close() error {
-	errs := c.pool.Close()
-	if len(errs) == 0 {
-		return nil
-	}
-
-	err := errors.New("failed to close connection pool")
-	for _, e := range errs {
-		err = fmt.Errorf("%s: %w", err.Error(), e)
-	}
-	return err
+	return c.pool.Close()
 }
 
 // ConfiguredTimeout returns a timeout from connections config.

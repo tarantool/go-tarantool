@@ -277,7 +277,7 @@ func (pool *ConnectionPool) Remove(addr string) error {
 	return nil
 }
 
-func (pool *ConnectionPool) waitClose() []error {
+func (pool *ConnectionPool) waitClose() error {
 	pool.addrsMutex.RLock()
 	endpoints := make([]*endpoint, 0, len(pool.addrs))
 	for _, e := range pool.addrs {
@@ -292,11 +292,22 @@ func (pool *ConnectionPool) waitClose() []error {
 			errs = append(errs, e.closeErr)
 		}
 	}
-	return errs
+	if len(errs) == 0 {
+		return nil
+	}
+
+	var b []byte
+	for i, err := range errs {
+		if i > 0 {
+			b = append(b, '\n')
+		}
+		b = append(b, err.Error()...)
+	}
+	return errors.New(string(b))
 }
 
 // Close closes connections in the ConnectionPool.
-func (pool *ConnectionPool) Close() []error {
+func (pool *ConnectionPool) Close() error {
 	if pool.state.cas(connectedState, closedState) ||
 		pool.state.cas(shutdownState, closedState) {
 		pool.addrsMutex.RLock()
@@ -311,7 +322,7 @@ func (pool *ConnectionPool) Close() []error {
 
 // CloseGraceful closes connections in the ConnectionPool gracefully. It waits
 // for all requests to complete.
-func (pool *ConnectionPool) CloseGraceful() []error {
+func (pool *ConnectionPool) CloseGraceful() error {
 	if pool.state.cas(connectedState, shutdownState) {
 		pool.addrsMutex.RLock()
 		for _, s := range pool.addrs {
