@@ -35,7 +35,7 @@ func Example() {
 
 	spaceNo := uint32(524)
 
-	number, err := NewDecimalFromString("-22.804")
+	number, err := MakeDecimalFromString("-22.804")
 	if err != nil {
 		log.Fatalf("Failed to prepare test decimal: %s", err)
 	}

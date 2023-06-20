@@ -21,6 +21,7 @@ package decimal
 
 import (
 	"fmt"
+	"reflect"
 
 	"github.com/shopspring/decimal"
 	"github.com/vmihailenco/msgpack/v5"
@@ -42,44 +43,50 @@ const (
 	decimalPrecision = 38
 )
 
+var (
+	one decimal.Decimal = decimal.NewFromInt(1)
+	// -10^decimalPrecision - 1
+	minSupportedDecimal decimal.Decimal = maxSupportedDecimal.Neg().Sub(one)
+	// 10^decimalPrecision - 1
+	maxSupportedDecimal decimal.Decimal = decimal.New(1, decimalPrecision).Sub(one)
+)
+
 type Decimal struct {
 	decimal.Decimal
 }
 
-// NewDecimal creates a new Decimal from a decimal.Decimal.
-func NewDecimal(decimal decimal.Decimal) *Decimal {
-	return &Decimal{Decimal: decimal}
+// MakeDecimal creates a new Decimal from a decimal.Decimal.
+func MakeDecimal(decimal decimal.Decimal) Decimal {
+	return Decimal{Decimal: decimal}
 }
 
-// NewDecimalFromString creates a new Decimal from a string.
-func NewDecimalFromString(src string) (result *Decimal, err error) {
+// MakeDecimalFromString creates a new Decimal from a string.
+func MakeDecimalFromString(src string) (Decimal, error) {
+	result := Decimal{}
 	dec, err := decimal.NewFromString(src)
 	if err != nil {
-		return
+		return result, err
 	}
-	result = NewDecimal(dec)
-	return
+	result = MakeDecimal(dec)
+	return result, nil
 }
 
-// MarshalMsgpack serializes the Decimal into a MessagePack representation.
-func (decNum *Decimal) MarshalMsgpack() ([]byte, error) {
-	one := decimal.NewFromInt(1)
-	maxSupportedDecimal := decimal.New(1, decimalPrecision).Sub(one) // 10^decimalPrecision - 1
-	minSupportedDecimal := maxSupportedDecimal.Neg().Sub(one)        // -10^decimalPrecision - 1
-	if decNum.GreaterThan(maxSupportedDecimal) {
+func decimalEncoder(e *msgpack.Encoder, v reflect.Value) ([]byte, error) {
+	dec := v.Interface().(Decimal)
+	if dec.GreaterThan(maxSupportedDecimal) {
 		return nil,
 			fmt.Errorf(
 				"msgpack: decimal number is bigger than maximum supported number (10^%d - 1)",
 				decimalPrecision)
 	}
-	if decNum.LessThan(minSupportedDecimal) {
+	if dec.LessThan(minSupportedDecimal) {
 		return nil,
 			fmt.Errorf(
 				"msgpack: decimal number is lesser than minimum supported number (-10^%d - 1)",
 				decimalPrecision)
 	}
 
-	strBuf := decNum.String()
+	strBuf := dec.String()
 	bcdBuf, err := encodeStringToBCD(strBuf)
 	if err != nil {
 		return nil, fmt.Errorf("msgpack: can't encode string (%s) to a BCD buffer: %w", strBuf, err)
@@ -87,9 +94,16 @@ func (decNum *Decimal) MarshalMsgpack() ([]byte, error) {
 	return bcdBuf, nil
 }
 
-// UnmarshalMsgpack deserializes a Decimal value from a MessagePack
-// representation.
-func (decNum *Decimal) UnmarshalMsgpack(b []byte) error {
+func decimalDecoder(d *msgpack.Decoder, v reflect.Value, extLen int) error {
+	b := make([]byte, extLen)
+	n, err := d.Buffered().Read(b)
+	if err != nil {
+		return err
+	}
+	if n < extLen {
+		return fmt.Errorf("msgpack: unexpected end of stream after %d decimal bytes", n)
+	}
+
 	// Decimal values can be encoded to fixext MessagePack, where buffer
 	// has a fixed length encoded by first byte, and ext MessagePack, where
 	// buffer length is not fixed and encoded by a number in a separate
@@ -111,10 +125,12 @@ func (decNum *Decimal) UnmarshalMsgpack(b []byte) error {
 	if exp != 0 {
 		dec = dec.Shift(int32(exp))
 	}
-	*decNum = *NewDecimal(dec)
+	ptr := v.Addr().Interface().(*Decimal)
+	*ptr = MakeDecimal(dec)
 	return nil
 }
 
 func init() {
-	msgpack.RegisterExt(decimalExtID, (*Decimal)(nil))
+	msgpack.RegisterExtDecoder(decimalExtID, Decimal{}, decimalDecoder)
+	msgpack.RegisterExtEncoder(decimalExtID, Decimal{}, decimalEncoder)
 }

@@ -63,10 +63,10 @@ func (t *TupleDecimal) DecodeMsgpack(d *msgpack.Decoder) error {
 		return err
 	}
 
-	if dec, ok := res.(*Decimal); !ok {
+	if dec, ok := res.(Decimal); !ok {
 		return fmt.Errorf("decimal doesn't match")
 	} else {
-		t.number = *dec
+		t.number = dec
 	}
 	return nil
 }
@@ -160,12 +160,12 @@ var decimalSamples = []struct {
 func TestMPEncodeDecode(t *testing.T) {
 	for _, testcase := range benchmarkSamples {
 		t.Run(testcase.numString, func(t *testing.T) {
-			decNum, err := NewDecimalFromString(testcase.numString)
+			decNum, err := MakeDecimalFromString(testcase.numString)
 			if err != nil {
 				t.Fatal(err)
 			}
 			var buf []byte
-			tuple := TupleDecimal{number: *decNum}
+			tuple := TupleDecimal{number: decNum}
 			if buf, err = msgpack.Marshal(&tuple); err != nil {
 				t.Fatalf(
 					"Failed to msgpack.Encoder decimal number '%s' to a MessagePack buffer: %s",
@@ -270,7 +270,7 @@ func TestEncodeMaxNumber(t *testing.T) {
 	referenceErrMsg := "msgpack: decimal number is bigger than maximum " +
 		"supported number (10^38 - 1)"
 	decNum := decimal.New(1, DecimalPrecision) // // 10^DecimalPrecision
-	tuple := TupleDecimal{number: *NewDecimal(decNum)}
+	tuple := TupleDecimal{number: MakeDecimal(decNum)}
 	_, err := msgpack.Marshal(&tuple)
 	if err == nil {
 		t.Fatalf("It is possible to msgpack.Encoder a number unsupported by Tarantool")
@@ -285,7 +285,7 @@ func TestEncodeMinNumber(t *testing.T) {
 		"supported number (-10^38 - 1)"
 	two := decimal.NewFromInt(2)
 	decNum := decimal.New(1, DecimalPrecision).Neg().Sub(two) // -10^DecimalPrecision - 2
-	tuple := TupleDecimal{number: *NewDecimal(decNum)}
+	tuple := TupleDecimal{number: MakeDecimal(decNum)}
 	_, err := msgpack.Marshal(&tuple)
 	if err == nil {
 		t.Fatalf("It is possible to msgpack.Encoder a number unsupported by Tarantool")
@@ -302,7 +302,7 @@ func benchmarkMPEncodeDecode(b *testing.B, src decimal.Decimal, dst interface{})
 	var buf []byte
 	var err error
 	for i := 0; i < b.N; i++ {
-		tuple := TupleDecimal{number: *NewDecimal(src)}
+		tuple := TupleDecimal{number: MakeDecimal(src)}
 		if buf, err = msgpack.Marshal(&tuple); err != nil {
 			b.Fatal(err)
 		}
@@ -327,13 +327,15 @@ func BenchmarkMPEncodeDecodeDecimal(b *testing.B) {
 func BenchmarkMPEncodeDecimal(b *testing.B) {
 	for _, testcase := range benchmarkSamples {
 		b.Run(testcase.numString, func(b *testing.B) {
-			decNum, err := NewDecimalFromString(testcase.numString)
+			decNum, err := MakeDecimalFromString(testcase.numString)
 			if err != nil {
 				b.Fatal(err)
 			}
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				msgpack.Marshal(decNum)
+				if _, err := msgpack.Marshal(decNum); err != nil {
+					b.Fatal(err)
+				}
 			}
 		})
 	}
@@ -342,20 +344,20 @@ func BenchmarkMPEncodeDecimal(b *testing.B) {
 func BenchmarkMPDecodeDecimal(b *testing.B) {
 	for _, testcase := range benchmarkSamples {
 		b.Run(testcase.numString, func(b *testing.B) {
-			decNum, err := NewDecimalFromString(testcase.numString)
+			decNum, err := MakeDecimalFromString(testcase.numString)
 			if err != nil {
 				b.Fatal(err)
 			}
-			var buf []byte
-			if buf, err = msgpack.Marshal(decNum); err != nil {
+			buf, err := msgpack.Marshal(decNum)
+			if err != nil {
 				b.Fatal(err)
 			}
 			b.ResetTimer()
-			var v TupleDecimal
 			for i := 0; i < b.N; i++ {
-				msgpack.Unmarshal(buf, &v)
+				if err := msgpack.Unmarshal(buf, &decNum); err != nil {
+					b.Fatal(err)
+				}
 			}
-
 		})
 	}
 }
@@ -371,7 +373,7 @@ func tupleValueIsDecimal(t *testing.T, tuples []interface{}, number decimal.Deci
 		if len(tpl) != 1 {
 			t.Fatalf("Unexpected return value body (tuple len)")
 		}
-		if val, ok := tpl[0].(*Decimal); !ok || !val.Equal(number) {
+		if val, ok := tpl[0].(Decimal); !ok || !val.Equal(number) {
 			t.Fatalf("Unexpected return value body (tuple 0 field)")
 		}
 	}
@@ -447,9 +449,9 @@ func TestMPEncode(t *testing.T) {
 	samples = append(samples, benchmarkSamples...)
 	for _, testcase := range samples {
 		t.Run(testcase.numString, func(t *testing.T) {
-			dec, err := NewDecimalFromString(testcase.numString)
+			dec, err := MakeDecimalFromString(testcase.numString)
 			if err != nil {
-				t.Fatalf("NewDecimalFromString() failed: %s", err.Error())
+				t.Fatalf("MakeDecimalFromString() failed: %s", err.Error())
 			}
 			buf, err := msgpack.Marshal(dec)
 			if err != nil {
@@ -481,7 +483,7 @@ func TestMPDecode(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Unmsgpack.Marshalling failed: %s", err.Error())
 			}
-			decActual, ok := v.(*Decimal)
+			decActual, ok := v.(Decimal)
 			if !ok {
 				t.Fatalf("Unable to convert to Decimal")
 			}
@@ -532,7 +534,7 @@ func TestSelect(t *testing.T) {
 		t.Fatalf("Failed to prepare test decimal: %s", err)
 	}
 
-	ins := NewInsertRequest(space).Tuple([]interface{}{NewDecimal(number)})
+	ins := NewInsertRequest(space).Tuple([]interface{}{MakeDecimal(number)})
 	resp, err := conn.Do(ins).Get()
 	if err != nil {
 		t.Fatalf("Decimal insert failed: %s", err)
@@ -549,7 +551,7 @@ func TestSelect(t *testing.T) {
 		Offset(offset).
 		Limit(limit).
 		Iterator(IterEq).
-		Key([]interface{}{NewDecimal(number)})
+		Key([]interface{}{MakeDecimal(number)})
 	resp, err = conn.Do(sel).Get()
 	if err != nil {
 		t.Fatalf("Decimal select failed: %s", err.Error())
@@ -559,7 +561,7 @@ func TestSelect(t *testing.T) {
 	}
 	tupleValueIsDecimal(t, resp.Data, number)
 
-	del := NewDeleteRequest(space).Index(index).Key([]interface{}{NewDecimal(number)})
+	del := NewDeleteRequest(space).Index(index).Key([]interface{}{MakeDecimal(number)})
 	resp, err = conn.Do(del).Get()
 	if err != nil {
 		t.Fatalf("Decimal delete failed: %s", err)
@@ -604,7 +606,7 @@ func assertInsert(t *testing.T, conn *Connection, numString string) {
 		t.Fatalf("Failed to prepare test decimal: %s", err)
 	}
 
-	ins := NewInsertRequest(space).Tuple([]interface{}{NewDecimal(number)})
+	ins := NewInsertRequest(space).Tuple([]interface{}{MakeDecimal(number)})
 	resp, err := conn.Do(ins).Get()
 	if err != nil {
 		t.Fatalf("Decimal insert failed: %s", err)
@@ -614,7 +616,7 @@ func assertInsert(t *testing.T, conn *Connection, numString string) {
 	}
 	tupleValueIsDecimal(t, resp.Data, number)
 
-	del := NewDeleteRequest(space).Index(index).Key([]interface{}{NewDecimal(number)})
+	del := NewDeleteRequest(space).Index(index).Key([]interface{}{MakeDecimal(number)})
 	resp, err = conn.Do(del).Get()
 	if err != nil {
 		t.Fatalf("Decimal delete failed: %s", err)
@@ -648,7 +650,7 @@ func TestReplace(t *testing.T) {
 		t.Fatalf("Failed to prepare test decimal: %s", err)
 	}
 
-	rep := NewReplaceRequest(space).Tuple([]interface{}{NewDecimal(number)})
+	rep := NewReplaceRequest(space).Tuple([]interface{}{MakeDecimal(number)})
 	respRep, errRep := conn.Do(rep).Get()
 	if errRep != nil {
 		t.Fatalf("Decimal replace failed: %s", errRep)
@@ -662,7 +664,7 @@ func TestReplace(t *testing.T) {
 		Index(index).
 		Limit(1).
 		Iterator(IterEq).
-		Key([]interface{}{NewDecimal(number)})
+		Key([]interface{}{MakeDecimal(number)})
 	respSel, errSel := conn.Do(sel).Get()
 	if errSel != nil {
 		t.Fatalf("Decimal select failed: %s", errSel)
