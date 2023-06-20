@@ -27,6 +27,7 @@ faster than other packages according to public benchmarks.
   * [API reference](#api-reference)
   * [Walking\-through example](#walking-through-example)
   * [Migration to v2](#migration-to-v2)
+    * [decimal package](#decimal-package)
     * [multi package](#multi-package)
     * [pool package](#pool-package)
     * [msgpack.v5](#msgpackv5)
@@ -147,6 +148,11 @@ by `Connect()`.
 ### Migration to v2
 
 The article describes migration from go-tarantool to go-tarantool/v2.
+
+#### decimal package
+
+Now you need to use objects of the Decimal type instead of pointers to it. A
+new constructor `MakeDecimal` returns an object. `NewDecimal` has been removed.
 
 #### multi package
 
