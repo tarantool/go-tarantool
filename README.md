@@ -27,6 +27,7 @@ faster than other packages according to public benchmarks.
   * [API reference](#api-reference)
   * [Walking\-through example](#walking-through-example)
   * [Migration to v2](#migration-to-v2)
+    * [datetime package](#datetime-package)
     * [decimal package](#decimal-package)
     * [multi package](#multi-package)
     * [pool package](#pool-package)
@@ -148,6 +149,12 @@ by `Connect()`.
 ### Migration to v2
 
 The article describes migration from go-tarantool to go-tarantool/v2.
+
+#### datetime package
+
+Now you need to use objects of the Datetime type instead of pointers to it. A
+new constructor `MakeDatetime` returns an object. `NewDatetime` has been
+removed.
 
 #### decimal package
 

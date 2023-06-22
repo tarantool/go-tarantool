@@ -25,6 +25,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
   plain string. Needed for upgrade to Tarantool 3.0, where a binary blob is
   decoded to a varbinary object (#313).
 - Use objects of the Decimal type instead of pointers (#238)
+- Use objects of the Datetime type instead of pointers (#238)
 
 ### Deprecated
 

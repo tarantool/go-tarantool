@@ -35,7 +35,7 @@ func Example() {
 		fmt.Printf("Error in time.Parse() is %v", err)
 		return
 	}
-	dt, err := NewDatetime(tm)
+	dt, err := MakeDatetime(tm)
 	if err != nil {
 		fmt.Printf("Unable to create Datetime from %s: %s", tm, err)
 		return
@@ -91,13 +91,13 @@ func Example() {
 	fmt.Printf("Data: %v\n", respDt.ToTime())
 }
 
-// ExampleNewDatetime_localUnsupported demonstrates that "Local" location is
+// ExampleMakeDatetime_localUnsupported demonstrates that "Local" location is
 // unsupported.
-func ExampleNewDatetime_localUnsupported() {
+func ExampleMakeDatetime_localUnsupported() {
 	tm := time.Now().Local()
 	loc := tm.Location()
 	fmt.Println("Location:", loc)
-	if _, err := NewDatetime(tm); err != nil {
+	if _, err := MakeDatetime(tm); err != nil {
 		fmt.Printf("Could not create a Datetime with %s location.\n", loc)
 	} else {
 		fmt.Printf("A Datetime with %s location created.\n", loc)
@@ -109,7 +109,7 @@ func ExampleNewDatetime_localUnsupported() {
 
 // Example demonstrates how to create a datetime for Tarantool without UTC
 // timezone in datetime.
-func ExampleNewDatetime_noTimezone() {
+func ExampleMakeDatetime_noTimezone() {
 	var datetime = "2013-10-28T17:51:56.000000009Z"
 	tm, err := time.Parse(time.RFC3339, datetime)
 	if err != nil {
@@ -119,7 +119,7 @@ func ExampleNewDatetime_noTimezone() {
 
 	tm = tm.In(time.FixedZone(NoTimezone, 0))
 
-	dt, err := NewDatetime(tm)
+	dt, err := MakeDatetime(tm)
 	if err != nil {
 		fmt.Printf("Unable to create Datetime from %s: %s", tm, err)
 		return
@@ -145,12 +145,12 @@ func ExampleDatetime_Interval() {
 		return
 	}
 
-	dtFirst, err := NewDatetime(tmFirst)
+	dtFirst, err := MakeDatetime(tmFirst)
 	if err != nil {
 		fmt.Printf("Unable to create Datetime from %s: %s", tmFirst, err)
 		return
 	}
-	dtSecond, err := NewDatetime(tmSecond)
+	dtSecond, err := MakeDatetime(tmSecond)
 	if err != nil {
 		fmt.Printf("Unable to create Datetime from %s: %s", tmSecond, err)
 		return
@@ -170,7 +170,7 @@ func ExampleDatetime_Add() {
 		fmt.Printf("Error in time.Parse() is %s", err)
 		return
 	}
-	dt, err := NewDatetime(tm)
+	dt, err := MakeDatetime(tm)
 	if err != nil {
 		fmt.Printf("Unable to create Datetime from %s: %s", tm, err)
 		return
@@ -201,7 +201,7 @@ func ExampleDatetime_Add_dst() {
 		return
 	}
 	tm := time.Date(2008, 1, 1, 1, 1, 1, 1, loc)
-	dt, err := NewDatetime(tm)
+	dt, err := MakeDatetime(tm)
 	if err != nil {
 		fmt.Printf("Unable to create Datetime: %s", err)
 		return
@@ -237,7 +237,7 @@ func ExampleDatetime_Sub() {
 		fmt.Printf("Error in time.Parse() is %s", err)
 		return
 	}
-	dt, err := NewDatetime(tm)
+	dt, err := MakeDatetime(tm)
 	if err != nil {
 		fmt.Printf("Unable to create Datetime from %s: %s", tm, err)
 		return

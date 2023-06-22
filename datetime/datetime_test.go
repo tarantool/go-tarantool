@@ -58,7 +58,7 @@ func skipIfDatetimeUnsupported(t *testing.T) {
 
 func TestDatetimeAdd(t *testing.T) {
 	tm := time.Unix(0, 0).UTC()
-	dt, err := NewDatetime(tm)
+	dt, err := MakeDatetime(tm)
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err.Error())
 	}
@@ -229,7 +229,7 @@ func TestDatetimeAddAdjust(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Unexpected error: %s", err.Error())
 		}
-		dt, err := NewDatetime(tm)
+		dt, err := MakeDatetime(tm)
 		if err != nil {
 			t.Fatalf("Unexpected error: %s", err.Error())
 		}
@@ -243,9 +243,6 @@ func TestDatetimeAddAdjust(t *testing.T) {
 				if err != nil {
 					t.Fatalf("Unable to add: %s", err.Error())
 				}
-				if newdt == nil {
-					t.Fatalf("Unexpected nil value")
-				}
 				res := newdt.ToTime().Format(time.RFC3339)
 				if res != tc.want {
 					t.Fatalf("Unexpected result %s, expected %s", res, tc.want)
@@ -256,7 +253,7 @@ func TestDatetimeAddAdjust(t *testing.T) {
 
 func TestDatetimeAddSubSymmetric(t *testing.T) {
 	tm := time.Unix(0, 0).UTC()
-	dt, err := NewDatetime(tm)
+	dt, err := MakeDatetime(tm)
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err.Error())
 	}
@@ -304,7 +301,7 @@ func TestDatetimeAddSubSymmetric(t *testing.T) {
 // We have a separate test for accurate Datetime boundaries.
 func TestDatetimeAddOutOfRange(t *testing.T) {
 	tm := time.Unix(0, 0).UTC()
-	dt, err := NewDatetime(tm)
+	dt, err := MakeDatetime(tm)
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err.Error())
 	}
@@ -316,9 +313,6 @@ func TestDatetimeAddOutOfRange(t *testing.T) {
 	expected := "time 1000001970-01-01 00:00:00 +0000 UTC is out of supported range"
 	if err.Error() != expected {
 		t.Fatalf("Unexpected error: %s", err.Error())
-	}
-	if newdt != nil {
-		t.Fatalf("Unexpected result: %v", newdt)
 	}
 }
 
@@ -335,11 +329,11 @@ func TestDatetimeInterval(t *testing.T) {
 		t.Fatalf("Error in time.Parse(): %s", err)
 	}
 
-	dtFirst, err := NewDatetime(tmFirst)
+	dtFirst, err := MakeDatetime(tmFirst)
 	if err != nil {
 		t.Fatalf("Unable to create Datetime from %s: %s", tmFirst, err)
 	}
-	dtSecond, err := NewDatetime(tmSecond)
+	dtSecond, err := MakeDatetime(tmSecond)
 	if err != nil {
 		t.Fatalf("Unable to create Datetime from %s: %s", tmSecond, err)
 	}
@@ -389,15 +383,15 @@ func TestDatetimeTarantoolInterval(t *testing.T) {
 		"2015-12-21T17:50:53Z",
 		"1980-03-28T13:18:39.000099Z",
 	}
-	datetimes := []*Datetime{}
+	datetimes := []Datetime{}
 	for _, date := range dates {
 		tm, err := time.Parse(time.RFC3339, date)
 		if err != nil {
 			t.Fatalf("Error in time.Parse(%s): %s", date, err)
 		}
-		dt, err := NewDatetime(tm)
+		dt, err := MakeDatetime(tm)
 		if err != nil {
-			t.Fatalf("Error in NewDatetime(%s): %s", tm, err)
+			t.Fatalf("Error in MakeDatetime(%s): %s", tm, err)
 		}
 		datetimes = append(datetimes, dt)
 	}
@@ -434,7 +428,7 @@ func assertDatetimeIsEqual(t *testing.T, tuples []interface{}, tm time.Time) {
 		if len(tpl) != 2 {
 			t.Fatalf("Unexpected return value body (tuple len = %d)", len(tpl))
 		}
-		if val, ok := tpl[dtIndex].(*Datetime); !ok || !val.ToTime().Equal(tm) {
+		if val, ok := tpl[dtIndex].(Datetime); !ok || !val.ToTime().Equal(tm) {
 			t.Fatalf("Unexpected tuple %d field %v, expected %v",
 				dtIndex,
 				val,
@@ -466,7 +460,7 @@ func TestInvalidTimezone(t *testing.T) {
 		t.Fatalf("Time parse failed: %s", err)
 	}
 	tm = tm.In(invalidLoc)
-	dt, err := NewDatetime(tm)
+	dt, err := MakeDatetime(tm)
 	if err == nil {
 		t.Fatalf("Unexpected success: %v", dt)
 	}
@@ -502,7 +496,7 @@ func TestInvalidOffset(t *testing.T) {
 				t.Fatalf("Time parse failed: %s", err)
 			}
 			tm = tm.In(loc)
-			dt, err := NewDatetime(tm)
+			dt, err := MakeDatetime(tm)
 			if testcase.ok && err != nil {
 				t.Fatalf("Unexpected error: %s", err.Error())
 			}
@@ -537,7 +531,7 @@ func TestCustomTimezone(t *testing.T) {
 		t.Fatalf("Time parse failed: %s", err)
 	}
 	tm = tm.In(customLoc)
-	dt, err := NewDatetime(tm)
+	dt, err := MakeDatetime(tm)
 	if err != nil {
 		t.Fatalf("Unable to create datetime: %s", err.Error())
 	}
@@ -550,7 +544,7 @@ func TestCustomTimezone(t *testing.T) {
 	assertDatetimeIsEqual(t, resp.Data, tm)
 
 	tpl := resp.Data[0].([]interface{})
-	if respDt, ok := tpl[0].(*Datetime); ok {
+	if respDt, ok := tpl[0].(Datetime); ok {
 		zone := respDt.ToTime().Location().String()
 		_, offset := respDt.ToTime().Zone()
 		if zone != customZone {
@@ -574,7 +568,7 @@ func TestCustomTimezone(t *testing.T) {
 func tupleInsertSelectDelete(t *testing.T, conn *Connection, tm time.Time) {
 	t.Helper()
 
-	dt, err := NewDatetime(tm)
+	dt, err := MakeDatetime(tm)
 	if err != nil {
 		t.Fatalf("Unable to create Datetime from %s: %s", tm, err)
 	}
@@ -726,7 +720,7 @@ func TestDatetimeOutOfRange(t *testing.T) {
 
 	for _, tm := range greaterBoundaryTimes {
 		t.Run(tm.String(), func(t *testing.T) {
-			_, err := NewDatetime(tm)
+			_, err := MakeDatetime(tm)
 			if err == nil {
 				t.Errorf("Time %s should be unsupported!", tm)
 			}
@@ -745,7 +739,7 @@ func TestDatetimeReplace(t *testing.T) {
 		t.Fatalf("Time parse failed: %s", err)
 	}
 
-	dt, err := NewDatetime(tm)
+	dt, err := MakeDatetime(tm)
 	if err != nil {
 		t.Fatalf("Unable to create Datetime from %s: %s", tm, err)
 	}
@@ -852,10 +846,10 @@ func (ev *Event) DecodeMsgpack(d *msgpack.Decoder) error {
 		return err
 	}
 
-	if dt, ok := res.(*Datetime); !ok {
+	if dt, ok := res.(Datetime); !ok {
 		return fmt.Errorf("Datetime doesn't match")
 	} else {
-		ev.Datetime = *dt
+		ev.Datetime = dt
 	}
 	return nil
 }
@@ -907,11 +901,11 @@ func TestCustomEncodeDecodeTuple1(t *testing.T) {
 
 	tm1, _ := time.Parse(time.RFC3339, "2010-05-24T17:51:56.000000009Z")
 	tm2, _ := time.Parse(time.RFC3339, "2022-05-24T17:51:56.000000009Z")
-	dt1, err := NewDatetime(tm1)
+	dt1, err := MakeDatetime(tm1)
 	if err != nil {
 		t.Fatalf("Unable to create Datetime from %s: %s", tm1, err)
 	}
-	dt2, err := NewDatetime(tm2)
+	dt2, err := MakeDatetime(tm2)
 	if err != nil {
 		t.Fatalf("Unable to create Datetime from %s: %s", tm2, err)
 	}
@@ -921,8 +915,8 @@ func TestCustomEncodeDecodeTuple1(t *testing.T) {
 	tuple := Tuple2{Cid: cid,
 		Orig: orig,
 		Events: []Event{
-			{*dt1, "Minsk"},
-			{*dt2, "Moscow"},
+			{dt1, "Minsk"},
+			{dt2, "Moscow"},
 		},
 	}
 	rep := NewReplaceRequest(spaceTuple2).Tuple(&tuple)
@@ -962,7 +956,7 @@ func TestCustomEncodeDecodeTuple1(t *testing.T) {
 	}
 
 	for i, tv := range []time.Time{tm1, tm2} {
-		dt, ok := events[i].([]interface{})[1].(*Datetime)
+		dt, ok := events[i].([]interface{})[1].(Datetime)
 		if !ok || !dt.ToTime().Equal(tv) {
 			t.Fatalf("%v != %v", dt.ToTime(), tv)
 		}
@@ -1020,7 +1014,7 @@ func TestCustomEncodeDecodeTuple5(t *testing.T) {
 	defer conn.Close()
 
 	tm := time.Unix(500, 1000).In(time.FixedZone(NoTimezone, 0))
-	dt, err := NewDatetime(tm)
+	dt, err := MakeDatetime(tm)
 	if err != nil {
 		t.Fatalf("Unable to create Datetime from %s: %s", tm, err)
 	}
@@ -1043,7 +1037,7 @@ func TestCustomEncodeDecodeTuple5(t *testing.T) {
 	if tpl, ok := resp.Data[0].([]interface{}); !ok {
 		t.Errorf("Unexpected body of Select")
 	} else {
-		if val, ok := tpl[0].(*Datetime); !ok || !val.ToTime().Equal(tm) {
+		if val, ok := tpl[0].(Datetime); !ok || !val.ToTime().Equal(tm) {
 			t.Fatalf("Unexpected body of Select")
 		}
 	}
@@ -1072,7 +1066,7 @@ func TestMPEncode(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Time (%s) parse failed: %s", testcase.dt, err)
 			}
-			dt, err := NewDatetime(tm)
+			dt, err := MakeDatetime(tm)
 			if err != nil {
 				t.Fatalf("Unable to create Datetime from %s: %s", tm, err)
 			}
@@ -1126,7 +1120,7 @@ func TestMPDecode(t *testing.T) {
 func TestUnmarshalMsgpackInvalidLength(t *testing.T) {
 	var v Datetime
 
-	err := v.UnmarshalMsgpack([]byte{0x04})
+	err := msgpack.Unmarshal([]byte{0xd4, 0x04, 0x04}, &v)
 	if err == nil {
 		t.Fatalf("Unexpected success %v", v)
 	}
@@ -1142,8 +1136,8 @@ func TestUnmarshalMsgpackInvalidZone(t *testing.T) {
 	// {time.RFC3339 + " MST",
 	//  "2006-01-02T15:04:00+03:00 MSK",
 	//  "d804b016b9430000000000000000b400ee00"}
-	buf, _ := hex.DecodeString("b016b9430000000000000000b400ee01")
-	err := v.UnmarshalMsgpack(buf)
+	buf, _ := hex.DecodeString("d804b016b9430000000000000000b400ee01")
+	err := msgpack.Unmarshal(buf, &v)
 	if err == nil {
 		t.Fatalf("Unexpected success %v", v)
 	}
