@@ -12,6 +12,7 @@ package datetime
 import (
 	"encoding/binary"
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/vmihailenco/msgpack/v5"
@@ -35,7 +36,7 @@ import (
 
 // Datetime external type. Supported since Tarantool 2.10. See more details in
 // issue https://github.com/tarantool/tarantool/issues/5946.
-const datetime_extId = 4
+const datetimeExtID = 4
 
 // datetime structure keeps a number of seconds and nanoseconds since Unix Epoch.
 // Time is normalized by UTC, so time-zone offset is informative only.
@@ -93,7 +94,7 @@ const (
 	offsetMax = 14 * 60 * 60
 )
 
-// NewDatetime returns a pointer to a new datetime.Datetime that contains a
+// MakeDatetime returns a datetime.Datetime object that contains a
 // specified time.Time. It may return an error if the Time value is out of
 // supported range: [-5879610-06-22T00:00Z .. 5879611-07-11T00:00Z] or
 // an invalid timezone or offset value is out of supported range:
@@ -101,33 +102,33 @@ const (
 //
 // NOTE: Tarantool's datetime.tz value is picked from t.Location().String().
 // "Local" location is unsupported, see ExampleNewDatetime_localUnsupported.
-func NewDatetime(t time.Time) (*Datetime, error) {
+func MakeDatetime(t time.Time) (Datetime, error) {
+	dt := Datetime{}
 	seconds := t.Unix()
 
 	if seconds < minSeconds || seconds > maxSeconds {
-		return nil, fmt.Errorf("time %s is out of supported range", t)
+		return dt, fmt.Errorf("time %s is out of supported range", t)
 	}
 
 	zone := t.Location().String()
 	_, offset := t.Zone()
 	if zone != NoTimezone {
 		if _, ok := timezoneToIndex[zone]; !ok {
-			return nil, fmt.Errorf("unknown timezone %s with offset %d",
+			return dt, fmt.Errorf("unknown timezone %s with offset %d",
 				zone, offset)
 		}
 	}
 
 	if offset < offsetMin || offset > offsetMax {
-		return nil, fmt.Errorf("offset must be between %d and %d hours",
+		return dt, fmt.Errorf("offset must be between %d and %d hours",
 			offsetMin, offsetMax)
 	}
 
-	dt := new(Datetime)
 	dt.time = t
 	return dt, nil
 }
 
-func intervalFromDatetime(dtime *Datetime) (ival Interval) {
+func intervalFromDatetime(dtime Datetime) (ival Interval) {
 	ival.Year = int64(dtime.time.Year())
 	ival.Month = int64(dtime.time.Month())
 	ival.Day = int64(dtime.time.Day())
@@ -158,7 +159,7 @@ func daysInMonth(year int64, month int64) int64 {
 
 // C implementation:
 // https://github.com/tarantool/c-dt/blob/cec6acebb54d9e73ea0b99c63898732abd7683a6/dt_arithmetic.c#L74-L98
-func addMonth(ival *Interval, delta int64, adjust Adjust) {
+func addMonth(ival Interval, delta int64, adjust Adjust) Interval {
 	oldYear := ival.Year
 	oldMonth := ival.Month
 
@@ -172,16 +173,17 @@ func addMonth(ival *Interval, delta int64, adjust Adjust) {
 		}
 	}
 	if adjust == ExcessAdjust || ival.Day < 28 {
-		return
+		return ival
 	}
 
 	dim := daysInMonth(ival.Year, ival.Month)
 	if ival.Day > dim || (adjust == LastAdjust && ival.Day == daysInMonth(oldYear, oldMonth)) {
 		ival.Day = dim
 	}
+	return ival
 }
 
-func (d *Datetime) add(ival Interval, positive bool) (*Datetime, error) {
+func (d Datetime) add(ival Interval, positive bool) (Datetime, error) {
 	newVal := intervalFromDatetime(d)
 
 	var direction int64
@@ -191,7 +193,7 @@ func (d *Datetime) add(ival Interval, positive bool) (*Datetime, error) {
 		direction = -1
 	}
 
-	addMonth(&newVal, direction*ival.Year*12+direction*ival.Month, ival.Adjust)
+	newVal = addMonth(newVal, direction*ival.Year*12+direction*ival.Month, ival.Adjust)
 	newVal.Day += direction * 7 * ival.Week
 	newVal.Day += direction * ival.Day
 	newVal.Hour += direction * ival.Hour
@@ -203,23 +205,23 @@ func (d *Datetime) add(ival Interval, positive bool) (*Datetime, error) {
 		int(newVal.Day), int(newVal.Hour), int(newVal.Min),
 		int(newVal.Sec), int(newVal.Nsec), d.time.Location())
 
-	return NewDatetime(tm)
+	return MakeDatetime(tm)
 }
 
 // Add creates a new Datetime as addition of the Datetime and Interval. It may
 // return an error if a new Datetime is out of supported range.
-func (d *Datetime) Add(ival Interval) (*Datetime, error) {
+func (d Datetime) Add(ival Interval) (Datetime, error) {
 	return d.add(ival, true)
 }
 
 // Sub creates a new Datetime as subtraction of the Datetime and Interval. It
 // may return an error if a new Datetime is out of supported range.
-func (d *Datetime) Sub(ival Interval) (*Datetime, error) {
+func (d Datetime) Sub(ival Interval) (Datetime, error) {
 	return d.add(ival, false)
 }
 
 // Interval returns an Interval value to a next Datetime value.
-func (d *Datetime) Interval(next *Datetime) Interval {
+func (d Datetime) Interval(next Datetime) Interval {
 	curIval := intervalFromDatetime(d)
 	nextIval := intervalFromDatetime(next)
 	_, curOffset := d.time.Zone()
@@ -240,8 +242,9 @@ func (d *Datetime) ToTime() time.Time {
 	return d.time
 }
 
-func (d *Datetime) MarshalMsgpack() ([]byte, error) {
-	tm := d.ToTime()
+func datetimeEncoder(e *msgpack.Encoder, v reflect.Value) ([]byte, error) {
+	dtime := v.Interface().(Datetime)
+	tm := dtime.ToTime()
 
 	var dt datetime
 	dt.seconds = tm.Unix()
@@ -272,18 +275,26 @@ func (d *Datetime) MarshalMsgpack() ([]byte, error) {
 	return buf, nil
 }
 
-func (d *Datetime) UnmarshalMsgpack(b []byte) error {
-	l := len(b)
-	if l != maxSize && l != secondsSize {
+func datetimeDecoder(d *msgpack.Decoder, v reflect.Value, extLen int) error {
+	if extLen != maxSize && extLen != secondsSize {
 		return fmt.Errorf("invalid data length: got %d, wanted %d or %d",
-			len(b), secondsSize, maxSize)
+			extLen, secondsSize, maxSize)
+	}
+
+	b := make([]byte, extLen)
+	n, err := d.Buffered().Read(b)
+	if err != nil {
+		return err
+	}
+	if n < extLen {
+		return fmt.Errorf("msgpack: unexpected end of stream after %d datetime bytes", n)
 	}
 
 	var dt datetime
 	sec := binary.LittleEndian.Uint64(b)
 	dt.seconds = int64(sec)
 	dt.nsec = 0
-	if l == maxSize {
+	if extLen == maxSize {
 		dt.nsec = int32(binary.LittleEndian.Uint32(b[secondsSize:]))
 		dt.tzOffset = int16(binary.LittleEndian.Uint16(b[secondsSize+nsecSize:]))
 		dt.tzIndex = int16(binary.LittleEndian.Uint16(b[secondsSize+nsecSize+tzOffsetSize:]))
@@ -316,13 +327,12 @@ func (d *Datetime) UnmarshalMsgpack(b []byte) error {
 	}
 	tt = tt.In(loc)
 
-	dtp, err := NewDatetime(tt)
-	if dtp != nil {
-		*d = *dtp
-	}
+	ptr := v.Addr().Interface().(*Datetime)
+	*ptr, err = MakeDatetime(tt)
 	return err
 }
 
 func init() {
-	msgpack.RegisterExt(datetime_extId, (*Datetime)(nil))
+	msgpack.RegisterExtDecoder(datetimeExtID, Datetime{}, datetimeDecoder)
+	msgpack.RegisterExtEncoder(datetimeExtID, Datetime{}, datetimeEncoder)
 }
