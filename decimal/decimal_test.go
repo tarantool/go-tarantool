@@ -495,7 +495,7 @@ func TestSelect(t *testing.T) {
 	skipIfDecimalUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	number, err := decimal.NewFromString("-12.34")
 	if err != nil {
@@ -565,7 +565,7 @@ func TestInsert(t *testing.T) {
 	skipIfDecimalUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	samples := append(correctnessSamples, benchmarkSamples...)
 	for _, testcase := range samples {
@@ -579,7 +579,7 @@ func TestReplace(t *testing.T) {
 	skipIfDecimalUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	number, err := decimal.NewFromString("-12.34")
 	if err != nil {

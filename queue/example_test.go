@@ -36,7 +36,7 @@ func Example_simpleQueue() {
 		fmt.Printf("error in prepare is %v", err)
 		return
 	}
-	defer conn.Close()
+	defer conn.Close(true)
 
 	q := queue.New(conn, "test_queue")
 	if err := q.Create(cfg); err != nil {

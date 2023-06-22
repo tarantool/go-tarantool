@@ -169,7 +169,7 @@ func Example_connectionPool() {
 		fmt.Printf("Unable to connect to the pool: %s", err)
 		return
 	}
-	defer connPool.Close()
+	defer connPool.Close(true)
 
 	// Wait for a queue initialization and master instance identification in
 	// the queue.

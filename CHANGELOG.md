@@ -19,6 +19,8 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 - connection_pool renamed to pool (#239)
 - Use msgpack/v5 instead of msgpack.v2 (#236)
 - Call/NewCallRequest = Call17/NewCall17Request (#235)
+- The Close() and CloseGraceful() methods have been merged into a single
+  method Close(force bool) (#307)
 
 ### Deprecated
 

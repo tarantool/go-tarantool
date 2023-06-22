@@ -137,7 +137,7 @@ func InsertOnInstance(server string, connOpts tarantool.Opts, space interface{},
 	if conn == nil {
 		return fmt.Errorf("conn is nil after Connect")
 	}
-	defer conn.Close()
+	defer conn.Close(true)
 
 	resp, err := conn.Do(tarantool.NewInsertRequest(space).Tuple(tuple)).Get()
 	if err != nil {
@@ -194,7 +194,7 @@ func SetInstanceRO(server string, connOpts tarantool.Opts, isReplica bool) error
 		return err
 	}
 
-	defer conn.Close()
+	defer conn.Close(true)
 
 	req := tarantool.NewCallRequest("box.cfg").
 		Args([]interface{}{map[string]bool{"read_only": isReplica}})

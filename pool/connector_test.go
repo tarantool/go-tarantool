@@ -56,7 +56,7 @@ type closeMock struct {
 	retErr bool
 }
 
-func (m *closeMock) Close() error {
+func (m *closeMock) Close(force bool) error {
 	m.called++
 	if m.retErr {
 		return errors.New("err1")
@@ -68,7 +68,7 @@ func TestConnectorClose(t *testing.T) {
 	m := &closeMock{retErr: false}
 	c := NewConnectorAdapter(m, testMode)
 
-	require.Nilf(t, c.Close(), "unexpected result")
+	require.Nilf(t, c.Close(true), "unexpected result")
 	require.Equalf(t, 1, m.called, "should be called only once")
 }
 
@@ -76,7 +76,7 @@ func TestConnectorCloseWithError(t *testing.T) {
 	m := &closeMock{retErr: true}
 	c := NewConnectorAdapter(m, testMode)
 
-	err := c.Close()
+	err := c.Close(true)
 	require.NotNilf(t, err, "unexpected result")
 	require.Equalf(t, 1, m.called, "should be called only once")
 	require.Equal(t, "err1", err.Error())

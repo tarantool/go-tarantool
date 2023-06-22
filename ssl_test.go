@@ -496,9 +496,9 @@ func TestOpts_PapSha256Auth(t *testing.T) {
 	clientOpts.Ssl = sslOpts
 	clientOpts.Auth = PapSha256Auth
 	conn := test_helpers.ConnectWithValidation(t, tntHost, clientOpts)
-	conn.Close()
+	conn.Close(true)
 
 	clientOpts.Auth = AutoAuth
 	conn = test_helpers.ConnectWithValidation(t, tntHost, clientOpts)
-	conn.Close()
+	conn.Close(true)
 }

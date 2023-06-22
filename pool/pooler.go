@@ -9,7 +9,7 @@ import (
 // Pooler is the interface that must be implemented by a connection pool.
 type Pooler interface {
 	ConnectedNow(mode Mode) (bool, error)
-	Close() error
+	Close(force bool) error
 	ConfiguredTimeout(mode Mode) (time.Duration, error)
 	NewPrepared(expr string, mode Mode) (*tarantool.Prepared, error)
 	NewStream(mode Mode) (*tarantool.Stream, error)

@@ -227,7 +227,7 @@ func (pool *ConnectionPool) Add(addr string) error {
 	e := newEndpoint(addr)
 
 	pool.addrsMutex.Lock()
-	// Ensure that Close()/CloseGraceful() not in progress/done.
+	// Ensure that Close() not in progress/done.
 	if pool.state.get() != connectedState {
 		pool.addrsMutex.Unlock()
 		return ErrClosed
@@ -263,9 +263,9 @@ func (pool *ConnectionPool) Remove(addr string) error {
 
 	select {
 	case <-endpoint.close:
-		// Close() in progress/done.
+		// Close() force in progress/done.
 	case <-endpoint.shutdown:
-		// CloseGraceful()/Remove() in progress/done.
+		// Close() graceful in progress/done.
 	default:
 		close(endpoint.shutdown)
 	}
@@ -306,29 +306,27 @@ func (pool *ConnectionPool) waitClose() error {
 	return errors.New(string(b))
 }
 
-// Close closes connections in the ConnectionPool.
-func (pool *ConnectionPool) Close() error {
-	if pool.state.cas(connectedState, closedState) ||
-		pool.state.cas(shutdownState, closedState) {
-		pool.addrsMutex.RLock()
-		for _, s := range pool.addrs {
-			close(s.close)
+// Close closes connections in the ConnectionPool. It waits for all requests
+// to complete if force == false.
+// After this method called, there is no way to reopen this ConnectionPool.
+func (pool *ConnectionPool) Close(force bool) error {
+	if force {
+		if pool.state.cas(connectedState, closedState) ||
+			pool.state.cas(shutdownState, closedState) {
+			pool.addrsMutex.RLock()
+			for _, s := range pool.addrs {
+				close(s.close)
+			}
+			pool.addrsMutex.RUnlock()
 		}
-		pool.addrsMutex.RUnlock()
-	}
-
-	return pool.waitClose()
-}
-
-// CloseGraceful closes connections in the ConnectionPool gracefully. It waits
-// for all requests to complete.
-func (pool *ConnectionPool) CloseGraceful() error {
-	if pool.state.cas(connectedState, shutdownState) {
-		pool.addrsMutex.RLock()
-		for _, s := range pool.addrs {
-			close(s.shutdown)
+	} else {
+		if pool.state.cas(connectedState, shutdownState) {
+			pool.addrsMutex.RLock()
+			for _, s := range pool.addrs {
+				close(s.shutdown)
+			}
+			pool.addrsMutex.RUnlock()
 		}
-		pool.addrsMutex.RUnlock()
 	}
 
 	return pool.waitClose()
@@ -924,7 +922,7 @@ func (pool *ConnectionPool) NewWatcher(key string,
 	conns := rr.GetConnections()
 	for _, conn := range conns {
 		if err := watcher.watch(conn); err != nil {
-			conn.Close()
+			conn.Close(true)
 		}
 	}
 
@@ -1105,14 +1103,14 @@ func (connPool *ConnectionPool) fillPools() bool {
 		} else if conn != nil {
 			role, err := connPool.getConnectionRole(conn)
 			if err != nil {
-				conn.Close()
+				conn.Close(true)
 				log.Printf("tarantool: storing connection to %s failed: %s\n", addr, err)
 				continue
 			}
 
 			if connPool.handlerDiscovered(conn, role) {
 				if connPool.addConnection(addr, conn, role) != nil {
-					conn.Close()
+					conn.Close(true)
 					connPool.handlerDeactivated(conn, role)
 				}
 
@@ -1122,11 +1120,11 @@ func (connPool *ConnectionPool) fillPools() bool {
 					somebodyAlive = true
 				} else {
 					connPool.deleteConnection(addr)
-					conn.Close()
+					conn.Close(true)
 					connPool.handlerDeactivated(conn, role)
 				}
 			} else {
-				conn.Close()
+				conn.Close(true)
 			}
 		}
 	}
@@ -1150,7 +1148,7 @@ func (pool *ConnectionPool) updateConnection(e *endpoint) {
 			pool.handlerDeactivated(e.conn, e.role)
 			opened := pool.handlerDiscovered(e.conn, role)
 			if !opened {
-				e.conn.Close()
+				e.conn.Close(true)
 				e.conn = nil
 				e.role = UnknownRole
 				return
@@ -1160,7 +1158,7 @@ func (pool *ConnectionPool) updateConnection(e *endpoint) {
 			if pool.state.get() != connectedState {
 				pool.poolsMutex.Unlock()
 
-				e.conn.Close()
+				e.conn.Close(true)
 				pool.handlerDeactivated(e.conn, role)
 				e.conn = nil
 				e.role = UnknownRole
@@ -1170,7 +1168,7 @@ func (pool *ConnectionPool) updateConnection(e *endpoint) {
 			if pool.addConnection(e.addr, e.conn, role) != nil {
 				pool.poolsMutex.Unlock()
 
-				e.conn.Close()
+				e.conn.Close(true)
 				pool.handlerDeactivated(e.conn, role)
 				e.conn = nil
 				e.role = UnknownRole
@@ -1184,7 +1182,7 @@ func (pool *ConnectionPool) updateConnection(e *endpoint) {
 		pool.deleteConnection(e.addr)
 		pool.poolsMutex.Unlock()
 
-		e.conn.Close()
+		e.conn.Close(true)
 		pool.handlerDeactivated(e.conn, e.role)
 		e.conn = nil
 		e.role = UnknownRole
@@ -1211,28 +1209,28 @@ func (pool *ConnectionPool) tryConnect(e *endpoint) error {
 		pool.poolsMutex.Unlock()
 
 		if err != nil {
-			conn.Close()
+			conn.Close(true)
 			log.Printf("tarantool: storing connection to %s failed: %s\n", e.addr, err)
 			return err
 		}
 
 		opened := pool.handlerDiscovered(conn, role)
 		if !opened {
-			conn.Close()
+			conn.Close(true)
 			return errors.New("storing connection canceled")
 		}
 
 		pool.poolsMutex.Lock()
 		if pool.state.get() != connectedState {
 			pool.poolsMutex.Unlock()
-			conn.Close()
+			conn.Close(true)
 			pool.handlerDeactivated(conn, role)
 			return ErrClosed
 		}
 
 		if err = pool.addConnection(e.addr, conn, role); err != nil {
 			pool.poolsMutex.Unlock()
-			conn.Close()
+			conn.Close(true)
 			pool.handlerDeactivated(conn, role)
 			return err
 		}
@@ -1292,12 +1290,12 @@ func (pool *ConnectionPool) controller(e *endpoint) {
 				pool.poolsMutex.Unlock()
 
 				if !shutdown {
-					e.closeErr = e.conn.Close()
+					e.closeErr = e.conn.Close(true)
 					pool.handlerDeactivated(e.conn, e.role)
 					close(e.closed)
 				} else {
 					// Force close the connection.
-					e.conn.Close()
+					e.conn.Close(true)
 					// And wait for a finish.
 					<-e.closed
 				}
@@ -1316,7 +1314,7 @@ func (pool *ConnectionPool) controller(e *endpoint) {
 					// We need to catch s.close in the current goroutine, so
 					// we need to start an another one for the shutdown.
 					go func() {
-						e.closeErr = e.conn.CloseGraceful()
+						e.closeErr = e.conn.Close(false)
 						close(e.closed)
 					}()
 				} else {

@@ -216,7 +216,7 @@ func dialIo(t *testing.T,
 
 func TestConn_Close(t *testing.T) {
 	conn, dialer := dialIo(t, nil)
-	conn.Close()
+	conn.Close(true)
 
 	assert.Equal(t, 1, dialer.conn.closeCnt)
 
@@ -241,7 +241,7 @@ func TestConn_LocalAddr(t *testing.T) {
 	defer func() {
 		dialer.conn.readWg.Done()
 		dialer.conn.writeWg.Done()
-		conn.Close()
+		conn.Close(true)
 	}()
 
 	assert.Equal(t, addr, conn.LocalAddr())
@@ -256,7 +256,7 @@ func TestConn_RemoteAddr(t *testing.T) {
 	defer func() {
 		dialer.conn.readWg.Done()
 		dialer.conn.writeWg.Done()
-		conn.Close()
+		conn.Close(true)
 	}()
 
 	assert.Equal(t, addr, conn.RemoteAddr())
@@ -273,7 +273,7 @@ func TestConn_Greeting(t *testing.T) {
 	defer func() {
 		dialer.conn.readWg.Done()
 		dialer.conn.writeWg.Done()
-		conn.Close()
+		conn.Close(true)
 	}()
 
 	assert.Equal(t, &greeting, conn.Greeting)
@@ -294,7 +294,7 @@ func TestConn_ProtocolInfo(t *testing.T) {
 	defer func() {
 		dialer.conn.readWg.Done()
 		dialer.conn.writeWg.Done()
-		conn.Close()
+		conn.Close(true)
 	}()
 
 	assert.Equal(t, info, conn.ServerProtocolInfo())

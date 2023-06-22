@@ -371,7 +371,7 @@ func TestDatetimeTarantoolInterval(t *testing.T) {
 	skipIfDatetimeUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	dates := []string{
 		// We could return tests with timezones after a release with a fix of
@@ -511,7 +511,7 @@ func TestInvalidOffset(t *testing.T) {
 			}
 			if testcase.ok && isDatetimeSupported {
 				conn := test_helpers.ConnectWithValidation(t, server, opts)
-				defer conn.Close()
+				defer conn.Close(true)
 
 				tupleInsertSelectDelete(t, conn, tm)
 			}
@@ -523,7 +523,7 @@ func TestCustomTimezone(t *testing.T) {
 	skipIfDatetimeUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	customZone := "Europe/Moscow"
 	customOffset := 180 * 60
@@ -683,7 +683,7 @@ func TestDatetimeInsertSelectDelete(t *testing.T) {
 	skipIfDatetimeUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	for _, testcase := range datetimeSample {
 		t.Run(testcase.dt, func(t *testing.T) {
@@ -712,7 +712,7 @@ func TestDatetimeBoundaryRange(t *testing.T) {
 	skipIfDatetimeUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	for _, tm := range append(lesserBoundaryTimes, boundaryTimes...) {
 		t.Run(tm.String(), func(t *testing.T) {
@@ -738,7 +738,7 @@ func TestDatetimeReplace(t *testing.T) {
 	skipIfDatetimeUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	tm, err := time.Parse(time.RFC3339, "2007-01-02T15:04:05Z")
 	if err != nil {
@@ -903,7 +903,7 @@ func TestCustomEncodeDecodeTuple1(t *testing.T) {
 	skipIfDatetimeUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	tm1, _ := time.Parse(time.RFC3339, "2010-05-24T17:51:56.000000009Z")
 	tm2, _ := time.Parse(time.RFC3339, "2022-05-24T17:51:56.000000009Z")
@@ -973,7 +973,7 @@ func TestCustomDecodeFunction(t *testing.T) {
 	skipIfDatetimeUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	// Call function 'call_datetime_testdata' returning a custom tuples.
 	var tuple [][]Tuple2
@@ -1017,7 +1017,7 @@ func TestCustomEncodeDecodeTuple5(t *testing.T) {
 	skipIfDatetimeUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	tm := time.Unix(500, 1000).In(time.FixedZone(NoTimezone, 0))
 	dt, err := NewDatetime(tm)

@@ -464,19 +464,16 @@ func (conn *Connection) ClosedNow() bool {
 	return atomic.LoadUint32(&conn.state) == connClosed
 }
 
-// Close closes Connection.
+// Close closes Connection. It waits for all requests to complete
+// if force == false.
 // After this method called, there is no way to reopen this Connection.
-func (conn *Connection) Close() error {
-	err := ClientError{ErrConnectionClosed, "connection closed by client"}
-	conn.mutex.Lock()
-	defer conn.mutex.Unlock()
-	return conn.closeConnection(err, true)
-}
-
-// CloseGraceful closes Connection gracefully. It waits for all requests to
-// complete.
-// After this method called, there is no way to reopen this Connection.
-func (conn *Connection) CloseGraceful() error {
+func (conn *Connection) Close(force bool) error {
+	if force {
+		err := ClientError{ErrConnectionClosed, "connection closed by client"}
+		conn.mutex.Lock()
+		defer conn.mutex.Unlock()
+		return conn.closeConnection(err, true)
+	}
 	return conn.shutdown(true)
 }
 

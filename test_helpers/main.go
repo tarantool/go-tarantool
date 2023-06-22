@@ -104,7 +104,7 @@ func isReady(server string, opts *tarantool.Opts) error {
 	if conn == nil {
 		return errors.New("Conn is nil after connect")
 	}
-	defer conn.Close()
+	defer conn.Close(true)
 
 	resp, err = conn.Do(tarantool.NewPingRequest()).Get()
 	if err != nil {

@@ -54,7 +54,7 @@ func dropQueue(t *testing.T, q queue.Queue) {
 
 func TestFifoQueue(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	name := "test_queue"
 	q := createQueue(t, conn, name, queue.Cfg{Temporary: true, Kind: queue.FIFO})
@@ -63,7 +63,7 @@ func TestFifoQueue(t *testing.T) {
 
 func TestQueue_Cfg(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	name := "test_queue"
 	q := createQueue(t, conn, name, queue.Cfg{Temporary: true, Kind: queue.FIFO})
@@ -77,7 +77,7 @@ func TestQueue_Cfg(t *testing.T) {
 
 func TestQueue_Identify(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	name := "test_queue"
 	q := createQueue(t, conn, name, queue.Cfg{Temporary: true, Kind: queue.FIFO})
@@ -102,7 +102,7 @@ func TestQueue_ReIdentify(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer func() {
 		if conn != nil {
-			conn.Close()
+			conn.Close(true)
 		}
 	}()
 
@@ -133,7 +133,7 @@ func TestQueue_ReIdentify(t *testing.T) {
 	putData := "put_data"
 	task, err := q.Put(putData)
 	if err != nil {
-		conn.Close()
+		conn.Close(true)
 		t.Fatalf("Failed put to queue: %s", err)
 	} else if err == nil && task == nil {
 		t.Fatalf("Task is nil after put")
@@ -151,7 +151,7 @@ func TestQueue_ReIdentify(t *testing.T) {
 		t.Fatalf("Task is nil after take")
 	}
 
-	conn.Close()
+	conn.Close(true)
 	conn = nil
 
 	conn = test_helpers.ConnectWithValidation(t, server, opts)
@@ -185,7 +185,7 @@ func TestQueue_ReIdentify(t *testing.T) {
 
 func TestQueue_State(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	name := "test_queue"
 	q := createQueue(t, conn, name, queue.Cfg{Temporary: true, Kind: queue.FIFO})
@@ -202,7 +202,7 @@ func TestQueue_State(t *testing.T) {
 
 func TestFifoQueue_GetExist_Statistic(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	name := "test_queue"
 	q := createQueue(t, conn, name, queue.Cfg{Temporary: true, Kind: queue.FIFO})
@@ -232,7 +232,7 @@ func TestFifoQueue_GetExist_Statistic(t *testing.T) {
 
 func TestFifoQueue_Put(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	name := "test_queue"
 	q := createQueue(t, conn, name, queue.Cfg{Temporary: true, Kind: queue.FIFO})
@@ -254,7 +254,7 @@ func TestFifoQueue_Put(t *testing.T) {
 
 func TestFifoQueue_Take(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	name := "test_queue"
 	q := createQueue(t, conn, name, queue.Cfg{Temporary: true, Kind: queue.FIFO})
@@ -329,7 +329,7 @@ func (c *customData) EncodeMsgpack(e *msgpack.Encoder) error {
 
 func TestFifoQueue_TakeTyped(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	name := "test_queue"
 	q := createQueue(t, conn, name, queue.Cfg{Temporary: true, Kind: queue.FIFO})
@@ -385,7 +385,7 @@ func TestFifoQueue_TakeTyped(t *testing.T) {
 
 func TestFifoQueue_Peek(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	name := "test_queue"
 	q := createQueue(t, conn, name, queue.Cfg{Temporary: true, Kind: queue.FIFO})
@@ -423,7 +423,7 @@ func TestFifoQueue_Peek(t *testing.T) {
 
 func TestFifoQueue_Bury_Kick(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	name := "test_queue"
 	q := createQueue(t, conn, name, queue.Cfg{Temporary: true, Kind: queue.FIFO})
@@ -486,7 +486,7 @@ func TestFifoQueue_Delete(t *testing.T) {
 	var err error
 
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	name := "test_queue"
 	q := createQueue(t, conn, name, queue.Cfg{Temporary: true, Kind: queue.FIFO})
@@ -538,7 +538,7 @@ func TestFifoQueue_Delete(t *testing.T) {
 
 func TestFifoQueue_Release(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	name := "test_queue"
 	q := createQueue(t, conn, name, queue.Cfg{Temporary: true, Kind: queue.FIFO})
@@ -600,7 +600,7 @@ func TestFifoQueue_Release(t *testing.T) {
 
 func TestQueue_ReleaseAll(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	name := "test_queue"
 	q := createQueue(t, conn, name, queue.Cfg{Temporary: true, Kind: queue.FIFO})
@@ -666,7 +666,7 @@ func TestQueue_ReleaseAll(t *testing.T) {
 
 func TestTtlQueue(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	name := "test_queue"
 	cfg := queue.Cfg{
@@ -702,7 +702,7 @@ func TestTtlQueue(t *testing.T) {
 
 func TestTtlQueue_Put(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	name := "test_queue"
 	cfg := queue.Cfg{
@@ -753,7 +753,7 @@ func TestTtlQueue_Put(t *testing.T) {
 
 func TestUtube_Put(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	name := "test_utube"
 	cfg := queue.Cfg{
@@ -825,7 +825,7 @@ func TestUtube_Put(t *testing.T) {
 
 func TestTask_Touch(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	tests := []struct {
 		name string

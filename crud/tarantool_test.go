@@ -484,7 +484,7 @@ func testCrudRequestCheck(t *testing.T, req tarantool.Request,
 
 func TestCrudGenerateData(t *testing.T) {
 	conn := connect(t)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	for _, testCase := range testGenerateDataCases {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -511,7 +511,7 @@ func TestCrudGenerateData(t *testing.T) {
 
 func TestCrudProcessData(t *testing.T) {
 	conn := connect(t)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	for _, testCase := range testProcessDataCases {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -563,7 +563,7 @@ func TestUnflattenRows(t *testing.T) {
 	)
 
 	conn := connect(t)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	// Do `replace`.
 	req := crud.MakeReplaceRequest(spaceName).
@@ -622,7 +622,7 @@ func TestUnflattenRows(t *testing.T) {
 
 func TestResultWithErr(t *testing.T) {
 	conn := connect(t)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	for _, testCase := range testResultWithErrCases {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -637,7 +637,7 @@ func TestResultWithErr(t *testing.T) {
 
 func TestBoolResult(t *testing.T) {
 	conn := connect(t)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	req := crud.MakeTruncateRequest(spaceName).Opts(baseOpts)
 	resp := crud.TruncateResult{}
@@ -662,7 +662,7 @@ func TestBoolResult(t *testing.T) {
 
 func TestNumberResult(t *testing.T) {
 	conn := connect(t)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	req := crud.MakeCountRequest(spaceName).Opts(countOpts)
 	resp := crud.CountResult{}
@@ -705,7 +705,7 @@ func TestBaseResult(t *testing.T) {
 	}
 
 	conn := connect(t)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	req := crud.MakeSelectRequest(spaceName).Opts(selectOpts)
 	resp := crud.Result{}
@@ -750,7 +750,7 @@ func TestManyResult(t *testing.T) {
 	}
 
 	conn := connect(t)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	req := crud.MakeReplaceManyRequest(spaceName).Tuples(tuples).Opts(opManyOpts)
 	resp := crud.Result{}
@@ -777,7 +777,7 @@ func TestManyResult(t *testing.T) {
 
 func TestStorageInfoResult(t *testing.T) {
 	conn := connect(t)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	req := crud.MakeStorageInfoRequest().Opts(baseOpts)
 	resp := crud.StorageInfoResult{}

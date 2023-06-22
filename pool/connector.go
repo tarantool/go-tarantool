@@ -31,8 +31,8 @@ func (c *ConnectorAdapter) ConnectedNow() bool {
 }
 
 // Close closes all connections and the object.
-func (c *ConnectorAdapter) Close() error {
-	return c.pool.Close()
+func (c *ConnectorAdapter) Close(force bool) error {
+	return c.pool.Close(force)
 }
 
 // ConfiguredTimeout returns a timeout from connections config.

@@ -296,7 +296,7 @@ func TestErrorTypeEval(t *testing.T) {
 	test_helpers.SkipIfErrorMessagePackTypeUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	for name, testcase := range tupleCases {
 		t.Run(name, func(t *testing.T) {
@@ -315,7 +315,7 @@ func TestErrorTypeEvalTyped(t *testing.T) {
 	test_helpers.SkipIfErrorMessagePackTypeUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	for name, testcase := range tupleCases {
 		t.Run(name, func(t *testing.T) {
@@ -333,7 +333,7 @@ func TestErrorTypeInsert(t *testing.T) {
 	test_helpers.SkipIfErrorMessagePackTypeUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	truncateEval := fmt.Sprintf("box.space[%q]:truncate()", space)
 	_, err := conn.Eval(truncateEval, []interface{}{})
@@ -371,7 +371,7 @@ func TestErrorTypeInsertTyped(t *testing.T) {
 	test_helpers.SkipIfErrorMessagePackTypeUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	truncateEval := fmt.Sprintf("box.space[%q]:truncate()", space)
 	_, err := conn.Eval(truncateEval, []interface{}{})
@@ -413,7 +413,7 @@ func TestErrorTypeSelect(t *testing.T) {
 	test_helpers.SkipIfErrorMessagePackTypeUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	truncateEval := fmt.Sprintf("box.space[%q]:truncate()", space)
 	_, err := conn.Eval(truncateEval, []interface{}{})
@@ -457,7 +457,7 @@ func TestErrorTypeSelectTyped(t *testing.T) {
 	test_helpers.SkipIfErrorMessagePackTypeUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	truncateEval := fmt.Sprintf("box.space[%q]:truncate()", space)
 	_, err := conn.Eval(truncateEval, []interface{}{})

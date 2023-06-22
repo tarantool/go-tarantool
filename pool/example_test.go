@@ -37,7 +37,7 @@ func ExampleConnectionPool_Do() {
 	if err != nil {
 		fmt.Println(err)
 	}
-	defer connPool.Close()
+	defer connPool.Close(true)
 
 	modes := []pool.Mode{
 		pool.ANY,
@@ -65,7 +65,7 @@ func ExampleConnectionPool_NewPrepared() {
 	if err != nil {
 		fmt.Println(err)
 	}
-	defer connPool.Close()
+	defer connPool.Close(true)
 
 	stmt, err := connPool.NewPrepared("SELECT 1", pool.ANY)
 	if err != nil {
@@ -98,7 +98,7 @@ func ExampleConnectionPool_NewWatcher() {
 	if err != nil {
 		fmt.Println(err)
 	}
-	defer connPool.Close()
+	defer connPool.Close(true)
 
 	callback := func(event tarantool.WatchEvent) {
 		fmt.Printf("event connection: %s\n", event.Conn.Addr())
@@ -127,7 +127,7 @@ func ExampleConnectionPool_NewWatcher_noWatchersFeature() {
 	if err != nil {
 		fmt.Println(err)
 	}
-	defer connPool.Close()
+	defer connPool.Close(true)
 
 	callback := func(event tarantool.WatchEvent) {}
 	watcher, err := connPool.NewWatcher(key, callback, pool.ANY)
@@ -170,7 +170,7 @@ func ExampleCommitRequest() {
 		fmt.Println(err)
 		return
 	}
-	defer connPool.Close()
+	defer connPool.Close(true)
 
 	// example pool has only one rw instance
 	stream, err := connPool.NewStream(pool.RW)
@@ -258,7 +258,7 @@ func ExampleRollbackRequest() {
 		fmt.Println(err)
 		return
 	}
-	defer connPool.Close()
+	defer connPool.Close(true)
 
 	stream, err := connPool.NewStream(pool.RW)
 	if err != nil {
@@ -345,7 +345,7 @@ func ExampleBeginRequest_TxnIsolation() {
 		fmt.Println(err)
 		return
 	}
-	defer connPool.Close()
+	defer connPool.Close(true)
 
 	stream, err := connPool.NewStream(pool.RW)
 	if err != nil {
@@ -421,7 +421,7 @@ func ExampleConnectorAdapter() {
 	if err != nil {
 		fmt.Println(err)
 	}
-	defer connPool.Close()
+	defer connPool.Close(true)
 
 	adapter := pool.NewConnectorAdapter(connPool, pool.RW)
 	var connector tarantool.Connector = adapter
@@ -437,9 +437,9 @@ func ExampleConnectorAdapter() {
 	// Ping Error <nil>
 }
 
-// ExampleConnectionPool_CloseGraceful_force demonstrates how to force close
+// ExampleConnectionPool_Close_graceful_force demonstrates how to force close
 // a connection pool with graceful close in progress after a while.
-func ExampleConnectionPool_CloseGraceful_force() {
+func ExampleConnectionPool_Close_graceful_force() {
 	connPool, err := examplePool(testRoles, connOpts)
 	if err != nil {
 		fmt.Println(err)
@@ -455,24 +455,24 @@ func ExampleConnectionPool_CloseGraceful_force() {
 
 	done := make(chan struct{})
 	go func() {
-		connPool.CloseGraceful()
-		fmt.Println("ConnectionPool.CloseGraceful() done!")
+		connPool.Close(false)
+		fmt.Println("ConnectionPool.Close(false) done!")
 		close(done)
 	}()
 
 	select {
 	case <-done:
 	case <-time.After(3 * time.Second):
-		fmt.Println("Force ConnectionPool.Close()!")
-		connPool.Close()
+		fmt.Println("Force ConnectionPool.Close(true)!")
+		connPool.Close(true)
 	}
 	<-done
 
 	fmt.Println("Result:")
 	fmt.Println(fut.Get())
 	// Output:
-	// Force ConnectionPool.Close()!
-	// ConnectionPool.CloseGraceful() done!
+	// Force ConnectionPool.Close(true)!
+	// ConnectionPool.Close(false) done!
 	// Result:
 	// <nil> connection closed by client (0x4001)
 }

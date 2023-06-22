@@ -22,7 +22,7 @@ func Example_sqlFullColumnNames() {
 	var isLess bool
 
 	conn := example_connect(opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	// Tarantool supports session settings since version 2.3.1
 	isLess, err = test_helpers.IsTarantoolVersionLess(2, 3, 1)

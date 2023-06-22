@@ -4,7 +4,7 @@ import "time"
 
 type Connector interface {
 	ConnectedNow() bool
-	Close() error
+	Close(force bool) error
 	ConfiguredTimeout() time.Duration
 	NewPrepared(expr string) (*Prepared, error)
 	NewStream() (*Stream, error)

@@ -46,7 +46,7 @@ func ExampleSslOpts() {
 
 func ExampleIntKey() {
 	conn := exampleConnect(opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	const space = "test"
 	const index = "primary"
@@ -68,7 +68,7 @@ func ExampleIntKey() {
 
 func ExampleUintKey() {
 	conn := exampleConnect(opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	const space = "test"
 	const index = "primary"
@@ -90,7 +90,7 @@ func ExampleUintKey() {
 
 func ExampleStringKey() {
 	conn := exampleConnect(opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	const space = "teststring"
 	const index = "primary"
@@ -115,7 +115,7 @@ func ExampleStringKey() {
 
 func ExampleIntIntKey() {
 	conn := exampleConnect(opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	const space = "testintint"
 	const index = "primary"
@@ -141,7 +141,7 @@ func ExampleIntIntKey() {
 
 func ExamplePingRequest() {
 	conn := exampleConnect(opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	// Ping a Tarantool instance to check connection.
 	resp, err := conn.Do(tarantool.NewPingRequest()).Get()
@@ -161,7 +161,7 @@ func ExamplePingRequest() {
 // the root context.
 func ExamplePingRequest_Context() {
 	conn := exampleConnect(opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	timeout := time.Nanosecond
 
@@ -186,7 +186,7 @@ func ExamplePingRequest_Context() {
 
 func ExampleSelectRequest() {
 	conn := exampleConnect(opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	for i := 1111; i <= 1112; i++ {
 		conn.Do(tarantool.NewReplaceRequest(spaceNo).
@@ -227,7 +227,7 @@ func ExampleSelectRequest() {
 
 func ExampleInsertRequest() {
 	conn := exampleConnect(opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	// Insert a new tuple { 31, 1 }.
 	resp, err := conn.Do(tarantool.NewInsertRequest(spaceNo).
@@ -269,7 +269,7 @@ func ExampleInsertRequest() {
 
 func ExampleDeleteRequest() {
 	conn := exampleConnect(opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	// Insert a new tuple { 35, 1 }.
 	conn.Do(tarantool.NewInsertRequest(spaceNo).
@@ -312,7 +312,7 @@ func ExampleDeleteRequest() {
 
 func ExampleReplaceRequest() {
 	conn := exampleConnect(opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	// Insert a new tuple { 13, 1 }.
 	conn.Do(tarantool.NewInsertRequest(spaceNo).
@@ -371,7 +371,7 @@ func ExampleReplaceRequest() {
 
 func ExampleUpdateRequest() {
 	conn := exampleConnect(opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	for i := 1111; i <= 1112; i++ {
 		conn.Do(tarantool.NewReplaceRequest(spaceNo).
@@ -407,7 +407,7 @@ func ExampleUpdateRequest() {
 
 func ExampleUpsertRequest() {
 	conn := exampleConnect(opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	var req tarantool.Request
 	req = tarantool.NewUpsertRequest(617).
@@ -448,7 +448,7 @@ func ExampleUpsertRequest() {
 
 func ExampleCallRequest() {
 	conn := exampleConnect(opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	// Call a function 'simple_concat' with arguments.
 	resp, err := conn.Do(tarantool.NewCallRequest("simple_concat").
@@ -467,7 +467,7 @@ func ExampleCallRequest() {
 
 func ExampleEvalRequest() {
 	conn := exampleConnect(opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	// Run raw Lua code.
 	resp, err := conn.Do(tarantool.NewEvalRequest("return 1 + 2")).Get()
@@ -495,7 +495,7 @@ func ExampleExecuteRequest() {
 	}
 
 	conn := exampleConnect(opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	req := tarantool.NewExecuteRequest(
 		"CREATE TABLE SQL_TEST (id INTEGER PRIMARY KEY, name STRING)")
@@ -614,7 +614,7 @@ func ExampleExecuteRequest() {
 
 func ExampleProtocolVersion() {
 	conn := exampleConnect(opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	clientProtocolInfo := conn.ClientProtocolInfo()
 	fmt.Println("Connector client protocol version:", clientProtocolInfo.Version)
@@ -652,7 +652,7 @@ func ExampleCommitRequest() {
 
 	txnOpts := getTestTxnOpts()
 	conn := exampleConnect(txnOpts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	stream, _ := conn.NewStream()
 
@@ -729,7 +729,7 @@ func ExampleRollbackRequest() {
 
 	txnOpts := getTestTxnOpts()
 	conn := exampleConnect(txnOpts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	stream, _ := conn.NewStream()
 
@@ -806,7 +806,7 @@ func ExampleBeginRequest_TxnIsolation() {
 
 	txnOpts := getTestTxnOpts()
 	conn := exampleConnect(txnOpts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	stream, _ := conn.NewStream()
 
@@ -874,7 +874,7 @@ func ExampleBeginRequest_TxnIsolation() {
 
 func ExampleFuture_GetIterator() {
 	conn := exampleConnect(opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	const timeout = 3 * time.Second
 	fut := conn.Do(tarantool.NewCallRequest("push_func").
@@ -917,7 +917,7 @@ func ExampleConnect() {
 		fmt.Println("No connection available")
 		return
 	}
-	defer conn.Close()
+	defer conn.Close(true)
 	if conn != nil {
 		fmt.Println("Connection is ready")
 	}
@@ -928,7 +928,7 @@ func ExampleConnect() {
 // Example demonstrates how to retrieve information with space schema.
 func ExampleSchema() {
 	conn := exampleConnect(opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	schema := conn.Schema
 	if schema.SpacesById == nil {
@@ -950,7 +950,7 @@ func ExampleSchema() {
 // Example demonstrates how to retrieve information with space schema.
 func ExampleSpace() {
 	conn := exampleConnect(opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	// Save Schema to a local variable to avoid races
 	schema := conn.Schema
@@ -1057,7 +1057,7 @@ func ExampleConnection_NewWatcher() {
 		fmt.Printf("Failed to connect: %s\n", err)
 		return
 	}
-	defer conn.Close()
+	defer conn.Close(true)
 
 	callback := func(event tarantool.WatchEvent) {
 		fmt.Printf("event connection: %s\n", event.Conn.Addr())
@@ -1075,9 +1075,9 @@ func ExampleConnection_NewWatcher() {
 	time.Sleep(time.Second)
 }
 
-// ExampleConnection_CloseGraceful_force demonstrates how to force close
+// ExampleConnection_Close_graceful_force demonstrates how to force close
 // a connection with graceful close in progress after a while.
-func ExampleConnection_CloseGraceful_force() {
+func ExampleConnection_Close_graceful_force() {
 	conn := exampleConnect(opts)
 
 	eval := `local fiber = require('fiber')
@@ -1089,24 +1089,24 @@ func ExampleConnection_CloseGraceful_force() {
 
 	done := make(chan struct{})
 	go func() {
-		conn.CloseGraceful()
-		fmt.Println("Connection.CloseGraceful() done!")
+		conn.Close(false)
+		fmt.Println("Connection.Close(false) done!")
 		close(done)
 	}()
 
 	select {
 	case <-done:
 	case <-time.After(time.Second):
-		fmt.Println("Force Connection.Close()!")
-		conn.Close()
+		fmt.Println("Force Connection.Close(true)!")
+		conn.Close(true)
 	}
 	<-done
 
 	fmt.Println("Result:")
 	fmt.Println(fut.Get())
 	// Output:
-	// Force Connection.Close()!
-	// Connection.CloseGraceful() done!
+	// Force Connection.Close(true)!
+	// Connection.Close(false) done!
 	// Result:
 	// <nil> connection closed by client (0x4001)
 }

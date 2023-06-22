@@ -90,7 +90,7 @@ func BenchmarkClientSerial(b *testing.B) {
 	var err error
 
 	conn := test_helpers.ConnectWithValidation(b, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	_, err = conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
 	if err != nil {
@@ -110,7 +110,7 @@ func BenchmarkClientSerialRequestObject(b *testing.B) {
 	var err error
 
 	conn := test_helpers.ConnectWithValidation(b, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	_, err = conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
 	if err != nil {
@@ -137,7 +137,7 @@ func BenchmarkClientSerialRequestObjectWithContext(b *testing.B) {
 	var err error
 
 	conn := test_helpers.ConnectWithValidation(b, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	_, err = conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
 	if err != nil {
@@ -166,7 +166,7 @@ func BenchmarkClientSerialTyped(b *testing.B) {
 	var err error
 
 	conn := test_helpers.ConnectWithValidation(b, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	_, err = conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
 	if err != nil {
@@ -187,7 +187,7 @@ func BenchmarkClientSerialSQL(b *testing.B) {
 	test_helpers.SkipIfSQLUnsupported(b)
 
 	conn := test_helpers.ConnectWithValidation(b, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	_, err := conn.Replace("SQL_TEST", []interface{}{uint(1111), "hello", "world"})
 	if err != nil {
@@ -208,7 +208,7 @@ func BenchmarkClientSerialSQLPrepared(b *testing.B) {
 	test_helpers.SkipIfSQLUnsupported(b)
 
 	conn := test_helpers.ConnectWithValidation(b, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	_, err := conn.Replace("SQL_TEST", []interface{}{uint(1111), "hello", "world"})
 	if err != nil {
@@ -240,7 +240,7 @@ func BenchmarkClientFuture(b *testing.B) {
 	var err error
 
 	conn := test_helpers.ConnectWithValidation(b, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	_, err = conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
 	if err != nil {
@@ -267,7 +267,7 @@ func BenchmarkClientFutureTyped(b *testing.B) {
 	var err error
 
 	conn := test_helpers.ConnectWithValidation(b, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	_, err = conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
 	if err != nil {
@@ -297,7 +297,7 @@ func BenchmarkClientFutureParallel(b *testing.B) {
 	var err error
 
 	conn := test_helpers.ConnectWithValidation(b, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	_, err = conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
 	if err != nil {
@@ -330,7 +330,7 @@ func BenchmarkClientFutureParallelTyped(b *testing.B) {
 	var err error
 
 	conn := test_helpers.ConnectWithValidation(b, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	_, err = conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
 	if err != nil {
@@ -366,7 +366,7 @@ func BenchmarkClientFutureParallelTyped(b *testing.B) {
 
 func BenchmarkClientParallel(b *testing.B) {
 	conn := test_helpers.ConnectWithValidation(b, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	_, err := conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
 	if err != nil {
@@ -387,7 +387,7 @@ func BenchmarkClientParallel(b *testing.B) {
 
 func benchmarkClientParallelRequestObject(multiplier int, b *testing.B) {
 	conn := test_helpers.ConnectWithValidation(b, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	_, err := conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
 	if err != nil {
@@ -415,7 +415,7 @@ func benchmarkClientParallelRequestObject(multiplier int, b *testing.B) {
 
 func benchmarkClientParallelRequestObjectWithContext(multiplier int, b *testing.B) {
 	conn := test_helpers.ConnectWithValidation(b, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	_, err := conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
 	if err != nil {
@@ -447,7 +447,7 @@ func benchmarkClientParallelRequestObjectWithContext(multiplier int, b *testing.
 
 func benchmarkClientParallelRequestObjectMixed(multiplier int, b *testing.B) {
 	conn := test_helpers.ConnectWithValidation(b, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	_, err := conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
 	if err != nil {
@@ -486,7 +486,7 @@ func benchmarkClientParallelRequestObjectMixed(multiplier int, b *testing.B) {
 func BenchmarkClientParallelRequestObject(b *testing.B) {
 	multipliers := []int{10, 50, 500, 1000}
 	conn := test_helpers.ConnectWithValidation(b, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	_, err := conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
 	if err != nil {
@@ -512,7 +512,7 @@ func BenchmarkClientParallelRequestObject(b *testing.B) {
 
 func BenchmarkClientParallelMassive(b *testing.B) {
 	conn := test_helpers.ConnectWithValidation(b, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	_, err := conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
 	if err != nil {
@@ -547,7 +547,7 @@ func BenchmarkClientParallelMassive(b *testing.B) {
 
 func BenchmarkClientParallelMassiveUntyped(b *testing.B) {
 	conn := test_helpers.ConnectWithValidation(b, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	_, err := conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
 	if err != nil {
@@ -582,7 +582,7 @@ func BenchmarkClientParallelMassiveUntyped(b *testing.B) {
 
 func BenchmarkClientReplaceParallel(b *testing.B) {
 	conn := test_helpers.ConnectWithValidation(b, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	rSpaceNo, _, err := conn.Schema.ResolveSpaceIndex("test_perf", "secondary")
 	if err != nil {
@@ -602,7 +602,7 @@ func BenchmarkClientReplaceParallel(b *testing.B) {
 
 func BenchmarkClientLargeSelectParallel(b *testing.B) {
 	conn := test_helpers.ConnectWithValidation(b, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	schema := conn.Schema
 	rSpaceNo, rIndexNo, err := schema.ResolveSpaceIndex("test_perf", "secondary")
@@ -626,7 +626,7 @@ func BenchmarkClientParallelSQL(b *testing.B) {
 	test_helpers.SkipIfSQLUnsupported(b)
 
 	conn := test_helpers.ConnectWithValidation(b, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	_, err := conn.Replace("SQL_TEST", []interface{}{uint(1111), "hello", "world"})
 	if err != nil {
@@ -649,7 +649,7 @@ func BenchmarkClientParallelSQLPrepared(b *testing.B) {
 	test_helpers.SkipIfSQLUnsupported(b)
 
 	conn := test_helpers.ConnectWithValidation(b, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	_, err := conn.Replace("SQL_TEST", []interface{}{uint(1111), "hello", "world"})
 	if err != nil {
@@ -683,7 +683,7 @@ func BenchmarkSQLSerial(b *testing.B) {
 	test_helpers.SkipIfSQLUnsupported(b)
 
 	conn := test_helpers.ConnectWithValidation(b, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	_, err := conn.Replace("SQL_TEST", []interface{}{uint(1111), "hello", "world"})
 	if err != nil {
@@ -748,7 +748,7 @@ func TestTtDialer_worksWithConnection(t *testing.T) {
 	defaultOpts.Dialer = TtDialer{}
 
 	conn := test_helpers.ConnectWithValidation(t, server, defaultOpts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	_, err := conn.Do(NewPingRequest()).Get()
 	assert.Nil(t, err)
@@ -759,7 +759,7 @@ func TestOptsAuth_Default(t *testing.T) {
 	defaultOpts.Auth = AutoAuth
 
 	conn := test_helpers.ConnectWithValidation(t, server, defaultOpts)
-	defer conn.Close()
+	defer conn.Close(true)
 }
 
 func TestOptsAuth_ChapSha1Auth(t *testing.T) {
@@ -767,7 +767,7 @@ func TestOptsAuth_ChapSha1Auth(t *testing.T) {
 	chapSha1Opts.Auth = ChapSha1Auth
 
 	conn := test_helpers.ConnectWithValidation(t, server, chapSha1Opts)
-	defer conn.Close()
+	defer conn.Close(true)
 }
 
 func TestOptsAuth_PapSha256AuthForbit(t *testing.T) {
@@ -777,7 +777,7 @@ func TestOptsAuth_PapSha256AuthForbit(t *testing.T) {
 	conn, err := Connect(server, papSha256Opts)
 	if err == nil {
 		t.Error("An error expected.")
-		conn.Close()
+		conn.Close(true)
 	}
 
 	if err.Error() != "failed to authenticate: forbidden to use pap-sha256"+
@@ -788,7 +788,7 @@ func TestOptsAuth_PapSha256AuthForbit(t *testing.T) {
 
 func TestFutureMultipleGetGetTyped(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	fut := conn.Call17Async("simple_concat", []interface{}{"1"})
 
@@ -826,7 +826,7 @@ func TestFutureMultipleGetGetTyped(t *testing.T) {
 
 func TestFutureMultipleGetWithError(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	fut := conn.Call17Async("non_exist", []interface{}{"1"})
 
@@ -839,7 +839,7 @@ func TestFutureMultipleGetWithError(t *testing.T) {
 
 func TestFutureMultipleGetTypedWithError(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	fut := conn.Call17Async("simple_concat", []interface{}{"1"})
 
@@ -868,7 +868,7 @@ func TestClient(t *testing.T) {
 	var err error
 
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	// Ping
 	resp, err = conn.Ping()
@@ -1210,7 +1210,7 @@ func TestClient(t *testing.T) {
 
 func TestClientSessionPush(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	var it ResponseIterator
 	const pushMax = 3
@@ -1504,7 +1504,7 @@ func TestSQL(t *testing.T) {
 	}
 
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	for i, test := range testCases {
 		resp, err := conn.Execute(test.Query, test.Args)
@@ -1531,7 +1531,7 @@ func TestSQLTyped(t *testing.T) {
 	test_helpers.SkipIfSQLUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	mem := []Member{}
 	info, meta, err := conn.ExecuteTyped(selectTypedQuery, []interface{}{1}, &mem)
@@ -1560,7 +1560,7 @@ func TestSQLBindings(t *testing.T) {
 	var resp *Response
 
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	// test all types of supported bindings
 	// prepare named sql bind
@@ -1662,7 +1662,7 @@ func TestStressSQL(t *testing.T) {
 	var resp *Response
 
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	resp, err := conn.Execute(createTableQuery, []interface{}{})
 	if err != nil {
@@ -1759,7 +1759,7 @@ func TestNewPrepared(t *testing.T) {
 	test_helpers.SkipIfSQLUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	stmt, err := conn.NewPrepared(selectNamedQuery2)
 	if err != nil {
@@ -1875,7 +1875,7 @@ func TestSchema(t *testing.T) {
 	var err error
 
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	// Schema
 	schema := conn.Schema
@@ -2047,7 +2047,7 @@ func TestSchema(t *testing.T) {
 
 func TestSchema_IsNullable(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	schema := conn.Schema
 	if schema.Spaces == nil {
@@ -2083,7 +2083,7 @@ func TestClientNamed(t *testing.T) {
 	var err error
 
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	// Insert
 	resp, err = conn.Insert(spaceName, []interface{}{uint(1001), "hello2", "world2"})
@@ -2174,7 +2174,7 @@ func TestClientRequestObjects(t *testing.T) {
 	)
 
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	// Ping
 	req = NewPingRequest()
@@ -2568,7 +2568,7 @@ func testConnectionDoSelectRequestCheck(t *testing.T,
 
 func TestConnectionDoSelectRequest(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	testConnectionDoSelectRequestPrepare(t, conn)
 
@@ -2586,7 +2586,7 @@ func TestConnectionDoSelectRequest_fetch_pos(t *testing.T) {
 	test_helpers.SkipIfPaginationUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	testConnectionDoSelectRequestPrepare(t, conn)
 
@@ -2605,7 +2605,7 @@ func TestConnectDoSelectRequest_after_tuple(t *testing.T) {
 	test_helpers.SkipIfPaginationUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	testConnectionDoSelectRequestPrepare(t, conn)
 
@@ -2625,7 +2625,7 @@ func TestConnectionDoSelectRequest_pagination_pos(t *testing.T) {
 	test_helpers.SkipIfPaginationUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	testConnectionDoSelectRequestPrepare(t, conn)
 
@@ -2649,7 +2649,7 @@ func TestConnection_Call(t *testing.T) {
 	var err error
 
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	resp, err = conn.Call("simple_concat", []interface{}{"1"})
 	if err != nil {
@@ -2665,7 +2665,7 @@ func TestCallRequest(t *testing.T) {
 	var err error
 
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	req := NewCallRequest("simple_concat").Args([]interface{}{"1"})
 	resp, err = conn.Do(req).Get()
@@ -2679,7 +2679,7 @@ func TestCallRequest(t *testing.T) {
 
 func TestClientRequestObjectsWithNilContext(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 	req := NewPingRequest().Context(nil) //nolint
 	resp, err := conn.Do(req).Get()
 	if err != nil {
@@ -2695,7 +2695,7 @@ func TestClientRequestObjectsWithNilContext(t *testing.T) {
 
 func TestClientRequestObjectsWithPassedCanceledContext(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	req := NewPingRequest().Context(ctx)
@@ -2737,7 +2737,7 @@ func (req *waitCtxRequest) Async() bool {
 func TestClientRequestObjectsWithContext(t *testing.T) {
 	var err error
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	req := &waitCtxRequest{ctx: ctx}
@@ -2776,7 +2776,7 @@ func TestComplexStructs(t *testing.T) {
 	var err error
 
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	tuple := Tuple2{Cid: 777, Orig: "orig", Members: []Member{{"lol", "", 1}, {"wut", "", 3}}}
 	_, err = conn.Replace(spaceNo, &tuple)
@@ -2805,7 +2805,7 @@ func TestStream_IdValues(t *testing.T) {
 	test_helpers.SkipIfStreamsUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	cases := []uint64{
 		1,
@@ -2842,7 +2842,7 @@ func TestStream_Commit(t *testing.T) {
 	test_helpers.SkipIfStreamsUnsupported(t)
 
 	conn = test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	stream, _ := conn.NewStream()
 
@@ -2957,7 +2957,7 @@ func TestStream_Rollback(t *testing.T) {
 	test_helpers.SkipIfStreamsUnsupported(t)
 
 	conn = test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	stream, _ := conn.NewStream()
 
@@ -3078,7 +3078,7 @@ func TestStream_TxnIsolationLevel(t *testing.T) {
 	test_helpers.SkipIfStreamsUnsupported(t)
 
 	conn = test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	stream, _ := conn.NewStream()
 
@@ -3181,7 +3181,7 @@ func TestStream_DoWithClosedConn(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
 
 	stream, _ := conn.NewStream()
-	conn.Close()
+	conn.Close(true)
 
 	// Begin transaction
 	req := NewBeginRequest()
@@ -3198,7 +3198,7 @@ func TestConnectionProtocolInfoSupported(t *testing.T) {
 	test_helpers.SkipIfIdUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	// First Tarantool protocol version (1, StreamsFeature and TransactionsFeature)
 	// was introduced between 2.10.0-beta1 and 2.10.0-beta2.
@@ -3244,7 +3244,7 @@ func TestClientIdRequestObject(t *testing.T) {
 	test_helpers.SkipIfIdUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	tarantool210ProtocolInfo := ProtocolInfo{
 		Version: ProtocolVersion(3),
@@ -3280,7 +3280,7 @@ func TestClientIdRequestObjectWithNilContext(t *testing.T) {
 	test_helpers.SkipIfIdUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	tarantool210ProtocolInfo := ProtocolInfo{
 		Version: ProtocolVersion(3),
@@ -3314,7 +3314,7 @@ func TestClientIdRequestObjectWithNilContext(t *testing.T) {
 
 func TestClientIdRequestObjectWithPassedCanceledContext(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	req := NewIdRequest(ProtocolInfo{
@@ -3332,7 +3332,7 @@ func TestConnectionProtocolInfoUnsupported(t *testing.T) {
 	test_helpers.SkipIfIdSupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	clientProtocolInfo := conn.ClientProtocolInfo()
 	require.Equal(t,
@@ -3354,7 +3354,7 @@ func TestConnectionProtocolInfoUnsupported(t *testing.T) {
 
 func TestConnectionClientFeaturesUmmutable(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	info := conn.ClientProtocolInfo()
 	infoOrig := info.Clone()
@@ -3368,7 +3368,7 @@ func TestConnectionServerFeaturesUmmutable(t *testing.T) {
 	test_helpers.SkipIfIdUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	info := conn.ServerProtocolInfo()
 	infoOrig := info.Clone()
@@ -3391,7 +3391,7 @@ func TestConnectionProtocolVersionRequirementSuccess(t *testing.T) {
 	require.Nilf(t, err, "No errors on connect")
 	require.NotNilf(t, conn, "Connect success")
 
-	conn.Close()
+	conn.Close(true)
 }
 
 func TestConnectionProtocolVersionRequirementFail(t *testing.T) {
@@ -3422,7 +3422,7 @@ func TestConnectionProtocolFeatureRequirementSuccess(t *testing.T) {
 	require.NotNilf(t, conn, "Connect success")
 	require.Nilf(t, err, "No errors on connect")
 
-	conn.Close()
+	conn.Close(true)
 }
 
 func TestConnectionProtocolFeatureRequirementFail(t *testing.T) {
@@ -3481,7 +3481,7 @@ func TestConnectionFeatureOptsImmutable(t *testing.T) {
 
 	// Connect with valid opts
 	conn := test_helpers.ConnectWithValidation(t, server, connOpts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	// Change opts outside
 	connOpts.RequiredProtocolInfo.Features[0] = ProtocolFeature(15532)
@@ -3499,7 +3499,7 @@ func TestErrorExtendedInfoBasic(t *testing.T) {
 	test_helpers.SkipIfErrorExtendedInfoUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	_, err := conn.Eval("not a Lua code", []interface{}{})
 	require.NotNilf(t, err, "expected error on invalid Lua code")
@@ -3527,7 +3527,7 @@ func TestErrorExtendedInfoStack(t *testing.T) {
 	test_helpers.SkipIfErrorExtendedInfoUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	_, err := conn.Eval("error(chained_error)", []interface{}{})
 	require.NotNilf(t, err, "expected error on explicit error raise")
@@ -3563,7 +3563,7 @@ func TestErrorExtendedInfoFields(t *testing.T) {
 	test_helpers.SkipIfErrorExtendedInfoUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	_, err := conn.Eval("error(access_denied_error)", []interface{}{})
 	require.NotNilf(t, err, "expected error on forbidden action")
@@ -3601,7 +3601,7 @@ func TestConnection_NewWatcher(t *testing.T) {
 		WatchersFeature,
 	}
 	conn := test_helpers.ConnectWithValidation(t, server, connOpts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	events := make(chan WatchEvent)
 	defer close(events)
@@ -3635,7 +3635,7 @@ func TestConnection_NewWatcher_noWatchersFeature(t *testing.T) {
 	connOpts := opts.Clone()
 	connOpts.RequiredProtocolInfo.Features = []ProtocolFeature{}
 	conn := test_helpers.ConnectWithValidation(t, server, connOpts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	watcher, err := conn.NewWatcher(key, func(event WatchEvent) {})
 	require.Nilf(t, watcher, "watcher must not be created")
@@ -3672,7 +3672,7 @@ func TestConnection_NewWatcher_reconnect(t *testing.T) {
 		WatchersFeature,
 	}
 	conn := test_helpers.ConnectWithValidation(t, server, reconnectOpts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	events := make(chan WatchEvent)
 	defer close(events)
@@ -3710,7 +3710,7 @@ func TestBroadcastRequest(t *testing.T) {
 		WatchersFeature,
 	}
 	conn := test_helpers.ConnectWithValidation(t, server, connOpts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	resp, err := conn.Do(NewBroadcastRequest(key).Value(value)).Get()
 	if err != nil {
@@ -3760,7 +3760,7 @@ func TestBroadcastRequest_multi(t *testing.T) {
 		WatchersFeature,
 	}
 	conn := test_helpers.ConnectWithValidation(t, server, connOpts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	events := make(chan WatchEvent)
 	defer close(events)
@@ -3808,7 +3808,7 @@ func TestConnection_NewWatcher_multiOnKey(t *testing.T) {
 		WatchersFeature,
 	}
 	conn := test_helpers.ConnectWithValidation(t, server, connOpts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	events := []chan WatchEvent{
 		make(chan WatchEvent),
@@ -3871,7 +3871,7 @@ func TestWatcher_Unregister(t *testing.T) {
 		WatchersFeature,
 	}
 	conn := test_helpers.ConnectWithValidation(t, server, connOpts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	events := make(chan WatchEvent)
 	defer close(events)
@@ -3907,7 +3907,7 @@ func TestConnection_NewWatcher_concurrent(t *testing.T) {
 		WatchersFeature,
 	}
 	conn := test_helpers.ConnectWithValidation(t, server, connOpts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	var wg sync.WaitGroup
 	wg.Add(testConcurrency)
@@ -3952,7 +3952,7 @@ func TestWatcher_Unregister_concurrent(t *testing.T) {
 		WatchersFeature,
 	}
 	conn := test_helpers.ConnectWithValidation(t, server, connOpts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	watcher, err := conn.NewWatcher(key, func(event WatchEvent) {})
 	if err != nil {
@@ -3973,7 +3973,7 @@ func TestWatcher_Unregister_concurrent(t *testing.T) {
 
 func TestConnect_schema_update(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
-	defer conn.Close()
+	defer conn.Close(true)
 
 	for i := 0; i < 100; i++ {
 		fut := conn.Do(NewCallRequest("create_spaces"))
@@ -3985,7 +3985,7 @@ func TestConnect_schema_update(t *testing.T) {
 		} else if conn == nil {
 			t.Errorf("conn is nil")
 		} else {
-			conn.Close()
+			conn.Close(true)
 		}
 
 		if _, err := fut.Get(); err != nil {

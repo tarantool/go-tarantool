@@ -33,6 +33,7 @@ faster than other packages according to public benchmarks.
     * [Call = Call17](#call--call17)
     * [IPROTO constants](#iproto-constants)
     * [Request interface](#request-interface)
+    * [Single Close() method](#single-close-method)
 * [Contributing](#contributing)
 * [Alternative connectors](#alternative-connectors)
 
@@ -113,6 +114,8 @@ func main() {
 	if err != nil {
 		fmt.Println("Connection refused:", err)
 	}
+	defer conn.Close(true)
+
 	resp, err := conn.Do(tarantool.NewInsertRequest(999).
 		Tuple([]interface{}{99999, "BB"}),
 	).Get()
@@ -140,7 +143,10 @@ starting a session. There are two parameters:
 **Observation 4:** The `err` structure will be `nil` if there is no error,
 otherwise it will have a description which can be retrieved with `err.Error()`.
 
-**Observation 5:** The `Insert` request, like almost all requests, is preceded
+**Observation 5:** The `defer conn.Close(true)` closes the connection at the
+end of the example.
+
+**Observation 6:** The `Insert` request, like almost all requests, is preceded
 by the method `Do` of object `conn` which is the object that was returned
 by `Connect()`.
 
@@ -158,6 +164,9 @@ The logic has not changed, but there are a few renames:
 
 * The `connection_pool` subpackage has been renamed to `pool`.
 * The type `PoolOpts` has been renamed to `Opts`.
+* ConnectionPool.Close(true) should be used instead of ConnectionPool.Close()
+* ConnectionPool.Close(false) should be used instead of
+  ConnectionPool.CloseGraceful()
 
 #### msgpack.v5
 
@@ -198,6 +207,11 @@ IPROTO constants have been moved to a separate package [go-iproto](https://githu
 #### Request interface
 
 * The method `Code() uint32` replaced by the `Type() iproto.Type`.
+
+#### Single Close() method
+
+* Connection.Close(true) should be used instead of Connection.Close()
+* Connection.Close(false) should be used instead of Connection.CloseGraceful()
 
 ## Contributing
 
