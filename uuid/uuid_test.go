@@ -177,7 +177,8 @@ func runTestMain(m *testing.M) int {
 	defer test_helpers.StopTarantoolWithCleanup(inst)
 
 	if err != nil {
-		log.Fatalf("Failed to prepare test tarantool: %s", err)
+		log.Printf("Failed to prepare test tarantool: %s", err)
+		return 1
 	}
 
 	return m.Run()

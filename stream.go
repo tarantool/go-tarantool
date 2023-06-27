@@ -2,7 +2,7 @@ package tarantool
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"time"
 
 	"github.com/tarantool/go-iproto"
@@ -23,6 +23,11 @@ const (
 	// If the BestEffortLevel (serializable) isolation level becomes unreachable,
 	// the transaction is marked as «conflicted» and can no longer be committed.
 	BestEffortLevel TxnIsolationLevel = 3
+)
+
+var (
+	errUnknownStreamRequest = errors.New("the passed connected request doesn't belong " +
+		"to the current connection or connection pool")
 )
 
 type Stream struct {
@@ -195,7 +200,7 @@ func (s *Stream) Do(req Request) *Future {
 	if connectedReq, ok := req.(ConnectedRequest); ok {
 		if connectedReq.Conn() != s.Conn {
 			fut := NewFuture()
-			fut.SetError(fmt.Errorf("the passed connected request doesn't belong to the current connection or connection pool"))
+			fut.SetError(errUnknownStreamRequest)
 			return fut
 		}
 	}

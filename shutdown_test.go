@@ -204,7 +204,8 @@ func TestGracefulShutdownWithReconnect(t *testing.T) {
 	err = test_helpers.RestartTarantool(&inst)
 	require.Nilf(t, err, "Failed to restart tarantool")
 
-	connected := test_helpers.WaitUntilReconnected(conn, shtdnClntOpts.MaxReconnects, shtdnClntOpts.Reconnect)
+	connected := test_helpers.WaitUntilReconnected(conn, shtdnClntOpts.MaxReconnects,
+		shtdnClntOpts.Reconnect)
 	require.Truef(t, connected, "Reconnect success")
 
 	testGracefulShutdown(t, conn, &inst)

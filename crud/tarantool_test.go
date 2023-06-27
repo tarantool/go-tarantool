@@ -361,7 +361,8 @@ func generateTuples() []crud.Tuple {
 	return tpls
 }
 
-func generateTuplesOperationsData(tpls []crud.Tuple, operations []crud.Operation) []crud.TupleOperationsData {
+func generateTuplesOperationsData(tpls []crud.Tuple,
+	operations []crud.Operation) []crud.TupleOperationsData {
 	tuplesOperationsData := []crud.TupleOperationsData{}
 	for _, tpl := range tpls {
 		tuplesOperationsData = append(tuplesOperationsData, crud.TupleOperationsData{
@@ -385,7 +386,8 @@ func generateObjects() []crud.Object {
 	return objs
 }
 
-func generateObjectsOperationsData(objs []crud.Object, operations []crud.Operation) []crud.ObjectOperationsData {
+func generateObjectsOperationsData(objs []crud.Object,
+	operations []crud.Operation) []crud.ObjectOperationsData {
 	objectsOperationsData := []crud.ObjectOperationsData{}
 	for _, obj := range objs {
 		objectsOperationsData = append(objectsOperationsData, crud.ObjectOperationsData{
@@ -548,7 +550,7 @@ func TestUnflattenRows_IncorrectParams(t *testing.T) {
 	objs, err := crud.UnflattenRows(tpls, invalidMetadata)
 	require.Nil(t, objs)
 	require.NotNil(t, err)
-	require.Contains(t, err.Error(), "Unexpected space format")
+	require.Contains(t, err.Error(), "unexpected space format")
 }
 
 func TestUnflattenRows(t *testing.T) {
@@ -816,7 +818,8 @@ func runTestMain(m *testing.M) int {
 	defer test_helpers.StopTarantoolWithCleanup(inst)
 
 	if err != nil {
-		log.Fatalf("Failed to prepare test tarantool: %s", err)
+		log.Printf("Failed to prepare test tarantool: %s", err)
+		return 1
 	}
 
 	return m.Run()

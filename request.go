@@ -170,7 +170,7 @@ func fillPing(enc *msgpack.Encoder) error {
 //
 // Deprecated: the method will be removed in the next major version,
 // use a PingRequest object + Do() instead.
-func (conn *Connection) Ping() (resp *Response, err error) {
+func (conn *Connection) Ping() (*Response, error) {
 	return conn.Do(NewPingRequest()).Get()
 }
 
@@ -180,7 +180,8 @@ func (conn *Connection) Ping() (resp *Response, err error) {
 //
 // Deprecated: the method will be removed in the next major version,
 // use a SelectRequest object + Do() instead.
-func (conn *Connection) Select(space, index interface{}, offset, limit uint32, iterator Iter, key interface{}) (resp *Response, err error) {
+func (conn *Connection) Select(space, index interface{}, offset, limit uint32, iterator Iter,
+	key interface{}) (*Response, error) {
 	return conn.SelectAsync(space, index, offset, limit, iterator, key).Get()
 }
 
@@ -191,7 +192,7 @@ func (conn *Connection) Select(space, index interface{}, offset, limit uint32, i
 //
 // Deprecated: the method will be removed in the next major version,
 // use an InsertRequest object + Do() instead.
-func (conn *Connection) Insert(space interface{}, tuple interface{}) (resp *Response, err error) {
+func (conn *Connection) Insert(space interface{}, tuple interface{}) (*Response, error) {
 	return conn.InsertAsync(space, tuple).Get()
 }
 
@@ -202,7 +203,7 @@ func (conn *Connection) Insert(space interface{}, tuple interface{}) (resp *Resp
 //
 // Deprecated: the method will be removed in the next major version,
 // use a ReplaceRequest object + Do() instead.
-func (conn *Connection) Replace(space interface{}, tuple interface{}) (resp *Response, err error) {
+func (conn *Connection) Replace(space interface{}, tuple interface{}) (*Response, error) {
 	return conn.ReplaceAsync(space, tuple).Get()
 }
 
@@ -213,7 +214,7 @@ func (conn *Connection) Replace(space interface{}, tuple interface{}) (resp *Res
 //
 // Deprecated: the method will be removed in the next major version,
 // use a DeleteRequest object + Do() instead.
-func (conn *Connection) Delete(space, index interface{}, key interface{}) (resp *Response, err error) {
+func (conn *Connection) Delete(space, index interface{}, key interface{}) (*Response, error) {
 	return conn.DeleteAsync(space, index, key).Get()
 }
 
@@ -224,7 +225,7 @@ func (conn *Connection) Delete(space, index interface{}, key interface{}) (resp 
 //
 // Deprecated: the method will be removed in the next major version,
 // use a UpdateRequest object + Do() instead.
-func (conn *Connection) Update(space, index interface{}, key, ops interface{}) (resp *Response, err error) {
+func (conn *Connection) Update(space, index interface{}, key, ops interface{}) (*Response, error) {
 	return conn.UpdateAsync(space, index, key, ops).Get()
 }
 
@@ -235,7 +236,7 @@ func (conn *Connection) Update(space, index interface{}, key, ops interface{}) (
 //
 // Deprecated: the method will be removed in the next major version,
 // use a UpsertRequest object + Do() instead.
-func (conn *Connection) Upsert(space interface{}, tuple, ops interface{}) (resp *Response, err error) {
+func (conn *Connection) Upsert(space interface{}, tuple, ops interface{}) (*Response, error) {
 	return conn.UpsertAsync(space, tuple, ops).Get()
 }
 
@@ -246,7 +247,7 @@ func (conn *Connection) Upsert(space interface{}, tuple, ops interface{}) (resp 
 //
 // Deprecated: the method will be removed in the next major version,
 // use a CallRequest object + Do() instead.
-func (conn *Connection) Call(functionName string, args interface{}) (resp *Response, err error) {
+func (conn *Connection) Call(functionName string, args interface{}) (*Response, error) {
 	return conn.CallAsync(functionName, args).Get()
 }
 
@@ -258,7 +259,7 @@ func (conn *Connection) Call(functionName string, args interface{}) (resp *Respo
 //
 // Deprecated: the method will be removed in the next major version,
 // use a Call16Request object + Do() instead.
-func (conn *Connection) Call16(functionName string, args interface{}) (resp *Response, err error) {
+func (conn *Connection) Call16(functionName string, args interface{}) (*Response, error) {
 	return conn.Call16Async(functionName, args).Get()
 }
 
@@ -269,7 +270,7 @@ func (conn *Connection) Call16(functionName string, args interface{}) (resp *Res
 //
 // Deprecated: the method will be removed in the next major version,
 // use a Call17Request object + Do() instead.
-func (conn *Connection) Call17(functionName string, args interface{}) (resp *Response, err error) {
+func (conn *Connection) Call17(functionName string, args interface{}) (*Response, error) {
 	return conn.Call17Async(functionName, args).Get()
 }
 
@@ -279,7 +280,7 @@ func (conn *Connection) Call17(functionName string, args interface{}) (resp *Res
 //
 // Deprecated: the method will be removed in the next major version,
 // use an EvalRequest object + Do() instead.
-func (conn *Connection) Eval(expr string, args interface{}) (resp *Response, err error) {
+func (conn *Connection) Eval(expr string, args interface{}) (*Response, error) {
 	return conn.EvalAsync(expr, args).Get()
 }
 
@@ -290,7 +291,7 @@ func (conn *Connection) Eval(expr string, args interface{}) (resp *Response, err
 //
 // Deprecated: the method will be removed in the next major version,
 // use an ExecuteRequest object + Do() instead.
-func (conn *Connection) Execute(expr string, args interface{}) (resp *Response, err error) {
+func (conn *Connection) Execute(expr string, args interface{}) (*Response, error) {
 	return conn.ExecuteAsync(expr, args).Get()
 }
 
@@ -310,7 +311,7 @@ func (s *single) DecodeMsgpack(d *msgpack.Decoder) error {
 		return nil
 	}
 	if len != 1 {
-		return errors.New("Tarantool returns unexpected value for Select(limit=1)")
+		return errors.New("tarantool returns unexpected value for Select(limit=1)")
 	}
 	return d.Decode(s.res)
 }
@@ -322,10 +323,10 @@ func (s *single) DecodeMsgpack(d *msgpack.Decoder) error {
 //
 // Deprecated: the method will be removed in the next major version,
 // use a SelectRequest object + Do() instead.
-func (conn *Connection) GetTyped(space, index interface{}, key interface{}, result interface{}) (err error) {
+func (conn *Connection) GetTyped(space, index interface{}, key interface{},
+	result interface{}) error {
 	s := single{res: result}
-	err = conn.SelectAsync(space, index, 0, 1, IterEq, key).GetTyped(&s)
-	return
+	return conn.SelectAsync(space, index, 0, 1, IterEq, key).GetTyped(&s)
 }
 
 // SelectTyped performs select to box space and fills typed result.
@@ -334,7 +335,8 @@ func (conn *Connection) GetTyped(space, index interface{}, key interface{}, resu
 //
 // Deprecated: the method will be removed in the next major version,
 // use a SelectRequest object + Do() instead.
-func (conn *Connection) SelectTyped(space, index interface{}, offset, limit uint32, iterator Iter, key interface{}, result interface{}) (err error) {
+func (conn *Connection) SelectTyped(space, index interface{}, offset, limit uint32, iterator Iter,
+	key interface{}, result interface{}) error {
 	return conn.SelectAsync(space, index, offset, limit, iterator, key).GetTyped(result)
 }
 
@@ -345,7 +347,8 @@ func (conn *Connection) SelectTyped(space, index interface{}, offset, limit uint
 //
 // Deprecated: the method will be removed in the next major version,
 // use an InsertRequest object + Do() instead.
-func (conn *Connection) InsertTyped(space interface{}, tuple interface{}, result interface{}) (err error) {
+func (conn *Connection) InsertTyped(space interface{}, tuple interface{},
+	result interface{}) error {
 	return conn.InsertAsync(space, tuple).GetTyped(result)
 }
 
@@ -356,7 +359,8 @@ func (conn *Connection) InsertTyped(space interface{}, tuple interface{}, result
 //
 // Deprecated: the method will be removed in the next major version,
 // use a ReplaceRequest object + Do() instead.
-func (conn *Connection) ReplaceTyped(space interface{}, tuple interface{}, result interface{}) (err error) {
+func (conn *Connection) ReplaceTyped(space interface{}, tuple interface{},
+	result interface{}) error {
 	return conn.ReplaceAsync(space, tuple).GetTyped(result)
 }
 
@@ -366,7 +370,8 @@ func (conn *Connection) ReplaceTyped(space interface{}, tuple interface{}, resul
 //
 // Deprecated: the method will be removed in the next major version,
 // use a DeleteRequest object + Do() instead.
-func (conn *Connection) DeleteTyped(space, index interface{}, key interface{}, result interface{}) (err error) {
+func (conn *Connection) DeleteTyped(space, index interface{}, key interface{},
+	result interface{}) error {
 	return conn.DeleteAsync(space, index, key).GetTyped(result)
 }
 
@@ -376,7 +381,8 @@ func (conn *Connection) DeleteTyped(space, index interface{}, key interface{}, r
 //
 // Deprecated: the method will be removed in the next major version,
 // use a UpdateRequest object + Do() instead.
-func (conn *Connection) UpdateTyped(space, index interface{}, key, ops interface{}, result interface{}) (err error) {
+func (conn *Connection) UpdateTyped(space, index interface{}, key, ops interface{},
+	result interface{}) error {
 	return conn.UpdateAsync(space, index, key, ops).GetTyped(result)
 }
 
@@ -387,7 +393,8 @@ func (conn *Connection) UpdateTyped(space, index interface{}, key, ops interface
 //
 // Deprecated: the method will be removed in the next major version,
 // use a CallRequest object + Do() instead.
-func (conn *Connection) CallTyped(functionName string, args interface{}, result interface{}) (err error) {
+func (conn *Connection) CallTyped(functionName string, args interface{},
+	result interface{}) error {
 	return conn.CallAsync(functionName, args).GetTyped(result)
 }
 
@@ -399,7 +406,8 @@ func (conn *Connection) CallTyped(functionName string, args interface{}, result 
 //
 // Deprecated: the method will be removed in the next major version,
 // use a Call16Request object + Do() instead.
-func (conn *Connection) Call16Typed(functionName string, args interface{}, result interface{}) (err error) {
+func (conn *Connection) Call16Typed(functionName string, args interface{},
+	result interface{}) error {
 	return conn.Call16Async(functionName, args).GetTyped(result)
 }
 
@@ -410,7 +418,8 @@ func (conn *Connection) Call16Typed(functionName string, args interface{}, resul
 //
 // Deprecated: the method will be removed in the next major version,
 // use a Call17Request object + Do() instead.
-func (conn *Connection) Call17Typed(functionName string, args interface{}, result interface{}) (err error) {
+func (conn *Connection) Call17Typed(functionName string, args interface{},
+	result interface{}) error {
 	return conn.Call17Async(functionName, args).GetTyped(result)
 }
 
@@ -420,7 +429,7 @@ func (conn *Connection) Call17Typed(functionName string, args interface{}, resul
 //
 // Deprecated: the method will be removed in the next major version,
 // use an EvalRequest object + Do() instead.
-func (conn *Connection) EvalTyped(expr string, args interface{}, result interface{}) (err error) {
+func (conn *Connection) EvalTyped(expr string, args interface{}, result interface{}) error {
 	return conn.EvalAsync(expr, args).GetTyped(result)
 }
 
@@ -431,7 +440,8 @@ func (conn *Connection) EvalTyped(expr string, args interface{}, result interfac
 //
 // Deprecated: the method will be removed in the next major version,
 // use an ExecuteRequest object + Do() instead.
-func (conn *Connection) ExecuteTyped(expr string, args interface{}, result interface{}) (SQLInfo, []ColumnMetaData, error) {
+func (conn *Connection) ExecuteTyped(expr string, args interface{},
+	result interface{}) (SQLInfo, []ColumnMetaData, error) {
 	fut := conn.ExecuteAsync(expr, args)
 	err := fut.GetTyped(&result)
 	return fut.resp.SQLInfo, fut.resp.MetaData, err
@@ -441,7 +451,8 @@ func (conn *Connection) ExecuteTyped(expr string, args interface{}, result inter
 //
 // Deprecated: the method will be removed in the next major version,
 // use a SelectRequest object + Do() instead.
-func (conn *Connection) SelectAsync(space, index interface{}, offset, limit uint32, iterator Iter, key interface{}) *Future {
+func (conn *Connection) SelectAsync(space, index interface{}, offset, limit uint32, iterator Iter,
+	key interface{}) *Future {
 	req := NewSelectRequest(space).
 		Index(index).
 		Offset(offset).
@@ -497,7 +508,8 @@ func (conn *Connection) UpdateAsync(space, index interface{}, key, ops interface
 //
 // Deprecated: the method will be removed in the next major version,
 // use a UpsertRequest object + Do() instead.
-func (conn *Connection) UpsertAsync(space interface{}, tuple interface{}, ops interface{}) *Future {
+func (conn *Connection) UpsertAsync(space interface{}, tuple interface{},
+	ops interface{}) *Future {
 	req := NewUpsertRequest(space).Tuple(tuple)
 	req.ops = ops
 	return conn.Do(req)

@@ -16,7 +16,8 @@ import (
 type ValidSchemeResolver struct {
 }
 
-func (*ValidSchemeResolver) ResolveSpaceIndex(s, i interface{}) (spaceNo, indexNo uint32, err error) {
+func (*ValidSchemeResolver) ResolveSpaceIndex(s, i interface{}) (uint32, uint32, error) {
+	var spaceNo, indexNo uint32
 	if s == nil {
 		if s == "_session_settings" {
 			spaceNo = 380
@@ -43,7 +44,8 @@ func TestRequestsAPI(t *testing.T) {
 		async bool
 		rtype iproto.Type
 	}{
-		{req: NewErrorMarshalingEnabledSetRequest(false), async: false, rtype: iproto.IPROTO_UPDATE},
+		{req: NewErrorMarshalingEnabledSetRequest(false), async: false,
+			rtype: iproto.IPROTO_UPDATE},
 		{req: NewErrorMarshalingEnabledGetRequest(), async: false, rtype: iproto.IPROTO_SELECT},
 		{req: NewSQLDefaultEngineSetRequest("memtx"), async: false, rtype: iproto.IPROTO_UPDATE},
 		{req: NewSQLDefaultEngineGetRequest(), async: false, rtype: iproto.IPROTO_SELECT},
@@ -57,8 +59,10 @@ func TestRequestsAPI(t *testing.T) {
 		{req: NewSQLParserDebugGetRequest(), async: false, rtype: iproto.IPROTO_SELECT},
 		{req: NewSQLRecursiveTriggersSetRequest(false), async: false, rtype: iproto.IPROTO_UPDATE},
 		{req: NewSQLRecursiveTriggersGetRequest(), async: false, rtype: iproto.IPROTO_SELECT},
-		{req: NewSQLReverseUnorderedSelectsSetRequest(false), async: false, rtype: iproto.IPROTO_UPDATE},
-		{req: NewSQLReverseUnorderedSelectsGetRequest(), async: false, rtype: iproto.IPROTO_SELECT},
+		{req: NewSQLReverseUnorderedSelectsSetRequest(false), async: false,
+			rtype: iproto.IPROTO_UPDATE},
+		{req: NewSQLReverseUnorderedSelectsGetRequest(), async: false,
+			rtype: iproto.IPROTO_SELECT},
 		{req: NewSQLSelectDebugSetRequest(false), async: false, rtype: iproto.IPROTO_UPDATE},
 		{req: NewSQLSelectDebugGetRequest(), async: false, rtype: iproto.IPROTO_SELECT},
 		{req: NewSQLVDBEDebugSetRequest(false), async: false, rtype: iproto.IPROTO_UPDATE},

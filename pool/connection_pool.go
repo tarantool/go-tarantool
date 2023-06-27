@@ -12,7 +12,6 @@ package pool
 
 import (
 	"errors"
-	"fmt"
 	"log"
 	"sync"
 	"time"
@@ -32,6 +31,8 @@ var (
 	ErrNoHealthyInstance = errors.New("can't find healthy instance in pool")
 	ErrExists            = errors.New("endpoint exists")
 	ErrClosed            = errors.New("pool is closed")
+	ErrUnknownRequest    = errors.New("the passed connected request doesn't belong to " +
+		"the current connection pool")
 )
 
 // ConnectionHandler provides callbacks for components interested in handling
@@ -132,7 +133,7 @@ func newEndpoint(addr string) *endpoint {
 
 // ConnectWithOpts creates pool for instances with addresses addrs
 // with options opts.
-func ConnectWithOpts(addrs []string, connOpts tarantool.Opts, opts Opts) (connPool *ConnectionPool, err error) {
+func ConnectWithOpts(addrs []string, connOpts tarantool.Opts, opts Opts) (*ConnectionPool, error) {
 	if len(addrs) == 0 {
 		return nil, ErrEmptyAddrs
 	}
@@ -145,7 +146,7 @@ func ConnectWithOpts(addrs []string, connOpts tarantool.Opts, opts Opts) (connPo
 	roPool := newRoundRobinStrategy(size)
 	anyPool := newRoundRobinStrategy(size)
 
-	connPool = &ConnectionPool{
+	connPool := &ConnectionPool{
 		addrs:    make(map[string]*endpoint),
 		connOpts: connOpts.Clone(),
 		opts:     opts,
@@ -180,7 +181,7 @@ func ConnectWithOpts(addrs []string, connOpts tarantool.Opts, opts Opts) (connPo
 // It is useless to set up tarantool.Opts.Reconnect value for a connection.
 // The connection pool has its own reconnection logic. See
 // Opts.CheckTimeout description.
-func Connect(addrs []string, connOpts tarantool.Opts) (connPool *ConnectionPool, err error) {
+func Connect(addrs []string, connOpts tarantool.Opts) (*ConnectionPool, error) {
 	opts := Opts{
 		CheckTimeout: 1 * time.Second,
 	}
@@ -188,32 +189,32 @@ func Connect(addrs []string, connOpts tarantool.Opts) (connPool *ConnectionPool,
 }
 
 // ConnectedNow gets connected status of pool.
-func (connPool *ConnectionPool) ConnectedNow(mode Mode) (bool, error) {
-	connPool.poolsMutex.RLock()
-	defer connPool.poolsMutex.RUnlock()
+func (p *ConnectionPool) ConnectedNow(mode Mode) (bool, error) {
+	p.poolsMutex.RLock()
+	defer p.poolsMutex.RUnlock()
 
-	if connPool.state.get() != connectedState {
+	if p.state.get() != connectedState {
 		return false, nil
 	}
 	switch mode {
 	case ANY:
-		return !connPool.anyPool.IsEmpty(), nil
+		return !p.anyPool.IsEmpty(), nil
 	case RW:
-		return !connPool.rwPool.IsEmpty(), nil
+		return !p.rwPool.IsEmpty(), nil
 	case RO:
-		return !connPool.roPool.IsEmpty(), nil
+		return !p.roPool.IsEmpty(), nil
 	case PreferRW:
 		fallthrough
 	case PreferRO:
-		return !connPool.rwPool.IsEmpty() || !connPool.roPool.IsEmpty(), nil
+		return !p.rwPool.IsEmpty() || !p.roPool.IsEmpty(), nil
 	default:
 		return false, ErrNoHealthyInstance
 	}
 }
 
 // ConfiguredTimeout gets timeout of current connection.
-func (connPool *ConnectionPool) ConfiguredTimeout(mode Mode) (time.Duration, error) {
-	conn, err := connPool.getNextConnection(mode)
+func (p *ConnectionPool) ConfiguredTimeout(mode Mode) (time.Duration, error) {
+	conn, err := p.getNextConnection(mode)
 	if err != nil {
 		return 0, err
 	}
@@ -223,41 +224,41 @@ func (connPool *ConnectionPool) ConfiguredTimeout(mode Mode) (time.Duration, err
 
 // Add adds a new endpoint with the address into the pool. This function
 // adds the endpoint only after successful connection.
-func (pool *ConnectionPool) Add(addr string) error {
+func (p *ConnectionPool) Add(addr string) error {
 	e := newEndpoint(addr)
 
-	pool.addrsMutex.Lock()
+	p.addrsMutex.Lock()
 	// Ensure that Close()/CloseGraceful() not in progress/done.
-	if pool.state.get() != connectedState {
-		pool.addrsMutex.Unlock()
+	if p.state.get() != connectedState {
+		p.addrsMutex.Unlock()
 		return ErrClosed
 	}
-	if _, ok := pool.addrs[addr]; ok {
-		pool.addrsMutex.Unlock()
+	if _, ok := p.addrs[addr]; ok {
+		p.addrsMutex.Unlock()
 		return ErrExists
 	}
-	pool.addrs[addr] = e
-	pool.addrsMutex.Unlock()
+	p.addrs[addr] = e
+	p.addrsMutex.Unlock()
 
-	if err := pool.tryConnect(e); err != nil {
-		pool.addrsMutex.Lock()
-		delete(pool.addrs, addr)
-		pool.addrsMutex.Unlock()
+	if err := p.tryConnect(e); err != nil {
+		p.addrsMutex.Lock()
+		delete(p.addrs, addr)
+		p.addrsMutex.Unlock()
 		close(e.closed)
 		return err
 	}
 
-	go pool.controller(e)
+	go p.controller(e)
 	return nil
 }
 
 // Remove removes an endpoint with the address from the pool. The call
 // closes an active connection gracefully.
-func (pool *ConnectionPool) Remove(addr string) error {
-	pool.addrsMutex.Lock()
-	endpoint, ok := pool.addrs[addr]
+func (p *ConnectionPool) Remove(addr string) error {
+	p.addrsMutex.Lock()
+	endpoint, ok := p.addrs[addr]
 	if !ok {
-		pool.addrsMutex.Unlock()
+		p.addrsMutex.Unlock()
 		return errors.New("endpoint not exist")
 	}
 
@@ -270,20 +271,20 @@ func (pool *ConnectionPool) Remove(addr string) error {
 		close(endpoint.shutdown)
 	}
 
-	delete(pool.addrs, addr)
-	pool.addrsMutex.Unlock()
+	delete(p.addrs, addr)
+	p.addrsMutex.Unlock()
 
 	<-endpoint.closed
 	return nil
 }
 
-func (pool *ConnectionPool) waitClose() []error {
-	pool.addrsMutex.RLock()
-	endpoints := make([]*endpoint, 0, len(pool.addrs))
-	for _, e := range pool.addrs {
+func (p *ConnectionPool) waitClose() []error {
+	p.addrsMutex.RLock()
+	endpoints := make([]*endpoint, 0, len(p.addrs))
+	for _, e := range p.addrs {
 		endpoints = append(endpoints, e)
 	}
-	pool.addrsMutex.RUnlock()
+	p.addrsMutex.RUnlock()
 
 	errs := make([]error, 0, len(endpoints))
 	for _, e := range endpoints {
@@ -296,42 +297,42 @@ func (pool *ConnectionPool) waitClose() []error {
 }
 
 // Close closes connections in the ConnectionPool.
-func (pool *ConnectionPool) Close() []error {
-	if pool.state.cas(connectedState, closedState) ||
-		pool.state.cas(shutdownState, closedState) {
-		pool.addrsMutex.RLock()
-		for _, s := range pool.addrs {
+func (p *ConnectionPool) Close() []error {
+	if p.state.cas(connectedState, closedState) ||
+		p.state.cas(shutdownState, closedState) {
+		p.addrsMutex.RLock()
+		for _, s := range p.addrs {
 			close(s.close)
 		}
-		pool.addrsMutex.RUnlock()
+		p.addrsMutex.RUnlock()
 	}
 
-	return pool.waitClose()
+	return p.waitClose()
 }
 
 // CloseGraceful closes connections in the ConnectionPool gracefully. It waits
 // for all requests to complete.
-func (pool *ConnectionPool) CloseGraceful() []error {
-	if pool.state.cas(connectedState, shutdownState) {
-		pool.addrsMutex.RLock()
-		for _, s := range pool.addrs {
+func (p *ConnectionPool) CloseGraceful() []error {
+	if p.state.cas(connectedState, shutdownState) {
+		p.addrsMutex.RLock()
+		for _, s := range p.addrs {
 			close(s.shutdown)
 		}
-		pool.addrsMutex.RUnlock()
+		p.addrsMutex.RUnlock()
 	}
 
-	return pool.waitClose()
+	return p.waitClose()
 }
 
 // GetAddrs gets addresses of connections in pool.
-func (pool *ConnectionPool) GetAddrs() []string {
-	pool.addrsMutex.RLock()
-	defer pool.addrsMutex.RUnlock()
+func (p *ConnectionPool) GetAddrs() []string {
+	p.addrsMutex.RLock()
+	defer p.addrsMutex.RUnlock()
 
-	cpy := make([]string, len(pool.addrs))
+	cpy := make([]string, len(p.addrs))
 
 	i := 0
-	for addr := range pool.addrs {
+	for addr := range p.addrs {
 		cpy[i] = addr
 		i++
 	}
@@ -340,20 +341,20 @@ func (pool *ConnectionPool) GetAddrs() []string {
 }
 
 // GetPoolInfo gets information of connections (connected status, ro/rw role).
-func (pool *ConnectionPool) GetPoolInfo() map[string]*ConnectionInfo {
+func (p *ConnectionPool) GetPoolInfo() map[string]*ConnectionInfo {
 	info := make(map[string]*ConnectionInfo)
 
-	pool.addrsMutex.RLock()
-	defer pool.addrsMutex.RUnlock()
-	pool.poolsMutex.RLock()
-	defer pool.poolsMutex.RUnlock()
+	p.addrsMutex.RLock()
+	defer p.addrsMutex.RUnlock()
+	p.poolsMutex.RLock()
+	defer p.poolsMutex.RUnlock()
 
-	if pool.state.get() != connectedState {
+	if p.state.get() != connectedState {
 		return info
 	}
 
-	for addr := range pool.addrs {
-		conn, role := pool.getConnectionFromPool(addr)
+	for addr := range p.addrs {
+		conn, role := p.getConnectionFromPool(addr)
 		if conn != nil {
 			info[addr] = &ConnectionInfo{ConnectedNow: conn.ConnectedNow(), ConnRole: role}
 		}
@@ -366,8 +367,8 @@ func (pool *ConnectionPool) GetPoolInfo() map[string]*ConnectionInfo {
 //
 // Deprecated: the method will be removed in the next major version,
 // use a PingRequest object + Do() instead.
-func (connPool *ConnectionPool) Ping(userMode Mode) (*tarantool.Response, error) {
-	conn, err := connPool.getNextConnection(userMode)
+func (p *ConnectionPool) Ping(userMode Mode) (*tarantool.Response, error) {
+	conn, err := p.getNextConnection(userMode)
 	if err != nil {
 		return nil, err
 	}
@@ -379,10 +380,10 @@ func (connPool *ConnectionPool) Ping(userMode Mode) (*tarantool.Response, error)
 //
 // Deprecated: the method will be removed in the next major version,
 // use a SelectRequest object + Do() instead.
-func (connPool *ConnectionPool) Select(space, index interface{},
+func (p *ConnectionPool) Select(space, index interface{},
 	offset, limit uint32,
-	iterator tarantool.Iter, key interface{}, userMode ...Mode) (resp *tarantool.Response, err error) {
-	conn, err := connPool.getConnByMode(ANY, userMode)
+	iterator tarantool.Iter, key interface{}, userMode ...Mode) (*tarantool.Response, error) {
+	conn, err := p.getConnByMode(ANY, userMode)
 	if err != nil {
 		return nil, err
 	}
@@ -395,8 +396,9 @@ func (connPool *ConnectionPool) Select(space, index interface{},
 //
 // Deprecated: the method will be removed in the next major version,
 // use an InsertRequest object + Do() instead.
-func (connPool *ConnectionPool) Insert(space interface{}, tuple interface{}, userMode ...Mode) (resp *tarantool.Response, err error) {
-	conn, err := connPool.getConnByMode(RW, userMode)
+func (p *ConnectionPool) Insert(space interface{}, tuple interface{},
+	userMode ...Mode) (*tarantool.Response, error) {
+	conn, err := p.getConnByMode(RW, userMode)
 	if err != nil {
 		return nil, err
 	}
@@ -409,8 +411,9 @@ func (connPool *ConnectionPool) Insert(space interface{}, tuple interface{}, use
 //
 // Deprecated: the method will be removed in the next major version,
 // use a ReplaceRequest object + Do() instead.
-func (connPool *ConnectionPool) Replace(space interface{}, tuple interface{}, userMode ...Mode) (resp *tarantool.Response, err error) {
-	conn, err := connPool.getConnByMode(RW, userMode)
+func (p *ConnectionPool) Replace(space interface{}, tuple interface{},
+	userMode ...Mode) (*tarantool.Response, error) {
+	conn, err := p.getConnByMode(RW, userMode)
 	if err != nil {
 		return nil, err
 	}
@@ -423,8 +426,9 @@ func (connPool *ConnectionPool) Replace(space interface{}, tuple interface{}, us
 //
 // Deprecated: the method will be removed in the next major version,
 // use a DeleteRequest object + Do() instead.
-func (connPool *ConnectionPool) Delete(space, index interface{}, key interface{}, userMode ...Mode) (resp *tarantool.Response, err error) {
-	conn, err := connPool.getConnByMode(RW, userMode)
+func (p *ConnectionPool) Delete(space, index interface{}, key interface{},
+	userMode ...Mode) (*tarantool.Response, error) {
+	conn, err := p.getConnByMode(RW, userMode)
 	if err != nil {
 		return nil, err
 	}
@@ -437,8 +441,9 @@ func (connPool *ConnectionPool) Delete(space, index interface{}, key interface{}
 //
 // Deprecated: the method will be removed in the next major version,
 // use a UpdateRequest object + Do() instead.
-func (connPool *ConnectionPool) Update(space, index interface{}, key, ops interface{}, userMode ...Mode) (resp *tarantool.Response, err error) {
-	conn, err := connPool.getConnByMode(RW, userMode)
+func (p *ConnectionPool) Update(space, index interface{}, key, ops interface{},
+	userMode ...Mode) (*tarantool.Response, error) {
+	conn, err := p.getConnByMode(RW, userMode)
 	if err != nil {
 		return nil, err
 	}
@@ -451,8 +456,9 @@ func (connPool *ConnectionPool) Update(space, index interface{}, key, ops interf
 //
 // Deprecated: the method will be removed in the next major version,
 // use a UpsertRequest object + Do() instead.
-func (connPool *ConnectionPool) Upsert(space interface{}, tuple, ops interface{}, userMode ...Mode) (resp *tarantool.Response, err error) {
-	conn, err := connPool.getConnByMode(RW, userMode)
+func (p *ConnectionPool) Upsert(space interface{}, tuple, ops interface{},
+	userMode ...Mode) (*tarantool.Response, error) {
+	conn, err := p.getConnByMode(RW, userMode)
 	if err != nil {
 		return nil, err
 	}
@@ -465,8 +471,9 @@ func (connPool *ConnectionPool) Upsert(space interface{}, tuple, ops interface{}
 //
 // Deprecated: the method will be removed in the next major version,
 // use a CallRequest object + Do() instead.
-func (connPool *ConnectionPool) Call(functionName string, args interface{}, userMode Mode) (resp *tarantool.Response, err error) {
-	conn, err := connPool.getNextConnection(userMode)
+func (p *ConnectionPool) Call(functionName string, args interface{},
+	userMode Mode) (*tarantool.Response, error) {
+	conn, err := p.getNextConnection(userMode)
 	if err != nil {
 		return nil, err
 	}
@@ -480,8 +487,9 @@ func (connPool *ConnectionPool) Call(functionName string, args interface{}, user
 //
 // Deprecated: the method will be removed in the next major version,
 // use a Call16Request object + Do() instead.
-func (connPool *ConnectionPool) Call16(functionName string, args interface{}, userMode Mode) (resp *tarantool.Response, err error) {
-	conn, err := connPool.getNextConnection(userMode)
+func (p *ConnectionPool) Call16(functionName string, args interface{},
+	userMode Mode) (*tarantool.Response, error) {
+	conn, err := p.getNextConnection(userMode)
 	if err != nil {
 		return nil, err
 	}
@@ -494,8 +502,9 @@ func (connPool *ConnectionPool) Call16(functionName string, args interface{}, us
 //
 // Deprecated: the method will be removed in the next major version,
 // use a Call17Request object + Do() instead.
-func (connPool *ConnectionPool) Call17(functionName string, args interface{}, userMode Mode) (resp *tarantool.Response, err error) {
-	conn, err := connPool.getNextConnection(userMode)
+func (p *ConnectionPool) Call17(functionName string, args interface{},
+	userMode Mode) (*tarantool.Response, error) {
+	conn, err := p.getNextConnection(userMode)
 	if err != nil {
 		return nil, err
 	}
@@ -507,8 +516,9 @@ func (connPool *ConnectionPool) Call17(functionName string, args interface{}, us
 //
 // Deprecated: the method will be removed in the next major version,
 // use an EvalRequest object + Do() instead.
-func (connPool *ConnectionPool) Eval(expr string, args interface{}, userMode Mode) (resp *tarantool.Response, err error) {
-	conn, err := connPool.getNextConnection(userMode)
+func (p *ConnectionPool) Eval(expr string, args interface{},
+	userMode Mode) (*tarantool.Response, error) {
+	conn, err := p.getNextConnection(userMode)
 	if err != nil {
 		return nil, err
 	}
@@ -520,8 +530,9 @@ func (connPool *ConnectionPool) Eval(expr string, args interface{}, userMode Mod
 //
 // Deprecated: the method will be removed in the next major version,
 // use an ExecuteRequest object + Do() instead.
-func (connPool *ConnectionPool) Execute(expr string, args interface{}, userMode Mode) (resp *tarantool.Response, err error) {
-	conn, err := connPool.getNextConnection(userMode)
+func (p *ConnectionPool) Execute(expr string, args interface{},
+	userMode Mode) (*tarantool.Response, error) {
+	conn, err := p.getNextConnection(userMode)
 	if err != nil {
 		return nil, err
 	}
@@ -534,8 +545,9 @@ func (connPool *ConnectionPool) Execute(expr string, args interface{}, userMode 
 //
 // Deprecated: the method will be removed in the next major version,
 // use a SelectRequest object + Do() instead.
-func (connPool *ConnectionPool) GetTyped(space, index interface{}, key interface{}, result interface{}, userMode ...Mode) (err error) {
-	conn, err := connPool.getConnByMode(ANY, userMode)
+func (p *ConnectionPool) GetTyped(space, index interface{}, key interface{}, result interface{},
+	userMode ...Mode) error {
+	conn, err := p.getConnByMode(ANY, userMode)
 	if err != nil {
 		return err
 	}
@@ -547,10 +559,10 @@ func (connPool *ConnectionPool) GetTyped(space, index interface{}, key interface
 //
 // Deprecated: the method will be removed in the next major version,
 // use a SelectRequest object + Do() instead.
-func (connPool *ConnectionPool) SelectTyped(space, index interface{},
+func (p *ConnectionPool) SelectTyped(space, index interface{},
 	offset, limit uint32,
-	iterator tarantool.Iter, key interface{}, result interface{}, userMode ...Mode) (err error) {
-	conn, err := connPool.getConnByMode(ANY, userMode)
+	iterator tarantool.Iter, key interface{}, result interface{}, userMode ...Mode) error {
+	conn, err := p.getConnByMode(ANY, userMode)
 	if err != nil {
 		return err
 	}
@@ -563,8 +575,9 @@ func (connPool *ConnectionPool) SelectTyped(space, index interface{},
 //
 // Deprecated: the method will be removed in the next major version,
 // use an InsertRequest object + Do() instead.
-func (connPool *ConnectionPool) InsertTyped(space interface{}, tuple interface{}, result interface{}, userMode ...Mode) (err error) {
-	conn, err := connPool.getConnByMode(RW, userMode)
+func (p *ConnectionPool) InsertTyped(space interface{}, tuple interface{}, result interface{},
+	userMode ...Mode) error {
+	conn, err := p.getConnByMode(RW, userMode)
 	if err != nil {
 		return err
 	}
@@ -577,8 +590,9 @@ func (connPool *ConnectionPool) InsertTyped(space interface{}, tuple interface{}
 //
 // Deprecated: the method will be removed in the next major version,
 // use a ReplaceRequest object + Do() instead.
-func (connPool *ConnectionPool) ReplaceTyped(space interface{}, tuple interface{}, result interface{}, userMode ...Mode) (err error) {
-	conn, err := connPool.getConnByMode(RW, userMode)
+func (p *ConnectionPool) ReplaceTyped(space interface{}, tuple interface{}, result interface{},
+	userMode ...Mode) error {
+	conn, err := p.getConnByMode(RW, userMode)
 	if err != nil {
 		return err
 	}
@@ -590,8 +604,9 @@ func (connPool *ConnectionPool) ReplaceTyped(space interface{}, tuple interface{
 //
 // Deprecated: the method will be removed in the next major version,
 // use a DeleteRequest object + Do() instead.
-func (connPool *ConnectionPool) DeleteTyped(space, index interface{}, key interface{}, result interface{}, userMode ...Mode) (err error) {
-	conn, err := connPool.getConnByMode(RW, userMode)
+func (p *ConnectionPool) DeleteTyped(space, index interface{}, key interface{}, result interface{},
+	userMode ...Mode) error {
+	conn, err := p.getConnByMode(RW, userMode)
 	if err != nil {
 		return err
 	}
@@ -603,8 +618,9 @@ func (connPool *ConnectionPool) DeleteTyped(space, index interface{}, key interf
 //
 // Deprecated: the method will be removed in the next major version,
 // use a UpdateRequest object + Do() instead.
-func (connPool *ConnectionPool) UpdateTyped(space, index interface{}, key, ops interface{}, result interface{}, userMode ...Mode) (err error) {
-	conn, err := connPool.getConnByMode(RW, userMode)
+func (p *ConnectionPool) UpdateTyped(space, index interface{}, key, ops interface{},
+	result interface{}, userMode ...Mode) error {
+	conn, err := p.getConnByMode(RW, userMode)
 	if err != nil {
 		return err
 	}
@@ -617,8 +633,9 @@ func (connPool *ConnectionPool) UpdateTyped(space, index interface{}, key, ops i
 //
 // Deprecated: the method will be removed in the next major version,
 // use a CallRequest object + Do() instead.
-func (connPool *ConnectionPool) CallTyped(functionName string, args interface{}, result interface{}, userMode Mode) (err error) {
-	conn, err := connPool.getNextConnection(userMode)
+func (p *ConnectionPool) CallTyped(functionName string, args interface{}, result interface{},
+	userMode Mode) error {
+	conn, err := p.getNextConnection(userMode)
 	if err != nil {
 		return err
 	}
@@ -632,8 +649,9 @@ func (connPool *ConnectionPool) CallTyped(functionName string, args interface{},
 //
 // Deprecated: the method will be removed in the next major version,
 // use a Call16Request object + Do() instead.
-func (connPool *ConnectionPool) Call16Typed(functionName string, args interface{}, result interface{}, userMode Mode) (err error) {
-	conn, err := connPool.getNextConnection(userMode)
+func (p *ConnectionPool) Call16Typed(functionName string, args interface{}, result interface{},
+	userMode Mode) error {
+	conn, err := p.getNextConnection(userMode)
 	if err != nil {
 		return err
 	}
@@ -646,8 +664,9 @@ func (connPool *ConnectionPool) Call16Typed(functionName string, args interface{
 //
 // Deprecated: the method will be removed in the next major version,
 // use a Call17Request object + Do() instead.
-func (connPool *ConnectionPool) Call17Typed(functionName string, args interface{}, result interface{}, userMode Mode) (err error) {
-	conn, err := connPool.getNextConnection(userMode)
+func (p *ConnectionPool) Call17Typed(functionName string, args interface{}, result interface{},
+	userMode Mode) error {
+	conn, err := p.getNextConnection(userMode)
 	if err != nil {
 		return err
 	}
@@ -659,8 +678,9 @@ func (connPool *ConnectionPool) Call17Typed(functionName string, args interface{
 //
 // Deprecated: the method will be removed in the next major version,
 // use an EvalRequest object + Do() instead.
-func (connPool *ConnectionPool) EvalTyped(expr string, args interface{}, result interface{}, userMode Mode) (err error) {
-	conn, err := connPool.getNextConnection(userMode)
+func (p *ConnectionPool) EvalTyped(expr string, args interface{}, result interface{},
+	userMode Mode) error {
+	conn, err := p.getNextConnection(userMode)
 	if err != nil {
 		return err
 	}
@@ -672,8 +692,9 @@ func (connPool *ConnectionPool) EvalTyped(expr string, args interface{}, result 
 //
 // Deprecated: the method will be removed in the next major version,
 // use an ExecuteRequest object + Do() instead.
-func (connPool *ConnectionPool) ExecuteTyped(expr string, args interface{}, result interface{}, userMode Mode) (tarantool.SQLInfo, []tarantool.ColumnMetaData, error) {
-	conn, err := connPool.getNextConnection(userMode)
+func (p *ConnectionPool) ExecuteTyped(expr string, args interface{}, result interface{},
+	userMode Mode) (tarantool.SQLInfo, []tarantool.ColumnMetaData, error) {
+	conn, err := p.getNextConnection(userMode)
 	if err != nil {
 		return tarantool.SQLInfo{}, nil, err
 	}
@@ -685,10 +706,10 @@ func (connPool *ConnectionPool) ExecuteTyped(expr string, args interface{}, resu
 //
 // Deprecated: the method will be removed in the next major version,
 // use a SelectRequest object + Do() instead.
-func (connPool *ConnectionPool) SelectAsync(space, index interface{},
+func (p *ConnectionPool) SelectAsync(space, index interface{},
 	offset, limit uint32,
 	iterator tarantool.Iter, key interface{}, userMode ...Mode) *tarantool.Future {
-	conn, err := connPool.getConnByMode(ANY, userMode)
+	conn, err := p.getConnByMode(ANY, userMode)
 	if err != nil {
 		return newErrorFuture(err)
 	}
@@ -701,8 +722,9 @@ func (connPool *ConnectionPool) SelectAsync(space, index interface{},
 //
 // Deprecated: the method will be removed in the next major version,
 // use an InsertRequest object + Do() instead.
-func (connPool *ConnectionPool) InsertAsync(space interface{}, tuple interface{}, userMode ...Mode) *tarantool.Future {
-	conn, err := connPool.getConnByMode(RW, userMode)
+func (p *ConnectionPool) InsertAsync(space interface{}, tuple interface{},
+	userMode ...Mode) *tarantool.Future {
+	conn, err := p.getConnByMode(RW, userMode)
 	if err != nil {
 		return newErrorFuture(err)
 	}
@@ -715,8 +737,9 @@ func (connPool *ConnectionPool) InsertAsync(space interface{}, tuple interface{}
 //
 // Deprecated: the method will be removed in the next major version,
 // use a ReplaceRequest object + Do() instead.
-func (connPool *ConnectionPool) ReplaceAsync(space interface{}, tuple interface{}, userMode ...Mode) *tarantool.Future {
-	conn, err := connPool.getConnByMode(RW, userMode)
+func (p *ConnectionPool) ReplaceAsync(space interface{}, tuple interface{},
+	userMode ...Mode) *tarantool.Future {
+	conn, err := p.getConnByMode(RW, userMode)
 	if err != nil {
 		return newErrorFuture(err)
 	}
@@ -729,8 +752,9 @@ func (connPool *ConnectionPool) ReplaceAsync(space interface{}, tuple interface{
 //
 // Deprecated: the method will be removed in the next major version,
 // use a DeleteRequest object + Do() instead.
-func (connPool *ConnectionPool) DeleteAsync(space, index interface{}, key interface{}, userMode ...Mode) *tarantool.Future {
-	conn, err := connPool.getConnByMode(RW, userMode)
+func (p *ConnectionPool) DeleteAsync(space, index interface{}, key interface{},
+	userMode ...Mode) *tarantool.Future {
+	conn, err := p.getConnByMode(RW, userMode)
 	if err != nil {
 		return newErrorFuture(err)
 	}
@@ -743,8 +767,9 @@ func (connPool *ConnectionPool) DeleteAsync(space, index interface{}, key interf
 //
 // Deprecated: the method will be removed in the next major version,
 // use a UpdateRequest object + Do() instead.
-func (connPool *ConnectionPool) UpdateAsync(space, index interface{}, key, ops interface{}, userMode ...Mode) *tarantool.Future {
-	conn, err := connPool.getConnByMode(RW, userMode)
+func (p *ConnectionPool) UpdateAsync(space, index interface{}, key, ops interface{},
+	userMode ...Mode) *tarantool.Future {
+	conn, err := p.getConnByMode(RW, userMode)
 	if err != nil {
 		return newErrorFuture(err)
 	}
@@ -757,8 +782,9 @@ func (connPool *ConnectionPool) UpdateAsync(space, index interface{}, key, ops i
 //
 // Deprecated: the method will be removed in the next major version,
 // use a UpsertRequest object + Do() instead.
-func (connPool *ConnectionPool) UpsertAsync(space interface{}, tuple interface{}, ops interface{}, userMode ...Mode) *tarantool.Future {
-	conn, err := connPool.getConnByMode(RW, userMode)
+func (p *ConnectionPool) UpsertAsync(space interface{}, tuple interface{}, ops interface{},
+	userMode ...Mode) *tarantool.Future {
+	conn, err := p.getConnByMode(RW, userMode)
 	if err != nil {
 		return newErrorFuture(err)
 	}
@@ -771,8 +797,9 @@ func (connPool *ConnectionPool) UpsertAsync(space interface{}, tuple interface{}
 //
 // Deprecated: the method will be removed in the next major version,
 // use a CallRequest object + Do() instead.
-func (connPool *ConnectionPool) CallAsync(functionName string, args interface{}, userMode Mode) *tarantool.Future {
-	conn, err := connPool.getNextConnection(userMode)
+func (p *ConnectionPool) CallAsync(functionName string, args interface{},
+	userMode Mode) *tarantool.Future {
+	conn, err := p.getNextConnection(userMode)
 	if err != nil {
 		return newErrorFuture(err)
 	}
@@ -786,8 +813,9 @@ func (connPool *ConnectionPool) CallAsync(functionName string, args interface{},
 //
 // Deprecated: the method will be removed in the next major version,
 // use a Call16Request object + Do() instead.
-func (connPool *ConnectionPool) Call16Async(functionName string, args interface{}, userMode Mode) *tarantool.Future {
-	conn, err := connPool.getNextConnection(userMode)
+func (p *ConnectionPool) Call16Async(functionName string, args interface{},
+	userMode Mode) *tarantool.Future {
+	conn, err := p.getNextConnection(userMode)
 	if err != nil {
 		return newErrorFuture(err)
 	}
@@ -800,8 +828,9 @@ func (connPool *ConnectionPool) Call16Async(functionName string, args interface{
 //
 // Deprecated: the method will be removed in the next major version,
 // use a Call17Request object + Do() instead.
-func (connPool *ConnectionPool) Call17Async(functionName string, args interface{}, userMode Mode) *tarantool.Future {
-	conn, err := connPool.getNextConnection(userMode)
+func (p *ConnectionPool) Call17Async(functionName string, args interface{},
+	userMode Mode) *tarantool.Future {
+	conn, err := p.getNextConnection(userMode)
 	if err != nil {
 		return newErrorFuture(err)
 	}
@@ -813,8 +842,9 @@ func (connPool *ConnectionPool) Call17Async(functionName string, args interface{
 //
 // Deprecated: the method will be removed in the next major version,
 // use an EvalRequest object + Do() instead.
-func (connPool *ConnectionPool) EvalAsync(expr string, args interface{}, userMode Mode) *tarantool.Future {
-	conn, err := connPool.getNextConnection(userMode)
+func (p *ConnectionPool) EvalAsync(expr string, args interface{},
+	userMode Mode) *tarantool.Future {
+	conn, err := p.getNextConnection(userMode)
 	if err != nil {
 		return newErrorFuture(err)
 	}
@@ -827,8 +857,9 @@ func (connPool *ConnectionPool) EvalAsync(expr string, args interface{}, userMod
 //
 // Deprecated: the method will be removed in the next major version,
 // use an ExecuteRequest object + Do() instead.
-func (connPool *ConnectionPool) ExecuteAsync(expr string, args interface{}, userMode Mode) *tarantool.Future {
-	conn, err := connPool.getNextConnection(userMode)
+func (p *ConnectionPool) ExecuteAsync(expr string, args interface{},
+	userMode Mode) *tarantool.Future {
+	conn, err := p.getNextConnection(userMode)
 	if err != nil {
 		return newErrorFuture(err)
 	}
@@ -837,13 +868,13 @@ func (connPool *ConnectionPool) ExecuteAsync(expr string, args interface{}, user
 }
 
 // NewStream creates new Stream object for connection selected
-// by userMode from connPool.
+// by userMode from pool.
 //
 // Since v. 2.10.0, Tarantool supports streams and interactive transactions over them.
 // To use interactive transactions, memtx_use_mvcc_engine box option should be set to true.
 // Since 1.7.0
-func (connPool *ConnectionPool) NewStream(userMode Mode) (*tarantool.Stream, error) {
-	conn, err := connPool.getNextConnection(userMode)
+func (p *ConnectionPool) NewStream(userMode Mode) (*tarantool.Stream, error) {
+	conn, err := p.getNextConnection(userMode)
 	if err != nil {
 		return nil, err
 	}
@@ -851,8 +882,8 @@ func (connPool *ConnectionPool) NewStream(userMode Mode) (*tarantool.Stream, err
 }
 
 // NewPrepared passes a sql statement to Tarantool for preparation synchronously.
-func (connPool *ConnectionPool) NewPrepared(expr string, userMode Mode) (*tarantool.Prepared, error) {
-	conn, err := connPool.getNextConnection(userMode)
+func (p *ConnectionPool) NewPrepared(expr string, userMode Mode) (*tarantool.Prepared, error) {
+	conn, err := p.getNextConnection(userMode)
 	if err != nil {
 		return nil, err
 	}
@@ -878,10 +909,10 @@ func (connPool *ConnectionPool) NewPrepared(expr string, userMode Mode) (*tarant
 // https://www.tarantool.io/en/doc/latest/reference/reference_lua/box_events/#box-watchers
 //
 // Since 1.10.0
-func (pool *ConnectionPool) NewWatcher(key string,
+func (p *ConnectionPool) NewWatcher(key string,
 	callback tarantool.WatchCallback, mode Mode) (tarantool.Watcher, error) {
 	watchersRequired := false
-	for _, feature := range pool.connOpts.RequiredProtocolInfo.Features {
+	for _, feature := range p.connOpts.RequiredProtocolInfo.Features {
 		if tarantool.WatchersFeature == feature {
 			watchersRequired = true
 			break
@@ -893,7 +924,7 @@ func (pool *ConnectionPool) NewWatcher(key string,
 	}
 
 	watcher := &poolWatcher{
-		container:    &pool.watcherContainer,
+		container:    &p.watcherContainer,
 		mode:         mode,
 		key:          key,
 		callback:     callback,
@@ -903,11 +934,11 @@ func (pool *ConnectionPool) NewWatcher(key string,
 
 	watcher.container.add(watcher)
 
-	rr := pool.anyPool
+	rr := p.anyPool
 	if mode == RW {
-		rr = pool.rwPool
+		rr = p.rwPool
 	} else if mode == RO {
-		rr = pool.roPool
+		rr = p.roPool
 	}
 
 	conns := rr.GetConnections()
@@ -923,15 +954,15 @@ func (pool *ConnectionPool) NewWatcher(key string,
 // Do sends the request and returns a future.
 // For requests that belong to the only one connection (e.g. Unprepare or ExecutePrepared)
 // the argument of type Mode is unused.
-func (connPool *ConnectionPool) Do(req tarantool.Request, userMode Mode) *tarantool.Future {
+func (p *ConnectionPool) Do(req tarantool.Request, userMode Mode) *tarantool.Future {
 	if connectedReq, ok := req.(tarantool.ConnectedRequest); ok {
-		conn, _ := connPool.getConnectionFromPool(connectedReq.Conn().Addr())
+		conn, _ := p.getConnectionFromPool(connectedReq.Conn().Addr())
 		if conn == nil {
-			return newErrorFuture(fmt.Errorf("the passed connected request doesn't belong to the current connection or connection pool"))
+			return newErrorFuture(ErrUnknownRequest)
 		}
 		return connectedReq.Conn().Do(req)
 	}
-	conn, err := connPool.getNextConnection(userMode)
+	conn, err := p.getNextConnection(userMode)
 	if err != nil {
 		return newErrorFuture(err)
 	}
@@ -943,7 +974,7 @@ func (connPool *ConnectionPool) Do(req tarantool.Request, userMode Mode) *tarant
 // private
 //
 
-func (connPool *ConnectionPool) getConnectionRole(conn *tarantool.Connection) (Role, error) {
+func (p *ConnectionPool) getConnectionRole(conn *tarantool.Connection) (Role, error) {
 	resp, err := conn.Do(tarantool.NewCallRequest("box.info")).Get()
 	if err != nil {
 		return UnknownRole, err
@@ -978,48 +1009,49 @@ func (connPool *ConnectionPool) getConnectionRole(conn *tarantool.Connection) (R
 	return UnknownRole, nil
 }
 
-func (connPool *ConnectionPool) getConnectionFromPool(addr string) (*tarantool.Connection, Role) {
-	if conn := connPool.rwPool.GetConnByAddr(addr); conn != nil {
+func (p *ConnectionPool) getConnectionFromPool(addr string) (*tarantool.Connection, Role) {
+	if conn := p.rwPool.GetConnByAddr(addr); conn != nil {
 		return conn, MasterRole
 	}
 
-	if conn := connPool.roPool.GetConnByAddr(addr); conn != nil {
+	if conn := p.roPool.GetConnByAddr(addr); conn != nil {
 		return conn, ReplicaRole
 	}
 
-	return connPool.anyPool.GetConnByAddr(addr), UnknownRole
+	return p.anyPool.GetConnByAddr(addr), UnknownRole
 }
 
-func (pool *ConnectionPool) deleteConnection(addr string) {
-	if conn := pool.anyPool.DeleteConnByAddr(addr); conn != nil {
-		if conn := pool.rwPool.DeleteConnByAddr(addr); conn == nil {
-			pool.roPool.DeleteConnByAddr(addr)
+func (p *ConnectionPool) deleteConnection(addr string) {
+	if conn := p.anyPool.DeleteConnByAddr(addr); conn != nil {
+		if conn := p.rwPool.DeleteConnByAddr(addr); conn == nil {
+			p.roPool.DeleteConnByAddr(addr)
 		}
 		// The internal connection deinitialization.
-		pool.watcherContainer.mutex.RLock()
-		defer pool.watcherContainer.mutex.RUnlock()
+		p.watcherContainer.mutex.RLock()
+		defer p.watcherContainer.mutex.RUnlock()
 
-		pool.watcherContainer.foreach(func(watcher *poolWatcher) error {
+		p.watcherContainer.foreach(func(watcher *poolWatcher) error {
 			watcher.unwatch(conn)
 			return nil
 		})
 	}
 }
 
-func (pool *ConnectionPool) addConnection(addr string,
+func (p *ConnectionPool) addConnection(addr string,
 	conn *tarantool.Connection, role Role) error {
 	// The internal connection initialization.
-	pool.watcherContainer.mutex.RLock()
-	defer pool.watcherContainer.mutex.RUnlock()
+	p.watcherContainer.mutex.RLock()
+	defer p.watcherContainer.mutex.RUnlock()
 
 	watched := []*poolWatcher{}
-	err := pool.watcherContainer.foreach(func(watcher *poolWatcher) error {
+	err := p.watcherContainer.foreach(func(watcher *poolWatcher) error {
 		watch := false
-		if watcher.mode == RW {
+		switch watcher.mode {
+		case RW:
 			watch = role == MasterRole
-		} else if watcher.mode == RO {
+		case RO:
 			watch = role == ReplicaRole
-		} else {
+		default:
 			watch = true
 		}
 		if watch {
@@ -1038,22 +1070,22 @@ func (pool *ConnectionPool) addConnection(addr string,
 		return err
 	}
 
-	pool.anyPool.AddConn(addr, conn)
+	p.anyPool.AddConn(addr, conn)
 
 	switch role {
 	case MasterRole:
-		pool.rwPool.AddConn(addr, conn)
+		p.rwPool.AddConn(addr, conn)
 	case ReplicaRole:
-		pool.roPool.AddConn(addr, conn)
+		p.roPool.AddConn(addr, conn)
 	}
 	return nil
 }
 
-func (connPool *ConnectionPool) handlerDiscovered(conn *tarantool.Connection,
+func (p *ConnectionPool) handlerDiscovered(conn *tarantool.Connection,
 	role Role) bool {
 	var err error
-	if connPool.opts.ConnectionHandler != nil {
-		err = connPool.opts.ConnectionHandler.Discovered(conn, role)
+	if p.opts.ConnectionHandler != nil {
+		err = p.opts.ConnectionHandler.Discovered(conn, role)
 	}
 
 	if err != nil {
@@ -1064,11 +1096,11 @@ func (connPool *ConnectionPool) handlerDiscovered(conn *tarantool.Connection,
 	return true
 }
 
-func (connPool *ConnectionPool) handlerDeactivated(conn *tarantool.Connection,
+func (p *ConnectionPool) handlerDeactivated(conn *tarantool.Connection,
 	role Role) {
 	var err error
-	if connPool.opts.ConnectionHandler != nil {
-		err = connPool.opts.ConnectionHandler.Deactivated(conn, role)
+	if p.opts.ConnectionHandler != nil {
+		err = p.opts.ConnectionHandler.Deactivated(conn, role)
 	}
 
 	if err != nil {
@@ -1077,32 +1109,32 @@ func (connPool *ConnectionPool) handlerDeactivated(conn *tarantool.Connection,
 	}
 }
 
-func (connPool *ConnectionPool) fillPools() bool {
+func (p *ConnectionPool) fillPools() bool {
 	somebodyAlive := false
 
 	// It is called before controller() goroutines so we don't expect
 	// concurrency issues here.
-	for addr := range connPool.addrs {
+	for addr := range p.addrs {
 		end := newEndpoint(addr)
-		connPool.addrs[addr] = end
+		p.addrs[addr] = end
 
-		connOpts := connPool.connOpts
+		connOpts := p.connOpts
 		connOpts.Notify = end.notify
 		conn, err := tarantool.Connect(addr, connOpts)
 		if err != nil {
 			log.Printf("tarantool: connect to %s failed: %s\n", addr, err.Error())
 		} else if conn != nil {
-			role, err := connPool.getConnectionRole(conn)
+			role, err := p.getConnectionRole(conn)
 			if err != nil {
 				conn.Close()
 				log.Printf("tarantool: storing connection to %s failed: %s\n", addr, err)
 				continue
 			}
 
-			if connPool.handlerDiscovered(conn, role) {
-				if connPool.addConnection(addr, conn, role) != nil {
+			if p.handlerDiscovered(conn, role) {
+				if p.addConnection(addr, conn, role) != nil {
 					conn.Close()
-					connPool.handlerDeactivated(conn, role)
+					p.handlerDeactivated(conn, role)
 				}
 
 				if conn.ConnectedNow() {
@@ -1110,9 +1142,9 @@ func (connPool *ConnectionPool) fillPools() bool {
 					end.role = role
 					somebodyAlive = true
 				} else {
-					connPool.deleteConnection(addr)
+					p.deleteConnection(addr)
 					conn.Close()
-					connPool.handlerDeactivated(conn, role)
+					p.handlerDeactivated(conn, role)
 				}
 			} else {
 				conn.Close()
@@ -1123,21 +1155,21 @@ func (connPool *ConnectionPool) fillPools() bool {
 	return somebodyAlive
 }
 
-func (pool *ConnectionPool) updateConnection(e *endpoint) {
-	pool.poolsMutex.Lock()
+func (p *ConnectionPool) updateConnection(e *endpoint) {
+	p.poolsMutex.Lock()
 
-	if pool.state.get() != connectedState {
-		pool.poolsMutex.Unlock()
+	if p.state.get() != connectedState {
+		p.poolsMutex.Unlock()
 		return
 	}
 
-	if role, err := pool.getConnectionRole(e.conn); err == nil {
+	if role, err := p.getConnectionRole(e.conn); err == nil {
 		if e.role != role {
-			pool.deleteConnection(e.addr)
-			pool.poolsMutex.Unlock()
+			p.deleteConnection(e.addr)
+			p.poolsMutex.Unlock()
 
-			pool.handlerDeactivated(e.conn, e.role)
-			opened := pool.handlerDiscovered(e.conn, role)
+			p.handlerDeactivated(e.conn, e.role)
+			opened := p.handlerDiscovered(e.conn, role)
 			if !opened {
 				e.conn.Close()
 				e.conn = nil
@@ -1145,59 +1177,59 @@ func (pool *ConnectionPool) updateConnection(e *endpoint) {
 				return
 			}
 
-			pool.poolsMutex.Lock()
-			if pool.state.get() != connectedState {
-				pool.poolsMutex.Unlock()
+			p.poolsMutex.Lock()
+			if p.state.get() != connectedState {
+				p.poolsMutex.Unlock()
 
 				e.conn.Close()
-				pool.handlerDeactivated(e.conn, role)
+				p.handlerDeactivated(e.conn, role)
 				e.conn = nil
 				e.role = UnknownRole
 				return
 			}
 
-			if pool.addConnection(e.addr, e.conn, role) != nil {
-				pool.poolsMutex.Unlock()
+			if p.addConnection(e.addr, e.conn, role) != nil {
+				p.poolsMutex.Unlock()
 
 				e.conn.Close()
-				pool.handlerDeactivated(e.conn, role)
+				p.handlerDeactivated(e.conn, role)
 				e.conn = nil
 				e.role = UnknownRole
 				return
 			}
 			e.role = role
 		}
-		pool.poolsMutex.Unlock()
+		p.poolsMutex.Unlock()
 		return
 	} else {
-		pool.deleteConnection(e.addr)
-		pool.poolsMutex.Unlock()
+		p.deleteConnection(e.addr)
+		p.poolsMutex.Unlock()
 
 		e.conn.Close()
-		pool.handlerDeactivated(e.conn, e.role)
+		p.handlerDeactivated(e.conn, e.role)
 		e.conn = nil
 		e.role = UnknownRole
 		return
 	}
 }
 
-func (pool *ConnectionPool) tryConnect(e *endpoint) error {
-	pool.poolsMutex.Lock()
+func (p *ConnectionPool) tryConnect(e *endpoint) error {
+	p.poolsMutex.Lock()
 
-	if pool.state.get() != connectedState {
-		pool.poolsMutex.Unlock()
+	if p.state.get() != connectedState {
+		p.poolsMutex.Unlock()
 		return ErrClosed
 	}
 
 	e.conn = nil
 	e.role = UnknownRole
 
-	connOpts := pool.connOpts
+	connOpts := p.connOpts
 	connOpts.Notify = e.notify
 	conn, err := tarantool.Connect(e.addr, connOpts)
 	if err == nil {
-		role, err := pool.getConnectionRole(conn)
-		pool.poolsMutex.Unlock()
+		role, err := p.getConnectionRole(conn)
+		p.poolsMutex.Unlock()
 
 		if err != nil {
 			conn.Close()
@@ -1205,54 +1237,54 @@ func (pool *ConnectionPool) tryConnect(e *endpoint) error {
 			return err
 		}
 
-		opened := pool.handlerDiscovered(conn, role)
+		opened := p.handlerDiscovered(conn, role)
 		if !opened {
 			conn.Close()
 			return errors.New("storing connection canceled")
 		}
 
-		pool.poolsMutex.Lock()
-		if pool.state.get() != connectedState {
-			pool.poolsMutex.Unlock()
+		p.poolsMutex.Lock()
+		if p.state.get() != connectedState {
+			p.poolsMutex.Unlock()
 			conn.Close()
-			pool.handlerDeactivated(conn, role)
+			p.handlerDeactivated(conn, role)
 			return ErrClosed
 		}
 
-		if err = pool.addConnection(e.addr, conn, role); err != nil {
-			pool.poolsMutex.Unlock()
+		if err = p.addConnection(e.addr, conn, role); err != nil {
+			p.poolsMutex.Unlock()
 			conn.Close()
-			pool.handlerDeactivated(conn, role)
+			p.handlerDeactivated(conn, role)
 			return err
 		}
 		e.conn = conn
 		e.role = role
 	}
 
-	pool.poolsMutex.Unlock()
+	p.poolsMutex.Unlock()
 	return err
 }
 
-func (pool *ConnectionPool) reconnect(e *endpoint) {
-	pool.poolsMutex.Lock()
+func (p *ConnectionPool) reconnect(e *endpoint) {
+	p.poolsMutex.Lock()
 
-	if pool.state.get() != connectedState {
-		pool.poolsMutex.Unlock()
+	if p.state.get() != connectedState {
+		p.poolsMutex.Unlock()
 		return
 	}
 
-	pool.deleteConnection(e.addr)
-	pool.poolsMutex.Unlock()
+	p.deleteConnection(e.addr)
+	p.poolsMutex.Unlock()
 
-	pool.handlerDeactivated(e.conn, e.role)
+	p.handlerDeactivated(e.conn, e.role)
 	e.conn = nil
 	e.role = UnknownRole
 
-	pool.tryConnect(e)
+	p.tryConnect(e)
 }
 
-func (pool *ConnectionPool) controller(e *endpoint) {
-	timer := time.NewTicker(pool.opts.CheckTimeout)
+func (p *ConnectionPool) controller(e *endpoint) {
+	timer := time.NewTicker(p.opts.CheckTimeout)
 	defer timer.Stop()
 
 	shutdown := false
@@ -1276,13 +1308,13 @@ func (pool *ConnectionPool) controller(e *endpoint) {
 		// e.close has priority to avoid concurrency with e.shutdown.
 		case <-e.close:
 			if e.conn != nil {
-				pool.poolsMutex.Lock()
-				pool.deleteConnection(e.addr)
-				pool.poolsMutex.Unlock()
+				p.poolsMutex.Lock()
+				p.deleteConnection(e.addr)
+				p.poolsMutex.Unlock()
 
 				if !shutdown {
 					e.closeErr = e.conn.Close()
-					pool.handlerDeactivated(e.conn, e.role)
+					p.handlerDeactivated(e.conn, e.role)
 					close(e.closed)
 				} else {
 					// Force close the connection.
@@ -1298,9 +1330,9 @@ func (pool *ConnectionPool) controller(e *endpoint) {
 			case <-e.shutdown:
 				shutdown = true
 				if e.conn != nil {
-					pool.poolsMutex.Lock()
-					pool.deleteConnection(e.addr)
-					pool.poolsMutex.Unlock()
+					p.poolsMutex.Lock()
+					p.deleteConnection(e.addr)
+					p.poolsMutex.Unlock()
 
 					// We need to catch s.close in the current goroutine, so
 					// we need to start an another one for the shutdown.
@@ -1319,15 +1351,15 @@ func (pool *ConnectionPool) controller(e *endpoint) {
 					// Will be processed at an upper level.
 				case <-e.notify:
 					if e.conn != nil && e.conn.ClosedNow() {
-						pool.poolsMutex.Lock()
-						if pool.state.get() == connectedState {
-							pool.deleteConnection(e.addr)
-							pool.poolsMutex.Unlock()
-							pool.handlerDeactivated(e.conn, e.role)
+						p.poolsMutex.Lock()
+						if p.state.get() == connectedState {
+							p.deleteConnection(e.addr)
+							p.poolsMutex.Unlock()
+							p.handlerDeactivated(e.conn, e.role)
 							e.conn = nil
 							e.role = UnknownRole
 						} else {
-							pool.poolsMutex.Unlock()
+							p.poolsMutex.Unlock()
 						}
 					}
 				case <-timer.C:
@@ -1335,11 +1367,11 @@ func (pool *ConnectionPool) controller(e *endpoint) {
 					// Relocate connection between subpools
 					// if ro/rw was updated.
 					if e.conn == nil {
-						pool.tryConnect(e)
+						p.tryConnect(e)
 					} else if !e.conn.ClosedNow() {
-						pool.updateConnection(e)
+						p.updateConnection(e)
 					} else {
-						pool.reconnect(e)
+						p.reconnect(e)
 					}
 				}
 			}
@@ -1347,42 +1379,43 @@ func (pool *ConnectionPool) controller(e *endpoint) {
 	}
 }
 
-func (connPool *ConnectionPool) getNextConnection(mode Mode) (*tarantool.Connection, error) {
+func (p *ConnectionPool) getNextConnection(mode Mode) (*tarantool.Connection, error) {
 
 	switch mode {
 	case ANY:
-		if next := connPool.anyPool.GetNextConnection(); next != nil {
+		if next := p.anyPool.GetNextConnection(); next != nil {
 			return next, nil
 		}
 	case RW:
-		if next := connPool.rwPool.GetNextConnection(); next != nil {
+		if next := p.rwPool.GetNextConnection(); next != nil {
 			return next, nil
 		}
 		return nil, ErrNoRwInstance
 	case RO:
-		if next := connPool.roPool.GetNextConnection(); next != nil {
+		if next := p.roPool.GetNextConnection(); next != nil {
 			return next, nil
 		}
 		return nil, ErrNoRoInstance
 	case PreferRW:
-		if next := connPool.rwPool.GetNextConnection(); next != nil {
+		if next := p.rwPool.GetNextConnection(); next != nil {
 			return next, nil
 		}
-		if next := connPool.roPool.GetNextConnection(); next != nil {
+		if next := p.roPool.GetNextConnection(); next != nil {
 			return next, nil
 		}
 	case PreferRO:
-		if next := connPool.roPool.GetNextConnection(); next != nil {
+		if next := p.roPool.GetNextConnection(); next != nil {
 			return next, nil
 		}
-		if next := connPool.rwPool.GetNextConnection(); next != nil {
+		if next := p.rwPool.GetNextConnection(); next != nil {
 			return next, nil
 		}
 	}
 	return nil, ErrNoHealthyInstance
 }
 
-func (connPool *ConnectionPool) getConnByMode(defaultMode Mode, userMode []Mode) (*tarantool.Connection, error) {
+func (p *ConnectionPool) getConnByMode(defaultMode Mode,
+	userMode []Mode) (*tarantool.Connection, error) {
 	if len(userMode) > 1 {
 		return nil, ErrTooManyArgs
 	}
@@ -1392,7 +1425,7 @@ func (connPool *ConnectionPool) getConnByMode(defaultMode Mode, userMode []Mode)
 		mode = userMode[0]
 	}
 
-	return connPool.getNextConnection(mode)
+	return p.getNextConnection(mode)
 }
 
 func newErrorFuture(err error) *tarantool.Future {

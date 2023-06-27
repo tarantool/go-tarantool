@@ -374,20 +374,21 @@ func (conn *Connection) loadSchema() (err error) {
 // ResolveSpaceIndex tries to resolve space and index numbers.
 // Note: s can be a number, string, or an object of Space type.
 // Note: i can be a number, string, or an object of Index type.
-func (schema *Schema) ResolveSpaceIndex(s interface{}, i interface{}) (spaceNo, indexNo uint32, err error) {
-	var space *Space
-	var index *Index
-	var ok bool
+func (schema *Schema) ResolveSpaceIndex(s interface{}, i interface{}) (uint32, uint32, error) {
+	var (
+		spaceNo, indexNo uint32
+		space            *Space
+		index            *Index
+		ok               bool
+	)
 
 	switch s := s.(type) {
 	case string:
 		if schema == nil {
-			err = fmt.Errorf("Schema is not loaded")
-			return
+			return spaceNo, indexNo, fmt.Errorf("Schema is not loaded")
 		}
 		if space, ok = schema.Spaces[s]; !ok {
-			err = fmt.Errorf("there is no space with name %s", s)
-			return
+			return spaceNo, indexNo, fmt.Errorf("there is no space with name %s", s)
 		}
 		spaceNo = space.Id
 	case uint:
@@ -395,7 +396,7 @@ func (schema *Schema) ResolveSpaceIndex(s interface{}, i interface{}) (spaceNo, 
 	case uint64:
 		spaceNo = uint32(s)
 	case uint32:
-		spaceNo = uint32(s)
+		spaceNo = s
 	case uint16:
 		spaceNo = uint32(s)
 	case uint8:
@@ -422,18 +423,16 @@ func (schema *Schema) ResolveSpaceIndex(s interface{}, i interface{}) (spaceNo, 
 		switch i := i.(type) {
 		case string:
 			if schema == nil {
-				err = fmt.Errorf("Schema is not loaded")
-				return
+				return spaceNo, indexNo, fmt.Errorf("schema is not loaded")
 			}
 			if space == nil {
 				if space, ok = schema.SpacesById[spaceNo]; !ok {
-					err = fmt.Errorf("there is no space with id %d", spaceNo)
-					return
+					return spaceNo, indexNo, fmt.Errorf("there is no space with id %d", spaceNo)
 				}
 			}
 			if index, ok = space.Indexes[i]; !ok {
-				err = fmt.Errorf("space %s has not index with name %s", space.Name, i)
-				return
+				err := fmt.Errorf("space %s has not index with name %s", space.Name, i)
+				return spaceNo, indexNo, err
 			}
 			indexNo = index.Id
 		case uint:
@@ -441,7 +440,7 @@ func (schema *Schema) ResolveSpaceIndex(s interface{}, i interface{}) (spaceNo, 
 		case uint64:
 			indexNo = uint32(i)
 		case uint32:
-			indexNo = uint32(i)
+			indexNo = i
 		case uint16:
 			indexNo = uint32(i)
 		case uint8:
@@ -465,5 +464,5 @@ func (schema *Schema) ResolveSpaceIndex(s interface{}, i interface{}) (spaceNo, 
 		}
 	}
 
-	return
+	return spaceNo, indexNo, nil
 }

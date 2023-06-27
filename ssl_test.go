@@ -66,7 +66,7 @@ func clientSsl(network, address string, opts SslOpts) (net.Conn, error) {
 }
 
 func createClientServerSsl(t testing.TB, serverOpts,
-	clientOpts SslOpts) (net.Listener, net.Conn, error, <-chan string, <-chan error) {
+	clientOpts SslOpts) (net.Listener, net.Conn, <-chan string, <-chan error, error) {
 	t.Helper()
 
 	l, err := serverSsl("tcp", sslHost+":0", serverOpts)
@@ -79,14 +79,14 @@ func createClientServerSsl(t testing.TB, serverOpts,
 	port := l.Addr().(*net.TCPAddr).Port
 	c, err := clientSsl("tcp", sslHost+":"+strconv.Itoa(port), clientOpts)
 
-	return l, c, err, msgs, errs
+	return l, c, msgs, errs, err
 }
 
 func createClientServerSslOk(t testing.TB, serverOpts,
 	clientOpts SslOpts) (net.Listener, net.Conn, <-chan string, <-chan error) {
 	t.Helper()
 
-	l, c, err, msgs, errs := createClientServerSsl(t, serverOpts, clientOpts)
+	l, c, msgs, errs, err := createClientServerSsl(t, serverOpts, clientOpts)
 	if err != nil {
 		t.Fatalf("Unable to create client, error %q", err.Error())
 	}
@@ -142,7 +142,7 @@ func serverTntStop(inst test_helpers.TarantoolInstance) {
 func assertConnectionSslFail(t testing.TB, serverOpts, clientOpts SslOpts) {
 	t.Helper()
 
-	l, c, err, _, _ := createClientServerSsl(t, serverOpts, clientOpts)
+	l, c, _, _, err := createClientServerSsl(t, serverOpts, clientOpts)
 	l.Close()
 	if err == nil {
 		c.Close()

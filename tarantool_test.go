@@ -196,7 +196,8 @@ func BenchmarkClientSerialSQL(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := conn.Execute("SELECT NAME0,NAME1,NAME2 FROM SQL_TEST WHERE NAME0=?", []interface{}{uint(1111)})
+		_, err := conn.Execute("SELECT NAME0,NAME1,NAME2 FROM SQL_TEST WHERE NAME0=?",
+			[]interface{}{uint(1111)})
 		if err != nil {
 			b.Errorf("Select failed: %s", err.Error())
 			break
@@ -614,7 +615,8 @@ func BenchmarkClientLargeSelectParallel(b *testing.B) {
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			_, err := conn.Select(rSpaceNo, rIndexNo, offset, limit, IterEq, []interface{}{"test_name"})
+			_, err := conn.Select(rSpaceNo, rIndexNo, offset, limit, IterEq,
+				[]interface{}{"test_name"})
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -636,7 +638,8 @@ func BenchmarkClientParallelSQL(b *testing.B) {
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			_, err := conn.Execute("SELECT NAME0,NAME1,NAME2 FROM SQL_TEST WHERE NAME0=?", []interface{}{uint(1111)})
+			_, err := conn.Execute("SELECT NAME0,NAME1,NAME2 FROM SQL_TEST WHERE NAME0=?",
+				[]interface{}{uint(1111)})
 			if err != nil {
 				b.Errorf("Select failed: %s", err.Error())
 				break
@@ -692,7 +695,8 @@ func BenchmarkSQLSerial(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := conn.Execute("SELECT NAME0,NAME1,NAME2 FROM SQL_TEST WHERE NAME0=?", []interface{}{uint(1111)})
+		_, err := conn.Execute("SELECT NAME0,NAME1,NAME2 FROM SQL_TEST WHERE NAME0=?",
+			[]interface{}{uint(1111)})
 		if err != nil {
 			b.Errorf("Select failed: %s", err.Error())
 			break
@@ -909,7 +913,6 @@ func TestClient(t *testing.T) {
 			t.Errorf("Unexpected body of Insert (1)")
 		}
 	}
-	//resp, err = conn.Insert(spaceNo, []interface{}{uint(1), "hello", "world"})
 	resp, err = conn.Insert(spaceNo, &Tuple{Id: 1, Msg: "hello", Name: "world"})
 	if tntErr, ok := err.(Error); !ok || tntErr.Code != iproto.ER_TUPLE_FOUND {
 		t.Errorf("Expected %s but got: %v", iproto.ER_TUPLE_FOUND, err)
@@ -995,7 +998,8 @@ func TestClient(t *testing.T) {
 	}
 
 	// Update
-	resp, err = conn.Update(spaceNo, indexNo, []interface{}{uint(2)}, []interface{}{[]interface{}{"=", 1, "bye"}, []interface{}{"#", 2, 1}})
+	resp, err = conn.Update(spaceNo, indexNo, []interface{}{uint(2)},
+		[]interface{}{[]interface{}{"=", 1, "bye"}, []interface{}{"#", 2, 1}})
 	if err != nil {
 		t.Fatalf("Failed to Update: %s", err.Error())
 	}
@@ -1023,7 +1027,8 @@ func TestClient(t *testing.T) {
 	}
 
 	// Upsert
-	resp, err = conn.Upsert(spaceNo, []interface{}{uint(3), 1}, []interface{}{[]interface{}{"+", 1, 1}})
+	resp, err = conn.Upsert(spaceNo, []interface{}{uint(3), 1},
+		[]interface{}{[]interface{}{"+", 1, 1}})
 	if err != nil {
 		t.Fatalf("Failed to Upsert (insert): %s", err.Error())
 	}
@@ -1033,7 +1038,8 @@ func TestClient(t *testing.T) {
 	if resp.Pos != nil {
 		t.Errorf("Response should not have a position")
 	}
-	resp, err = conn.Upsert(spaceNo, []interface{}{uint(3), 1}, []interface{}{[]interface{}{"+", 1, 1}})
+	resp, err = conn.Upsert(spaceNo, []interface{}{uint(3), 1},
+		[]interface{}{[]interface{}{"+", 1, 1}})
 	if err != nil {
 		t.Fatalf("Failed to Upsert (update): %s", err.Error())
 	}
@@ -1101,10 +1107,8 @@ func TestClient(t *testing.T) {
 	}
 	if len(tpl) != 1 {
 		t.Errorf("Result len of SelectTyped != 1")
-	} else {
-		if tpl[0].Id != 10 {
-			t.Errorf("Bad value loaded from SelectTyped")
-		}
+	} else if tpl[0].Id != 10 {
+		t.Errorf("Bad value loaded from SelectTyped")
 	}
 
 	// Get Typed
@@ -1125,10 +1129,8 @@ func TestClient(t *testing.T) {
 	}
 	if len(tpl) != 1 {
 		t.Errorf("Result len of SelectTyped != 1")
-	} else {
-		if tpl[0].Id != 10 {
-			t.Errorf("Bad value loaded from SelectTyped")
-		}
+	} else if tpl[0].Id != 10 {
+		t.Errorf("Bad value loaded from SelectTyped")
 	}
 
 	// Get Typed Empty
@@ -1280,12 +1282,14 @@ func TestClientSessionPush(t *testing.T) {
 			}
 			if resp.Code == PushCode {
 				pushCnt += 1
-				if val, err := test_helpers.ConvertUint64(resp.Data[0]); err != nil || val != pushCnt {
+				val, err := test_helpers.ConvertUint64(resp.Data[0])
+				if err != nil || val != pushCnt {
 					t.Errorf("Unexpected push data = %v", resp.Data)
 				}
 			} else {
 				respCnt += 1
-				if val, err := test_helpers.ConvertUint64(resp.Data[0]); err != nil || val != pushMax {
+				val, err := test_helpers.ConvertUint64(resp.Data[0])
+				if err != nil || val != pushMax {
 					t.Errorf("Result is not %d: %v", pushMax, resp.Data)
 				}
 			}
@@ -1309,7 +1313,9 @@ func TestClientSessionPush(t *testing.T) {
 		resp, err := fut.Get()
 		if err != nil {
 			t.Errorf("Unable to call fut.Get(): %s", err)
-		} else if val, err := test_helpers.ConvertUint64(resp.Data[0]); err != nil || val != pushMax {
+		}
+		val, err := test_helpers.ConvertUint64(resp.Data[0])
+		if err != nil || val != pushMax {
 			t.Errorf("Result is not %d: %v", pushMax, resp.Data)
 		}
 
@@ -1326,7 +1332,8 @@ func TestClientSessionPush(t *testing.T) {
 }
 
 const (
-	createTableQuery         = "CREATE TABLE SQL_SPACE (id STRING PRIMARY KEY, name STRING COLLATE \"unicode\" DEFAULT NULL);"
+	createTableQuery = "CREATE TABLE SQL_SPACE (id STRING PRIMARY KEY, name " +
+		"STRING COLLATE \"unicode\" DEFAULT NULL);"
 	insertQuery              = "INSERT INTO SQL_SPACE VALUES (?, ?);"
 	selectNamedQuery         = "SELECT id, name FROM SQL_SPACE WHERE id=:id AND name=:name;"
 	selectPosQuery           = "SELECT id, name FROM SQL_SPACE WHERE id=? AND name=?;"
@@ -1429,7 +1436,8 @@ func TestSQL(t *testing.T) {
 			selectSpanDifQuery,
 			[]interface{}{"test_test"},
 			Response{
-				SQLInfo: SQLInfo{AffectedCount: 0}, Data: []interface{}{[]interface{}{"11", "test_test", "1"}},
+				SQLInfo: SQLInfo{AffectedCount: 0},
+				Data:    []interface{}{[]interface{}{"11", "test_test", "1"}},
 				MetaData: []ColumnMetaData{
 					{
 						FieldType:            "string",
@@ -1513,13 +1521,17 @@ func TestSQL(t *testing.T) {
 		for j := range resp.Data {
 			assert.Equal(t, resp.Data[j], test.Resp.Data[j], "Response data is wrong")
 		}
-		assert.Equal(t, resp.SQLInfo.AffectedCount, test.Resp.SQLInfo.AffectedCount, "Affected count is wrong")
+		assert.Equal(t, resp.SQLInfo.AffectedCount, test.Resp.SQLInfo.AffectedCount,
+			"Affected count is wrong")
 
 		errorMsg := "Response Metadata is wrong"
 		for j := range resp.MetaData {
-			assert.Equal(t, resp.MetaData[j].FieldIsAutoincrement, test.Resp.MetaData[j].FieldIsAutoincrement, errorMsg)
-			assert.Equal(t, resp.MetaData[j].FieldIsNullable, test.Resp.MetaData[j].FieldIsNullable, errorMsg)
-			assert.Equal(t, resp.MetaData[j].FieldCollation, test.Resp.MetaData[j].FieldCollation, errorMsg)
+			assert.Equal(t, resp.MetaData[j].FieldIsAutoincrement,
+				test.Resp.MetaData[j].FieldIsAutoincrement, errorMsg)
+			assert.Equal(t, resp.MetaData[j].FieldIsNullable,
+				test.Resp.MetaData[j].FieldIsNullable, errorMsg)
+			assert.Equal(t, resp.MetaData[j].FieldCollation,
+				test.Resp.MetaData[j].FieldCollation, errorMsg)
 			assert.Equal(t, resp.MetaData[j].FieldName, test.Resp.MetaData[j].FieldName, errorMsg)
 			assert.Equal(t, resp.MetaData[j].FieldSpan, test.Resp.MetaData[j].FieldSpan, errorMsg)
 			assert.Equal(t, resp.MetaData[j].FieldType, test.Resp.MetaData[j].FieldType, errorMsg)
@@ -1591,7 +1603,7 @@ func TestSQLBindings(t *testing.T) {
 		sqlBind4,
 	}
 
-	//positioned sql bind
+	// positioned sql bind
 	sqlBind5 := []interface{}{
 		1, "test",
 	}
@@ -1831,7 +1843,8 @@ func TestNewPrepared(t *testing.T) {
 }
 
 func TestConnection_DoWithStrangerConn(t *testing.T) {
-	expectedErr := fmt.Errorf("the passed connected request doesn't belong to the current connection or connection pool")
+	expectedErr := fmt.Errorf("the passed connected request doesn't belong to the current" +
+		" connection or connection pool")
 
 	conn1 := &Connection{}
 	req := test_helpers.NewStrangerRequest()
@@ -2014,7 +2027,8 @@ func TestSchema(t *testing.T) {
 	if ifield1.Id != 1 || ifield2.Id != 2 {
 		t.Errorf("index field has incorrect Id")
 	}
-	if (ifield1.Type != "num" && ifield1.Type != "unsigned") || (ifield2.Type != "STR" && ifield2.Type != "string") {
+	if (ifield1.Type != "num" && ifield1.Type != "unsigned") ||
+		(ifield2.Type != "STR" && ifield2.Type != "string") {
 		t.Errorf("index field has incorrect Type '%s'", ifield2.Type)
 	}
 
@@ -2113,7 +2127,10 @@ func TestClientNamed(t *testing.T) {
 	}
 
 	// Update
-	resp, err = conn.Update(spaceName, indexName, []interface{}{uint(1002)}, []interface{}{[]interface{}{"=", 1, "bye"}, []interface{}{"#", 2, 1}})
+	resp, err = conn.Update(spaceName, indexName,
+		[]interface{}{
+			uint(1002)},
+		[]interface{}{[]interface{}{"=", 1, "bye"}, []interface{}{"#", 2, 1}})
 	if err != nil {
 		t.Fatalf("Failed to Update: %s", err.Error())
 	}
@@ -2122,14 +2139,16 @@ func TestClientNamed(t *testing.T) {
 	}
 
 	// Upsert
-	resp, err = conn.Upsert(spaceName, []interface{}{uint(1003), 1}, []interface{}{[]interface{}{"+", 1, 1}})
+	resp, err = conn.Upsert(spaceName,
+		[]interface{}{uint(1003), 1}, []interface{}{[]interface{}{"+", 1, 1}})
 	if err != nil {
 		t.Fatalf("Failed to Upsert (insert): %s", err.Error())
 	}
 	if resp == nil {
 		t.Errorf("Response is nil after Upsert (insert)")
 	}
-	resp, err = conn.Upsert(spaceName, []interface{}{uint(1003), 1}, []interface{}{[]interface{}{"+", 1, 1}})
+	resp, err = conn.Upsert(spaceName,
+		[]interface{}{uint(1003), 1}, []interface{}{[]interface{}{"+", 1, 1}})
 	if err != nil {
 		t.Fatalf("Failed to Upsert (update): %s", err.Error())
 	}
@@ -2139,7 +2158,8 @@ func TestClientNamed(t *testing.T) {
 
 	// Select
 	for i := 1010; i < 1020; i++ {
-		resp, err = conn.Replace(spaceName, []interface{}{uint(i), fmt.Sprintf("val %d", i), "bla"})
+		resp, err = conn.Replace(spaceName,
+			[]interface{}{uint(i), fmt.Sprintf("val %d", i), "bla"})
 		if err != nil {
 			t.Fatalf("Failed to Replace: %s", err.Error())
 		}
@@ -2795,7 +2815,9 @@ func TestComplexStructs(t *testing.T) {
 		return
 	}
 
-	if tuple.Cid != tuples[0].Cid || len(tuple.Members) != len(tuples[0].Members) || tuple.Members[1].Name != tuples[0].Members[1].Name {
+	if tuple.Cid != tuples[0].Cid ||
+		len(tuple.Members) != len(tuples[0].Members) ||
+		tuple.Members[1].Name != tuples[0].Members[1].Name {
 		t.Errorf("Failed to selectTyped: incorrect data")
 		return
 	}
@@ -3437,7 +3459,8 @@ func TestConnectionProtocolFeatureRequirementFail(t *testing.T) {
 
 	require.Nilf(t, conn, "Connect fail")
 	require.NotNilf(t, err, "Got error on connect")
-	require.Contains(t, err.Error(), "invalid server protocol: protocol feature TransactionsFeature is not supported")
+	require.Contains(t, err.Error(),
+		"invalid server protocol: protocol feature TransactionsFeature is not supported")
 }
 
 func TestConnectionProtocolFeatureRequirementManyFail(t *testing.T) {
@@ -3454,7 +3477,8 @@ func TestConnectionProtocolFeatureRequirementManyFail(t *testing.T) {
 	require.NotNilf(t, err, "Got error on connect")
 	require.Contains(t,
 		err.Error(),
-		"invalid server protocol: protocol features TransactionsFeature, Unknown feature (code 15532) are not supported")
+		"invalid server protocol: protocol features TransactionsFeature, "+
+			"Unknown feature (code 15532) are not supported")
 }
 
 func TestConnectionFeatureOptsImmutable(t *testing.T) {
@@ -3466,7 +3490,8 @@ func TestConnectionFeatureOptsImmutable(t *testing.T) {
 	defer test_helpers.StopTarantoolWithCleanup(inst)
 
 	if err != nil {
-		log.Fatalf("Failed to prepare test tarantool: %s", err)
+		log.Printf("Failed to prepare test tarantool: %s", err)
+		return
 	}
 
 	retries := uint(10)
@@ -4012,7 +4037,8 @@ func runTestMain(m *testing.M) int {
 	defer test_helpers.StopTarantoolWithCleanup(inst)
 
 	if err != nil {
-		log.Fatalf("Failed to prepare test tarantool: %s", err)
+		log.Printf("Failed to prepare test tarantool: %s", err)
+		return 1
 	}
 
 	return m.Run()

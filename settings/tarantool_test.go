@@ -175,7 +175,8 @@ func TestSQLDeferForeignKeysSetting(t *testing.T) {
 	require.Equal(t, uint64(1), resp.SQLInfo.AffectedCount)
 
 	// Create a space with reference to the parent space.
-	exec = tarantool.NewExecuteRequest("CREATE TABLE child(id INT PRIMARY KEY, x INT REFERENCES parent(y));")
+	exec = tarantool.NewExecuteRequest(
+		"CREATE TABLE child(id INT PRIMARY KEY, x INT REFERENCES parent(y));")
 	resp, err = conn.Do(exec).Get()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
@@ -440,7 +441,8 @@ func TestSQLRecursiveTriggersSetting(t *testing.T) {
 	exec = tarantool.NewExecuteRequest("UPDATE rec SET a=a+1, b=b+1;")
 	_, err = conn.Do(exec).Get()
 	require.NotNil(t, err)
-	require.ErrorContains(t, err, "Failed to execute SQL statement: too many levels of trigger recursion")
+	require.ErrorContains(t, err,
+		"Failed to execute SQL statement: too many levels of trigger recursion")
 
 	// Disable SQL recursive triggers.
 	resp, err = conn.Do(NewSQLRecursiveTriggersSetRequest(false)).Get()
@@ -495,13 +497,15 @@ func TestSQLReverseUnorderedSelectsSetting(t *testing.T) {
 	resp, err = conn.Do(NewSQLReverseUnorderedSelectsSetRequest(false)).Get()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
-	require.Equal(t, []interface{}{[]interface{}{"sql_reverse_unordered_selects", false}}, resp.Data)
+	require.Equal(t, []interface{}{[]interface{}{"sql_reverse_unordered_selects", false}},
+		resp.Data)
 
 	// Fetch current setting value.
 	resp, err = conn.Do(NewSQLReverseUnorderedSelectsGetRequest()).Get()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
-	require.Equal(t, []interface{}{[]interface{}{"sql_reverse_unordered_selects", false}}, resp.Data)
+	require.Equal(t, []interface{}{[]interface{}{"sql_reverse_unordered_selects", false}},
+		resp.Data)
 
 	// Select multiple records.
 	query := "SELECT * FROM seqscan data;"
@@ -521,13 +525,15 @@ func TestSQLReverseUnorderedSelectsSetting(t *testing.T) {
 	resp, err = conn.Do(NewSQLReverseUnorderedSelectsSetRequest(true)).Get()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
-	require.Equal(t, []interface{}{[]interface{}{"sql_reverse_unordered_selects", true}}, resp.Data)
+	require.Equal(t, []interface{}{[]interface{}{"sql_reverse_unordered_selects", true}},
+		resp.Data)
 
 	// Fetch current setting value.
 	resp, err = conn.Do(NewSQLReverseUnorderedSelectsGetRequest()).Get()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
-	require.Equal(t, []interface{}{[]interface{}{"sql_reverse_unordered_selects", true}}, resp.Data)
+	require.Equal(t, []interface{}{[]interface{}{"sql_reverse_unordered_selects", true}},
+		resp.Data)
 
 	// Select multiple records.
 	resp, err = conn.Do(tarantool.NewExecuteRequest(query)).Get()

@@ -6,13 +6,17 @@
 //
 // See also:
 //
-// * Tarantool MessagePack extensions https://www.tarantool.io/en/doc/latest/dev_guide/internals/msgpack_extensions/#the-decimal-type
+//   - Tarantool MessagePack extensions:
+//     https://www.tarantool.io/en/doc/latest/dev_guide/internals/msgpack_extensions/#the-decimal-type
 //
-// * Tarantool data model https://www.tarantool.io/en/doc/latest/book/box/data_model/
+//   - Tarantool data model:
+//     https://www.tarantool.io/en/doc/latest/book/box/data_model/
 //
-// * Tarantool issue for support decimal type https://github.com/tarantool/tarantool/issues/692
+//   - Tarantool issue for support decimal type:
+//     https://github.com/tarantool/tarantool/issues/692
 //
-// * Tarantool module decimal https://www.tarantool.io/en/doc/latest/reference/reference_lua/decimal/
+//   - Tarantool module decimal:
+//     https://www.tarantool.io/en/doc/latest/reference/reference_lua/decimal/
 package decimal
 
 import (
@@ -29,7 +33,8 @@ import (
 //
 // See also:
 //
-// * Tarantool module decimal https://www.tarantool.io/en/doc/latest/reference/reference_lua/decimal/
+// - Tarantool module decimal:
+//   https://www.tarantool.io/en/doc/latest/reference/reference_lua/decimal/
 
 const (
 	// Decimal external type.
@@ -62,10 +67,16 @@ func (decNum *Decimal) MarshalMsgpack() ([]byte, error) {
 	maxSupportedDecimal := decimal.New(1, decimalPrecision).Sub(one) // 10^decimalPrecision - 1
 	minSupportedDecimal := maxSupportedDecimal.Neg().Sub(one)        // -10^decimalPrecision - 1
 	if decNum.GreaterThan(maxSupportedDecimal) {
-		return nil, fmt.Errorf("msgpack: decimal number is bigger than maximum supported number (10^%d - 1)", decimalPrecision)
+		return nil,
+			fmt.Errorf(
+				"msgpack: decimal number is bigger than maximum supported number (10^%d - 1)",
+				decimalPrecision)
 	}
 	if decNum.LessThan(minSupportedDecimal) {
-		return nil, fmt.Errorf("msgpack: decimal number is lesser than minimum supported number (-10^%d - 1)", decimalPrecision)
+		return nil,
+			fmt.Errorf(
+				"msgpack: decimal number is lesser than minimum supported number (-10^%d - 1)",
+				decimalPrecision)
 	}
 
 	strBuf := decNum.String()

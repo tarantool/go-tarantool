@@ -75,7 +75,7 @@ func encodeIntervalValue(e *msgpack.Encoder, typ uint64, value int64) (err error
 		if value > 0 {
 			err = e.EncodeUint(uint64(value))
 		} else if value < 0 {
-			err = e.EncodeInt(int64(value))
+			err = e.EncodeInt(value)
 		}
 	}
 	return

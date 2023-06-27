@@ -257,12 +257,12 @@ func (resp *Response) decodeBody() (err error) {
 		}
 
 		// Tarantool may send only version >= 1
-		if (serverProtocolInfo.Version != ProtocolVersion(0)) || (serverProtocolInfo.Features != nil) {
+		if serverProtocolInfo.Version != ProtocolVersion(0) || serverProtocolInfo.Features != nil {
 			if serverProtocolInfo.Version == ProtocolVersion(0) {
-				return fmt.Errorf("No protocol version provided in Id response")
+				return fmt.Errorf("no protocol version provided in Id response")
 			}
 			if serverProtocolInfo.Features == nil {
-				return fmt.Errorf("No features provided in Id response")
+				return fmt.Errorf("no features provided in Id response")
 			}
 			resp.Data = []interface{}{serverProtocolInfo}
 		}

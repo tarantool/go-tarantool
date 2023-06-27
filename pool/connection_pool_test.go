@@ -130,7 +130,8 @@ func TestReconnect(t *testing.T) {
 		},
 	}
 
-	err = test_helpers.Retry(test_helpers.CheckPoolStatuses, args, defaultCountRetry, defaultTimeoutRetry)
+	err = test_helpers.Retry(test_helpers.CheckPoolStatuses, args,
+		defaultCountRetry, defaultTimeoutRetry)
 	require.Nil(t, err)
 
 	err = test_helpers.RestartTarantool(&instances[0])
@@ -146,7 +147,8 @@ func TestReconnect(t *testing.T) {
 		},
 	}
 
-	err = test_helpers.Retry(test_helpers.CheckPoolStatuses, args, defaultCountRetry, defaultTimeoutRetry)
+	err = test_helpers.Retry(test_helpers.CheckPoolStatuses, args,
+		defaultCountRetry, defaultTimeoutRetry)
 	require.Nil(t, err)
 }
 
@@ -220,7 +222,8 @@ func TestDisconnectAll(t *testing.T) {
 		},
 	}
 
-	err = test_helpers.Retry(test_helpers.CheckPoolStatuses, args, defaultCountRetry, defaultTimeoutRetry)
+	err = test_helpers.Retry(test_helpers.CheckPoolStatuses, args,
+		defaultCountRetry, defaultTimeoutRetry)
 	require.Nil(t, err)
 
 	err = test_helpers.RestartTarantool(&instances[0])
@@ -240,7 +243,8 @@ func TestDisconnectAll(t *testing.T) {
 		},
 	}
 
-	err = test_helpers.Retry(test_helpers.CheckPoolStatuses, args, defaultCountRetry, defaultTimeoutRetry)
+	err = test_helpers.Retry(test_helpers.CheckPoolStatuses, args,
+		defaultCountRetry, defaultTimeoutRetry)
 	require.Nil(t, err)
 }
 
@@ -578,7 +582,8 @@ func TestClose(t *testing.T) {
 		},
 	}
 
-	err = test_helpers.Retry(test_helpers.CheckPoolStatuses, args, defaultCountRetry, defaultTimeoutRetry)
+	err = test_helpers.Retry(test_helpers.CheckPoolStatuses, args,
+		defaultCountRetry, defaultTimeoutRetry)
 	require.Nil(t, err)
 }
 
@@ -636,7 +641,8 @@ func TestCloseGraceful(t *testing.T) {
 		},
 	}
 
-	err = test_helpers.Retry(test_helpers.CheckPoolStatuses, args, defaultCountRetry, defaultTimeoutRetry)
+	err = test_helpers.Retry(test_helpers.CheckPoolStatuses, args,
+		defaultCountRetry, defaultTimeoutRetry)
 	require.Nil(t, err)
 }
 
@@ -904,7 +910,8 @@ func TestRequestOnClosed(t *testing.T) {
 			server2: false,
 		},
 	}
-	err = test_helpers.Retry(test_helpers.CheckPoolStatuses, args, defaultCountRetry, defaultTimeoutRetry)
+	err = test_helpers.Retry(test_helpers.CheckPoolStatuses, args,
+		defaultCountRetry, defaultTimeoutRetry)
 	require.Nil(t, err)
 
 	_, err = connPool.Ping(pool.ANY)
@@ -1563,7 +1570,8 @@ func TestUpdateInstancesRoles(t *testing.T) {
 		Mode:          pool.ANY,
 	}
 
-	err = test_helpers.Retry(test_helpers.ProcessListenOnInstance, args, defaultCountRetry, defaultTimeoutRetry)
+	err = test_helpers.Retry(test_helpers.ProcessListenOnInstance, args,
+		defaultCountRetry, defaultTimeoutRetry)
 	require.Nil(t, err)
 
 	// RW
@@ -1574,7 +1582,8 @@ func TestUpdateInstancesRoles(t *testing.T) {
 		Mode:          pool.RW,
 	}
 
-	err = test_helpers.Retry(test_helpers.ProcessListenOnInstance, args, defaultCountRetry, defaultTimeoutRetry)
+	err = test_helpers.Retry(test_helpers.ProcessListenOnInstance, args,
+		defaultCountRetry, defaultTimeoutRetry)
 	require.Nil(t, err)
 
 	// RO
@@ -1585,7 +1594,8 @@ func TestUpdateInstancesRoles(t *testing.T) {
 		Mode:          pool.RO,
 	}
 
-	err = test_helpers.Retry(test_helpers.ProcessListenOnInstance, args, defaultCountRetry, defaultTimeoutRetry)
+	err = test_helpers.Retry(test_helpers.ProcessListenOnInstance, args,
+		defaultCountRetry, defaultTimeoutRetry)
 	require.Nil(t, err)
 
 	// PreferRW
@@ -1596,7 +1606,8 @@ func TestUpdateInstancesRoles(t *testing.T) {
 		Mode:          pool.PreferRW,
 	}
 
-	err = test_helpers.Retry(test_helpers.ProcessListenOnInstance, args, defaultCountRetry, defaultTimeoutRetry)
+	err = test_helpers.Retry(test_helpers.ProcessListenOnInstance, args,
+		defaultCountRetry, defaultTimeoutRetry)
 	require.Nil(t, err)
 
 	// PreferRO
@@ -1607,7 +1618,8 @@ func TestUpdateInstancesRoles(t *testing.T) {
 		Mode:          pool.PreferRO,
 	}
 
-	err = test_helpers.Retry(test_helpers.ProcessListenOnInstance, args, defaultCountRetry, defaultTimeoutRetry)
+	err = test_helpers.Retry(test_helpers.ProcessListenOnInstance, args,
+		defaultCountRetry, defaultTimeoutRetry)
 	require.Nil(t, err)
 }
 
@@ -1669,7 +1681,8 @@ func TestInsert(t *testing.T) {
 	require.Equalf(t, "rw_insert_value", value, "unexpected body of Select (1)")
 
 	// PreferRW
-	resp, err = connPool.Insert(spaceName, []interface{}{"preferRW_insert_key", "preferRW_insert_value"})
+	resp, err = connPool.Insert(spaceName,
+		[]interface{}{"preferRW_insert_key", "preferRW_insert_value"})
 	require.Nilf(t, err, "failed to Insert")
 	require.NotNilf(t, resp, "response is nil after Insert")
 	require.Equalf(t, len(resp.Data), 1, "response Body len != 1 after Insert")
@@ -1791,7 +1804,9 @@ func TestUpsert(t *testing.T) {
 	defer conn.Close()
 
 	// Mode is `RW` by default, we have only one RW instance (servers[2])
-	resp, err := connPool.Upsert(spaceName, []interface{}{"upsert_key", "upsert_value"}, []interface{}{[]interface{}{"=", 1, "new_value"}})
+	resp, err := connPool.Upsert(spaceName,
+		[]interface{}{"upsert_key", "upsert_value"},
+		[]interface{}{[]interface{}{"=", 1, "new_value"}})
 	require.Nilf(t, err, "failed to Upsert")
 	require.NotNilf(t, resp, "response is nil after Upsert")
 
@@ -1880,7 +1895,8 @@ func TestUpdate(t *testing.T) {
 	require.Equalf(t, "update_value", value, "unexpected body of Insert (1)")
 
 	// Mode is `RW` by default, we have only one RW instance (servers[2])
-	resp, err = connPool.Update(spaceName, indexNo, []interface{}{"update_key"}, []interface{}{[]interface{}{"=", 1, "new_value"}})
+	resp, err = connPool.Update(spaceName, indexNo,
+		[]interface{}{"update_key"}, []interface{}{[]interface{}{"=", 1, "new_value"}})
 	require.Nilf(t, err, "failed to Update")
 	require.NotNilf(t, resp, "response is nil after Update")
 
@@ -2229,7 +2245,8 @@ func TestNewPrepared(t *testing.T) {
 
 	defer connPool.Close()
 
-	stmt, err := connPool.NewPrepared("SELECT NAME0, NAME1 FROM SQL_TEST WHERE NAME0=:id AND NAME1=:name;", pool.RO)
+	stmt, err := connPool.NewPrepared(
+		"SELECT NAME0, NAME1 FROM SQL_TEST WHERE NAME0=:id AND NAME1=:name;", pool.RO)
 	require.Nilf(t, err, "fail to prepare statement: %v", err)
 
 	if connPool.GetPoolInfo()[stmt.Conn.Addr()].ConnRole != pool.ReplicaRole {
@@ -2282,7 +2299,8 @@ func TestNewPrepared(t *testing.T) {
 }
 
 func TestDoWithStrangerConn(t *testing.T) {
-	expectedErr := fmt.Errorf("the passed connected request doesn't belong to the current connection or connection pool")
+	expectedErr := fmt.Errorf("the passed connected request doesn't belong to " +
+		"the current connection pool")
 
 	roles := []bool{true, true, false, true, false}
 

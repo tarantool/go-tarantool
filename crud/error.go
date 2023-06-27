@@ -70,8 +70,8 @@ func (e *Error) DecodeMsgpack(d *msgpack.Decoder) error {
 }
 
 // Error converts an Error to a string.
-func (err Error) Error() string {
-	return err.Str
+func (e Error) Error() string {
+	return e.Str
 }
 
 // ErrorMany describes CRUD error object for `_many` methods.
@@ -104,9 +104,9 @@ func (e *ErrorMany) DecodeMsgpack(d *msgpack.Decoder) error {
 }
 
 // Error converts an Error to a string.
-func (errs ErrorMany) Error() string {
+func (e ErrorMany) Error() string {
 	var str []string
-	for _, err := range errs.Errors {
+	for _, err := range e.Errors {
 		str = append(str, err.Str)
 	}
 

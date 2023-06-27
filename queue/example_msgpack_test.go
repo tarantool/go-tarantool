@@ -76,21 +76,23 @@ func Example_simpleQueueCustomMsgPack() {
 
 	que := queue.New(conn, "test_queue_msgpack")
 	if err = que.Create(cfg); err != nil {
-		log.Fatalf("queue create: %s", err)
+		fmt.Printf("queue create: %s", err)
 		return
 	}
 
 	// Put data.
 	task, err := que.Put("test_data")
 	if err != nil {
-		log.Fatalf("put task: %s", err)
+		fmt.Printf("put task: %s", err)
+		return
 	}
 	fmt.Println("Task id is", task.Id())
 
 	// Take data.
 	task, err = que.Take() // Blocking operation.
 	if err != nil {
-		log.Fatalf("take task: %s", err)
+		fmt.Printf("take task: %s", err)
+		return
 	}
 	fmt.Println("Data is", task.Data())
 	task.Ack()
@@ -100,7 +102,8 @@ func Example_simpleQueueCustomMsgPack() {
 	// Put data.
 	task, err = que.Put(&putData)
 	if err != nil {
-		log.Fatalf("put typed task: %s", err)
+		fmt.Printf("put typed task: %s", err)
+		return
 	}
 	fmt.Println("Task id is ", task.Id())
 
@@ -108,7 +111,8 @@ func Example_simpleQueueCustomMsgPack() {
 	// Take data.
 	task, err = que.TakeTyped(&takeData) // Blocking operation.
 	if err != nil {
-		log.Fatalf("take take typed: %s", err)
+		fmt.Printf("take take typed: %s", err)
+		return
 	}
 	fmt.Println("Data is ", takeData)
 	// Same data.
@@ -116,13 +120,15 @@ func Example_simpleQueueCustomMsgPack() {
 
 	task, err = que.Put([]int{1, 2, 3})
 	if err != nil {
-		log.Fatalf("Put failed: %s", err)
+		fmt.Printf("Put failed: %s", err)
+		return
 	}
 	task.Bury()
 
 	task, err = que.TakeTimeout(2 * time.Second)
 	if err != nil {
-		log.Fatalf("Take with timeout failed: %s", err)
+		fmt.Printf("Take with timeout failed: %s", err)
+		return
 	}
 	if task == nil {
 		fmt.Println("Task is nil")

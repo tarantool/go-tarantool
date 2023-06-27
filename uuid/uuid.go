@@ -6,11 +6,14 @@
 //
 // # See also
 //
-// * Tarantool commit with UUID support https://github.com/tarantool/tarantool/commit/d68fc29246714eee505bc9bbcd84a02de17972c5
+//   - Tarantool commit with UUID support:
+//     https://github.com/tarantool/tarantool/commit/d68fc29246714eee505bc9bbcd84a02de17972c5
 //
-// * Tarantool data model https://www.tarantool.io/en/doc/latest/book/box/data_model/
+//   - Tarantool data model:
+//     https://www.tarantool.io/en/doc/latest/book/box/data_model/
 //
-// * Module UUID https://www.tarantool.io/en/doc/latest/reference/reference_lua/uuid/
+//   - Module UUID:
+//     https://www.tarantool.io/en/doc/latest/reference/reference_lua/uuid/
 package uuid
 
 import (
@@ -41,7 +44,7 @@ func encodeUUID(e *msgpack.Encoder, v reflect.Value) error {
 }
 
 func decodeUUID(d *msgpack.Decoder, v reflect.Value) error {
-	var bytesCount int = 16
+	var bytesCount = 16
 	bytes := make([]byte, bytesCount)
 
 	n, err := d.Buffered().Read(bytes)

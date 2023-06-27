@@ -13,78 +13,82 @@ type Connector interface {
 
 	// Deprecated: the method will be removed in the next major version,
 	// use a PingRequest object + Do() instead.
-	Ping() (resp *Response, err error)
+	Ping() (*Response, error)
 	// Deprecated: the method will be removed in the next major version,
 	// use a SelectRequest object + Do() instead.
-	Select(space, index interface{}, offset, limit uint32, iterator Iter, key interface{}) (resp *Response, err error)
+	Select(space, index interface{}, offset, limit uint32, iterator Iter,
+		key interface{}) (*Response, error)
 	// Deprecated: the method will be removed in the next major version,
 	// use an InsertRequest object + Do() instead.
-	Insert(space interface{}, tuple interface{}) (resp *Response, err error)
+	Insert(space interface{}, tuple interface{}) (*Response, error)
 	// Deprecated: the method will be removed in the next major version,
 	// use a ReplicaRequest object + Do() instead.
-	Replace(space interface{}, tuple interface{}) (resp *Response, err error)
+	Replace(space interface{}, tuple interface{}) (*Response, error)
 	// Deprecated: the method will be removed in the next major version,
 	// use a DeleteRequest object + Do() instead.
-	Delete(space, index interface{}, key interface{}) (resp *Response, err error)
+	Delete(space, index interface{}, key interface{}) (*Response, error)
 	// Deprecated: the method will be removed in the next major version,
 	// use a UpdateRequest object + Do() instead.
-	Update(space, index interface{}, key, ops interface{}) (resp *Response, err error)
+	Update(space, index interface{}, key, ops interface{}) (*Response, error)
 	// Deprecated: the method will be removed in the next major version,
 	// use a UpsertRequest object + Do() instead.
-	Upsert(space interface{}, tuple, ops interface{}) (resp *Response, err error)
+	Upsert(space interface{}, tuple, ops interface{}) (*Response, error)
 	// Deprecated: the method will be removed in the next major version,
 	// use a CallRequest object + Do() instead.
-	Call(functionName string, args interface{}) (resp *Response, err error)
+	Call(functionName string, args interface{}) (*Response, error)
 	// Deprecated: the method will be removed in the next major version,
 	// use a Call16Request object + Do() instead.
-	Call16(functionName string, args interface{}) (resp *Response, err error)
+	Call16(functionName string, args interface{}) (*Response, error)
 	// Deprecated: the method will be removed in the next major version,
 	// use a Call17Request object + Do() instead.
-	Call17(functionName string, args interface{}) (resp *Response, err error)
+	Call17(functionName string, args interface{}) (*Response, error)
 	// Deprecated: the method will be removed in the next major version,
 	// use an EvalRequest object + Do() instead.
-	Eval(expr string, args interface{}) (resp *Response, err error)
+	Eval(expr string, args interface{}) (*Response, error)
 	// Deprecated: the method will be removed in the next major version,
 	// use an ExecuteRequest object + Do() instead.
-	Execute(expr string, args interface{}) (resp *Response, err error)
+	Execute(expr string, args interface{}) (*Response, error)
 
 	// Deprecated: the method will be removed in the next major version,
 	// use a SelectRequest object + Do() instead.
-	GetTyped(space, index interface{}, key interface{}, result interface{}) (err error)
+	GetTyped(space, index interface{}, key interface{}, result interface{}) error
 	// Deprecated: the method will be removed in the next major version,
 	// use a SelectRequest object + Do() instead.
-	SelectTyped(space, index interface{}, offset, limit uint32, iterator Iter, key interface{}, result interface{}) (err error)
+	SelectTyped(space, index interface{}, offset, limit uint32, iterator Iter, key interface{},
+		result interface{}) error
 	// Deprecated: the method will be removed in the next major version,
 	// use an InsertRequest object + Do() instead.
-	InsertTyped(space interface{}, tuple interface{}, result interface{}) (err error)
+	InsertTyped(space interface{}, tuple interface{}, result interface{}) error
 	// Deprecated: the method will be removed in the next major version,
 	// use a ReplaceRequest object + Do() instead.
-	ReplaceTyped(space interface{}, tuple interface{}, result interface{}) (err error)
+	ReplaceTyped(space interface{}, tuple interface{}, result interface{}) error
 	// Deprecated: the method will be removed in the next major version,
 	// use a DeleteRequest object + Do() instead.
-	DeleteTyped(space, index interface{}, key interface{}, result interface{}) (err error)
+	DeleteTyped(space, index interface{}, key interface{}, result interface{}) error
 	// Deprecated: the method will be removed in the next major version,
 	// use a UpdateRequest object + Do() instead.
-	UpdateTyped(space, index interface{}, key, ops interface{}, result interface{}) (err error)
+	UpdateTyped(space, index interface{}, key, ops interface{}, result interface{}) error
 	// Deprecated: the method will be removed in the next major version,
 	// use a CallRequest object + Do() instead.
-	CallTyped(functionName string, args interface{}, result interface{}) (err error)
+	CallTyped(functionName string, args interface{}, result interface{}) error
 	// Deprecated: the method will be removed in the next major version,
 	// use a Call16Request object + Do() instead.
-	Call16Typed(functionName string, args interface{}, result interface{}) (err error)
+	Call16Typed(functionName string, args interface{}, result interface{}) error
 	// Deprecated: the method will be removed in the next major version,
 	// use a Call17Request object + Do() instead.
-	Call17Typed(functionName string, args interface{}, result interface{}) (err error)
+	Call17Typed(functionName string, args interface{}, result interface{}) error
 	// Deprecated: the method will be removed in the next major version,
 	// use an EvalRequest object + Do() instead.
-	EvalTyped(expr string, args interface{}, result interface{}) (err error)
+	EvalTyped(expr string, args interface{}, result interface{}) error
 	// Deprecated: the method will be removed in the next major version,
 	// use an ExecuteRequest object + Do() instead.
-	ExecuteTyped(expr string, args interface{}, result interface{}) (SQLInfo, []ColumnMetaData, error)
+	ExecuteTyped(expr string, args interface{},
+		result interface{}) (SQLInfo, []ColumnMetaData, error)
 
 	// Deprecated: the method will be removed in the next major version,
 	// use a SelectRequest object + Do() instead.
-	SelectAsync(space, index interface{}, offset, limit uint32, iterator Iter, key interface{}) *Future
+	SelectAsync(space, index interface{}, offset, limit uint32, iterator Iter,
+		key interface{}) *Future
 	// Deprecated: the method will be removed in the next major version,
 	// use an InsertRequest object + Do() instead.
 	InsertAsync(space interface{}, tuple interface{}) *Future
