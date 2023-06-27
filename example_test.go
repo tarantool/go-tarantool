@@ -998,6 +998,75 @@ func ExampleSpace() {
 	// SpaceField 2 name3 unsigned
 }
 
+// ExampleConnection_Do demonstrates how to send a request and process
+// a response.
+func ExampleConnection_Do() {
+	conn := exampleConnect(opts)
+	defer conn.Close()
+
+	// It could be any request.
+	req := tarantool.NewReplaceRequest("test").
+		Tuple([]interface{}{int(1111), "foo", "bar"})
+
+	// We got a future, the request actually not performed yet.
+	future := conn.Do(req)
+
+	// When the future receives the response, the result of the Future is set
+	// and becomes available. We could wait for that moment with Future.Get()
+	// or Future.GetTyped() methods.
+	resp, err := future.Get()
+	if err != nil {
+		fmt.Printf("Failed to execute the request: %s\n", err)
+	} else {
+		fmt.Println(resp.Data)
+	}
+
+	// Output:
+	// [[1111 foo bar]]
+}
+
+// ExampleConnection_Do_failure demonstrates how to send a request and process
+// failure.
+func ExampleConnection_Do_failure() {
+	conn := exampleConnect(opts)
+	defer conn.Close()
+
+	// It could be any request.
+	req := tarantool.NewCallRequest("not_exist")
+
+	// We got a future, the request actually not performed yet.
+	future := conn.Do(req)
+
+	// When the future receives the response, the result of the Future is set
+	// and becomes available. We could wait for that moment with Future.Get()
+	// or Future.GetTyped() methods.
+	resp, err := future.Get()
+	if err != nil {
+		// We don't print the error here to keep the example reproducible.
+		// fmt.Printf("Failed to execute the request: %s\n", err)
+		if resp == nil {
+			// Something happens in a client process (timeout, IO error etc).
+			fmt.Printf("Resp == nil, ClientErr = %s\n", err.(tarantool.ClientError))
+		} else {
+			// Response exist. So it could be a Tarantool error or a decode
+			// error. We need to check the error code.
+			fmt.Printf("Error code from the response: %d\n", resp.Code)
+			if resp.Code == tarantool.OkCode {
+				fmt.Printf("Decode error: %s\n", err)
+			} else {
+				code := err.(tarantool.Error).Code
+				fmt.Printf("Error code from the error: %d\n", code)
+				fmt.Printf("Error short from the error: %s\n", code)
+			}
+		}
+	}
+
+	// Output:
+	// Error code from the response: 33
+	// Error code from the error: 33
+	// Error short from the error: ER_NO_SUCH_PROC
+}
+
 // To use prepared statements to query a tarantool instance, call NewPrepared.
 func ExampleConnection_NewPrepared() {
 	// Tarantool supports SQL since version 2.0.0
