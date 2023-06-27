@@ -239,7 +239,7 @@ func (q *queue) Identify(u *uuid.UUID) (uuid.UUID, error) {
 		if bytes, err := u.MarshalBinary(); err != nil {
 			return uuid.UUID{}, err
 		} else {
-			args = []interface{}{bytes}
+			args = []interface{}{string(bytes)}
 		}
 	}
 
