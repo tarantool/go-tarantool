@@ -2231,6 +2231,35 @@ func TestDo(t *testing.T) {
 	require.NotNilf(t, resp, "response is nil after Ping")
 }
 
+func TestDo_concurrent(t *testing.T) {
+	roles := []bool{true, true, false, true, false}
+
+	err := test_helpers.SetClusterRO(servers, connOpts, roles)
+	require.Nilf(t, err, "fail to set roles for cluster")
+
+	connPool, err := pool.Connect(servers, connOpts)
+	require.Nilf(t, err, "failed to connect")
+	require.NotNilf(t, connPool, "conn is nil after Connect")
+
+	defer connPool.Close()
+
+	req := tarantool.NewPingRequest()
+	const concurrency = 100
+	var wg sync.WaitGroup
+	wg.Add(concurrency)
+
+	for i := 0; i < concurrency; i++ {
+		go func() {
+			defer wg.Done()
+
+			_, err := connPool.Do(req, pool.ANY).Get()
+			assert.Nil(t, err)
+		}()
+	}
+
+	wg.Wait()
+}
+
 func TestNewPrepared(t *testing.T) {
 	test_helpers.SkipIfSQLUnsupported(t)
 
