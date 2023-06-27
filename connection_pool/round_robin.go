@@ -2,6 +2,7 @@ package connection_pool
 
 import (
 	"sync"
+	"sync/atomic"
 
 	"github.com/tarantool/go-tarantool"
 )
@@ -10,8 +11,8 @@ type RoundRobinStrategy struct {
 	conns       []*tarantool.Connection
 	indexByAddr map[string]uint
 	mutex       sync.RWMutex
-	size        uint
-	current     uint
+	size        uint64
+	current     uint64
 }
 
 func NewEmptyRoundRobin(size int) *RoundRobinStrategy {
@@ -98,13 +99,12 @@ func (r *RoundRobinStrategy) AddConn(addr string, conn *tarantool.Connection) {
 		r.conns[idx] = conn
 	} else {
 		r.conns = append(r.conns, conn)
-		r.indexByAddr[addr] = r.size
+		r.indexByAddr[addr] = uint(r.size)
 		r.size += 1
 	}
 }
 
-func (r *RoundRobinStrategy) nextIndex() uint {
-	ret := r.current % r.size
-	r.current++
-	return ret
+func (r *RoundRobinStrategy) nextIndex() uint64 {
+	next := atomic.AddUint64(&r.current, 1)
+	return (next - 1) % r.size
 }
