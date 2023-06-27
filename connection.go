@@ -789,6 +789,10 @@ func (conn *Connection) writer(w writeFlusher, c Conn) {
 			runtime.Gosched()
 			if len(conn.dirtyShard) == 0 {
 				if err := w.Flush(); err != nil {
+					err = ClientError{
+						ErrIoError,
+						fmt.Sprintf("failed to flush data to the connection: %s", err),
+					}
 					conn.reconnect(err, c)
 					return
 				}
@@ -812,6 +816,10 @@ func (conn *Connection) writer(w writeFlusher, c Conn) {
 			continue
 		}
 		if _, err := w.Write(packet.b); err != nil {
+			err = ClientError{
+				ErrIoError,
+				fmt.Sprintf("failed to write data to the connection: %s", err),
+			}
 			conn.reconnect(err, c)
 			return
 		}
@@ -868,12 +876,20 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 	for atomic.LoadUint32(&conn.state) != connClosed {
 		respBytes, err := read(r, conn.lenbuf[:])
 		if err != nil {
+			err = ClientError{
+				ErrIoError,
+				fmt.Sprintf("failed to read data from the connection: %s", err),
+			}
 			conn.reconnect(err, c)
 			return
 		}
 		resp := &Response{buf: smallBuf{b: respBytes}}
 		err = resp.decodeHeader(conn.dec)
 		if err != nil {
+			err = ClientError{
+				ErrProtocolError,
+				fmt.Sprintf("failed to decode IPROTO header: %s", err),
+			}
 			conn.reconnect(err, c)
 			return
 		}
@@ -883,6 +899,10 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 			if event, err := readWatchEvent(&resp.buf); err == nil {
 				events <- event
 			} else {
+				err = ClientError{
+					ErrProtocolError,
+					fmt.Sprintf("failed to decode IPROTO_EVENT: %s", err),
+				}
 				conn.opts.Logger.Report(LogWatchEventReadFailed, conn, err)
 			}
 			continue
