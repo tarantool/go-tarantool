@@ -26,12 +26,12 @@ type CheckStatusesArgs struct {
 
 func compareTuples(expectedTpl []interface{}, actualTpl []interface{}) error {
 	if len(actualTpl) != len(expectedTpl) {
-		return fmt.Errorf("Unexpected body of Insert (tuple len)")
+		return fmt.Errorf("unexpected body of Insert (tuple len)")
 	}
 
 	for i, field := range actualTpl {
 		if field != expectedTpl[i] {
-			return fmt.Errorf("Unexpected field, expected: %v actual: %v", expectedTpl[i], field)
+			return fmt.Errorf("unexpected field, expected: %v actual: %v", expectedTpl[i], field)
 		}
 	}
 
@@ -104,7 +104,8 @@ func ProcessListenOnInstance(args interface{}) error {
 
 	equal := reflect.DeepEqual(actualPorts, listenArgs.ExpectedPorts)
 	if !equal {
-		return fmt.Errorf("expected ports: %v, actual ports: %v", actualPorts, listenArgs.ExpectedPorts)
+		return fmt.Errorf("expected ports: %v, actual ports: %v",
+			actualPorts, listenArgs.ExpectedPorts)
 	}
 
 	return nil
@@ -129,10 +130,11 @@ func Retry(f func(interface{}) error, args interface{}, count int, timeout time.
 	return err
 }
 
-func InsertOnInstance(server string, connOpts tarantool.Opts, space interface{}, tuple interface{}) error {
+func InsertOnInstance(server string, connOpts tarantool.Opts, space interface{},
+	tuple interface{}) error {
 	conn, err := tarantool.Connect(server, connOpts)
 	if err != nil {
-		return fmt.Errorf("Fail to connect to %s: %s", server, err.Error())
+		return fmt.Errorf("fail to connect to %s: %s", server, err.Error())
 	}
 	if conn == nil {
 		return fmt.Errorf("conn is nil after Connect")
@@ -141,20 +143,20 @@ func InsertOnInstance(server string, connOpts tarantool.Opts, space interface{},
 
 	resp, err := conn.Do(tarantool.NewInsertRequest(space).Tuple(tuple)).Get()
 	if err != nil {
-		return fmt.Errorf("Failed to Insert: %s", err.Error())
+		return fmt.Errorf("failed to Insert: %s", err.Error())
 	}
 	if resp == nil {
-		return fmt.Errorf("Response is nil after Insert")
+		return fmt.Errorf("response is nil after Insert")
 	}
 	if len(resp.Data) != 1 {
-		return fmt.Errorf("Response Body len != 1")
+		return fmt.Errorf("response Body len != 1")
 	}
 	if tpl, ok := resp.Data[0].([]interface{}); !ok {
-		return fmt.Errorf("Unexpected body of Insert")
+		return fmt.Errorf("unexpected body of Insert")
 	} else {
 		expectedTpl, ok := tuple.([]interface{})
 		if !ok {
-			return fmt.Errorf("Failed to cast")
+			return fmt.Errorf("failed to cast")
 		}
 
 		err = compareTuples(expectedTpl, tpl)
@@ -166,7 +168,8 @@ func InsertOnInstance(server string, connOpts tarantool.Opts, space interface{},
 	return nil
 }
 
-func InsertOnInstances(servers []string, connOpts tarantool.Opts, space interface{}, tuple interface{}) error {
+func InsertOnInstances(servers []string, connOpts tarantool.Opts, space interface{},
+	tuple interface{}) error {
 	serversNumber := len(servers)
 	roles := make([]bool, serversNumber)
 	for i := 0; i < serversNumber; i++ {
@@ -220,7 +223,8 @@ func SetClusterRO(servers []string, connOpts tarantool.Opts, roles []bool) error
 	return nil
 }
 
-func StartTarantoolInstances(servers []string, workDirs []string, opts StartOpts) ([]TarantoolInstance, error) {
+func StartTarantoolInstances(servers []string, workDirs []string,
+	opts StartOpts) ([]TarantoolInstance, error) {
 	isUserWorkDirs := (workDirs != nil)
 	if isUserWorkDirs && (len(servers) != len(workDirs)) {
 		return nil, fmt.Errorf("number of servers should be equal to number of workDirs")

@@ -41,7 +41,8 @@ var validProtocolInfo ProtocolInfo = ProtocolInfo{
 type ValidSchemeResolver struct {
 }
 
-func (*ValidSchemeResolver) ResolveSpaceIndex(s, i interface{}) (spaceNo, indexNo uint32, err error) {
+func (*ValidSchemeResolver) ResolveSpaceIndex(s, i interface{}) (uint32, uint32, error) {
+	var spaceNo, indexNo uint32
 	if s != nil {
 		spaceNo = uint32(s.(int))
 	} else {

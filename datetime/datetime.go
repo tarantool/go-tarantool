@@ -181,8 +181,8 @@ func addMonth(ival *Interval, delta int64, adjust Adjust) {
 	}
 }
 
-func (dtime *Datetime) add(ival Interval, positive bool) (*Datetime, error) {
-	newVal := intervalFromDatetime(dtime)
+func (d *Datetime) add(ival Interval, positive bool) (*Datetime, error) {
+	newVal := intervalFromDatetime(d)
 
 	var direction int64
 	if positive {
@@ -201,28 +201,28 @@ func (dtime *Datetime) add(ival Interval, positive bool) (*Datetime, error) {
 
 	tm := time.Date(int(newVal.Year), time.Month(newVal.Month),
 		int(newVal.Day), int(newVal.Hour), int(newVal.Min),
-		int(newVal.Sec), int(newVal.Nsec), dtime.time.Location())
+		int(newVal.Sec), int(newVal.Nsec), d.time.Location())
 
 	return NewDatetime(tm)
 }
 
 // Add creates a new Datetime as addition of the Datetime and Interval. It may
 // return an error if a new Datetime is out of supported range.
-func (dtime *Datetime) Add(ival Interval) (*Datetime, error) {
-	return dtime.add(ival, true)
+func (d *Datetime) Add(ival Interval) (*Datetime, error) {
+	return d.add(ival, true)
 }
 
 // Sub creates a new Datetime as subtraction of the Datetime and Interval. It
 // may return an error if a new Datetime is out of supported range.
-func (dtime *Datetime) Sub(ival Interval) (*Datetime, error) {
-	return dtime.add(ival, false)
+func (d *Datetime) Sub(ival Interval) (*Datetime, error) {
+	return d.add(ival, false)
 }
 
 // Interval returns an Interval value to a next Datetime value.
-func (dtime *Datetime) Interval(next *Datetime) Interval {
-	curIval := intervalFromDatetime(dtime)
+func (d *Datetime) Interval(next *Datetime) Interval {
+	curIval := intervalFromDatetime(d)
 	nextIval := intervalFromDatetime(next)
-	_, curOffset := dtime.time.Zone()
+	_, curOffset := d.time.Zone()
 	_, nextOffset := next.time.Zone()
 	curIval.Min -= int64(curOffset-nextOffset) / 60
 	return nextIval.Sub(curIval)
@@ -236,12 +236,12 @@ func (dtime *Datetime) Interval(next *Datetime) Interval {
 // If a Datetime created via unmarshaling Tarantool's datetime then we try to
 // create a location with time.LoadLocation() first. In case of failure, we use
 // a location created with time.FixedZone().
-func (dtime *Datetime) ToTime() time.Time {
-	return dtime.time
+func (d *Datetime) ToTime() time.Time {
+	return d.time
 }
 
-func (dtime *Datetime) MarshalMsgpack() ([]byte, error) {
-	tm := dtime.ToTime()
+func (d *Datetime) MarshalMsgpack() ([]byte, error) {
+	tm := d.ToTime()
 
 	var dt datetime
 	dt.seconds = tm.Unix()
@@ -272,10 +272,11 @@ func (dtime *Datetime) MarshalMsgpack() ([]byte, error) {
 	return buf, nil
 }
 
-func (tm *Datetime) UnmarshalMsgpack(b []byte) error {
+func (d *Datetime) UnmarshalMsgpack(b []byte) error {
 	l := len(b)
 	if l != maxSize && l != secondsSize {
-		return fmt.Errorf("invalid data length: got %d, wanted %d or %d", len(b), secondsSize, maxSize)
+		return fmt.Errorf("invalid data length: got %d, wanted %d or %d",
+			len(b), secondsSize, maxSize)
 	}
 
 	var dt datetime
@@ -317,7 +318,7 @@ func (tm *Datetime) UnmarshalMsgpack(b []byte) error {
 
 	dtp, err := NewDatetime(tt)
 	if dtp != nil {
-		*tm = *dtp
+		*d = *dtp
 	}
 	return err
 }

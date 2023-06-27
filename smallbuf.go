@@ -34,7 +34,7 @@ func (s *smallBuf) ReadByte() (b byte, err error) {
 
 func (s *smallBuf) UnreadByte() error {
 	if s.p == 0 {
-		return errors.New("Could not unread")
+		return errors.New("could not unread")
 	}
 	s.p--
 	return nil

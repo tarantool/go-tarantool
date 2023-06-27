@@ -46,7 +46,8 @@ func MakeUpsertManyRequest(space string) UpsertManyRequest {
 // TuplesOperationsData sets tuples and operations for
 // the UpsertManyRequest request.
 // Note: default value is nil.
-func (req UpsertManyRequest) TuplesOperationsData(tuplesOperationData []TupleOperationsData) UpsertManyRequest {
+func (req UpsertManyRequest) TuplesOperationsData(
+	tuplesOperationData []TupleOperationsData) UpsertManyRequest {
 	req.tuplesOperationsData = tuplesOperationData
 	return req
 }

@@ -18,11 +18,11 @@ func UnflattenRows(tuples []interface{}, format []interface{}) ([]MapObject, err
 		object := make(map[string]interface{})
 		for fieldIdx, field := range tuple.([]interface{}) {
 			if fieldInfo, ok = format[fieldIdx].(map[interface{}]interface{}); !ok {
-				return nil, fmt.Errorf("Unexpected space format: %q", format)
+				return nil, fmt.Errorf("unexpected space format: %q", format)
 			}
 
 			if fieldName, ok = fieldInfo["name"].(string); !ok {
-				return nil, fmt.Errorf("Unexpected space format: %q", format)
+				return nil, fmt.Errorf("unexpected space format: %q", format)
 			}
 
 			object[fieldName] = field

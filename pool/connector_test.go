@@ -136,7 +136,7 @@ type baseRequestMock struct {
 }
 
 var reqResp *tarantool.Response = &tarantool.Response{}
-var reqErr error = errors.New("response error")
+var errReq error = errors.New("response error")
 var reqFuture *tarantool.Future = &tarantool.Future{}
 
 var reqFunctionName string = "any_name"
@@ -166,7 +166,7 @@ func (m *getTypedMock) GetTyped(space, index, key interface{},
 	m.key = key
 	m.result = result
 	m.mode = mode[0]
-	return reqErr
+	return errReq
 }
 
 func TestConnectorGetTyped(t *testing.T) {
@@ -175,7 +175,7 @@ func TestConnectorGetTyped(t *testing.T) {
 
 	err := c.GetTyped(reqSpace, reqIndex, reqKey, reqResult)
 
-	require.Equalf(t, reqErr, err, "unexpected error")
+	require.Equalf(t, errReq, err, "unexpected error")
 	require.Equalf(t, 1, m.called, "should be called only once")
 	require.Equalf(t, reqSpace, m.space, "unexpected space was passed")
 	require.Equalf(t, reqIndex, m.index, "unexpected index was passed")
@@ -199,7 +199,7 @@ func (m *selectMock) Select(space, index interface{},
 	m.iterator = iterator
 	m.key = key
 	m.mode = mode[0]
-	return reqResp, reqErr
+	return reqResp, errReq
 }
 
 func TestConnectorSelect(t *testing.T) {
@@ -209,7 +209,7 @@ func TestConnectorSelect(t *testing.T) {
 	resp, err := c.Select(reqSpace, reqIndex, reqOffset, reqLimit, reqIterator, reqKey)
 
 	require.Equalf(t, reqResp, resp, "unexpected response")
-	require.Equalf(t, reqErr, err, "unexpected error")
+	require.Equalf(t, errReq, err, "unexpected error")
 	require.Equalf(t, 1, m.called, "should be called only once")
 	require.Equalf(t, reqSpace, m.space, "unexpected space was passed")
 	require.Equalf(t, reqIndex, m.index, "unexpected index was passed")
@@ -236,7 +236,7 @@ func (m *selectTypedMock) SelectTyped(space, index interface{},
 	m.key = key
 	m.result = result
 	m.mode = mode[0]
-	return reqErr
+	return errReq
 }
 
 func TestConnectorSelectTyped(t *testing.T) {
@@ -246,7 +246,7 @@ func TestConnectorSelectTyped(t *testing.T) {
 	err := c.SelectTyped(reqSpace, reqIndex, reqOffset, reqLimit,
 		reqIterator, reqKey, reqResult)
 
-	require.Equalf(t, reqErr, err, "unexpected error")
+	require.Equalf(t, errReq, err, "unexpected error")
 	require.Equalf(t, 1, m.called, "should be called only once")
 	require.Equalf(t, reqSpace, m.space, "unexpected space was passed")
 	require.Equalf(t, reqIndex, m.index, "unexpected index was passed")
@@ -304,7 +304,7 @@ func (m *insertMock) Insert(space, tuple interface{},
 	m.space = space
 	m.tuple = tuple
 	m.mode = mode[0]
-	return reqResp, reqErr
+	return reqResp, errReq
 }
 
 func TestConnectorInsert(t *testing.T) {
@@ -314,7 +314,7 @@ func TestConnectorInsert(t *testing.T) {
 	resp, err := c.Insert(reqSpace, reqTuple)
 
 	require.Equalf(t, reqResp, resp, "unexpected response")
-	require.Equalf(t, reqErr, err, "unexpected error")
+	require.Equalf(t, errReq, err, "unexpected error")
 	require.Equalf(t, 1, m.called, "should be called only once")
 	require.Equalf(t, reqSpace, m.space, "unexpected space was passed")
 	require.Equalf(t, reqTuple, m.tuple, "unexpected tuple was passed")
@@ -332,7 +332,7 @@ func (m *insertTypedMock) InsertTyped(space, tuple interface{},
 	m.tuple = tuple
 	m.result = result
 	m.mode = mode[0]
-	return reqErr
+	return errReq
 }
 
 func TestConnectorInsertTyped(t *testing.T) {
@@ -341,7 +341,7 @@ func TestConnectorInsertTyped(t *testing.T) {
 
 	err := c.InsertTyped(reqSpace, reqTuple, reqResult)
 
-	require.Equalf(t, reqErr, err, "unexpected error")
+	require.Equalf(t, errReq, err, "unexpected error")
 	require.Equalf(t, 1, m.called, "should be called only once")
 	require.Equalf(t, reqSpace, m.space, "unexpected space was passed")
 	require.Equalf(t, reqTuple, m.tuple, "unexpected tuple was passed")
@@ -385,7 +385,7 @@ func (m *replaceMock) Replace(space, tuple interface{},
 	m.space = space
 	m.tuple = tuple
 	m.mode = mode[0]
-	return reqResp, reqErr
+	return reqResp, errReq
 }
 
 func TestConnectorReplace(t *testing.T) {
@@ -395,7 +395,7 @@ func TestConnectorReplace(t *testing.T) {
 	resp, err := c.Replace(reqSpace, reqTuple)
 
 	require.Equalf(t, reqResp, resp, "unexpected response")
-	require.Equalf(t, reqErr, err, "unexpected error")
+	require.Equalf(t, errReq, err, "unexpected error")
 	require.Equalf(t, 1, m.called, "should be called only once")
 	require.Equalf(t, reqSpace, m.space, "unexpected space was passed")
 	require.Equalf(t, reqTuple, m.tuple, "unexpected tuple was passed")
@@ -413,7 +413,7 @@ func (m *replaceTypedMock) ReplaceTyped(space, tuple interface{},
 	m.tuple = tuple
 	m.result = result
 	m.mode = mode[0]
-	return reqErr
+	return errReq
 }
 
 func TestConnectorReplaceTyped(t *testing.T) {
@@ -422,7 +422,7 @@ func TestConnectorReplaceTyped(t *testing.T) {
 
 	err := c.ReplaceTyped(reqSpace, reqTuple, reqResult)
 
-	require.Equalf(t, reqErr, err, "unexpected error")
+	require.Equalf(t, errReq, err, "unexpected error")
 	require.Equalf(t, 1, m.called, "should be called only once")
 	require.Equalf(t, reqSpace, m.space, "unexpected space was passed")
 	require.Equalf(t, reqTuple, m.tuple, "unexpected tuple was passed")
@@ -467,7 +467,7 @@ func (m *deleteMock) Delete(space, index, key interface{},
 	m.index = index
 	m.key = key
 	m.mode = mode[0]
-	return reqResp, reqErr
+	return reqResp, errReq
 }
 
 func TestConnectorDelete(t *testing.T) {
@@ -477,7 +477,7 @@ func TestConnectorDelete(t *testing.T) {
 	resp, err := c.Delete(reqSpace, reqIndex, reqKey)
 
 	require.Equalf(t, reqResp, resp, "unexpected response")
-	require.Equalf(t, reqErr, err, "unexpected error")
+	require.Equalf(t, errReq, err, "unexpected error")
 	require.Equalf(t, 1, m.called, "should be called only once")
 	require.Equalf(t, reqSpace, m.space, "unexpected space was passed")
 	require.Equalf(t, reqIndex, m.index, "unexpected index was passed")
@@ -497,7 +497,7 @@ func (m *deleteTypedMock) DeleteTyped(space, index, key interface{},
 	m.key = key
 	m.result = result
 	m.mode = mode[0]
-	return reqErr
+	return errReq
 }
 
 func TestConnectorDeleteTyped(t *testing.T) {
@@ -506,7 +506,7 @@ func TestConnectorDeleteTyped(t *testing.T) {
 
 	err := c.DeleteTyped(reqSpace, reqIndex, reqKey, reqResult)
 
-	require.Equalf(t, reqErr, err, "unexpected error")
+	require.Equalf(t, errReq, err, "unexpected error")
 	require.Equalf(t, 1, m.called, "should be called only once")
 	require.Equalf(t, reqSpace, m.space, "unexpected space was passed")
 	require.Equalf(t, reqIndex, m.index, "unexpected index was passed")
@@ -555,7 +555,7 @@ func (m *updateMock) Update(space, index, key, ops interface{},
 	m.key = key
 	m.ops = ops
 	m.mode = mode[0]
-	return reqResp, reqErr
+	return reqResp, errReq
 }
 
 func TestConnectorUpdate(t *testing.T) {
@@ -565,7 +565,7 @@ func TestConnectorUpdate(t *testing.T) {
 	resp, err := c.Update(reqSpace, reqIndex, reqKey, reqOps)
 
 	require.Equalf(t, reqResp, resp, "unexpected response")
-	require.Equalf(t, reqErr, err, "unexpected error")
+	require.Equalf(t, errReq, err, "unexpected error")
 	require.Equalf(t, 1, m.called, "should be called only once")
 	require.Equalf(t, reqSpace, m.space, "unexpected space was passed")
 	require.Equalf(t, reqIndex, m.index, "unexpected index was passed")
@@ -587,7 +587,7 @@ func (m *updateTypedMock) UpdateTyped(space, index, key, ops interface{},
 	m.ops = ops
 	m.result = result
 	m.mode = mode[0]
-	return reqErr
+	return errReq
 }
 
 func TestConnectorUpdateTyped(t *testing.T) {
@@ -596,7 +596,7 @@ func TestConnectorUpdateTyped(t *testing.T) {
 
 	err := c.UpdateTyped(reqSpace, reqIndex, reqKey, reqOps, reqResult)
 
-	require.Equalf(t, reqErr, err, "unexpected error")
+	require.Equalf(t, errReq, err, "unexpected error")
 	require.Equalf(t, 1, m.called, "should be called only once")
 	require.Equalf(t, reqSpace, m.space, "unexpected space was passed")
 	require.Equalf(t, reqIndex, m.index, "unexpected index was passed")
@@ -647,7 +647,7 @@ func (m *upsertMock) Upsert(space, tuple, ops interface{},
 	m.tuple = tuple
 	m.ops = ops
 	m.mode = mode[0]
-	return reqResp, reqErr
+	return reqResp, errReq
 }
 
 func TestConnectorUpsert(t *testing.T) {
@@ -657,7 +657,7 @@ func TestConnectorUpsert(t *testing.T) {
 	resp, err := c.Upsert(reqSpace, reqTuple, reqOps)
 
 	require.Equalf(t, reqResp, resp, "unexpected response")
-	require.Equalf(t, reqErr, err, "unexpected error")
+	require.Equalf(t, errReq, err, "unexpected error")
 	require.Equalf(t, 1, m.called, "should be called only once")
 	require.Equalf(t, reqSpace, m.space, "unexpected space was passed")
 	require.Equalf(t, reqTuple, m.tuple, "unexpected tuple was passed")
@@ -703,7 +703,7 @@ func (m *baseCallMock) call(functionName string, args interface{},
 	m.functionName = functionName
 	m.args = args
 	m.mode = mode
-	return reqResp, reqErr
+	return reqResp, errReq
 }
 
 func (m *baseCallMock) callTyped(functionName string, args interface{},
@@ -713,7 +713,7 @@ func (m *baseCallMock) callTyped(functionName string, args interface{},
 	m.args = args
 	m.result = result
 	m.mode = mode
-	return reqErr
+	return errReq
 }
 
 func (m *baseCallMock) callAsync(functionName string, args interface{},
@@ -741,7 +741,7 @@ func TestConnectorCall(t *testing.T) {
 	resp, err := c.Call(reqFunctionName, reqArgs)
 
 	require.Equalf(t, reqResp, resp, "unexpected response")
-	require.Equalf(t, reqErr, err, "unexpected error")
+	require.Equalf(t, errReq, err, "unexpected error")
 	require.Equalf(t, 1, m.called, "should be called only once")
 	require.Equalf(t, reqFunctionName, m.functionName,
 		"unexpected functionName was passed")
@@ -764,7 +764,7 @@ func TestConnectorCallTyped(t *testing.T) {
 
 	err := c.CallTyped(reqFunctionName, reqArgs, reqResult)
 
-	require.Equalf(t, reqErr, err, "unexpected error")
+	require.Equalf(t, errReq, err, "unexpected error")
 	require.Equalf(t, 1, m.called, "should be called only once")
 	require.Equalf(t, reqFunctionName, m.functionName,
 		"unexpected functionName was passed")
@@ -812,7 +812,7 @@ func TestConnectorCall16(t *testing.T) {
 	resp, err := c.Call16(reqFunctionName, reqArgs)
 
 	require.Equalf(t, reqResp, resp, "unexpected response")
-	require.Equalf(t, reqErr, err, "unexpected error")
+	require.Equalf(t, errReq, err, "unexpected error")
 	require.Equalf(t, 1, m.called, "should be called only once")
 	require.Equalf(t, reqFunctionName, m.functionName,
 		"unexpected functionName was passed")
@@ -835,7 +835,7 @@ func TestConnectorCall16Typed(t *testing.T) {
 
 	err := c.Call16Typed(reqFunctionName, reqArgs, reqResult)
 
-	require.Equalf(t, reqErr, err, "unexpected error")
+	require.Equalf(t, errReq, err, "unexpected error")
 	require.Equalf(t, 1, m.called, "should be called only once")
 	require.Equalf(t, reqFunctionName, m.functionName,
 		"unexpected functionName was passed")
@@ -883,7 +883,7 @@ func TestConnectorCall17(t *testing.T) {
 	resp, err := c.Call17(reqFunctionName, reqArgs)
 
 	require.Equalf(t, reqResp, resp, "unexpected response")
-	require.Equalf(t, reqErr, err, "unexpected error")
+	require.Equalf(t, errReq, err, "unexpected error")
 	require.Equalf(t, 1, m.called, "should be called only once")
 	require.Equalf(t, reqFunctionName, m.functionName,
 		"unexpected functionName was passed")
@@ -906,7 +906,7 @@ func TestConnectorCall17Typed(t *testing.T) {
 
 	err := c.Call17Typed(reqFunctionName, reqArgs, reqResult)
 
-	require.Equalf(t, reqErr, err, "unexpected error")
+	require.Equalf(t, errReq, err, "unexpected error")
 	require.Equalf(t, 1, m.called, "should be called only once")
 	require.Equalf(t, reqFunctionName, m.functionName,
 		"unexpected functionName was passed")
@@ -954,7 +954,7 @@ func TestConnectorEval(t *testing.T) {
 	resp, err := c.Eval(reqFunctionName, reqArgs)
 
 	require.Equalf(t, reqResp, resp, "unexpected response")
-	require.Equalf(t, reqErr, err, "unexpected error")
+	require.Equalf(t, errReq, err, "unexpected error")
 	require.Equalf(t, 1, m.called, "should be called only once")
 	require.Equalf(t, reqFunctionName, m.functionName,
 		"unexpected expr was passed")
@@ -977,7 +977,7 @@ func TestConnectorEvalTyped(t *testing.T) {
 
 	err := c.EvalTyped(reqFunctionName, reqArgs, reqResult)
 
-	require.Equalf(t, reqErr, err, "unexpected error")
+	require.Equalf(t, errReq, err, "unexpected error")
 	require.Equalf(t, 1, m.called, "should be called only once")
 	require.Equalf(t, reqFunctionName, m.functionName,
 		"unexpected expr was passed")
@@ -1025,7 +1025,7 @@ func TestConnectorExecute(t *testing.T) {
 	resp, err := c.Execute(reqFunctionName, reqArgs)
 
 	require.Equalf(t, reqResp, resp, "unexpected response")
-	require.Equalf(t, reqErr, err, "unexpected error")
+	require.Equalf(t, errReq, err, "unexpected error")
 	require.Equalf(t, 1, m.called, "should be called only once")
 	require.Equalf(t, reqFunctionName, m.functionName,
 		"unexpected expr was passed")
@@ -1040,7 +1040,7 @@ type executeTypedMock struct {
 func (m *executeTypedMock) ExecuteTyped(functionName string, args, result interface{},
 	mode Mode) (tarantool.SQLInfo, []tarantool.ColumnMetaData, error) {
 	m.callTyped(functionName, args, result, mode)
-	return reqSqlInfo, reqMeta, reqErr
+	return reqSqlInfo, reqMeta, errReq
 }
 
 func TestConnectorExecuteTyped(t *testing.T) {
@@ -1051,7 +1051,7 @@ func TestConnectorExecuteTyped(t *testing.T) {
 
 	require.Equalf(t, reqSqlInfo, info, "unexpected info")
 	require.Equalf(t, reqMeta, meta, "unexpected meta")
-	require.Equalf(t, reqErr, err, "unexpected error")
+	require.Equalf(t, errReq, err, "unexpected error")
 	require.Equalf(t, 1, m.called, "should be called only once")
 	require.Equalf(t, reqFunctionName, m.functionName,
 		"unexpected expr was passed")
@@ -1097,7 +1097,7 @@ func (m *newPreparedMock) NewPrepared(expr string,
 	m.called++
 	m.expr = expr
 	m.mode = mode
-	return reqPrepared, reqErr
+	return reqPrepared, errReq
 }
 
 func TestConnectorNewPrepared(t *testing.T) {
@@ -1107,7 +1107,7 @@ func TestConnectorNewPrepared(t *testing.T) {
 	p, err := c.NewPrepared(reqFunctionName)
 
 	require.Equalf(t, reqPrepared, p, "unexpected prepared")
-	require.Equalf(t, reqErr, err, "unexpected error")
+	require.Equalf(t, errReq, err, "unexpected error")
 	require.Equalf(t, 1, m.called, "should be called only once")
 	require.Equalf(t, reqFunctionName, m.expr,
 		"unexpected expr was passed")
@@ -1125,7 +1125,7 @@ type newStreamMock struct {
 func (m *newStreamMock) NewStream(mode Mode) (*tarantool.Stream, error) {
 	m.called++
 	m.mode = mode
-	return reqStream, reqErr
+	return reqStream, errReq
 }
 
 func TestConnectorNewStream(t *testing.T) {
@@ -1135,7 +1135,7 @@ func TestConnectorNewStream(t *testing.T) {
 	s, err := c.NewStream()
 
 	require.Equalf(t, reqStream, s, "unexpected stream")
-	require.Equalf(t, reqErr, err, "unexpected error")
+	require.Equalf(t, errReq, err, "unexpected error")
 	require.Equalf(t, 1, m.called, "should be called only once")
 	require.Equalf(t, testMode, m.mode, "unexpected proxy mode")
 }
@@ -1162,7 +1162,7 @@ func (m *newWatcherMock) NewWatcher(key string,
 	m.key = key
 	m.callback = callback
 	m.mode = mode
-	return reqWatcher, reqErr
+	return reqWatcher, errReq
 }
 
 func TestConnectorNewWatcher(t *testing.T) {
@@ -1172,7 +1172,7 @@ func TestConnectorNewWatcher(t *testing.T) {
 	w, err := c.NewWatcher(reqWatchKey, func(event tarantool.WatchEvent) {})
 
 	require.Equalf(t, reqWatcher, w, "unexpected watcher")
-	require.Equalf(t, reqErr, err, "unexpected error")
+	require.Equalf(t, errReq, err, "unexpected error")
 	require.Equalf(t, 1, m.called, "should be called only once")
 	require.Equalf(t, reqWatchKey, m.key, "unexpected key")
 	require.NotNilf(t, m.callback, "callback must be set")

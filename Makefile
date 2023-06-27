@@ -39,7 +39,7 @@ format:
 
 .PHONY: golangci-lint
 golangci-lint:
-	golangci-lint run -E goimports -D errcheck
+	golangci-lint run --config=.golangci.yaml
 
 .PHONY: test
 test:

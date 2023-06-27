@@ -1,0 +1,30 @@
+run:
+  timeout: 3m
+
+linters:
+  disable:
+    - errcheck
+  enable:
+    - forbidigo
+    - gocritic
+    - goimports
+    - lll
+    - reassign
+    - stylecheck
+    - unconvert
+
+linters-settings:
+  gocritic:
+    disabled-checks:
+      - ifElseChain
+  lll:
+    line-length: 100
+    tab-width: 4
+  stylecheck:
+    checks: ["all", "-ST1003"]
+
+issues:
+  exclude-rules:
+    - linters:
+      - lll
+      source: "\t?// *(see )?https://"

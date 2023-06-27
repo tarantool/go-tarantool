@@ -113,7 +113,6 @@ func (r *Result) DecodeMsgpack(d *msgpack.Decoder) error {
 			if r.rowType != nil {
 				tuples := reflect.New(reflect.SliceOf(r.rowType))
 				if err = d.DecodeValue(tuples); err != nil {
-					fmt.Println(tuples)
 					return err
 				}
 				r.Rows = tuples.Elem().Interface()

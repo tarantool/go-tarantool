@@ -97,7 +97,8 @@ func RefImplUnprepareBody(enc *msgpack.Encoder, stmt Prepared) error {
 
 // RefImplBeginBody is reference implementation for filling of an begin
 // request's body.
-func RefImplBeginBody(enc *msgpack.Encoder, txnIsolation TxnIsolationLevel, timeout time.Duration) error {
+func RefImplBeginBody(enc *msgpack.Encoder, txnIsolation TxnIsolationLevel,
+	timeout time.Duration) error {
 	return fillBegin(enc, txnIsolation, timeout)
 }
 

@@ -54,7 +54,8 @@
 //
 // See also:
 //
-// * Session settings https://www.tarantool.io/en/doc/latest/reference/reference_lua/box_space/_session_settings/
+//   - Session settings:
+//     https://www.tarantool.io/en/doc/latest/reference/reference_lua/box_space/_session_settings/
 package settings
 
 import (

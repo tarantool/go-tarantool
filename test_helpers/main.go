@@ -102,7 +102,7 @@ func isReady(server string, opts *tarantool.Opts) error {
 		return err
 	}
 	if conn == nil {
-		return errors.New("Conn is nil after connect")
+		return errors.New("connection is nil after connect")
 	}
 	defer conn.Close()
 
@@ -111,7 +111,7 @@ func isReady(server string, opts *tarantool.Opts) error {
 		return err
 	}
 	if resp == nil {
-		return errors.New("Response is nil after ping")
+		return errors.New("response is nil after ping")
 	}
 
 	return nil
@@ -386,7 +386,7 @@ func ConvertUint64(v interface{}) (result uint64, err error) {
 	case uint32:
 		result = uint64(v)
 	case uint64:
-		result = uint64(v)
+		result = v
 	case int:
 		result = uint64(v)
 	case int8:
@@ -398,7 +398,7 @@ func ConvertUint64(v interface{}) (result uint64, err error) {
 	case int64:
 		result = uint64(v)
 	default:
-		err = fmt.Errorf("Non-number value %T", v)
+		err = fmt.Errorf("non-number value %T", v)
 	}
 	return
 }

@@ -206,7 +206,8 @@ func (fut *Future) GetTyped(result interface{}) error {
 //
 // # See also
 //
-// * box.session.push() https://www.tarantool.io/en/doc/latest/reference/reference_lua/box_session/push/
+//   - box.session.push():
+//     https://www.tarantool.io/en/doc/latest/reference/reference_lua/box_session/push/
 func (fut *Future) GetIterator() (it TimeoutResponseIterator) {
 	futit := &asyncResponseIterator{
 		fut: fut,

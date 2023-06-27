@@ -129,12 +129,14 @@ var mpDecodeSamples = map[string]struct {
 	"InnerMapInvalidErrorType": {
 		[]byte{0x81, 0x00, 0x91, 0x81, 0x00, 0xc1},
 		false,
-		regexp.MustCompile(`msgpack: (?:unexpected|invalid|unknown) code.c1 decoding (?:string\/bytes|bytes) length`),
+		regexp.MustCompile(`msgpack: (?:unexpected|invalid|unknown) code.c1` +
+			` decoding (?:string\/bytes|bytes) length`),
 	},
 	"InnerMapInvalidErrorFile": {
 		[]byte{0x81, 0x00, 0x91, 0x81, 0x01, 0xc1},
 		false,
-		regexp.MustCompile(`msgpack: (?:unexpected|invalid|unknown) code.c1 decoding (?:string\/bytes|bytes) length`),
+		regexp.MustCompile(`msgpack: (?:unexpected|invalid|unknown) code.c1` +
+			` decoding (?:string\/bytes|bytes) length`),
 	},
 	"InnerMapInvalidErrorLine": {
 		[]byte{0x81, 0x00, 0x91, 0x81, 0x02, 0xc1},
@@ -144,7 +146,8 @@ var mpDecodeSamples = map[string]struct {
 	"InnerMapInvalidErrorMessage": {
 		[]byte{0x81, 0x00, 0x91, 0x81, 0x03, 0xc1},
 		false,
-		regexp.MustCompile(`msgpack: (?:unexpected|invalid|unknown) code.c1 decoding (?:string\/bytes|bytes) length`),
+		regexp.MustCompile(`msgpack: (?:unexpected|invalid|unknown) code.c1 decoding` +
+			` (?:string\/bytes|bytes) length`),
 	},
 	"InnerMapInvalidErrorErrno": {
 		[]byte{0x81, 0x00, 0x91, 0x81, 0x04, 0xc1},
@@ -164,7 +167,8 @@ var mpDecodeSamples = map[string]struct {
 	"InnerMapInvalidErrorFieldsKey": {
 		[]byte{0x81, 0x00, 0x91, 0x81, 0x06, 0x81, 0xc1},
 		false,
-		regexp.MustCompile(`msgpack: (?:unexpected|invalid|unknown) code.c1 decoding (?:string\/bytes|bytes) length`),
+		regexp.MustCompile(`msgpack: (?:unexpected|invalid|unknown) code.c1` +
+			` decoding (?:string\/bytes|bytes) length`),
 	},
 	"InnerMapInvalidErrorFieldsValue": {
 		[]byte{0x81, 0x00, 0x91, 0x81, 0x06, 0x81, 0xa3, 0x6b, 0x65, 0x79, 0xc1},
@@ -435,7 +439,8 @@ func TestErrorTypeSelect(t *testing.T) {
 			var resp *Response
 			var offset uint32 = 0
 			var limit uint32 = 1
-			resp, err = conn.Select(space, index, offset, limit, IterEq, []interface{}{testcase.tuple.pk})
+			resp, err = conn.Select(space, index, offset, limit, IterEq,
+				[]interface{}{testcase.tuple.pk})
 			require.Nil(t, err)
 			require.NotNil(t, resp.Data)
 			require.Equalf(t, len(resp.Data), 1, "Exactly one tuple had been found")
@@ -479,7 +484,8 @@ func TestErrorTypeSelectTyped(t *testing.T) {
 			var offset uint32 = 0
 			var limit uint32 = 1
 			var resp []TupleBoxError
-			err = conn.SelectTyped(space, index, offset, limit, IterEq, []interface{}{testcase.tuple.pk}, &resp)
+			err = conn.SelectTyped(space, index, offset, limit, IterEq,
+				[]interface{}{testcase.tuple.pk}, &resp)
 			require.Nil(t, err)
 			require.NotNil(t, resp)
 			require.Equalf(t, len(resp), 1, "Exactly one tuple had been found")

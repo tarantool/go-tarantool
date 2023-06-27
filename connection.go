@@ -33,6 +33,11 @@ const shutdownEventKey = "box.shutdown"
 type ConnEventKind int
 type ConnLogKind int
 
+var (
+	errUnknownRequest = errors.New("the passed connected request doesn't belong " +
+		"to the current connection or connection pool")
+)
+
 const (
 	// Connected signals that connection is established or reestablished.
 	Connected ConnEventKind = iota + 1
@@ -84,13 +89,16 @@ func (d defaultLogger) Report(event ConnLogKind, conn *Connection, v ...interfac
 	case LogReconnectFailed:
 		reconnects := v[0].(uint)
 		err := v[1].(error)
-		log.Printf("tarantool: reconnect (%d/%d) to %s failed: %s", reconnects, conn.opts.MaxReconnects, conn.addr, err)
+		log.Printf("tarantool: reconnect (%d/%d) to %s failed: %s",
+			reconnects, conn.opts.MaxReconnects, conn.addr, err)
 	case LogLastReconnectFailed:
 		err := v[0].(error)
-		log.Printf("tarantool: last reconnect to %s failed: %s, giving it up", conn.addr, err)
+		log.Printf("tarantool: last reconnect to %s failed: %s, giving it up",
+			conn.addr, err)
 	case LogUnexpectedResultId:
 		resp := v[0].(*Response)
-		log.Printf("tarantool: connection %s got unexpected resultId (%d) in response", conn.addr, resp.RequestId)
+		log.Printf("tarantool: connection %s got unexpected resultId (%d) in response",
+			conn.addr, resp.RequestId)
 	case LogWatchEventReadFailed:
 		err := v[0].(error)
 		log.Printf("tarantool: unable to parse watch event: %s", err)
@@ -145,7 +153,8 @@ func (d defaultLogger) Report(event ConnLogKind, conn *Connection, v ...interfac
 // by timeout). Client reconnect will happen if connection options enable
 // reconnect. Beware that graceful shutdown event initialization is asynchronous.
 //
-// More on graceful shutdown: https://www.tarantool.io/en/doc/latest/dev_guide/internals/iproto/graceful_shutdown/
+// More on graceful shutdown:
+// https://www.tarantool.io/en/doc/latest/dev_guide/internals/iproto/graceful_shutdown/
 type Connection struct {
 	addr  string
 	c     Conn
@@ -579,7 +588,8 @@ func (conn *Connection) dial() (err error) {
 	go conn.reader(c, c)
 
 	// Subscribe shutdown event to process graceful shutdown.
-	if conn.shutdownWatcher == nil && isFeatureInSlice(WatchersFeature, conn.serverProtocolInfo.Features) {
+	if conn.shutdownWatcher == nil &&
+		isFeatureInSlice(WatchersFeature, conn.serverProtocolInfo.Features) {
 		watcher, werr := conn.newWatcherImpl(shutdownEventKey, shutdownEventCallback)
 		if werr != nil {
 			return werr
@@ -696,7 +706,10 @@ func (conn *Connection) closeConnection(neterr error, forever bool) (err error) 
 	}
 	for i := range conn.shard {
 		conn.shard[i].buf.Reset()
-		requestsLists := []*[requestsMap]futureList{&conn.shard[i].requests, &conn.shard[i].requestsWithCtx}
+		requestsLists := []*[requestsMap]futureList{
+			&conn.shard[i].requests,
+			&conn.shard[i].requestsWithCtx,
+		}
 		for _, requests := range requestsLists {
 			for pos := range requests {
 				requests[pos].clear(neterr, conn)
@@ -1207,7 +1220,7 @@ func read(r io.Reader, lenbuf []byte) (response []byte, err error) {
 		return
 	}
 	if lenbuf[0] != 0xce {
-		err = errors.New("Wrong response header")
+		err = errors.New("wrong response header")
 		return
 	}
 	length = (int(lenbuf[1]) << 24) +
@@ -1216,7 +1229,7 @@ func read(r io.Reader, lenbuf []byte) (response []byte, err error) {
 		int(lenbuf[4])
 
 	if length == 0 {
-		err = errors.New("Response should not be 0 length")
+		err = errors.New("response should not be 0 length")
 		return
 	}
 	response = make([]byte, length)
@@ -1241,7 +1254,7 @@ func (conn *Connection) Do(req Request) *Future {
 	if connectedReq, ok := req.(ConnectedRequest); ok {
 		if connectedReq.Conn() != conn {
 			fut := NewFuture()
-			fut.SetError(fmt.Errorf("the passed connected request doesn't belong to the current connection or connection pool"))
+			fut.SetError(errUnknownRequest)
 			return fut
 		}
 	}

@@ -618,10 +618,16 @@ func ExampleProtocolVersion() {
 
 	clientProtocolInfo := conn.ClientProtocolInfo()
 	fmt.Println("Connector client protocol version:", clientProtocolInfo.Version)
-	fmt.Println("Connector client protocol features:", clientProtocolInfo.Features)
+	for _, f := range clientProtocolInfo.Features {
+		fmt.Println("Connector client protocol feature:", f)
+	}
 	// Output:
 	// Connector client protocol version: 4
-	// Connector client protocol features: [StreamsFeature TransactionsFeature ErrorExtensionFeature WatchersFeature PaginationFeature]
+	// Connector client protocol feature: StreamsFeature
+	// Connector client protocol feature: TransactionsFeature
+	// Connector client protocol feature: ErrorExtensionFeature
+	// Connector client protocol feature: WatchersFeature
+	// Connector client protocol feature: PaginationFeature
 }
 
 func getTestTxnOpts() tarantool.Opts {

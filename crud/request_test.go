@@ -72,7 +72,8 @@ var expectedOpts = map[string]interface{}{
 type ValidSchemeResolver struct {
 }
 
-func (*ValidSchemeResolver) ResolveSpaceIndex(s, i interface{}) (spaceNo, indexNo uint32, err error) {
+func (*ValidSchemeResolver) ResolveSpaceIndex(s, i interface{}) (uint32, uint32, error) {
+	var spaceNo, indexNo uint32
 	if s != nil {
 		spaceNo = uint32(s.(int))
 	} else {
@@ -322,50 +323,51 @@ func TestRequestsDefaultValues(t *testing.T) {
 	}{
 		{
 			name: "InsertRequest",
-			ref: tarantool.NewCall17Request("crud.insert").Args([]interface{}{validSpace, []interface{}{},
-				map[string]interface{}{}}),
+			ref: tarantool.NewCall17Request("crud.insert").Args(
+				[]interface{}{validSpace, []interface{}{}, map[string]interface{}{}}),
 			target: crud.MakeInsertRequest(validSpace),
 		},
 		{
 			name: "InsertObjectRequest",
-			ref: tarantool.NewCall17Request("crud.insert_object").Args([]interface{}{validSpace, map[string]interface{}{},
-				map[string]interface{}{}}),
+			ref: tarantool.NewCall17Request("crud.insert_object").Args(
+				[]interface{}{validSpace, map[string]interface{}{}, map[string]interface{}{}}),
 			target: crud.MakeInsertObjectRequest(validSpace),
 		},
 		{
 			name: "InsertManyRequest",
-			ref: tarantool.NewCall17Request("crud.insert_many").Args([]interface{}{validSpace, []interface{}{},
-				map[string]interface{}{}}),
+			ref: tarantool.NewCall17Request("crud.insert_many").Args(
+				[]interface{}{validSpace, []interface{}{}, map[string]interface{}{}}),
 			target: crud.MakeInsertManyRequest(validSpace),
 		},
 		{
 			name: "InsertObjectManyRequest",
-			ref: tarantool.NewCall17Request("crud.insert_object_many").Args([]interface{}{validSpace, []map[string]interface{}{},
-				map[string]interface{}{}}),
+			ref: tarantool.NewCall17Request("crud.insert_object_many").Args(
+				[]interface{}{validSpace, []map[string]interface{}{}, map[string]interface{}{}}),
 			target: crud.MakeInsertObjectManyRequest(validSpace),
 		},
 		{
 			name: "GetRequest",
-			ref: tarantool.NewCall17Request("crud.get").Args([]interface{}{validSpace, []interface{}{},
-				map[string]interface{}{}}),
+			ref: tarantool.NewCall17Request("crud.get").Args(
+				[]interface{}{validSpace, []interface{}{}, map[string]interface{}{}}),
 			target: crud.MakeGetRequest(validSpace),
 		},
 		{
 			name: "UpdateRequest",
-			ref: tarantool.NewCall17Request("crud.update").Args([]interface{}{validSpace, []interface{}{},
-				[]interface{}{}, map[string]interface{}{}}),
+			ref: tarantool.NewCall17Request("crud.update").Args(
+				[]interface{}{validSpace, []interface{}{},
+					[]interface{}{}, map[string]interface{}{}}),
 			target: crud.MakeUpdateRequest(validSpace),
 		},
 		{
 			name: "DeleteRequest",
-			ref: tarantool.NewCall17Request("crud.delete").Args([]interface{}{validSpace, []interface{}{},
-				map[string]interface{}{}}),
+			ref: tarantool.NewCall17Request("crud.delete").Args(
+				[]interface{}{validSpace, []interface{}{}, map[string]interface{}{}}),
 			target: crud.MakeDeleteRequest(validSpace),
 		},
 		{
 			name: "ReplaceRequest",
-			ref: tarantool.NewCall17Request("crud.replace").Args([]interface{}{validSpace, []interface{}{},
-				map[string]interface{}{}}),
+			ref: tarantool.NewCall17Request("crud.replace").Args(
+				[]interface{}{validSpace, []interface{}{}, map[string]interface{}{}}),
 			target: crud.MakeReplaceRequest(validSpace),
 		},
 		{
@@ -382,68 +384,70 @@ func TestRequestsDefaultValues(t *testing.T) {
 		},
 		{
 			name: "ReplaceObjectManyRequest",
-			ref: tarantool.NewCall17Request("crud.replace_object_many").Args([]interface{}{validSpace,
-				[]map[string]interface{}{}, map[string]interface{}{}}),
+			ref: tarantool.NewCall17Request("crud.replace_object_many").Args(
+				[]interface{}{validSpace, []map[string]interface{}{}, map[string]interface{}{}}),
 			target: crud.MakeReplaceObjectManyRequest(validSpace),
 		},
 		{
 			name: "UpsertRequest",
-			ref: tarantool.NewCall17Request("crud.upsert").Args([]interface{}{validSpace, []interface{}{},
-				[]interface{}{}, map[string]interface{}{}}),
+			ref: tarantool.NewCall17Request("crud.upsert").Args(
+				[]interface{}{validSpace, []interface{}{}, []interface{}{},
+					map[string]interface{}{}}),
 			target: crud.MakeUpsertRequest(validSpace),
 		},
 		{
 			name: "UpsertObjectRequest",
-			ref: tarantool.NewCall17Request("crud.upsert_object").Args([]interface{}{validSpace,
-				map[string]interface{}{}, []interface{}{}, map[string]interface{}{}}),
+			ref: tarantool.NewCall17Request("crud.upsert_object").Args(
+				[]interface{}{validSpace, map[string]interface{}{}, []interface{}{},
+					map[string]interface{}{}}),
 			target: crud.MakeUpsertObjectRequest(validSpace),
 		},
 		{
 			name: "UpsertManyRequest",
-			ref: tarantool.NewCall17Request("crud.upsert_many").Args([]interface{}{validSpace,
-				[]interface{}{}, map[string]interface{}{}}),
+			ref: tarantool.NewCall17Request("crud.upsert_many").Args(
+				[]interface{}{validSpace, []interface{}{}, map[string]interface{}{}}),
 			target: crud.MakeUpsertManyRequest(validSpace),
 		},
 		{
 			name: "UpsertObjectManyRequest",
-			ref: tarantool.NewCall17Request("crud.upsert_object_many").Args([]interface{}{validSpace,
-				[]interface{}{}, map[string]interface{}{}}),
+			ref: tarantool.NewCall17Request("crud.upsert_object_many").Args(
+				[]interface{}{validSpace, []interface{}{}, map[string]interface{}{}}),
 			target: crud.MakeUpsertObjectManyRequest(validSpace),
 		},
 		{
 			name: "SelectRequest",
-			ref: tarantool.NewCall17Request("crud.select").Args([]interface{}{validSpace,
-				nil, map[string]interface{}{}}),
+			ref: tarantool.NewCall17Request("crud.select").Args(
+				[]interface{}{validSpace, nil, map[string]interface{}{}}),
 			target: crud.MakeSelectRequest(validSpace),
 		},
 		{
 			name: "MinRequest",
-			ref: tarantool.NewCall17Request("crud.min").Args([]interface{}{validSpace,
-				nil, map[string]interface{}{}}),
+			ref: tarantool.NewCall17Request("crud.min").Args(
+				[]interface{}{validSpace, nil, map[string]interface{}{}}),
 			target: crud.MakeMinRequest(validSpace),
 		},
 		{
 			name: "MaxRequest",
-			ref: tarantool.NewCall17Request("crud.max").Args([]interface{}{validSpace,
-				nil, map[string]interface{}{}}),
+			ref: tarantool.NewCall17Request("crud.max").Args(
+				[]interface{}{validSpace, nil, map[string]interface{}{}}),
 			target: crud.MakeMaxRequest(validSpace),
 		},
 		{
 			name: "TruncateRequest",
-			ref: tarantool.NewCall17Request("crud.truncate").Args([]interface{}{validSpace,
-				map[string]interface{}{}}),
+			ref: tarantool.NewCall17Request("crud.truncate").Args(
+				[]interface{}{validSpace, map[string]interface{}{}}),
 			target: crud.MakeTruncateRequest(validSpace),
 		},
 		{
 			name: "LenRequest",
-			ref: tarantool.NewCall17Request("crud.len").Args([]interface{}{validSpace,
-				map[string]interface{}{}}),
+			ref: tarantool.NewCall17Request("crud.len").Args(
+				[]interface{}{validSpace, map[string]interface{}{}}),
 			target: crud.MakeLenRequest(validSpace),
 		},
 		{
 			name: "CountRequest",
-			ref: tarantool.NewCall17Request("crud.count").Args([]interface{}{validSpace,
-				nil, map[string]interface{}{}}),
+			ref: tarantool.NewCall17Request("crud.count").Args(
+				[]interface{}{validSpace, nil, map[string]interface{}{}}),
 			target: crud.MakeCountRequest(validSpace),
 		},
 		{
@@ -474,121 +478,150 @@ func TestRequestsSetters(t *testing.T) {
 		target tarantool.Request
 	}{
 		{
-			name:   "InsertRequest",
-			ref:    tarantool.NewCall17Request("crud.insert").Args([]interface{}{spaceName, tuple, expectedOpts}),
+			name: "InsertRequest",
+			ref: tarantool.NewCall17Request("crud.insert").Args(
+				[]interface{}{spaceName, tuple, expectedOpts}),
 			target: crud.MakeInsertRequest(spaceName).Tuple(tuple).Opts(simpleOperationOpts),
 		},
 		{
-			name:   "InsertObjectRequest",
-			ref:    tarantool.NewCall17Request("crud.insert_object").Args([]interface{}{spaceName, reqObject, expectedOpts}),
-			target: crud.MakeInsertObjectRequest(spaceName).Object(reqObject).Opts(simpleOperationObjectOpts),
+			name: "InsertObjectRequest",
+			ref: tarantool.NewCall17Request("crud.insert_object").Args(
+				[]interface{}{spaceName, reqObject, expectedOpts}),
+			target: crud.MakeInsertObjectRequest(spaceName).Object(reqObject).
+				Opts(simpleOperationObjectOpts),
 		},
 		{
-			name:   "InsertManyRequest",
-			ref:    tarantool.NewCall17Request("crud.insert_many").Args([]interface{}{spaceName, tuples, expectedOpts}),
+			name: "InsertManyRequest",
+			ref: tarantool.NewCall17Request("crud.insert_many").Args(
+				[]interface{}{spaceName, tuples, expectedOpts}),
 			target: crud.MakeInsertManyRequest(spaceName).Tuples(tuples).Opts(opManyOpts),
 		},
 		{
-			name:   "InsertObjectManyRequest",
-			ref:    tarantool.NewCall17Request("crud.insert_object_many").Args([]interface{}{spaceName, reqObjects, expectedOpts}),
-			target: crud.MakeInsertObjectManyRequest(spaceName).Objects(reqObjects).Opts(opObjManyOpts),
+			name: "InsertObjectManyRequest",
+			ref: tarantool.NewCall17Request("crud.insert_object_many").Args(
+				[]interface{}{spaceName, reqObjects, expectedOpts}),
+			target: crud.MakeInsertObjectManyRequest(spaceName).Objects(reqObjects).
+				Opts(opObjManyOpts),
 		},
 		{
-			name:   "GetRequest",
-			ref:    tarantool.NewCall17Request("crud.get").Args([]interface{}{spaceName, key, expectedOpts}),
+			name: "GetRequest",
+			ref: tarantool.NewCall17Request("crud.get").Args(
+				[]interface{}{spaceName, key, expectedOpts}),
 			target: crud.MakeGetRequest(spaceName).Key(key).Opts(getOpts),
 		},
 		{
-			name:   "UpdateRequest",
-			ref:    tarantool.NewCall17Request("crud.update").Args([]interface{}{spaceName, key, operations, expectedOpts}),
-			target: crud.MakeUpdateRequest(spaceName).Key(key).Operations(operations).Opts(simpleOperationOpts),
+			name: "UpdateRequest",
+			ref: tarantool.NewCall17Request("crud.update").Args(
+				[]interface{}{spaceName, key, operations, expectedOpts}),
+			target: crud.MakeUpdateRequest(spaceName).Key(key).Operations(operations).
+				Opts(simpleOperationOpts),
 		},
 		{
-			name:   "DeleteRequest",
-			ref:    tarantool.NewCall17Request("crud.delete").Args([]interface{}{spaceName, key, expectedOpts}),
+			name: "DeleteRequest",
+			ref: tarantool.NewCall17Request("crud.delete").Args(
+				[]interface{}{spaceName, key, expectedOpts}),
 			target: crud.MakeDeleteRequest(spaceName).Key(key).Opts(simpleOperationOpts),
 		},
 		{
-			name:   "ReplaceRequest",
-			ref:    tarantool.NewCall17Request("crud.replace").Args([]interface{}{spaceName, tuple, expectedOpts}),
+			name: "ReplaceRequest",
+			ref: tarantool.NewCall17Request("crud.replace").Args(
+				[]interface{}{spaceName, tuple, expectedOpts}),
 			target: crud.MakeReplaceRequest(spaceName).Tuple(tuple).Opts(simpleOperationOpts),
 		},
 		{
-			name:   "ReplaceObjectRequest",
-			ref:    tarantool.NewCall17Request("crud.replace_object").Args([]interface{}{spaceName, reqObject, expectedOpts}),
-			target: crud.MakeReplaceObjectRequest(spaceName).Object(reqObject).Opts(simpleOperationObjectOpts),
+			name: "ReplaceObjectRequest",
+			ref: tarantool.NewCall17Request("crud.replace_object").Args(
+				[]interface{}{spaceName, reqObject, expectedOpts}),
+			target: crud.MakeReplaceObjectRequest(spaceName).Object(reqObject).
+				Opts(simpleOperationObjectOpts),
 		},
 		{
-			name:   "ReplaceManyRequest",
-			ref:    tarantool.NewCall17Request("crud.replace_many").Args([]interface{}{spaceName, tuples, expectedOpts}),
+			name: "ReplaceManyRequest",
+			ref: tarantool.NewCall17Request("crud.replace_many").Args(
+				[]interface{}{spaceName, tuples, expectedOpts}),
 			target: crud.MakeReplaceManyRequest(spaceName).Tuples(tuples).Opts(opManyOpts),
 		},
 		{
-			name:   "ReplaceObjectManyRequest",
-			ref:    tarantool.NewCall17Request("crud.replace_object_many").Args([]interface{}{spaceName, reqObjects, expectedOpts}),
-			target: crud.MakeReplaceObjectManyRequest(spaceName).Objects(reqObjects).Opts(opObjManyOpts),
+			name: "ReplaceObjectManyRequest",
+			ref: tarantool.NewCall17Request("crud.replace_object_many").Args(
+				[]interface{}{spaceName, reqObjects, expectedOpts}),
+			target: crud.MakeReplaceObjectManyRequest(spaceName).Objects(reqObjects).
+				Opts(opObjManyOpts),
 		},
 		{
-			name:   "UpsertRequest",
-			ref:    tarantool.NewCall17Request("crud.upsert").Args([]interface{}{spaceName, tuple, operations, expectedOpts}),
-			target: crud.MakeUpsertRequest(spaceName).Tuple(tuple).Operations(operations).Opts(simpleOperationOpts),
+			name: "UpsertRequest",
+			ref: tarantool.NewCall17Request("crud.upsert").Args(
+				[]interface{}{spaceName, tuple, operations, expectedOpts}),
+			target: crud.MakeUpsertRequest(spaceName).Tuple(tuple).Operations(operations).
+				Opts(simpleOperationOpts),
 		},
 		{
 			name: "UpsertObjectRequest",
-			ref: tarantool.NewCall17Request("crud.upsert_object").Args([]interface{}{spaceName, reqObject,
-				operations, expectedOpts}),
-			target: crud.MakeUpsertObjectRequest(spaceName).Object(reqObject).Operations(operations).Opts(simpleOperationOpts),
+			ref: tarantool.NewCall17Request("crud.upsert_object").Args(
+				[]interface{}{spaceName, reqObject, operations, expectedOpts}),
+			target: crud.MakeUpsertObjectRequest(spaceName).Object(reqObject).
+				Operations(operations).Opts(simpleOperationOpts),
 		},
 		{
 			name: "UpsertManyRequest",
-			ref: tarantool.NewCall17Request("crud.upsert_many").Args([]interface{}{spaceName,
-				tuplesOperationsData, expectedOpts}),
-			target: crud.MakeUpsertManyRequest(spaceName).TuplesOperationsData(tuplesOperationsData).Opts(opManyOpts),
+			ref: tarantool.NewCall17Request("crud.upsert_many").Args(
+				[]interface{}{spaceName, tuplesOperationsData, expectedOpts}),
+			target: crud.MakeUpsertManyRequest(spaceName).
+				TuplesOperationsData(tuplesOperationsData).Opts(opManyOpts),
 		},
 		{
 			name: "UpsertObjectManyRequest",
-			ref: tarantool.NewCall17Request("crud.upsert_object_many").Args([]interface{}{spaceName,
-				reqObjectsOperationsData, expectedOpts}),
-			target: crud.MakeUpsertObjectManyRequest(spaceName).ObjectsOperationsData(reqObjectsOperationsData).Opts(opManyOpts),
+			ref: tarantool.NewCall17Request("crud.upsert_object_many").Args(
+				[]interface{}{spaceName, reqObjectsOperationsData, expectedOpts}),
+			target: crud.MakeUpsertObjectManyRequest(spaceName).
+				ObjectsOperationsData(reqObjectsOperationsData).Opts(opManyOpts),
 		},
 		{
-			name:   "SelectRequest",
-			ref:    tarantool.NewCall17Request("crud.select").Args([]interface{}{spaceName, conditions, expectedOpts}),
+			name: "SelectRequest",
+			ref: tarantool.NewCall17Request("crud.select").Args(
+				[]interface{}{spaceName, conditions, expectedOpts}),
 			target: crud.MakeSelectRequest(spaceName).Conditions(conditions).Opts(selectOpts),
 		},
 		{
-			name:   "MinRequest",
-			ref:    tarantool.NewCall17Request("crud.min").Args([]interface{}{spaceName, indexName, expectedOpts}),
+			name: "MinRequest",
+			ref: tarantool.NewCall17Request("crud.min").Args(
+				[]interface{}{spaceName, indexName, expectedOpts}),
 			target: crud.MakeMinRequest(spaceName).Index(indexName).Opts(minOpts),
 		},
 		{
-			name:   "MaxRequest",
-			ref:    tarantool.NewCall17Request("crud.max").Args([]interface{}{spaceName, indexName, expectedOpts}),
+			name: "MaxRequest",
+			ref: tarantool.NewCall17Request("crud.max").Args(
+				[]interface{}{spaceName, indexName, expectedOpts}),
 			target: crud.MakeMaxRequest(spaceName).Index(indexName).Opts(maxOpts),
 		},
 		{
-			name:   "TruncateRequest",
-			ref:    tarantool.NewCall17Request("crud.truncate").Args([]interface{}{spaceName, expectedOpts}),
+			name: "TruncateRequest",
+			ref: tarantool.NewCall17Request("crud.truncate").Args(
+				[]interface{}{spaceName, expectedOpts}),
 			target: crud.MakeTruncateRequest(spaceName).Opts(baseOpts),
 		},
 		{
-			name:   "LenRequest",
-			ref:    tarantool.NewCall17Request("crud.len").Args([]interface{}{spaceName, expectedOpts}),
+			name: "LenRequest",
+			ref: tarantool.NewCall17Request("crud.len").Args(
+				[]interface{}{spaceName, expectedOpts}),
 			target: crud.MakeLenRequest(spaceName).Opts(baseOpts),
 		},
 		{
-			name:   "CountRequest",
-			ref:    tarantool.NewCall17Request("crud.count").Args([]interface{}{spaceName, conditions, expectedOpts}),
+			name: "CountRequest",
+			ref: tarantool.NewCall17Request("crud.count").Args(
+				[]interface{}{spaceName, conditions, expectedOpts}),
 			target: crud.MakeCountRequest(spaceName).Conditions(conditions).Opts(countOpts),
 		},
 		{
-			name:   "StorageInfoRequest",
-			ref:    tarantool.NewCall17Request("crud.storage_info").Args([]interface{}{expectedOpts}),
+			name: "StorageInfoRequest",
+			ref: tarantool.NewCall17Request("crud.storage_info").Args(
+				[]interface{}{expectedOpts}),
 			target: crud.MakeStorageInfoRequest().Opts(baseOpts),
 		},
 		{
-			name:   "StatsRequest",
-			ref:    tarantool.NewCall17Request("crud.stats").Args([]interface{}{spaceName}),
+			name: "StatsRequest",
+			ref: tarantool.NewCall17Request("crud.stats").Args(
+				[]interface{}{spaceName}),
 			target: crud.MakeStatsRequest().Space(spaceName),
 		},
 	}

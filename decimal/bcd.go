@@ -39,9 +39,11 @@ package decimal
 //
 // See also:
 //
-// * MessagePack extensions https://www.tarantool.io/en/doc/latest/dev_guide/internals/msgpack_extensions/
+// * MessagePack extensions:
+//   https://www.tarantool.io/en/doc/latest/dev_guide/internals/msgpack_extensions/
 //
-// * An implementation in C language https://github.com/tarantool/decNumber/blob/master/decPacked.c
+// * An implementation in C language:
+//   https://github.com/tarantool/decNumber/blob/master/decPacked.c
 
 import (
 	"fmt"
@@ -106,7 +108,7 @@ func getNumberLength(buf string) int {
 // is set to the scale of the number (this is the exponent, negated).
 func encodeStringToBCD(buf string) ([]byte, error) {
 	if len(buf) == 0 {
-		return nil, fmt.Errorf("Length of number is zero")
+		return nil, fmt.Errorf("length of number is zero")
 	}
 	signByte := bytePlus // By default number is positive.
 	if buf[0] == '-' {
@@ -134,19 +136,19 @@ func encodeStringToBCD(buf string) ([]byte, error) {
 		// Calculate a number of digits after the decimal point.
 		if ch == '.' {
 			if scale != 0 {
-				return nil, fmt.Errorf("Number contains more than one point")
+				return nil, fmt.Errorf("number contains more than one point")
 			}
 			scale = len(buf) - i - 1
 			continue
 		}
 
 		if ch < '0' || ch > '9' {
-			return nil, fmt.Errorf("Failed to convert symbol '%c' to a digit", ch)
+			return nil, fmt.Errorf("failed to convert symbol '%c' to a digit", ch)
 		}
-		digit := byte(ch - '0')
+		digit := ch - '0'
 		if highNibble {
 			// Add a digit to a high nibble.
-			digit = digit << 4
+			digit <<= 4
 			byteBuf = append(byteBuf, digit)
 			highNibble = false
 		} else {
@@ -155,7 +157,7 @@ func encodeStringToBCD(buf string) ([]byte, error) {
 			}
 			// Add a digit to a low nibble.
 			lowByteIdx := len(byteBuf) - 1
-			byteBuf[lowByteIdx] = byteBuf[lowByteIdx] | digit
+			byteBuf[lowByteIdx] |= digit
 			highNibble = true
 		}
 	}
@@ -169,7 +171,7 @@ func encodeStringToBCD(buf string) ([]byte, error) {
 	} else {
 		// Put a sign to a low nibble.
 		lowByteIdx := len(byteBuf) - 1
-		byteBuf[lowByteIdx] = byteBuf[lowByteIdx] | signByte
+		byteBuf[lowByteIdx] |= signByte
 	}
 	byteBuf = append([]byte{byte(scale)}, byteBuf...)
 

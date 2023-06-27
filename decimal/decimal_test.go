@@ -82,7 +82,8 @@ var benchmarkSamples = []struct {
 	{"0.00000000000000000000000000000000000009", "d501269c", true},
 	{"-18.34", "d6010201834d", true},
 	{"-108.123456789", "d701090108123456789d", true},
-	{"-11111111111111111111111111111111111111", "c7150100011111111111111111111111111111111111111d", false},
+	{"-11111111111111111111111111111111111111", "c7150100011111111111111111111111111111111111111d",
+		false},
 }
 
 var correctnessSamples = []struct {
@@ -103,8 +104,10 @@ var correctnessSamples = []struct {
 	{"-0", "d501000c", true},
 	{"0.01", "d501021c", true},
 	{"0.001", "d501031c", true},
-	{"99999999999999999999999999999999999999", "c7150100099999999999999999999999999999999999999c", false},
-	{"-99999999999999999999999999999999999999", "c7150100099999999999999999999999999999999999999d", false},
+	{"99999999999999999999999999999999999999", "c7150100099999999999999999999999999999999999999c",
+		false},
+	{"-99999999999999999999999999999999999999", "c7150100099999999999999999999999999999999999999d",
+		false},
 	{"-12.34", "d6010201234d", true},
 	{"12.34", "d6010201234c", true},
 	{"1.4", "c7030101014c", false},
@@ -112,8 +115,10 @@ var correctnessSamples = []struct {
 	{"-2.718281828459045", "c70a010f02718281828459045d", false},
 	{"3.141592653589793", "c70a010f03141592653589793c", false},
 	{"-3.141592653589793", "c70a010f03141592653589793d", false},
-	{"1234567891234567890.0987654321987654321", "c7150113012345678912345678900987654321987654321c", false},
-	{"-1234567891234567890.0987654321987654321", "c7150113012345678912345678900987654321987654321d", false},
+	{"1234567891234567890.0987654321987654321", "c7150113012345678912345678900987654321987654321c",
+		false},
+	{"-1234567891234567890.0987654321987654321",
+		"c7150113012345678912345678900987654321987654321d", false},
 }
 
 // There is a difference between encoding result from a raw string and from
@@ -150,15 +155,16 @@ func TestMPEncodeDecode(t *testing.T) {
 			var buf []byte
 			tuple := TupleDecimal{number: *decNum}
 			if buf, err = msgpack.Marshal(&tuple); err != nil {
-				t.Fatalf("Failed to msgpack.Encoder decimal number '%s' to a MessagePack buffer: %s", testcase.numString, err)
+				t.Fatalf(
+					"Failed to msgpack.Encoder decimal number '%s' to a MessagePack buffer: %s",
+					testcase.numString, err)
 			}
 			var v TupleDecimal
 			if err = msgpack.Unmarshal(buf, &v); err != nil {
-				t.Fatalf("Failed to decode MessagePack buffer '%x' to a decimal number: %s", buf, err)
+				t.Fatalf("Failed to decode MessagePack buffer '%x' to a decimal number: %s",
+					buf, err)
 			}
 			if !decNum.Equal(v.number.Decimal) {
-				fmt.Println(decNum)
-				fmt.Println(v.number)
 				t.Fatal("Decimal numbers are not equal")
 			}
 		})
@@ -208,7 +214,7 @@ func TestGetNumberLength(t *testing.T) {
 }
 
 func TestEncodeStringToBCDIncorrectNumber(t *testing.T) {
-	referenceErrMsg := "Number contains more than one point"
+	referenceErrMsg := "number contains more than one point"
 	var numString = "0.1.0"
 	buf, err := EncodeStringToBCD(numString)
 	if err == nil {
@@ -221,7 +227,7 @@ func TestEncodeStringToBCDIncorrectNumber(t *testing.T) {
 		t.Fatalf("wrong error message on encoding of a string double points")
 	}
 
-	referenceErrMsg = "Length of number is zero"
+	referenceErrMsg = "length of number is zero"
 	numString = ""
 	buf, err = EncodeStringToBCD(numString)
 	if err == nil {
@@ -234,7 +240,7 @@ func TestEncodeStringToBCDIncorrectNumber(t *testing.T) {
 		t.Fatalf("wrong error message on encoding of an empty string")
 	}
 
-	referenceErrMsg = "Failed to convert symbol 'a' to a digit"
+	referenceErrMsg = "failed to convert symbol 'a' to a digit"
 	numString = "0.1a"
 	buf, err = EncodeStringToBCD(numString)
 	if err == nil {
@@ -249,7 +255,8 @@ func TestEncodeStringToBCDIncorrectNumber(t *testing.T) {
 }
 
 func TestEncodeMaxNumber(t *testing.T) {
-	referenceErrMsg := "msgpack: decimal number is bigger than maximum supported number (10^38 - 1)"
+	referenceErrMsg := "msgpack: decimal number is bigger than maximum " +
+		"supported number (10^38 - 1)"
 	decNum := decimal.New(1, DecimalPrecision) // // 10^DecimalPrecision
 	tuple := TupleDecimal{number: *NewDecimal(decNum)}
 	_, err := msgpack.Marshal(&tuple)
@@ -257,12 +264,13 @@ func TestEncodeMaxNumber(t *testing.T) {
 		t.Fatalf("It is possible to msgpack.Encoder a number unsupported by Tarantool")
 	}
 	if err.Error() != referenceErrMsg {
-		t.Fatalf("Incorrect error message on attempt to msgpack.Encoder number unsupported by Tarantool")
+		t.Fatalf("Incorrect error message on attempt to msgpack.Encoder number unsupported")
 	}
 }
 
 func TestEncodeMinNumber(t *testing.T) {
-	referenceErrMsg := "msgpack: decimal number is lesser than minimum supported number (-10^38 - 1)"
+	referenceErrMsg := "msgpack: decimal number is lesser than minimum " +
+		"supported number (-10^38 - 1)"
 	two := decimal.NewFromInt(2)
 	decNum := decimal.New(1, DecimalPrecision).Neg().Sub(two) // -10^DecimalPrecision - 2
 	tuple := TupleDecimal{number: *NewDecimal(decNum)}
@@ -271,9 +279,7 @@ func TestEncodeMinNumber(t *testing.T) {
 		t.Fatalf("It is possible to msgpack.Encoder a number unsupported by Tarantool")
 	}
 	if err.Error() != referenceErrMsg {
-		fmt.Println("Actual message:   ", err.Error())
-		fmt.Println("Expected message: ", referenceErrMsg)
-		t.Fatalf("Incorrect error message on attempt to msgpack.Encoder number unsupported by Tarantool")
+		t.Fatalf("Incorrect error message on attempt to msgpack.Encoder number unsupported")
 	}
 }
 
@@ -368,26 +374,30 @@ func trimMPHeader(mpBuf []byte, fixExt bool) []byte {
 }
 
 func TestEncodeStringToBCD(t *testing.T) {
-	samples := append(correctnessSamples, rawSamples...)
+	samples := correctnessSamples
+	samples = append(samples, rawSamples...)
 	samples = append(samples, benchmarkSamples...)
 	for _, testcase := range samples {
 		t.Run(testcase.numString, func(t *testing.T) {
 			buf, err := EncodeStringToBCD(testcase.numString)
 			if err != nil {
-				t.Fatalf("Failed to msgpack.Encoder decimal '%s' to BCD: %s", testcase.numString, err)
-
+				t.Fatalf("Failed to msgpack.Encoder decimal '%s' to BCD: %s",
+					testcase.numString, err)
 			}
 			b, _ := hex.DecodeString(testcase.mpBuf)
 			bcdBuf := trimMPHeader(b, testcase.fixExt)
 			if reflect.DeepEqual(buf, bcdBuf) != true {
-				t.Fatalf("Failed to msgpack.Encoder decimal '%s' to BCD: expected '%x', actual '%x'", testcase.numString, bcdBuf, buf)
+				t.Fatalf(
+					"Failed to msgpack.Encoder decimal '%s' to BCD: expected '%x', actual '%x'",
+					testcase.numString, bcdBuf, buf)
 			}
 		})
 	}
 }
 
 func TestDecodeStringFromBCD(t *testing.T) {
-	samples := append(correctnessSamples, rawSamples...)
+	samples := correctnessSamples
+	samples = append(samples, rawSamples...)
 	samples = append(samples, benchmarkSamples...)
 	for _, testcase := range samples {
 		t.Run(testcase.numString, func(t *testing.T) {
@@ -407,14 +417,17 @@ func TestDecodeStringFromBCD(t *testing.T) {
 				t.Fatalf("Failed to msgpack.Encoder string ('%s') to decimal", testcase.numString)
 			}
 			if !decExpected.Equal(decActual) {
-				t.Fatalf("Decoded decimal from BCD ('%x') is incorrect: expected '%s', actual '%s'", bcdBuf, testcase.numString, s)
+				t.Fatalf(
+					"Decoded decimal from BCD ('%x') is incorrect: expected '%s', actual '%s'",
+					bcdBuf, testcase.numString, s)
 			}
 		})
 	}
 }
 
 func TestMPEncode(t *testing.T) {
-	samples := append(correctnessSamples, decimalSamples...)
+	samples := correctnessSamples
+	samples = append(samples, decimalSamples...)
 	samples = append(samples, benchmarkSamples...)
 	for _, testcase := range samples {
 		t.Run(testcase.numString, func(t *testing.T) {
@@ -438,7 +451,8 @@ func TestMPEncode(t *testing.T) {
 }
 
 func TestMPDecode(t *testing.T) {
-	samples := append(correctnessSamples, decimalSamples...)
+	samples := correctnessSamples
+	samples = append(samples, decimalSamples...)
 	samples = append(samples, benchmarkSamples...)
 	for _, testcase := range samples {
 		t.Run(testcase.numString, func(t *testing.T) {
@@ -567,7 +581,8 @@ func TestInsert(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
-	samples := append(correctnessSamples, benchmarkSamples...)
+	samples := correctnessSamples
+	samples = append(samples, benchmarkSamples...)
 	for _, testcase := range samples {
 		t.Run(testcase.numString, func(t *testing.T) {
 			assertInsert(t, conn, testcase.numString)
@@ -642,7 +657,8 @@ func runTestMain(m *testing.M) int {
 	defer test_helpers.StopTarantoolWithCleanup(instance)
 
 	if err != nil {
-		log.Fatalf("Failed to prepare test Tarantool: %s", err)
+		log.Printf("Failed to prepare test Tarantool: %s", err)
+		return 1
 	}
 
 	return m.Run()
