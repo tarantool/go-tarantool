@@ -112,6 +112,18 @@ var correctnessSamples = []struct {
 	{"-1234567891234567890.0987654321987654321", "c7150113012345678912345678900987654321987654321d", false},
 }
 
+var correctnessDecodeSamples = []struct {
+	numString string
+	mpBuf     string
+	fixExt    bool
+}{
+	{"1e2", "d501fe1c", true},
+	{"1e33", "c70301d0df1c", false},
+	{"1.1e31", "c70301e2011c", false},
+	{"13e-2", "c7030102013c", false},
+	{"-1e3", "d501fd1d", true},
+}
+
 // There is a difference between encoding result from a raw string and from
 // decimal.Decimal. It's expected because decimal.Decimal simplifies decimals:
 // 0.00010000 -> 0.0001
@@ -384,17 +396,21 @@ func TestEncodeStringToBCD(t *testing.T) {
 
 func TestDecodeStringFromBCD(t *testing.T) {
 	samples := append(correctnessSamples, rawSamples...)
+	samples = append(samples, correctnessDecodeSamples...)
 	samples = append(samples, benchmarkSamples...)
 	for _, testcase := range samples {
 		t.Run(testcase.numString, func(t *testing.T) {
 			b, _ := hex.DecodeString(testcase.mpBuf)
 			bcdBuf := trimMPHeader(b, testcase.fixExt)
-			s, err := DecodeStringFromBCD(bcdBuf)
+			s, exp, err := DecodeStringFromBCD(bcdBuf)
 			if err != nil {
 				t.Fatalf("Failed to decode BCD '%x' to decimal: %s", bcdBuf, err)
 			}
 
 			decActual, err := decimal.NewFromString(s)
+			if exp != 0 {
+				decActual = decActual.Shift(int32(exp))
+			}
 			if err != nil {
 				t.Fatalf("Failed to encode string ('%s') to decimal", s)
 			}
@@ -523,6 +539,37 @@ func TestSelect(t *testing.T) {
 		t.Fatalf("Decimal delete failed: %s", err)
 	}
 	tupleValueIsDecimal(t, resp.Data, number)
+}
+
+func TestUnmarshal_from_decimal_new(t *testing.T) {
+	skipIfDecimalUnsupported(t)
+
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	defer conn.Close()
+
+	samples := correctnessSamples
+	samples = append(samples, correctnessDecodeSamples...)
+	samples = append(samples, benchmarkSamples...)
+	for _, testcase := range samples {
+		str := testcase.numString
+		t.Run(str, func(t *testing.T) {
+			number, err := decimal.NewFromString(str)
+			if err != nil {
+				t.Fatalf("Failed to prepare test decimal: %s", err)
+			}
+
+			call := NewEvalRequest("return require('decimal').new(...)").
+				Args([]interface{}{str})
+			resp, err := conn.Do(call).Get()
+			if err != nil {
+				t.Fatalf("Decimal create failed: %s", err)
+			}
+			if resp == nil {
+				t.Fatalf("Response is nil after Call")
+			}
+			tupleValueIsDecimal(t, []interface{}{resp.Data}, number)
+		})
+	}
 }
 
 func assertInsert(t *testing.T, conn *Connection, numString string) {
