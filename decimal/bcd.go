@@ -46,8 +46,11 @@ package decimal
 //   https://github.com/tarantool/decNumber/blob/master/decPacked.c
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
+
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 const (
@@ -185,13 +188,17 @@ func encodeStringToBCD(buf string) ([]byte, error) {
 // ended by a 4-bit sign nibble in the least significant four bits of the final
 // byte. The scale is used (negated) as the exponent of the decimal number.
 // Note that zeroes may have a sign and/or a scale.
-func decodeStringFromBCD(bcdBuf []byte) (string, error) {
-	// Index of a byte with scale.
-	const scaleIdx = 0
-	scale := int(bcdBuf[scaleIdx])
+func decodeStringFromBCD(bcdBuf []byte) (string, int, error) {
+	// Read scale.
+	buf := bytes.NewBuffer(bcdBuf)
+	dec := msgpack.NewDecoder(buf)
+	scale, err := dec.DecodeInt()
+	if err != nil {
+		return "", 0, fmt.Errorf("unable to decode the decimal scale: %w", err)
+	}
 
-	// Get a BCD buffer without scale.
-	bcdBuf = bcdBuf[scaleIdx+1:]
+	// Get the data without the scale.
+	bcdBuf = buf.Bytes()
 	bufLen := len(bcdBuf)
 
 	// Every nibble contains a digit, and the last low nibble contains a
@@ -206,10 +213,6 @@ func decodeStringFromBCD(bcdBuf []byte) (string, error) {
 
 	// Reserve bytes for dot and sign.
 	numLen := ndigits + 2
-	// Reserve bytes for zeroes.
-	if scale >= ndigits {
-		numLen += scale - ndigits
-	}
 
 	var bld strings.Builder
 	bld.Grow(numLen)
@@ -221,26 +224,10 @@ func decodeStringFromBCD(bcdBuf []byte) (string, error) {
 		bld.WriteByte('-')
 	}
 
-	// Add missing zeroes to the left side when scale is bigger than a
-	// number of digits and a single missed zero to the right side when
-	// equal.
-	if scale > ndigits {
-		bld.WriteByte('0')
-		bld.WriteByte('.')
-		for diff := scale - ndigits; diff > 0; diff-- {
-			bld.WriteByte('0')
-		}
-	} else if scale == ndigits {
-		bld.WriteByte('0')
-	}
-
 	const MaxDigit = 0x09
 	// Builds a buffer with symbols of decimal number (digits, dot and sign).
 	processNibble := func(nibble byte) {
 		if nibble <= MaxDigit {
-			if ndigits == scale {
-				bld.WriteByte('.')
-			}
 			bld.WriteByte(nibble + '0')
 			ndigits--
 		}
@@ -256,5 +243,8 @@ func decodeStringFromBCD(bcdBuf []byte) (string, error) {
 		processNibble(lowNibble)
 	}
 
-	return bld.String(), nil
+	if bld.Len() == 0 || isNegative[sign] && bld.Len() == 1 {
+		bld.WriteByte('0')
+	}
+	return bld.String(), -1 * scale, nil
 }

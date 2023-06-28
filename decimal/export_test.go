@@ -4,7 +4,7 @@ func EncodeStringToBCD(buf string) ([]byte, error) {
 	return encodeStringToBCD(buf)
 }
 
-func DecodeStringFromBCD(bcdBuf []byte) (string, error) {
+func DecodeStringFromBCD(bcdBuf []byte) (string, int, error) {
 	return decodeStringFromBCD(bcdBuf)
 }
 

@@ -10,10 +10,13 @@ import (
 	. "github.com/tarantool/go-tarantool/v2/decimal"
 )
 
-func strToDecimal(t *testing.T, buf string) decimal.Decimal {
+func strToDecimal(t *testing.T, buf string, exp int) decimal.Decimal {
 	decNum, err := decimal.NewFromString(buf)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if exp != 0 {
+		decNum = decNum.Shift(int32(exp))
 	}
 	return decNum
 }
@@ -33,13 +36,13 @@ func FuzzEncodeDecodeBCD(f *testing.F) {
 		if err != nil {
 			t.Skip("Only correct requests are interesting: %w", err)
 		}
-		var dec string
-		dec, err = DecodeStringFromBCD(bcdBuf)
+
+		dec, exp, err := DecodeStringFromBCD(bcdBuf)
 		if err != nil {
 			t.Fatalf("Failed to decode encoded value ('%s')", orig)
 		}
 
-		if !strToDecimal(t, dec).Equal(strToDecimal(t, orig)) {
+		if !strToDecimal(t, dec, exp).Equal(strToDecimal(t, orig, 0)) {
 			t.Fatal("Decimal numbers are not equal")
 		}
 	})
