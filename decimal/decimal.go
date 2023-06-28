@@ -86,15 +86,19 @@ func (decNum *Decimal) UnmarshalMsgpack(b []byte) error {
 	//  +--------+-------------------+------------+===============+
 	//  | MP_EXT | length (optional) | MP_DECIMAL | PackedDecimal |
 	//  +--------+-------------------+------------+===============+
-	digits, err := decodeStringFromBCD(b)
+	digits, exp, err := decodeStringFromBCD(b)
 	if err != nil {
 		return fmt.Errorf("msgpack: can't decode string from BCD buffer (%x): %w", b, err)
 	}
+
 	dec, err := decimal.NewFromString(digits)
-	*decNum = *NewDecimal(dec)
 	if err != nil {
 		return fmt.Errorf("msgpack: can't encode string (%s) to a decimal number: %w", digits, err)
 	}
 
+	if exp != 0 {
+		dec = dec.Shift(int32(exp))
+	}
+	*decNum = *NewDecimal(dec)
 	return nil
 }
