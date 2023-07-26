@@ -143,8 +143,8 @@ jobs:
           - sdk-version: 'bundle-2.10.0-1-gfa775b383-r486-linux-x86_64'
             coveralls: false
             ssl: true
-          - sdk-path: 'dev/linux/x86_64/master/'
-            sdk-version: 'sdk-gc64-2.11.0-entrypoint-113-g803baaffe-r529.linux.x86_64'
+          - sdk-path: 'release/linux/x86_64/2.11/'
+            sdk-version: 'sdk-gc64-2.11.0-0-r577.linux.x86_64'
             coveralls: true
             ssl: true
 
