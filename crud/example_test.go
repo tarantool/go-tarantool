@@ -148,3 +148,41 @@ func ExampleResult_errorMany() {
 	// Output:
 	// Failed to execute request: CallError:
 }
+
+func ExampleSelectRequest_pagination() {
+	conn := exampleConnect()
+
+	const (
+		fromTuple = 5
+		allTuples = 10
+	)
+	var tuple interface{}
+	for i := 0; i < allTuples; i++ {
+		req := crud.MakeReplaceRequest(exampleSpace).
+			Tuple([]interface{}{uint(3000 + i), nil, "bla"})
+		ret := crud.Result{}
+		if err := conn.Do(req).GetTyped(&ret); err != nil {
+			fmt.Printf("Failed to initialize the example: %s\n", err)
+			return
+		}
+		if i == fromTuple {
+			tuple = ret.Rows.([]interface{})[0]
+		}
+	}
+
+	req := crud.MakeSelectRequest(exampleSpace).
+		Opts(crud.SelectOpts{
+			First: crud.MakeOptInt(2),
+			After: crud.MakeOptTuple(tuple),
+		})
+	ret := crud.Result{}
+	if err := conn.Do(req).GetTyped(&ret); err != nil {
+		fmt.Printf("Failed to execute request: %s", err)
+		return
+	}
+	fmt.Println(ret.Metadata)
+	fmt.Println(ret.Rows)
+	// Output:
+	// [{id unsigned false} {bucket_id unsigned true} {name string false}]
+	// [[3006 32 bla] [3007 33 bla]]
+}

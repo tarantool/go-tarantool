@@ -21,6 +21,8 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 - Flaky decimal/TestSelect (#300)
 - Race condition at roundRobinStrategy.GetNextConnection() (#309)
 - Incorrect decoding of an MP_DECIMAL when the `scale` value is negative (#314)
+- Incorrect options (`after`, `batch_size` and `force_map_call`) setup for
+  crud.SelectRequest (#320)
 
 ## [1.12.0] - 2023-06-07
 
