@@ -63,9 +63,9 @@ func (opts SelectOpts) EncodeMsgpack(enc *msgpack.Encoder) error {
 	values[6], exists[6] = opts.Balance.Get()
 	values[7], exists[7] = opts.First.Get()
 	values[8], exists[8] = opts.After.Get()
-	values[8], exists[8] = opts.BatchSize.Get()
-	values[8], exists[8] = opts.ForceMapCall.Get()
-	values[8], exists[8] = opts.Fullscan.Get()
+	values[9], exists[9] = opts.BatchSize.Get()
+	values[10], exists[10] = opts.ForceMapCall.Get()
+	values[11], exists[11] = opts.Fullscan.Get()
 
 	return encodeOptions(enc, names[:], values[:], exists[:])
 }
