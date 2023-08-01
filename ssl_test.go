@@ -94,7 +94,7 @@ func createClientServerSslOk(t testing.TB, serverOpts,
 	return l, c, msgs, errs
 }
 
-func serverTnt(serverOpts, clientOpts SslOpts, auth Auth) (test_helpers.TarantoolInstance, error) {
+func serverTnt(serverOpts SslOpts, auth Auth) (test_helpers.TarantoolInstance, error) {
 	listen := tntHost + "?transport=ssl&"
 
 	key := serverOpts.KeyFile
@@ -126,7 +126,7 @@ func serverTnt(serverOpts, clientOpts SslOpts, auth Auth) (test_helpers.Tarantoo
 		SslCertsDir:     "testdata",
 		ClientServer:    tntHost,
 		ClientTransport: "ssl",
-		ClientSsl:       clientOpts,
+		ClientSsl:       serverOpts,
 		User:            "test",
 		Pass:            "test",
 		WaitStart:       100 * time.Millisecond,
@@ -137,6 +137,23 @@ func serverTnt(serverOpts, clientOpts SslOpts, auth Auth) (test_helpers.Tarantoo
 
 func serverTntStop(inst test_helpers.TarantoolInstance) {
 	test_helpers.StopTarantoolWithCleanup(inst)
+}
+
+func checkTntConn(clientOpts SslOpts) error {
+	conn, err := Connect(tntHost, Opts{
+		Auth:       AutoAuth,
+		Timeout:    500 * time.Millisecond,
+		User:       "test",
+		Pass:       "test",
+		SkipSchema: true,
+		Transport:  "ssl",
+		Ssl:        clientOpts,
+	})
+	if err != nil {
+		return err
+	}
+	conn.Close()
+	return nil
 }
 
 func assertConnectionSslFail(t testing.TB, serverOpts, clientOpts SslOpts) {
@@ -171,9 +188,13 @@ func assertConnectionSslOk(t testing.TB, serverOpts, clientOpts SslOpts) {
 func assertConnectionTntFail(t testing.TB, serverOpts, clientOpts SslOpts) {
 	t.Helper()
 
-	inst, err := serverTnt(serverOpts, clientOpts, AutoAuth)
-	serverTntStop(inst)
+	inst, err := serverTnt(serverOpts, AutoAuth)
+	defer serverTntStop(inst)
+	if err != nil {
+		t.Fatalf("An unexpected server error %q", err.Error())
+	}
 
+	err = checkTntConn(clientOpts)
 	if err == nil {
 		t.Errorf("An unexpected connection to the server")
 	}
@@ -182,11 +203,15 @@ func assertConnectionTntFail(t testing.TB, serverOpts, clientOpts SslOpts) {
 func assertConnectionTntOk(t testing.TB, serverOpts, clientOpts SslOpts) {
 	t.Helper()
 
-	inst, err := serverTnt(serverOpts, clientOpts, AutoAuth)
-	serverTntStop(inst)
-
+	inst, err := serverTnt(serverOpts, AutoAuth)
+	defer serverTntStop(inst)
 	if err != nil {
-		t.Errorf("An unexpected server error %q", err.Error())
+		t.Fatalf("An unexpected server error %q", err.Error())
+	}
+
+	err = checkTntConn(clientOpts)
+	if err != nil {
+		t.Errorf("An unexpected connection error %q", err.Error())
 	}
 }
 
@@ -470,10 +495,11 @@ func TestOpts_PapSha256Auth(t *testing.T) {
 		KeyFile:  "testdata/localhost.key",
 		CertFile: "testdata/localhost.crt",
 	}
-	inst, err := serverTnt(sslOpts, sslOpts, PapSha256Auth)
+
+	inst, err := serverTnt(sslOpts, PapSha256Auth)
 	defer serverTntStop(inst)
 	if err != nil {
-		t.Errorf("An unexpected server error: %s", err)
+		t.Fatalf("An unexpected server error %q", err.Error())
 	}
 
 	clientOpts := opts
