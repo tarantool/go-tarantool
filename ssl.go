@@ -4,9 +4,12 @@
 package tarantool
 
 import (
+	"bufio"
 	"errors"
 	"io/ioutil"
 	"net"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/tarantool/go-openssl"
@@ -43,7 +46,7 @@ func sslCreateContext(opts SslOpts) (ctx interface{}, err error) {
 	}
 
 	if opts.KeyFile != "" {
-		if err = sslLoadKey(sslCtx, opts.KeyFile); err != nil {
+		if err = sslLoadKey(sslCtx, opts.KeyFile, opts.Password, opts.PasswordFile); err != nil {
 			return
 		}
 	}
@@ -95,16 +98,47 @@ func sslLoadCert(ctx *openssl.Ctx, certFile string) (err error) {
 	return
 }
 
-func sslLoadKey(ctx *openssl.Ctx, keyFile string) (err error) {
+func sslLoadKey(ctx *openssl.Ctx, keyFile string, password string,
+	passwordFile string) error {
 	var keyBytes []byte
+	var err, firstDecryptErr error
+
 	if keyBytes, err = ioutil.ReadFile(keyFile); err != nil {
-		return
+		return err
 	}
 
-	var key openssl.PrivateKey
-	if key, err = openssl.LoadPrivateKeyFromPEM(keyBytes); err != nil {
-		return
+	// If the key is encrypted and password is not provided,
+	// openssl.LoadPrivateKeyFromPEM(keyBytes) asks to enter PEM pass phrase
+	// interactively. On the other hand,
+	// openssl.LoadPrivateKeyFromPEMWithPassword(keyBytes, password) works fine
+	// for non-encrypted key with any password, including empty string. If
+	// the key is encrypted, we fast fail with password error instead of
+	// requesting the pass phrase interactively.
+	passwords := []string{password}
+	if passwordFile != "" {
+		file, err := os.Open(passwordFile)
+		if err == nil {
+			defer file.Close()
+
+			scanner := bufio.NewScanner(file)
+			// Tarantool itself tries each password file line.
+			for scanner.Scan() {
+				password = strings.TrimSpace(scanner.Text())
+				passwords = append(passwords, password)
+			}
+		} else {
+			firstDecryptErr = err
+		}
 	}
 
-	return ctx.UsePrivateKey(key)
+	for _, password := range passwords {
+		key, err := openssl.LoadPrivateKeyFromPEMWithPassword(keyBytes, password)
+		if err == nil {
+			return ctx.UsePrivateKey(key)
+		} else if firstDecryptErr == nil {
+			firstDecryptErr = err
+		}
+	}
+
+	return firstDecryptErr
 }
