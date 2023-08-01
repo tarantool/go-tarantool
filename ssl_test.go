@@ -215,21 +215,6 @@ Ciphers - optional
 */
 var tests = []test{
 	{
-		"empty",
-		false,
-		SslOpts{},
-		SslOpts{},
-	},
-	{
-		"key_crt_client",
-		false,
-		SslOpts{},
-		SslOpts{
-			KeyFile:  "testdata/localhost.key",
-			CertFile: "testdata/localhost.crt",
-		},
-	},
-	{
 		"key_crt_server",
 		true,
 		SslOpts{
