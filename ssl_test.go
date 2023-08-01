@@ -117,6 +117,16 @@ func serverTnt(serverOpts SslOpts, auth Auth) (test_helpers.TarantoolInstance, e
 		listen += fmt.Sprintf("ssl_ciphers=%s&", ciphers)
 	}
 
+	password := serverOpts.Password
+	if password != "" {
+		listen += fmt.Sprintf("ssl_password=%s&", password)
+	}
+
+	passwordFile := serverOpts.PasswordFile
+	if passwordFile != "" {
+		listen += fmt.Sprintf("ssl_password_file=%s&", passwordFile)
+	}
+
 	listen = listen[:len(listen)-1]
 
 	return test_helpers.StartTarantool(test_helpers.StartOpts{
@@ -439,6 +449,164 @@ var tests = []test{
 			CertFile: "testdata/localhost.crt",
 			CaFile:   "testdata/ca.crt",
 			Ciphers:  "TLS_AES_128_GCM_SHA256",
+		},
+	},
+	{
+		"pass_key_encrypt_client",
+		true,
+		SslOpts{
+			KeyFile:  "testdata/localhost.key",
+			CertFile: "testdata/localhost.crt",
+			CaFile:   "testdata/ca.crt",
+		},
+		SslOpts{
+			KeyFile:  "testdata/localhost.enc.key",
+			CertFile: "testdata/localhost.crt",
+			Password: "mysslpassword",
+		},
+	},
+	{
+		"passfile_key_encrypt_client",
+		true,
+		SslOpts{
+			KeyFile:  "testdata/localhost.key",
+			CertFile: "testdata/localhost.crt",
+			CaFile:   "testdata/ca.crt",
+		},
+		SslOpts{
+			KeyFile:      "testdata/localhost.enc.key",
+			CertFile:     "testdata/localhost.crt",
+			PasswordFile: "testdata/passwords",
+		},
+	},
+	{
+		"pass_and_passfile_key_encrypt_client",
+		true,
+		SslOpts{
+			KeyFile:  "testdata/localhost.key",
+			CertFile: "testdata/localhost.crt",
+			CaFile:   "testdata/ca.crt",
+		},
+		SslOpts{
+			KeyFile:      "testdata/localhost.enc.key",
+			CertFile:     "testdata/localhost.crt",
+			Password:     "mysslpassword",
+			PasswordFile: "testdata/passwords",
+		},
+	},
+	{
+		"inv_pass_and_passfile_key_encrypt_client",
+		true,
+		SslOpts{
+			KeyFile:  "testdata/localhost.key",
+			CertFile: "testdata/localhost.crt",
+			CaFile:   "testdata/ca.crt",
+		},
+		SslOpts{
+			KeyFile:      "testdata/localhost.enc.key",
+			CertFile:     "testdata/localhost.crt",
+			Password:     "invalidpassword",
+			PasswordFile: "testdata/passwords",
+		},
+	},
+	{
+		"pass_and_inv_passfile_key_encrypt_client",
+		true,
+		SslOpts{
+			KeyFile:  "testdata/localhost.key",
+			CertFile: "testdata/localhost.crt",
+			CaFile:   "testdata/ca.crt",
+		},
+		SslOpts{
+			KeyFile:      "testdata/localhost.enc.key",
+			CertFile:     "testdata/localhost.crt",
+			Password:     "mysslpassword",
+			PasswordFile: "testdata/invalidpasswords",
+		},
+	},
+	{
+		"pass_and_not_existing_passfile_key_encrypt_client",
+		true,
+		SslOpts{
+			KeyFile:  "testdata/localhost.key",
+			CertFile: "testdata/localhost.crt",
+			CaFile:   "testdata/ca.crt",
+		},
+		SslOpts{
+			KeyFile:      "testdata/localhost.enc.key",
+			CertFile:     "testdata/localhost.crt",
+			Password:     "mysslpassword",
+			PasswordFile: "testdata/notafile",
+		},
+	},
+	{
+		"inv_pass_and_inv_passfile_key_encrypt_client",
+		false,
+		SslOpts{
+			KeyFile:  "testdata/localhost.key",
+			CertFile: "testdata/localhost.crt",
+			CaFile:   "testdata/ca.crt",
+		},
+		SslOpts{
+			KeyFile:      "testdata/localhost.enc.key",
+			CertFile:     "testdata/localhost.crt",
+			Password:     "invalidpassword",
+			PasswordFile: "testdata/invalidpasswords",
+		},
+	},
+	{
+		"not_existing_passfile_key_encrypt_client",
+		false,
+		SslOpts{
+			KeyFile:  "testdata/localhost.key",
+			CertFile: "testdata/localhost.crt",
+			CaFile:   "testdata/ca.crt",
+		},
+		SslOpts{
+			KeyFile:      "testdata/localhost.enc.key",
+			CertFile:     "testdata/localhost.crt",
+			PasswordFile: "testdata/notafile",
+		},
+	},
+	{
+		"no_pass_key_encrypt_client",
+		false,
+		SslOpts{
+			KeyFile:  "testdata/localhost.key",
+			CertFile: "testdata/localhost.crt",
+			CaFile:   "testdata/ca.crt",
+		},
+		SslOpts{
+			KeyFile:  "testdata/localhost.enc.key",
+			CertFile: "testdata/localhost.crt",
+		},
+	},
+	{
+		"pass_key_non_encrypt_client",
+		true,
+		SslOpts{
+			KeyFile:  "testdata/localhost.key",
+			CertFile: "testdata/localhost.crt",
+			CaFile:   "testdata/ca.crt",
+		},
+		SslOpts{
+			KeyFile:  "testdata/localhost.key",
+			CertFile: "testdata/localhost.crt",
+			Password: "invalidpassword",
+		},
+	},
+	{
+		"passfile_key_non_encrypt_client",
+		true,
+		SslOpts{
+			KeyFile:  "testdata/localhost.key",
+			CertFile: "testdata/localhost.crt",
+			CaFile:   "testdata/ca.crt",
+		},
+		SslOpts{
+			KeyFile:      "testdata/localhost.key",
+			CertFile:     "testdata/localhost.crt",
+			PasswordFile: "testdata/invalidpasswords",
 		},
 	},
 }

@@ -345,6 +345,14 @@ type SslOpts struct {
 	//
 	// * https://www.openssl.org/docs/man1.1.1/man1/ciphers.html
 	Ciphers string
+	// Password is a password for decrypting the private SSL key file.
+	// The priority is as follows: try to decrypt with Password, then
+	// try PasswordFile.
+	Password string
+	// PasswordFile is a path to the list of passwords for decrypting
+	// the private SSL key file. The connection tries every line from the
+	// file as a password.
+	PasswordFile string
 }
 
 // Clone returns a copy of the Opts object.
