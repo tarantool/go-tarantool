@@ -12,9 +12,19 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Changed
 
+### Fixed
+
+## [1.12.1] - 2023-08-03
+
+The patch release with fixes from the master branch.
+
+### Added
+
+### Changed
+
 - Change encoding of the queue.Identify() UUID argument from binary blob to
   plain string. Needed for upgrade to Tarantool 3.0, where a binary blob is
-  decoded to a varbinary object (#313).
+  decoded to a varbinary object (#313)
 
 ### Fixed
 
