@@ -16,6 +16,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 - More linters on CI (#310)
 - Meaningful description for read/write socket errors (#129)
 - Support password and password file to decrypt private SSL key file (#319)
+- Support `operation_data` in `crud.Error` (#330) 
 
 ### Changed
 

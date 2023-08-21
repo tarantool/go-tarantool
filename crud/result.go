@@ -137,20 +137,20 @@ func (r *Result) DecodeMsgpack(d *msgpack.Decoder) error {
 
 	var retErr error
 	if msgpackIsArray(code) {
-		var crudErr *ErrorMany
+		crudErr := newErrorMany(r.rowType)
 		if err := d.Decode(&crudErr); err != nil {
 			return err
 		}
-		if crudErr != nil {
-			retErr = *crudErr
+		retErr = *crudErr
+	} else if code != msgpcode.Nil {
+		crudErr := newError(r.rowType)
+		if err := d.Decode(&crudErr); err != nil {
+			return err
 		}
+		retErr = *crudErr
 	} else {
-		var crudErr *Error
-		if err := d.Decode(&crudErr); err != nil {
+		if err := d.DecodeNil(); err != nil {
 			return err
-		}
-		if crudErr != nil {
-			retErr = *crudErr
 		}
 	}
 

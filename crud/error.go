@@ -1,6 +1,7 @@
 package crud
 
 import (
+	"reflect"
 	"strings"
 
 	"github.com/vmihailenco/msgpack/v5"
@@ -21,6 +22,15 @@ type Error struct {
 	Stack string
 	// Str is the text of reason with error class.
 	Str string
+	// OperationData is the object/tuple with which an error occurred.
+	OperationData interface{}
+	// operationDataType contains the type of OperationData.
+	operationDataType reflect.Type
+}
+
+// newError creates an Error object with a custom operation data type to decoding.
+func newError(operationDataType reflect.Type) *Error {
+	return &Error{operationDataType: operationDataType}
 }
 
 // DecodeMsgpack provides custom msgpack decoder.
@@ -59,6 +69,18 @@ func (e *Error) DecodeMsgpack(d *msgpack.Decoder) error {
 			if e.Str, err = d.DecodeString(); err != nil {
 				return err
 			}
+		case "operation_data":
+			if e.operationDataType != nil {
+				tuple := reflect.New(e.operationDataType)
+				if err = d.DecodeValue(tuple); err != nil {
+					return err
+				}
+				e.OperationData = tuple.Elem().Interface()
+			} else {
+				if err = d.Decode(&e.OperationData); err != nil {
+					return err
+				}
+			}
 		default:
 			if err := d.Skip(); err != nil {
 				return err
@@ -77,6 +99,13 @@ func (e Error) Error() string {
 // ErrorMany describes CRUD error object for `_many` methods.
 type ErrorMany struct {
 	Errors []Error
+	// operationDataType contains the type of OperationData for each Error.
+	operationDataType reflect.Type
+}
+
+// newErrorMany creates an ErrorMany object with a custom operation data type to decoding.
+func newErrorMany(operationDataType reflect.Type) *ErrorMany {
+	return &ErrorMany{operationDataType: operationDataType}
 }
 
 // DecodeMsgpack provides custom msgpack decoder.
@@ -88,16 +117,15 @@ func (e *ErrorMany) DecodeMsgpack(d *msgpack.Decoder) error {
 
 	var errs []Error
 	for i := 0; i < l; i++ {
-		var crudErr *Error = nil
+		crudErr := newError(e.operationDataType)
 		if err := d.Decode(&crudErr); err != nil {
 			return err
-		} else if crudErr != nil {
-			errs = append(errs, *crudErr)
 		}
+		errs = append(errs, *crudErr)
 	}
 
 	if len(errs) > 0 {
-		*e = ErrorMany{Errors: errs}
+		e.Errors = errs
 	}
 
 	return nil
