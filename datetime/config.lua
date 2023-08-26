@@ -13,6 +13,14 @@ box.cfg{
 box.schema.user.create('test', { password = 'test' , if_not_exists = true })
 box.schema.user.grant('test', 'execute', 'universe', nil, { if_not_exists = true })
 
+function get_datetime_no_offset()
+    return datetime.new({ year = 2023, month = 9, day = 2, tzoffset = 0 })
+end
+
+function get_datetime_offset()
+    return datetime.new({ year = 2023, month = 9, day = 2, tzoffset = 240 })
+end
+
 box.once("init", function()
     local s_1 = box.schema.space.create('testDatetime_1', {
         id = 524,

@@ -287,3 +287,34 @@ func ExampleInterval_Sub() {
 	// Output:
 	// {-9 2 3 0 0 -30 10 0 1}
 }
+
+func Example_wrongDatetime() {
+	opts := tarantool.Opts{
+		User: "test",
+		Pass: "test",
+	}
+	conn, err := tarantool.Connect("127.0.0.1:3013", opts)
+	if err != nil {
+		fmt.Printf("Error in connect is %v", err)
+		return
+	}
+	var res [][]Datetime
+	req := tarantool.NewCallRequest("get_datetime_no_offset")
+	if err := conn.Do(req).GetTyped(&res); err != nil {
+		fmt.Printf("can't do request: %v", err)
+		return
+	}
+	fmt.Println(res[0][0].ToTime())
+
+	var res2 [][]Datetime
+	req = tarantool.NewCallRequest("get_datetime_offset")
+	if err := conn.Do(req).GetTyped(&res2); err != nil {
+		fmt.Printf("can't do request: %v", err)
+		return
+	}
+
+	fmt.Println(res2[0][0].ToTime())
+	// Output:
+	// 2023-09-02 00:00:00 +0000 +0000
+	// 2023-09-02 00:00:00 +0400 +0400
+}
