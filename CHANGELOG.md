@@ -28,6 +28,13 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
   decoded to a varbinary object (#313).
 - Use objects of the Decimal type instead of pointers (#238)
 - Use objects of the Datetime type instead of pointers (#238)
+- `connection.Connect` no longer return non-working 
+  connection objects (#136). This function now does not attempt to reconnect 
+  and tries to establish a connection only once. Function might be canceled 
+  via context. Context accepted as first argument.
+  `pool.Connect` and `pool.Add` now accept context as first argument, which 
+  user may cancel in process. If `pool.Connect` is canceled in progress, an 
+  error will be returned. All created connections will be closed.
 
 ### Deprecated
 

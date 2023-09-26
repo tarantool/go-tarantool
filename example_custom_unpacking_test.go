@@ -1,6 +1,7 @@
 package tarantool_test
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"time"
@@ -78,13 +79,13 @@ func Example_customUnpacking() {
 	// Establish a connection.
 	server := "127.0.0.1:3013"
 	opts := tarantool.Opts{
-		Timeout:       500 * time.Millisecond,
-		Reconnect:     1 * time.Second,
-		MaxReconnects: 3,
-		User:          "test",
-		Pass:          "test",
+		Timeout: 500 * time.Millisecond,
+		User:    "test",
+		Pass:    "test",
 	}
-	conn, err := tarantool.Connect(server, opts)
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	conn, err := tarantool.Connect(ctx, server, opts)
+	cancel()
 	if err != nil {
 		log.Fatalf("Failed to connect: %s", err.Error())
 	}

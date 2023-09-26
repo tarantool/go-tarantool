@@ -105,13 +105,19 @@ about what it does.
 package tarantool
 
 import (
+	"context"
 	"fmt"
+	"time"
+	
 	"github.com/tarantool/go-tarantool/v2"
 )
 
 func main() {
 	opts := tarantool.Opts{User: "guest"}
-	conn, err := tarantool.Connect("127.0.0.1:3301", opts)
+	ctx, cancel := context.WithTimeout(context.Background(), 
+		500 * time.Millisecond)
+	defer cancel()
+	conn, err := tarantool.Connect(ctx, "127.0.0.1:3301", opts)
 	if err != nil {
 		fmt.Println("Connection refused:", err)
 	}
@@ -134,10 +140,16 @@ username. The structure may also contain other settings, see more in
 [documentation][godoc-opts-url] for the "`Opts`" structure.
 
 **Observation 3:** The line containing "`tarantool.Connect`" is essential for
-starting a session. There are two parameters:
+starting a session. There are three parameters:
 
-* a string with `host:port` format, and
+* a context,
+* a string with `host:port` format,
 * the option structure that was set up earlier.
+
+There will be only one attempt to connect. If multiple attempts needed, 
+"`tarantool.Connect`" could be placed inside the loop with some timeout 
+between each try. Example could be found in the [example_test](./example_test.go), 
+name - `ExampleConnect_reconnects`.
 
 **Observation 4:** The `err` structure will be `nil` if there is no error,
 otherwise it will have a description which can be retrieved with `err.Error()`.
@@ -167,10 +179,13 @@ The subpackage has been deleted. You could use `pool` instead.
 
 #### pool package
 
-The logic has not changed, but there are a few renames:
-
 * The `connection_pool` subpackage has been renamed to `pool`.
 * The type `PoolOpts` has been renamed to `Opts`.
+* `pool.Connect` now accepts context as first argument, which user may cancel 
+  in process. If it is canceled in progress, an error will be returned. 
+  All created connections will be closed.
+* `pool.Add` now accepts context as first argument, which user may cancel in 
+  process.
 
 #### msgpack.v5
 
@@ -211,6 +226,13 @@ IPROTO constants have been moved to a separate package [go-iproto](https://githu
 #### Request interface
 
 * The method `Code() uint32` replaced by the `Type() iproto.Type`.
+
+#### Connect function
+
+`connection.Connect` no longer return non-working connection objects. This function 
+now does not attempt to reconnect and tries to establish a connection only once.
+Function might be canceled via context. Context accepted as first argument, 
+and user may cancel it in process.
 
 ## Contributing
 

@@ -108,7 +108,9 @@ var object = crud.MapObject{
 
 func connect(t testing.TB) *tarantool.Connection {
 	for i := 0; i < 10; i++ {
-		conn, err := tarantool.Connect(server, opts)
+		ctx, cancel := test_helpers.GetConnectContext()
+		conn, err := tarantool.Connect(ctx, server, opts)
+		cancel()
 		if err != nil {
 			t.Fatalf("Failed to connect: %s", err)
 		}

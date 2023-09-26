@@ -1,6 +1,7 @@
 package pool_test
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -46,17 +47,23 @@ var defaultTimeoutRetry = 500 * time.Millisecond
 var instances []test_helpers.TarantoolInstance
 
 func TestConnError_IncorrectParams(t *testing.T) {
-	connPool, err := pool.Connect([]string{}, tarantool.Opts{})
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	connPool, err := pool.Connect(ctx, []string{}, tarantool.Opts{})
+	cancel()
 	require.Nilf(t, connPool, "conn is not nil with incorrect param")
 	require.NotNilf(t, err, "err is nil with incorrect params")
 	require.Equal(t, "addrs (first argument) should not be empty", err.Error())
 
-	connPool, err = pool.Connect([]string{"err1", "err2"}, connOpts)
+	ctx, cancel = test_helpers.GetPoolConnectContext()
+	connPool, err = pool.Connect(ctx, []string{"err1", "err2"}, connOpts)
+	cancel()
 	require.Nilf(t, connPool, "conn is not nil with incorrect param")
 	require.NotNilf(t, err, "err is nil with incorrect params")
 	require.Equal(t, "no active connections", err.Error())
 
-	connPool, err = pool.ConnectWithOpts(servers, tarantool.Opts{}, pool.Opts{})
+	ctx, cancel = test_helpers.GetPoolConnectContext()
+	connPool, err = pool.ConnectWithOpts(ctx, servers, tarantool.Opts{}, pool.Opts{})
+	cancel()
 	require.Nilf(t, connPool, "conn is not nil with incorrect param")
 	require.NotNilf(t, err, "err is nil with incorrect params")
 	require.Equal(t, "wrong check timeout, must be greater than 0", err.Error())
@@ -64,7 +71,9 @@ func TestConnError_IncorrectParams(t *testing.T) {
 
 func TestConnSuccessfully(t *testing.T) {
 	server := servers[0]
-	connPool, err := pool.Connect([]string{"err", server}, connOpts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx, []string{"err", server}, connOpts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -84,9 +93,77 @@ func TestConnSuccessfully(t *testing.T) {
 	require.Nil(t, err)
 }
 
+func TestConnErrorAfterCtxCancel(t *testing.T) {
+	var connLongReconnectOpts = tarantool.Opts{
+		Timeout:       5 * time.Second,
+		User:          "test",
+		Pass:          "test",
+		Reconnect:     time.Second,
+		MaxReconnects: 100,
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	var connPool *pool.ConnectionPool
+	var err error
+
+	cancel()
+	connPool, err = pool.Connect(ctx, servers, connLongReconnectOpts)
+
+	if connPool != nil || err == nil {
+		t.Fatalf("ConnectionPool was created after cancel")
+	}
+	if !strings.Contains(err.Error(), "operation was canceled") {
+		t.Fatalf("Unexpected error, expected to contain %s, got %v",
+			"operation was canceled", err)
+	}
+}
+
+type mockClosingDialer struct {
+	cnt       int
+	ctx       context.Context
+	ctxCancel context.CancelFunc
+}
+
+func (m *mockClosingDialer) Dial(ctx context.Context, address string,
+	opts tarantool.DialOpts) (tarantool.Conn, error) {
+
+	dialer := tarantool.TtDialer{}
+	conn, err := dialer.Dial(m.ctx, address, tarantool.DialOpts{
+		User:     "test",
+		Password: "test",
+	})
+
+	if m.cnt == 0 {
+		m.ctxCancel()
+	}
+	m.cnt++
+
+	return conn, err
+}
+
+func TestContextCancelInProgress(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	dialer := &mockClosingDialer{0, ctx, cancel}
+
+	connPool, err := pool.Connect(ctx, servers, tarantool.Opts{
+		Dialer: dialer,
+	})
+	require.NotNilf(t, err, "expected err after ctx cancel")
+	assert.Truef(t, strings.Contains(err.Error(), "operation was canceled"),
+		fmt.Sprintf("unexpected error, expected to contain %s, got %v",
+			"operation was canceled", err))
+	require.Nilf(t, connPool, "conn is not nil after ctx cancel")
+}
+
 func TestConnSuccessfullyDuplicates(t *testing.T) {
 	server := servers[0]
-	connPool, err := pool.Connect([]string{server, server, server, server}, connOpts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx, []string{server, server, server, server},
+		connOpts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -112,7 +189,9 @@ func TestConnSuccessfullyDuplicates(t *testing.T) {
 func TestReconnect(t *testing.T) {
 	server := servers[0]
 
-	connPool, err := pool.Connect(servers, connOpts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx, servers, connOpts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -158,7 +237,9 @@ func TestDisconnect_withReconnect(t *testing.T) {
 	opts := connOpts
 	opts.Reconnect = 10 * time.Second
 
-	connPool, err := pool.Connect([]string{servers[serverId]}, opts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx, []string{servers[serverId]}, opts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -202,7 +283,9 @@ func TestDisconnectAll(t *testing.T) {
 	server1 := servers[0]
 	server2 := servers[1]
 
-	connPool, err := pool.Connect([]string{server1, server2}, connOpts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx, []string{server1, server2}, connOpts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -249,14 +332,18 @@ func TestDisconnectAll(t *testing.T) {
 }
 
 func TestAdd(t *testing.T) {
-	connPool, err := pool.Connect([]string{servers[0]}, connOpts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx, []string{servers[0]}, connOpts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
 	defer connPool.Close()
 
 	for _, server := range servers[1:] {
-		err = connPool.Add(server)
+		ctx, cancel := test_helpers.GetConnectContext()
+		err = connPool.Add(ctx, server)
+		cancel()
 		require.Nil(t, err)
 	}
 
@@ -280,13 +367,17 @@ func TestAdd(t *testing.T) {
 }
 
 func TestAdd_exist(t *testing.T) {
-	connPool, err := pool.Connect([]string{servers[0]}, connOpts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	connPool, err := pool.Connect(ctx, []string{servers[0]}, connOpts)
+	cancel()
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
 	defer connPool.Close()
 
-	err = connPool.Add(servers[0])
+	ctx, cancel = test_helpers.GetConnectContext()
+	err = connPool.Add(ctx, servers[0])
+	cancel()
 	require.Equal(t, pool.ErrExists, err)
 
 	args := test_helpers.CheckStatusesArgs{
@@ -305,13 +396,17 @@ func TestAdd_exist(t *testing.T) {
 }
 
 func TestAdd_unreachable(t *testing.T) {
-	connPool, err := pool.Connect([]string{servers[0]}, connOpts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	connPool, err := pool.Connect(ctx, []string{servers[0]}, connOpts)
+	cancel()
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
 	defer connPool.Close()
 
-	err = connPool.Add("127.0.0.2:6667")
+	ctx, cancel = test_helpers.GetConnectContext()
+	err = connPool.Add(ctx, "127.0.0.2:6667")
+	cancel()
 	// The OS-dependent error so we just check for existence.
 	require.NotNil(t, err)
 
@@ -331,17 +426,23 @@ func TestAdd_unreachable(t *testing.T) {
 }
 
 func TestAdd_afterClose(t *testing.T) {
-	connPool, err := pool.Connect([]string{servers[0]}, connOpts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	connPool, err := pool.Connect(ctx, []string{servers[0]}, connOpts)
+	cancel()
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
 	connPool.Close()
-	err = connPool.Add(servers[0])
+	ctx, cancel = test_helpers.GetConnectContext()
+	err = connPool.Add(ctx, servers[0])
+	cancel()
 	assert.Equal(t, err, pool.ErrClosed)
 }
 
 func TestAdd_Close_concurrent(t *testing.T) {
-	connPool, err := pool.Connect([]string{servers[0]}, connOpts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	connPool, err := pool.Connect(ctx, []string{servers[0]}, connOpts)
+	cancel()
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -350,7 +451,9 @@ func TestAdd_Close_concurrent(t *testing.T) {
 	go func() {
 		defer wg.Done()
 
-		err = connPool.Add(servers[1])
+		ctx, cancel := test_helpers.GetConnectContext()
+		err = connPool.Add(ctx, servers[1])
+		cancel()
 		if err != nil {
 			assert.Equal(t, pool.ErrClosed, err)
 		}
@@ -362,7 +465,9 @@ func TestAdd_Close_concurrent(t *testing.T) {
 }
 
 func TestAdd_CloseGraceful_concurrent(t *testing.T) {
-	connPool, err := pool.Connect([]string{servers[0]}, connOpts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	connPool, err := pool.Connect(ctx, []string{servers[0]}, connOpts)
+	cancel()
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -371,7 +476,9 @@ func TestAdd_CloseGraceful_concurrent(t *testing.T) {
 	go func() {
 		defer wg.Done()
 
-		err = connPool.Add(servers[1])
+		ctx, cancel := test_helpers.GetConnectContext()
+		err = connPool.Add(ctx, servers[1])
+		cancel()
 		if err != nil {
 			assert.Equal(t, pool.ErrClosed, err)
 		}
@@ -383,7 +490,9 @@ func TestAdd_CloseGraceful_concurrent(t *testing.T) {
 }
 
 func TestRemove(t *testing.T) {
-	connPool, err := pool.Connect(servers, connOpts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx, servers, connOpts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -410,7 +519,9 @@ func TestRemove(t *testing.T) {
 }
 
 func TestRemove_double(t *testing.T) {
-	connPool, err := pool.Connect([]string{servers[0], servers[1]}, connOpts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx, []string{servers[0], servers[1]}, connOpts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -437,7 +548,9 @@ func TestRemove_double(t *testing.T) {
 }
 
 func TestRemove_unknown(t *testing.T) {
-	connPool, err := pool.Connect([]string{servers[0], servers[1]}, connOpts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx, []string{servers[0], servers[1]}, connOpts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -463,7 +576,9 @@ func TestRemove_unknown(t *testing.T) {
 }
 
 func TestRemove_concurrent(t *testing.T) {
-	connPool, err := pool.Connect([]string{servers[0], servers[1]}, connOpts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx, []string{servers[0], servers[1]}, connOpts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -510,7 +625,9 @@ func TestRemove_concurrent(t *testing.T) {
 }
 
 func TestRemove_Close_concurrent(t *testing.T) {
-	connPool, err := pool.Connect([]string{servers[0], servers[1]}, connOpts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx, []string{servers[0], servers[1]}, connOpts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -529,7 +646,9 @@ func TestRemove_Close_concurrent(t *testing.T) {
 }
 
 func TestRemove_CloseGraceful_concurrent(t *testing.T) {
-	connPool, err := pool.Connect([]string{servers[0], servers[1]}, connOpts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx, []string{servers[0], servers[1]}, connOpts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -551,7 +670,9 @@ func TestClose(t *testing.T) {
 	server1 := servers[0]
 	server2 := servers[1]
 
-	connPool, err := pool.Connect([]string{server1, server2}, connOpts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx, []string{server1, server2}, connOpts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -591,7 +712,9 @@ func TestCloseGraceful(t *testing.T) {
 	server1 := servers[0]
 	server2 := servers[1]
 
-	connPool, err := pool.Connect([]string{server1, server2}, connOpts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx, []string{server1, server2}, connOpts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -730,7 +853,9 @@ func TestConnectionHandlerOpenUpdateClose(t *testing.T) {
 		CheckTimeout:      100 * time.Microsecond,
 		ConnectionHandler: h,
 	}
-	connPool, err := pool.ConnectWithOpts(poolServers, connOpts, poolOpts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.ConnectWithOpts(ctx, poolServers, connOpts, poolOpts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -804,7 +929,9 @@ func TestConnectionHandlerOpenError(t *testing.T) {
 		CheckTimeout:      100 * time.Microsecond,
 		ConnectionHandler: h,
 	}
-	connPool, err := pool.ConnectWithOpts(poolServers, connOpts, poolOpts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.ConnectWithOpts(ctx, poolServers, connOpts, poolOpts)
 	if err == nil {
 		defer connPool.Close()
 	}
@@ -846,7 +973,9 @@ func TestConnectionHandlerUpdateError(t *testing.T) {
 		CheckTimeout:      100 * time.Microsecond,
 		ConnectionHandler: h,
 	}
-	connPool, err := pool.ConnectWithOpts(poolServers, connOpts, poolOpts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.ConnectWithOpts(ctx, poolServers, connOpts, poolOpts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 	defer connPool.Close()
@@ -891,7 +1020,9 @@ func TestRequestOnClosed(t *testing.T) {
 	server1 := servers[0]
 	server2 := servers[1]
 
-	connPool, err := pool.Connect([]string{server1, server2}, connOpts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx, []string{server1, server2}, connOpts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -930,7 +1061,9 @@ func TestGetPoolInfo(t *testing.T) {
 
 	srvs := []string{server1, server2}
 	expected := []string{server1, server2}
-	connPool, err := pool.Connect(srvs, connOpts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx, srvs, connOpts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -948,7 +1081,9 @@ func TestCall(t *testing.T) {
 	err := test_helpers.SetClusterRO(servers, connOpts, roles)
 	require.Nilf(t, err, "fail to set roles for cluster")
 
-	connPool, err := pool.Connect(servers, connOpts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx, servers, connOpts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -1005,7 +1140,9 @@ func TestCall16(t *testing.T) {
 	err := test_helpers.SetClusterRO(servers, connOpts, roles)
 	require.Nilf(t, err, "fail to set roles for cluster")
 
-	connPool, err := pool.Connect(servers, connOpts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx, servers, connOpts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -1062,7 +1199,9 @@ func TestCall17(t *testing.T) {
 	err := test_helpers.SetClusterRO(servers, connOpts, roles)
 	require.Nilf(t, err, "fail to set roles for cluster")
 
-	connPool, err := pool.Connect(servers, connOpts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx, servers, connOpts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -1119,7 +1258,9 @@ func TestEval(t *testing.T) {
 	err := test_helpers.SetClusterRO(servers, connOpts, roles)
 	require.Nilf(t, err, "fail to set roles for cluster")
 
-	connPool, err := pool.Connect(servers, connOpts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx, servers, connOpts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -1197,7 +1338,9 @@ func TestExecute(t *testing.T) {
 	err := test_helpers.SetClusterRO(servers, connOpts, roles)
 	require.Nilf(t, err, "fail to set roles for cluster")
 
-	connPool, err := pool.Connect(servers, connOpts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx, servers, connOpts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -1254,7 +1397,9 @@ func TestRoundRobinStrategy(t *testing.T) {
 	err := test_helpers.SetClusterRO(servers, connOpts, roles)
 	require.Nilf(t, err, "fail to set roles for cluster")
 
-	connPool, err := pool.Connect(servers, connOpts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx, servers, connOpts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -1331,7 +1476,9 @@ func TestRoundRobinStrategy_NoReplica(t *testing.T) {
 	err := test_helpers.SetClusterRO(servers, connOpts, roles)
 	require.Nilf(t, err, "fail to set roles for cluster")
 
-	connPool, err := pool.Connect(servers, connOpts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx, servers, connOpts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -1402,7 +1549,9 @@ func TestRoundRobinStrategy_NoMaster(t *testing.T) {
 	err := test_helpers.SetClusterRO(servers, connOpts, roles)
 	require.Nilf(t, err, "fail to set roles for cluster")
 
-	connPool, err := pool.Connect(servers, connOpts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx, servers, connOpts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -1485,7 +1634,9 @@ func TestUpdateInstancesRoles(t *testing.T) {
 	err := test_helpers.SetClusterRO(servers, connOpts, roles)
 	require.Nilf(t, err, "fail to set roles for cluster")
 
-	connPool, err := pool.Connect(servers, connOpts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx, servers, connOpts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -1629,7 +1780,9 @@ func TestInsert(t *testing.T) {
 	err := test_helpers.SetClusterRO(servers, connOpts, roles)
 	require.Nilf(t, err, "fail to set roles for cluster")
 
-	connPool, err := pool.Connect(servers, connOpts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx, servers, connOpts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -1728,7 +1881,9 @@ func TestDelete(t *testing.T) {
 	err := test_helpers.SetClusterRO(servers, connOpts, roles)
 	require.Nilf(t, err, "fail to set roles for cluster")
 
-	connPool, err := pool.Connect(servers, connOpts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx, servers, connOpts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -1792,7 +1947,9 @@ func TestUpsert(t *testing.T) {
 	err := test_helpers.SetClusterRO(servers, connOpts, roles)
 	require.Nilf(t, err, "fail to set roles for cluster")
 
-	connPool, err := pool.Connect(servers, connOpts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx, servers, connOpts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -1864,7 +2021,9 @@ func TestUpdate(t *testing.T) {
 	err := test_helpers.SetClusterRO(servers, connOpts, roles)
 	require.Nilf(t, err, "fail to set roles for cluster")
 
-	connPool, err := pool.Connect(servers, connOpts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx, servers, connOpts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -1954,7 +2113,9 @@ func TestReplace(t *testing.T) {
 	err := test_helpers.SetClusterRO(servers, connOpts, roles)
 	require.Nilf(t, err, "fail to set roles for cluster")
 
-	connPool, err := pool.Connect(servers, connOpts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx, servers, connOpts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -2040,7 +2201,9 @@ func TestSelect(t *testing.T) {
 	err := test_helpers.SetClusterRO(servers, connOpts, roles)
 	require.Nilf(t, err, "fail to set roles for cluster")
 
-	connPool, err := pool.Connect(servers, connOpts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx, servers, connOpts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -2160,7 +2323,9 @@ func TestPing(t *testing.T) {
 	err := test_helpers.SetClusterRO(servers, connOpts, roles)
 	require.Nilf(t, err, "fail to set roles for cluster")
 
-	connPool, err := pool.Connect(servers, connOpts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx, servers, connOpts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -2198,7 +2363,9 @@ func TestDo(t *testing.T) {
 	err := test_helpers.SetClusterRO(servers, connOpts, roles)
 	require.Nilf(t, err, "fail to set roles for cluster")
 
-	connPool, err := pool.Connect(servers, connOpts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx, servers, connOpts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -2237,7 +2404,9 @@ func TestDo_concurrent(t *testing.T) {
 	err := test_helpers.SetClusterRO(servers, connOpts, roles)
 	require.Nilf(t, err, "fail to set roles for cluster")
 
-	connPool, err := pool.Connect(servers, connOpts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx, servers, connOpts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -2268,7 +2437,9 @@ func TestNewPrepared(t *testing.T) {
 	err := test_helpers.SetClusterRO(servers, connOpts, roles)
 	require.Nilf(t, err, "fail to set roles for cluster")
 
-	connPool, err := pool.Connect(servers, connOpts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx, servers, connOpts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -2336,7 +2507,9 @@ func TestDoWithStrangerConn(t *testing.T) {
 	err := test_helpers.SetClusterRO(servers, connOpts, roles)
 	require.Nilf(t, err, "fail to set roles for cluster")
 
-	connPool, err := pool.Connect(servers, connOpts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx, servers, connOpts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -2365,7 +2538,9 @@ func TestStream_Commit(t *testing.T) {
 	err = test_helpers.SetClusterRO(servers, connOpts, roles)
 	require.Nilf(t, err, "fail to set roles for cluster")
 
-	connPool, err := pool.Connect(servers, connOpts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx, servers, connOpts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 	defer connPool.Close()
@@ -2464,7 +2639,9 @@ func TestStream_Rollback(t *testing.T) {
 	err = test_helpers.SetClusterRO(servers, connOpts, roles)
 	require.Nilf(t, err, "fail to set roles for cluster")
 
-	connPool, err := pool.Connect(servers, connOpts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx, servers, connOpts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 	defer connPool.Close()
@@ -2563,7 +2740,9 @@ func TestStream_TxnIsolationLevel(t *testing.T) {
 	err = test_helpers.SetClusterRO(servers, connOpts, roles)
 	require.Nilf(t, err, "fail to set roles for cluster")
 
-	connPool, err := pool.Connect(servers, connOpts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx, servers, connOpts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 	defer connPool.Close()
@@ -2657,7 +2836,9 @@ func TestConnectionPool_NewWatcher_noWatchersFeature(t *testing.T) {
 	err := test_helpers.SetClusterRO(servers, opts, roles)
 	require.Nilf(t, err, "fail to set roles for cluster")
 
-	connPool, err := pool.Connect(servers, opts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx, servers, opts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 	defer connPool.Close()
@@ -2685,7 +2866,9 @@ func TestConnectionPool_NewWatcher_modes(t *testing.T) {
 	err := test_helpers.SetClusterRO(servers, opts, roles)
 	require.Nilf(t, err, "fail to set roles for cluster")
 
-	connPool, err := pool.Connect(servers, opts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx, servers, opts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 	defer connPool.Close()
@@ -2767,7 +2950,9 @@ func TestConnectionPool_NewWatcher_update(t *testing.T) {
 	poolOpts := pool.Opts{
 		CheckTimeout: 500 * time.Millisecond,
 	}
-	pool, err := pool.ConnectWithOpts(servers, opts, poolOpts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	pool, err := pool.ConnectWithOpts(ctx, servers, opts, poolOpts)
 
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, pool, "conn is nil after Connect")
@@ -2851,7 +3036,9 @@ func TestWatcher_Unregister(t *testing.T) {
 	err := test_helpers.SetClusterRO(servers, opts, roles)
 	require.Nilf(t, err, "fail to set roles for cluster")
 
-	pool, err := pool.Connect(servers, opts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	pool, err := pool.Connect(ctx, servers, opts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, pool, "conn is nil after Connect")
 	defer pool.Close()
@@ -2910,7 +3097,9 @@ func TestConnectionPool_NewWatcher_concurrent(t *testing.T) {
 	err := test_helpers.SetClusterRO(servers, opts, roles)
 	require.Nilf(t, err, "fail to set roles for cluster")
 
-	connPool, err := pool.Connect(servers, opts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx, servers, opts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 	defer connPool.Close()
@@ -2950,7 +3139,9 @@ func TestWatcher_Unregister_concurrent(t *testing.T) {
 	err := test_helpers.SetClusterRO(servers, opts, roles)
 	require.Nilf(t, err, "fail to set roles for cluster")
 
-	connPool, err := pool.Connect(servers, opts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx, servers, opts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 	defer connPool.Close()

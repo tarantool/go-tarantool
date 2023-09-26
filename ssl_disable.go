@@ -4,12 +4,12 @@
 package tarantool
 
 import (
+	"context"
 	"errors"
 	"net"
-	"time"
 )
 
-func sslDialTimeout(network, address string, timeout time.Duration,
+func sslDialContext(ctx context.Context, network, address string,
 	opts SslOpts) (connection net.Conn, err error) {
 	return nil, errors.New("SSL support is disabled.")
 }

@@ -1,15 +1,16 @@
 package tarantool
 
 import (
+	"context"
 	"net"
 	"time"
 
 	"github.com/vmihailenco/msgpack/v5"
 )
 
-func SslDialTimeout(network, address string, timeout time.Duration,
+func SslDialContext(ctx context.Context, network, address string,
 	opts SslOpts) (connection net.Conn, err error) {
-	return sslDialTimeout(network, address, timeout, opts)
+	return sslDialContext(ctx, network, address, opts)
 }
 
 func SslCreateContext(opts SslOpts) (ctx interface{}, err error) {

@@ -1,6 +1,7 @@
 package test_helpers
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"time"
@@ -130,9 +131,9 @@ func Retry(f func(interface{}) error, args interface{}, count int, timeout time.
 	return err
 }
 
-func InsertOnInstance(server string, connOpts tarantool.Opts, space interface{},
-	tuple interface{}) error {
-	conn, err := tarantool.Connect(server, connOpts)
+func InsertOnInstance(ctx context.Context, server string, connOpts tarantool.Opts,
+	space interface{}, tuple interface{}) error {
+	conn, err := tarantool.Connect(ctx, server, connOpts)
 	if err != nil {
 		return fmt.Errorf("fail to connect to %s: %s", server, err.Error())
 	}
@@ -182,7 +183,9 @@ func InsertOnInstances(servers []string, connOpts tarantool.Opts, space interfac
 	}
 
 	for _, server := range servers {
-		err := InsertOnInstance(server, connOpts, space, tuple)
+		ctx, cancel := GetConnectContext()
+		err := InsertOnInstance(ctx, server, connOpts, space, tuple)
+		cancel()
 		if err != nil {
 			return err
 		}
@@ -191,8 +194,9 @@ func InsertOnInstances(servers []string, connOpts tarantool.Opts, space interfac
 	return nil
 }
 
-func SetInstanceRO(server string, connOpts tarantool.Opts, isReplica bool) error {
-	conn, err := tarantool.Connect(server, connOpts)
+func SetInstanceRO(ctx context.Context, server string, connOpts tarantool.Opts,
+	isReplica bool) error {
+	conn, err := tarantool.Connect(ctx, server, connOpts)
 	if err != nil {
 		return err
 	}
@@ -214,7 +218,9 @@ func SetClusterRO(servers []string, connOpts tarantool.Opts, roles []bool) error
 	}
 
 	for i, server := range servers {
-		err := SetInstanceRO(server, connOpts, roles[i])
+		ctx, cancel := GetConnectContext()
+		err := SetInstanceRO(ctx, server, connOpts, roles[i])
+		cancel()
 		if err != nil {
 			return err
 		}
@@ -256,4 +262,8 @@ func StopTarantoolInstances(instances []TarantoolInstance) {
 	for _, instance := range instances {
 		StopTarantoolWithCleanup(instance)
 	}
+}
+
+func GetPoolConnectContext() (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), 500*time.Millisecond)
 }

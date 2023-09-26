@@ -375,16 +375,7 @@ func (opts Opts) Clone() Opts {
 // - Unix socket, first '/' or '.' indicates Unix socket
 // (unix:///abs/path/tnt.sock, unix:path/tnt.sock, /abs/path/tnt.sock,
 // ./rel/path/tnt.sock, unix/:path/tnt.sock)
-//
-// Notes:
-//
-// - If opts.Reconnect is zero (default), then connection either already connected
-// or error is returned.
-//
-// - If opts.Reconnect is non-zero, then error will be returned only if authorization
-// fails. But if Tarantool is not reachable, then it will make an attempt to reconnect later
-// and will not finish to make attempts on authorization failures.
-func Connect(addr string, opts Opts) (conn *Connection, err error) {
+func Connect(ctx context.Context, addr string, opts Opts) (conn *Connection, err error) {
 	conn = &Connection{
 		addr:             addr,
 		requestId:        0,
@@ -432,25 +423,8 @@ func Connect(addr string, opts Opts) (conn *Connection, err error) {
 
 	conn.cond = sync.NewCond(&conn.mutex)
 
-	if err = conn.createConnection(false); err != nil {
-		ter, ok := err.(Error)
-		if conn.opts.Reconnect <= 0 {
-			return nil, err
-		} else if ok && (ter.Code == iproto.ER_NO_SUCH_USER ||
-			ter.Code == iproto.ER_CREDS_MISMATCH) {
-			// Reported auth errors immediately.
-			return nil, err
-		} else {
-			// Without SkipSchema it is useless.
-			go func(conn *Connection) {
-				conn.mutex.Lock()
-				defer conn.mutex.Unlock()
-				if err := conn.createConnection(true); err != nil {
-					conn.closeConnection(err, true)
-				}
-			}(conn)
-			err = nil
-		}
+	if err = conn.createConnection(ctx); err != nil {
+		return nil, err
 	}
 
 	go conn.pinger()
@@ -534,18 +508,11 @@ func (conn *Connection) cancelFuture(fut *Future, err error) {
 	}
 }
 
-func (conn *Connection) dial() (err error) {
+func (conn *Connection) dial(ctx context.Context) error {
 	opts := conn.opts
-	dialTimeout := opts.Reconnect / 2
-	if dialTimeout == 0 {
-		dialTimeout = 500 * time.Millisecond
-	} else if dialTimeout > 5*time.Second {
-		dialTimeout = 5 * time.Second
-	}
 
 	var c Conn
-	c, err = conn.opts.Dialer.Dial(conn.addr, DialOpts{
-		DialTimeout:      dialTimeout,
+	c, err := conn.opts.Dialer.Dial(ctx, conn.addr, DialOpts{
 		IoTimeout:        opts.Timeout,
 		Transport:        opts.Transport,
 		Ssl:              opts.Ssl,
@@ -555,7 +522,7 @@ func (conn *Connection) dial() (err error) {
 		Password:         opts.Pass,
 	})
 	if err != nil {
-		return
+		return err
 	}
 
 	conn.Greeting.Version = c.Greeting().Version
@@ -605,7 +572,7 @@ func (conn *Connection) dial() (err error) {
 		conn.shutdownWatcher = watcher
 	}
 
-	return
+	return nil
 }
 
 func pack(h *smallWBuf, enc *msgpack.Encoder, reqid uint32,
@@ -658,34 +625,18 @@ func pack(h *smallWBuf, enc *msgpack.Encoder, reqid uint32,
 	return
 }
 
-func (conn *Connection) createConnection(reconnect bool) (err error) {
-	var reconnects uint
-	for conn.c == nil && conn.state == connDisconnected {
-		now := time.Now()
-		err = conn.dial()
-		if err == nil || !reconnect {
-			if err == nil {
-				conn.notify(Connected)
-			}
-			return
+func (conn *Connection) createConnection(ctx context.Context) error {
+	var err error
+	if conn.c == nil && conn.state == connDisconnected {
+		if err = conn.dial(ctx); err == nil {
+			conn.notify(Connected)
+			return nil
 		}
-		if conn.opts.MaxReconnects > 0 && reconnects > conn.opts.MaxReconnects {
-			conn.opts.Logger.Report(LogLastReconnectFailed, conn, err)
-			err = ClientError{ErrConnectionClosed, "last reconnect failed"}
-			// mark connection as closed to avoid reopening by another goroutine
-			return
-		}
-		conn.opts.Logger.Report(LogReconnectFailed, conn, reconnects, err)
-		conn.notify(ReconnectFailed)
-		reconnects++
-		conn.mutex.Unlock()
-		time.Sleep(time.Until(now.Add(conn.opts.Reconnect)))
-		conn.mutex.Lock()
 	}
 	if conn.state == connClosed {
 		err = ClientError{ErrConnectionClosed, "using closed connection"}
 	}
-	return
+	return err
 }
 
 func (conn *Connection) closeConnection(neterr error, forever bool) (err error) {
@@ -727,11 +678,57 @@ func (conn *Connection) closeConnection(neterr error, forever bool) (err error) 
 	return
 }
 
+func (conn *Connection) getDialTimeout() time.Duration {
+	dialTimeout := conn.opts.Reconnect / 2
+	if dialTimeout == 0 {
+		dialTimeout = 500 * time.Millisecond
+	} else if dialTimeout > 5*time.Second {
+		dialTimeout = 5 * time.Second
+	}
+	return dialTimeout
+}
+
+func (conn *Connection) runReconnects() error {
+	dialTimeout := conn.getDialTimeout()
+	var reconnects uint
+	var err error
+
+	for conn.opts.MaxReconnects == 0 || reconnects <= conn.opts.MaxReconnects {
+		now := time.Now()
+
+		ctx, cancel := context.WithTimeout(context.Background(), dialTimeout)
+		err = conn.createConnection(ctx)
+		cancel()
+
+		if err != nil {
+			if clientErr, ok := err.(ClientError); ok &&
+				clientErr.Code == ErrConnectionClosed {
+				return err
+			}
+		} else {
+			return nil
+		}
+
+		conn.opts.Logger.Report(LogReconnectFailed, conn, reconnects, err)
+		conn.notify(ReconnectFailed)
+		reconnects++
+		conn.mutex.Unlock()
+
+		time.Sleep(time.Until(now.Add(conn.opts.Reconnect)))
+
+		conn.mutex.Lock()
+	}
+
+	conn.opts.Logger.Report(LogLastReconnectFailed, conn, err)
+	// mark connection as closed to avoid reopening by another goroutine
+	return ClientError{ErrConnectionClosed, "last reconnect failed"}
+}
+
 func (conn *Connection) reconnectImpl(neterr error, c Conn) {
 	if conn.opts.Reconnect > 0 {
 		if c == conn.c {
 			conn.closeConnection(neterr, false)
-			if err := conn.createConnection(true); err != nil {
+			if err := conn.runReconnects(); err != nil {
 				conn.closeConnection(err, true)
 			}
 		}

@@ -2,8 +2,11 @@ package tarantool_test
 
 import (
 	"bytes"
+	"context"
 	"errors"
+	"fmt"
 	"net"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -12,13 +15,14 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tarantool/go-tarantool/v2"
+	"github.com/tarantool/go-tarantool/v2/test_helpers"
 )
 
 type mockErrorDialer struct {
 	err error
 }
 
-func (m mockErrorDialer) Dial(address string,
+func (m mockErrorDialer) Dial(ctx context.Context, address string,
 	opts tarantool.DialOpts) (tarantool.Conn, error) {
 	return nil, m.err
 }
@@ -29,7 +33,9 @@ func TestDialer_Dial_error(t *testing.T) {
 		err: errors.New(errMsg),
 	}
 
-	conn, err := tarantool.Connect("any", tarantool.Opts{
+	ctx, cancel := test_helpers.GetConnectContext()
+	defer cancel()
+	conn, err := tarantool.Connect(ctx, "any", tarantool.Opts{
 		Dialer: dialer,
 	})
 	assert.Nil(t, conn)
@@ -37,23 +43,26 @@ func TestDialer_Dial_error(t *testing.T) {
 }
 
 type mockPassedDialer struct {
+	ctx     context.Context
 	address string
 	opts    tarantool.DialOpts
 }
 
-func (m *mockPassedDialer) Dial(address string,
+func (m *mockPassedDialer) Dial(ctx context.Context, address string,
 	opts tarantool.DialOpts) (tarantool.Conn, error) {
 	m.address = address
 	m.opts = opts
+	if ctx != m.ctx {
+		return nil, errors.New("wrong context")
+	}
 	return nil, errors.New("does not matter")
 }
 
 func TestDialer_Dial_passedOpts(t *testing.T) {
 	const addr = "127.0.0.1:8080"
 	opts := tarantool.DialOpts{
-		DialTimeout: 500 * time.Millisecond,
-		IoTimeout:   2,
-		Transport:   "any",
+		IoTimeout: 2,
+		Transport: "any",
 		Ssl: tarantool.SslOpts{
 			KeyFile:  "a",
 			CertFile: "b",
@@ -73,7 +82,12 @@ func TestDialer_Dial_passedOpts(t *testing.T) {
 	}
 
 	dialer := &mockPassedDialer{}
-	conn, err := tarantool.Connect(addr, tarantool.Opts{
+	ctx, cancel := test_helpers.GetConnectContext()
+	defer cancel()
+
+	dialer.ctx = ctx
+
+	conn, err := tarantool.Connect(ctx, addr, tarantool.Opts{
 		Dialer:               dialer,
 		Timeout:              opts.IoTimeout,
 		Transport:            opts.Transport,
@@ -86,6 +100,7 @@ func TestDialer_Dial_passedOpts(t *testing.T) {
 
 	assert.Nil(t, conn)
 	assert.NotNil(t, err)
+	assert.NotEqual(t, err.Error(), "wrong context")
 	assert.Equal(t, addr, dialer.address)
 	assert.Equal(t, opts, dialer.opts)
 }
@@ -187,7 +202,7 @@ func newMockIoConn() *mockIoConn {
 	return conn
 }
 
-func (m *mockIoDialer) Dial(address string,
+func (m *mockIoDialer) Dial(ctx context.Context, address string,
 	opts tarantool.DialOpts) (tarantool.Conn, error) {
 	m.conn = newMockIoConn()
 	if m.init != nil {
@@ -203,11 +218,14 @@ func dialIo(t *testing.T,
 	dialer := mockIoDialer{
 		init: init,
 	}
-	conn, err := tarantool.Connect("any", tarantool.Opts{
-		Dialer:     &dialer,
-		Timeout:    1000 * time.Second, // Avoid pings.
-		SkipSchema: true,
-	})
+	ctx, cancel := test_helpers.GetConnectContext()
+	defer cancel()
+	conn, err := tarantool.Connect(ctx, "any",
+		tarantool.Opts{
+			Dialer:     &dialer,
+			Timeout:    1000 * time.Second, // Avoid pings.
+			SkipSchema: true,
+		})
 	require.Nil(t, err)
 	require.NotNil(t, conn)
 
@@ -337,4 +355,20 @@ func TestConn_ReadWrite(t *testing.T) {
 	resp, err := fut.Get()
 	assert.Nil(t, err)
 	assert.NotNil(t, resp)
+}
+
+func TestConn_ContextCancel(t *testing.T) {
+	const addr = "127.0.0.1:8080"
+
+	dialer := tarantool.TtDialer{}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	conn, err := dialer.Dial(ctx, addr, tarantool.DialOpts{})
+
+	assert.Nil(t, conn)
+	assert.NotNil(t, err)
+	assert.Truef(t, strings.Contains(err.Error(), "operation was canceled"),
+		fmt.Sprintf("unexpected error, expected to contain %s, got %v",
+			"operation was canceled", err))
 }

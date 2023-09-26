@@ -1,6 +1,7 @@
 package crud_test
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"time"
@@ -21,7 +22,9 @@ var exampleOpts = tarantool.Opts{
 }
 
 func exampleConnect() *tarantool.Connection {
-	conn, err := tarantool.Connect(exampleServer, exampleOpts)
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
+	conn, err := tarantool.Connect(ctx, exampleServer, exampleOpts)
 	if err != nil {
 		panic("Connection is not established: " + err.Error())
 	}

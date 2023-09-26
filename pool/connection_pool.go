@@ -11,6 +11,7 @@
 package pool
 
 import (
+	"context"
 	"errors"
 	"log"
 	"sync"
@@ -33,6 +34,7 @@ var (
 	ErrClosed            = errors.New("pool is closed")
 	ErrUnknownRequest    = errors.New("the passed connected request doesn't belong to " +
 		"the current connection pool")
+	ErrContextCanceled = errors.New("operation was canceled")
 )
 
 // ConnectionHandler provides callbacks for components interested in handling
@@ -116,6 +118,7 @@ type endpoint struct {
 	shutdown chan struct{}
 	close    chan struct{}
 	closed   chan struct{}
+	cancel   context.CancelFunc
 	closeErr error
 }
 
@@ -128,12 +131,14 @@ func newEndpoint(addr string) *endpoint {
 		shutdown: make(chan struct{}),
 		close:    make(chan struct{}),
 		closed:   make(chan struct{}),
+		cancel:   nil,
 	}
 }
 
 // ConnectWithOpts creates pool for instances with addresses addrs
 // with options opts.
-func ConnectWithOpts(addrs []string, connOpts tarantool.Opts, opts Opts) (*ConnectionPool, error) {
+func ConnectWithOpts(ctx context.Context, addrs []string,
+	connOpts tarantool.Opts, opts Opts) (*ConnectionPool, error) {
 	if len(addrs) == 0 {
 		return nil, ErrEmptyAddrs
 	}
@@ -161,16 +166,21 @@ func ConnectWithOpts(addrs []string, connOpts tarantool.Opts, opts Opts) (*Conne
 		connPool.addrs[addr] = nil
 	}
 
-	somebodyAlive := connPool.fillPools()
+	somebodyAlive, ctxCanceled := connPool.fillPools(ctx)
 	if !somebodyAlive {
 		connPool.state.set(closedState)
+		if ctxCanceled {
+			return nil, ErrContextCanceled
+		}
 		return nil, ErrNoConnection
 	}
 
 	connPool.state.set(connectedState)
 
 	for _, s := range connPool.addrs {
-		go connPool.controller(s)
+		endpointCtx, cancel := context.WithCancel(context.Background())
+		s.cancel = cancel
+		go connPool.controller(endpointCtx, s)
 	}
 
 	return connPool, nil
@@ -181,11 +191,12 @@ func ConnectWithOpts(addrs []string, connOpts tarantool.Opts, opts Opts) (*Conne
 // It is useless to set up tarantool.Opts.Reconnect value for a connection.
 // The connection pool has its own reconnection logic. See
 // Opts.CheckTimeout description.
-func Connect(addrs []string, connOpts tarantool.Opts) (*ConnectionPool, error) {
+func Connect(ctx context.Context, addrs []string,
+	connOpts tarantool.Opts) (*ConnectionPool, error) {
 	opts := Opts{
 		CheckTimeout: 1 * time.Second,
 	}
-	return ConnectWithOpts(addrs, connOpts, opts)
+	return ConnectWithOpts(ctx, addrs, connOpts, opts)
 }
 
 // ConnectedNow gets connected status of pool.
@@ -224,7 +235,7 @@ func (p *ConnectionPool) ConfiguredTimeout(mode Mode) (time.Duration, error) {
 
 // Add adds a new endpoint with the address into the pool. This function
 // adds the endpoint only after successful connection.
-func (p *ConnectionPool) Add(addr string) error {
+func (p *ConnectionPool) Add(ctx context.Context, addr string) error {
 	e := newEndpoint(addr)
 
 	p.addrsMutex.Lock()
@@ -237,18 +248,23 @@ func (p *ConnectionPool) Add(addr string) error {
 		p.addrsMutex.Unlock()
 		return ErrExists
 	}
+
+	endpointCtx, cancel := context.WithCancel(context.Background())
+	e.cancel = cancel
+
 	p.addrs[addr] = e
 	p.addrsMutex.Unlock()
 
-	if err := p.tryConnect(e); err != nil {
+	if err := p.tryConnect(ctx, e); err != nil {
 		p.addrsMutex.Lock()
 		delete(p.addrs, addr)
 		p.addrsMutex.Unlock()
+		e.cancel()
 		close(e.closed)
 		return err
 	}
 
-	go p.controller(e)
+	go p.controller(endpointCtx, e)
 	return nil
 }
 
@@ -268,6 +284,7 @@ func (p *ConnectionPool) Remove(addr string) error {
 	case <-endpoint.shutdown:
 		// CloseGraceful()/Remove() in progress/done.
 	default:
+		endpoint.cancel()
 		close(endpoint.shutdown)
 	}
 
@@ -302,6 +319,7 @@ func (p *ConnectionPool) Close() []error {
 		p.state.cas(shutdownState, closedState) {
 		p.addrsMutex.RLock()
 		for _, s := range p.addrs {
+			s.cancel()
 			close(s.close)
 		}
 		p.addrsMutex.RUnlock()
@@ -316,6 +334,7 @@ func (p *ConnectionPool) CloseGraceful() []error {
 	if p.state.cas(connectedState, shutdownState) {
 		p.addrsMutex.RLock()
 		for _, s := range p.addrs {
+			s.cancel()
 			close(s.shutdown)
 		}
 		p.addrsMutex.RUnlock()
@@ -1109,8 +1128,48 @@ func (p *ConnectionPool) handlerDeactivated(conn *tarantool.Connection,
 	}
 }
 
-func (p *ConnectionPool) fillPools() bool {
+func (p *ConnectionPool) deactivateConnection(addr string,
+	conn *tarantool.Connection, role Role) {
+	p.deleteConnection(addr)
+	conn.Close()
+	p.handlerDeactivated(conn, role)
+}
+
+func (p *ConnectionPool) deactivateConnections() {
+	for address, endpoint := range p.addrs {
+		if endpoint != nil && endpoint.conn != nil {
+			p.deactivateConnection(address, endpoint.conn, endpoint.role)
+		}
+	}
+}
+
+func (p *ConnectionPool) processConnection(conn *tarantool.Connection,
+	addr string, end *endpoint) bool {
+	role, err := p.getConnectionRole(conn)
+	if err != nil {
+		conn.Close()
+		log.Printf("tarantool: storing connection to %s failed: %s\n", addr, err)
+		return false
+	}
+
+	if !p.handlerDiscovered(conn, role) {
+		conn.Close()
+		return false
+	}
+	if p.addConnection(addr, conn, role) != nil {
+		conn.Close()
+		p.handlerDeactivated(conn, role)
+		return false
+	}
+
+	end.conn = conn
+	end.role = role
+	return true
+}
+
+func (p *ConnectionPool) fillPools(ctx context.Context) (bool, bool) {
 	somebodyAlive := false
+	ctxCanceled := false
 
 	// It is called before controller() goroutines so we don't expect
 	// concurrency issues here.
@@ -1120,39 +1179,27 @@ func (p *ConnectionPool) fillPools() bool {
 
 		connOpts := p.connOpts
 		connOpts.Notify = end.notify
-		conn, err := tarantool.Connect(addr, connOpts)
+		conn, err := tarantool.Connect(ctx, addr, connOpts)
 		if err != nil {
 			log.Printf("tarantool: connect to %s failed: %s\n", addr, err.Error())
-		} else if conn != nil {
-			role, err := p.getConnectionRole(conn)
-			if err != nil {
-				conn.Close()
-				log.Printf("tarantool: storing connection to %s failed: %s\n", addr, err)
-				continue
-			}
+			select {
+			case <-ctx.Done():
+				ctxCanceled = true
 
-			if p.handlerDiscovered(conn, role) {
-				if p.addConnection(addr, conn, role) != nil {
-					conn.Close()
-					p.handlerDeactivated(conn, role)
-				}
+				p.addrs[addr] = nil
+				log.Printf("tarantool: operation was canceled")
 
-				if conn.ConnectedNow() {
-					end.conn = conn
-					end.role = role
-					somebodyAlive = true
-				} else {
-					p.deleteConnection(addr)
-					conn.Close()
-					p.handlerDeactivated(conn, role)
-				}
-			} else {
-				conn.Close()
+				p.deactivateConnections()
+
+				return false, ctxCanceled
+			default:
 			}
+		} else if p.processConnection(conn, addr, end) {
+			somebodyAlive = true
 		}
 	}
 
-	return somebodyAlive
+	return somebodyAlive, ctxCanceled
 }
 
 func (p *ConnectionPool) updateConnection(e *endpoint) {
@@ -1213,7 +1260,7 @@ func (p *ConnectionPool) updateConnection(e *endpoint) {
 	}
 }
 
-func (p *ConnectionPool) tryConnect(e *endpoint) error {
+func (p *ConnectionPool) tryConnect(ctx context.Context, e *endpoint) error {
 	p.poolsMutex.Lock()
 
 	if p.state.get() != connectedState {
@@ -1226,7 +1273,7 @@ func (p *ConnectionPool) tryConnect(e *endpoint) error {
 
 	connOpts := p.connOpts
 	connOpts.Notify = e.notify
-	conn, err := tarantool.Connect(e.addr, connOpts)
+	conn, err := tarantool.Connect(ctx, e.addr, connOpts)
 	if err == nil {
 		role, err := p.getConnectionRole(conn)
 		p.poolsMutex.Unlock()
@@ -1265,7 +1312,7 @@ func (p *ConnectionPool) tryConnect(e *endpoint) error {
 	return err
 }
 
-func (p *ConnectionPool) reconnect(e *endpoint) {
+func (p *ConnectionPool) reconnect(ctx context.Context, e *endpoint) {
 	p.poolsMutex.Lock()
 
 	if p.state.get() != connectedState {
@@ -1280,10 +1327,10 @@ func (p *ConnectionPool) reconnect(e *endpoint) {
 	e.conn = nil
 	e.role = UnknownRole
 
-	p.tryConnect(e)
+	p.tryConnect(ctx, e)
 }
 
-func (p *ConnectionPool) controller(e *endpoint) {
+func (p *ConnectionPool) controller(ctx context.Context, e *endpoint) {
 	timer := time.NewTicker(p.opts.CheckTimeout)
 	defer timer.Stop()
 
@@ -1367,11 +1414,11 @@ func (p *ConnectionPool) controller(e *endpoint) {
 					// Relocate connection between subpools
 					// if ro/rw was updated.
 					if e.conn == nil {
-						p.tryConnect(e)
+						p.tryConnect(ctx, e)
 					} else if !e.conn.ClosedNow() {
 						p.updateConnection(e)
 					} else {
-						p.reconnect(e)
+						p.reconnect(ctx, e)
 					}
 				}
 			}

@@ -1,6 +1,7 @@
 package queue_test
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -164,7 +165,9 @@ func Example_connectionPool() {
 		CheckTimeout:      5 * time.Second,
 		ConnectionHandler: h,
 	}
-	connPool, err := pool.ConnectWithOpts(servers, connOpts, poolOpts)
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
+	connPool, err := pool.ConnectWithOpts(ctx, servers, connOpts, poolOpts)
 	if err != nil {
 		fmt.Printf("Unable to connect to the pool: %s", err)
 		return

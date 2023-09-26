@@ -3,6 +3,7 @@ package tarantool
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -56,8 +57,6 @@ type Conn interface {
 
 // DialOpts is a way to configure a Dial method to create a new Conn.
 type DialOpts struct {
-	// DialTimeout is a timeout for an initial network dial.
-	DialTimeout time.Duration
 	// IoTimeout is a timeout per a network read/write.
 	IoTimeout time.Duration
 	// Transport is a connect transport type.
@@ -86,7 +85,7 @@ type DialOpts struct {
 type Dialer interface {
 	// Dial connects to a Tarantool instance to the address with specified
 	// options.
-	Dial(address string, opts DialOpts) (Conn, error)
+	Dial(ctx context.Context, address string, opts DialOpts) (Conn, error)
 }
 
 type tntConn struct {
@@ -104,11 +103,11 @@ type TtDialer struct {
 
 // Dial connects to a Tarantool instance to the address with specified
 // options.
-func (t TtDialer) Dial(address string, opts DialOpts) (Conn, error) {
+func (t TtDialer) Dial(ctx context.Context, address string, opts DialOpts) (Conn, error) {
 	var err error
 	conn := new(tntConn)
 
-	if conn.net, err = dial(address, opts); err != nil {
+	if conn.net, err = dial(ctx, address, opts); err != nil {
 		return nil, fmt.Errorf("failed to dial: %w", err)
 	}
 
@@ -199,13 +198,14 @@ func (c *tntConn) ProtocolInfo() ProtocolInfo {
 }
 
 // dial connects to a Tarantool instance.
-func dial(address string, opts DialOpts) (net.Conn, error) {
+func dial(ctx context.Context, address string, opts DialOpts) (net.Conn, error) {
 	network, address := parseAddress(address)
 	switch opts.Transport {
 	case dialTransportNone:
-		return net.DialTimeout(network, address, opts.DialTimeout)
+		dialer := net.Dialer{}
+		return dialer.DialContext(ctx, network, address)
 	case dialTransportSsl:
-		return sslDialTimeout(network, address, opts.DialTimeout, opts.Ssl)
+		return sslDialContext(ctx, network, address, opts.Ssl)
 	default:
 		return nil, fmt.Errorf("unsupported transport type: %s", opts.Transport)
 	}

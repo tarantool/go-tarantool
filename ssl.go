@@ -5,24 +5,24 @@ package tarantool
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"io/ioutil"
 	"net"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/tarantool/go-openssl"
 )
 
-func sslDialTimeout(network, address string, timeout time.Duration,
+func sslDialContext(ctx context.Context, network, address string,
 	opts SslOpts) (connection net.Conn, err error) {
-	var ctx interface{}
-	if ctx, err = sslCreateContext(opts); err != nil {
+	var sslCtx interface{}
+	if sslCtx, err = sslCreateContext(opts); err != nil {
 		return
 	}
 
-	return openssl.DialTimeout(network, address, timeout, ctx.(*openssl.Ctx), 0)
+	return openssl.DialContext(ctx, network, address, sslCtx.(*openssl.Ctx), 0)
 }
 
 // interface{} is a hack. It helps to avoid dependency of go-openssl in build
