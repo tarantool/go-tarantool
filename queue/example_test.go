@@ -9,6 +9,7 @@
 package queue_test
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -31,7 +32,9 @@ func Example_simpleQueue() {
 		Pass:    "test",
 	}
 
-	conn, err := tarantool.Connect("127.0.0.1:3013", opts)
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
+	conn, err := tarantool.Connect(ctx, "127.0.0.1:3013", opts)
 	if err != nil {
 		fmt.Printf("error in prepare is %v", err)
 		return

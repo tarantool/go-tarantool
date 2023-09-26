@@ -708,7 +708,9 @@ func TestTtDialer(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	conn, err := TtDialer{}.Dial(server, DialOpts{})
+	ctx, cancel := test_helpers.GetConnectContext()
+	defer cancel()
+	conn, err := TtDialer{}.Dial(ctx, server, DialOpts{})
 	require.Nil(err)
 	require.NotNil(conn)
 	defer conn.Close()
@@ -778,7 +780,9 @@ func TestOptsAuth_PapSha256AuthForbit(t *testing.T) {
 	papSha256Opts := opts
 	papSha256Opts.Auth = PapSha256Auth
 
-	conn, err := Connect(server, papSha256Opts)
+	ctx, cancel := test_helpers.GetConnectContext()
+	defer cancel()
+	conn, err := Connect(ctx, server, papSha256Opts)
 	if err == nil {
 		t.Error("An error expected.")
 		conn.Close()
@@ -3408,7 +3412,9 @@ func TestConnectionProtocolVersionRequirementSuccess(t *testing.T) {
 		Version: ProtocolVersion(3),
 	}
 
-	conn, err := Connect(server, connOpts)
+	ctx, cancel := test_helpers.GetConnectContext()
+	defer cancel()
+	conn, err := Connect(ctx, server, connOpts)
 
 	require.Nilf(t, err, "No errors on connect")
 	require.NotNilf(t, conn, "Connect success")
@@ -3424,7 +3430,9 @@ func TestConnectionProtocolVersionRequirementFail(t *testing.T) {
 		Version: ProtocolVersion(3),
 	}
 
-	conn, err := Connect(server, connOpts)
+	ctx, cancel := test_helpers.GetConnectContext()
+	defer cancel()
+	conn, err := Connect(ctx, server, connOpts)
 
 	require.Nilf(t, conn, "Connect fail")
 	require.NotNilf(t, err, "Got error on connect")
@@ -3439,7 +3447,9 @@ func TestConnectionProtocolFeatureRequirementSuccess(t *testing.T) {
 		Features: []ProtocolFeature{TransactionsFeature},
 	}
 
-	conn, err := Connect(server, connOpts)
+	ctx, cancel := test_helpers.GetConnectContext()
+	defer cancel()
+	conn, err := Connect(ctx, server, connOpts)
 
 	require.NotNilf(t, conn, "Connect success")
 	require.Nilf(t, err, "No errors on connect")
@@ -3455,7 +3465,9 @@ func TestConnectionProtocolFeatureRequirementFail(t *testing.T) {
 		Features: []ProtocolFeature{TransactionsFeature},
 	}
 
-	conn, err := Connect(server, connOpts)
+	ctx, cancel := test_helpers.GetConnectContext()
+	defer cancel()
+	conn, err := Connect(ctx, server, connOpts)
 
 	require.Nilf(t, conn, "Connect fail")
 	require.NotNilf(t, err, "Got error on connect")
@@ -3471,7 +3483,9 @@ func TestConnectionProtocolFeatureRequirementManyFail(t *testing.T) {
 		Features: []ProtocolFeature{TransactionsFeature, ProtocolFeature(15532)},
 	}
 
-	conn, err := Connect(server, connOpts)
+	ctx, cancel := test_helpers.GetConnectContext()
+	defer cancel()
+	conn, err := Connect(ctx, server, connOpts)
 
 	require.Nilf(t, conn, "Connect fail")
 	require.NotNilf(t, err, "Got error on connect")
@@ -4003,7 +4017,9 @@ func TestConnect_schema_update(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		fut := conn.Do(NewCallRequest("create_spaces"))
 
-		if conn, err := Connect(server, opts); err != nil {
+		ctx, cancel := test_helpers.GetConnectContext()
+		defer cancel()
+		if conn, err := Connect(ctx, server, opts); err != nil {
 			if err.Error() != "concurrent schema update" {
 				t.Errorf("unexpected error: %s", err)
 			}
@@ -4016,6 +4032,32 @@ func TestConnect_schema_update(t *testing.T) {
 		if _, err := fut.Get(); err != nil {
 			t.Errorf("Failed to call create_spaces: %s", err)
 		}
+	}
+}
+
+func TestConnect_context_cancel(t *testing.T) {
+	var connLongReconnectOpts = Opts{
+		Timeout:       5 * time.Second,
+		User:          "test",
+		Pass:          "test",
+		Reconnect:     time.Second,
+		MaxReconnects: 100,
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	var conn *Connection
+	var err error
+
+	cancel()
+	conn, err = Connect(ctx, server, connLongReconnectOpts)
+
+	if conn != nil || err == nil {
+		t.Fatalf("Connection was created after cancel")
+	}
+	if !strings.Contains(err.Error(), "operation was canceled") {
+		t.Fatalf("Unexpected error, expected to contain %s, got %v",
+			"operation was canceled", err)
 	}
 }
 

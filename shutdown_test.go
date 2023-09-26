@@ -460,9 +460,12 @@ func TestGracefulShutdownCloseConcurrent(t *testing.T) {
 		go func(i int) {
 			defer caseWg.Done()
 
+			ctx, cancel := test_helpers.GetConnectContext()
+			defer cancel()
+
 			// Do not wait till Tarantool register out watcher,
 			// test everything is ok even on async.
-			conn, err := Connect(shtdnServer, shtdnClntOpts)
+			conn, err := Connect(ctx, shtdnServer, shtdnClntOpts)
 			if err != nil {
 				t.Errorf("Failed to connect: %s", err)
 			} else {

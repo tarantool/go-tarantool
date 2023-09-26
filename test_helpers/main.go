@@ -11,6 +11,7 @@
 package test_helpers
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -97,7 +98,9 @@ func isReady(server string, opts *tarantool.Opts) error {
 	var conn *tarantool.Connection
 	var resp *tarantool.Response
 
-	conn, err = tarantool.Connect(server, *opts)
+	ctx, cancel := GetConnectContext()
+	defer cancel()
+	conn, err = tarantool.Connect(ctx, server, *opts)
 	if err != nil {
 		return err
 	}
@@ -401,4 +404,8 @@ func ConvertUint64(v interface{}) (result uint64, err error) {
 		err = fmt.Errorf("non-number value %T", v)
 	}
 	return
+}
+
+func GetConnectContext() (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), 500*time.Millisecond)
 }

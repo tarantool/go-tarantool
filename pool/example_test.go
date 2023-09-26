@@ -24,7 +24,9 @@ func examplePool(roles []bool, connOpts tarantool.Opts) (*pool.ConnectionPool, e
 	if err != nil {
 		return nil, fmt.Errorf("ConnectionPool is not established")
 	}
-	connPool, err := pool.Connect(servers, connOpts)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx, servers, connOpts)
 	if err != nil || connPool == nil {
 		return nil, fmt.Errorf("ConnectionPool is not established")
 	}

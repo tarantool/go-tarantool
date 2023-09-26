@@ -17,7 +17,9 @@ func ConnectWithValidation(t testing.TB,
 	opts tarantool.Opts) *tarantool.Connection {
 	t.Helper()
 
-	conn, err := tarantool.Connect(server, opts)
+	ctx, cancel := GetConnectContext()
+	defer cancel()
+	conn, err := tarantool.Connect(ctx, server, opts)
 	if err != nil {
 		t.Fatalf("Failed to connect: %s", err.Error())
 	}

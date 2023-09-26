@@ -19,7 +19,9 @@ type Tuple struct {
 }
 
 func exampleConnect(opts tarantool.Opts) *tarantool.Connection {
-	conn, err := tarantool.Connect(server, opts)
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
+	conn, err := tarantool.Connect(ctx, server, opts)
 	if err != nil {
 		panic("Connection is not established: " + err.Error())
 	}
@@ -38,7 +40,9 @@ func ExampleSslOpts() {
 			CaFile:   "testdata/ca.crt",
 		},
 	}
-	_, err := tarantool.Connect("127.0.0.1:3013", opts)
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
+	_, err := tarantool.Connect(ctx, "127.0.0.1:3013", opts)
 	if err != nil {
 		panic("Connection is not established: " + err.Error())
 	}
@@ -913,12 +917,49 @@ func ExampleFuture_GetIterator() {
 }
 
 func ExampleConnect() {
-	conn, err := tarantool.Connect("127.0.0.1:3013", tarantool.Opts{
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
+
+	conn, err := tarantool.Connect(ctx, "127.0.0.1:3013", tarantool.Opts{
 		Timeout:     5 * time.Second,
 		User:        "test",
 		Pass:        "test",
 		Concurrency: 32,
 	})
+	if err != nil {
+		fmt.Println("No connection available")
+		return
+	}
+	defer conn.Close()
+	if conn != nil {
+		fmt.Println("Connection is ready")
+	}
+	// Output:
+	// Connection is ready
+}
+
+func ExampleConnect_reconnects() {
+	opts := tarantool.Opts{
+		Timeout:       5 * time.Second,
+		User:          "test",
+		Pass:          "test",
+		Concurrency:   32,
+		Reconnect:     time.Second,
+		MaxReconnects: 10,
+	}
+
+	var conn *tarantool.Connection
+	var err error
+
+	for i := uint(0); i < opts.MaxReconnects; i++ {
+		ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+		conn, err = tarantool.Connect(ctx, "127.0.0.1:3013", opts)
+		cancel()
+		if err == nil {
+			break
+		}
+		time.Sleep(opts.Reconnect)
+	}
 	if err != nil {
 		fmt.Println("No connection available")
 		return
@@ -1081,7 +1122,9 @@ func ExampleConnection_NewPrepared() {
 		User:    "test",
 		Pass:    "test",
 	}
-	conn, err := tarantool.Connect(server, opts)
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
+	conn, err := tarantool.Connect(ctx, server, opts)
 	if err != nil {
 		fmt.Printf("Failed to connect: %s", err.Error())
 	}
@@ -1127,7 +1170,9 @@ func ExampleConnection_NewWatcher() {
 			Features: []tarantool.ProtocolFeature{tarantool.WatchersFeature},
 		},
 	}
-	conn, err := tarantool.Connect(server, opts)
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
+	conn, err := tarantool.Connect(ctx, server, opts)
 	if err != nil {
 		fmt.Printf("Failed to connect: %s\n", err)
 		return

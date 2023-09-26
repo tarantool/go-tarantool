@@ -9,6 +9,7 @@
 package decimal_test
 
 import (
+	"context"
 	"log"
 	"time"
 
@@ -22,13 +23,13 @@ import (
 func Example() {
 	server := "127.0.0.1:3013"
 	opts := tarantool.Opts{
-		Timeout:       5 * time.Second,
-		Reconnect:     1 * time.Second,
-		MaxReconnects: 3,
-		User:          "test",
-		Pass:          "test",
+		Timeout: 5 * time.Second,
+		User:    "test",
+		Pass:    "test",
 	}
-	client, err := tarantool.Connect(server, opts)
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	client, err := tarantool.Connect(ctx, server, opts)
+	cancel()
 	if err != nil {
 		log.Fatalf("Failed to connect: %s", err.Error())
 	}

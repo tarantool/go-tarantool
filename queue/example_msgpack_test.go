@@ -9,6 +9,7 @@
 package queue_test
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"time"
@@ -55,7 +56,9 @@ func Example_simpleQueueCustomMsgPack() {
 		User:          "test",
 		Pass:          "test",
 	}
-	conn, err := tarantool.Connect("127.0.0.1:3013", opts)
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	conn, err := tarantool.Connect(ctx, "127.0.0.1:3013", opts)
+	cancel()
 	if err != nil {
 		log.Fatalf("connection: %s", err)
 		return

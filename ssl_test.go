@@ -4,6 +4,7 @@
 package tarantool_test
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -60,12 +61,12 @@ func serverSslRecv(msgs <-chan string, errs <-chan error) (string, error) {
 	return <-msgs, <-errs
 }
 
-func clientSsl(network, address string, opts SslOpts) (net.Conn, error) {
-	timeout := 5 * time.Second
-	return SslDialTimeout(network, address, timeout, opts)
+func clientSsl(ctx context.Context, network, address string,
+	opts SslOpts) (net.Conn, error) {
+	return SslDialContext(ctx, network, address, opts)
 }
 
-func createClientServerSsl(t testing.TB, serverOpts,
+func createClientServerSsl(ctx context.Context, t testing.TB, serverOpts,
 	clientOpts SslOpts) (net.Listener, net.Conn, <-chan string, <-chan error, error) {
 	t.Helper()
 
@@ -77,16 +78,16 @@ func createClientServerSsl(t testing.TB, serverOpts,
 	msgs, errs := serverSslAccept(l)
 
 	port := l.Addr().(*net.TCPAddr).Port
-	c, err := clientSsl("tcp", sslHost+":"+strconv.Itoa(port), clientOpts)
+	c, err := clientSsl(ctx, "tcp", sslHost+":"+strconv.Itoa(port), clientOpts)
 
 	return l, c, msgs, errs, err
 }
 
-func createClientServerSslOk(t testing.TB, serverOpts,
+func createClientServerSslOk(ctx context.Context, t testing.TB, serverOpts,
 	clientOpts SslOpts) (net.Listener, net.Conn, <-chan string, <-chan error) {
 	t.Helper()
 
-	l, c, msgs, errs, err := createClientServerSsl(t, serverOpts, clientOpts)
+	l, c, msgs, errs, err := createClientServerSsl(ctx, t, serverOpts, clientOpts)
 	if err != nil {
 		t.Fatalf("Unable to create client, error %q", err.Error())
 	}
@@ -150,7 +151,9 @@ func serverTntStop(inst test_helpers.TarantoolInstance) {
 }
 
 func checkTntConn(clientOpts SslOpts) error {
-	conn, err := Connect(tntHost, Opts{
+	ctx, cancel := test_helpers.GetConnectContext()
+	defer cancel()
+	conn, err := Connect(ctx, tntHost, Opts{
 		Auth:       AutoAuth,
 		Timeout:    500 * time.Millisecond,
 		User:       "test",
@@ -166,10 +169,11 @@ func checkTntConn(clientOpts SslOpts) error {
 	return nil
 }
 
-func assertConnectionSslFail(t testing.TB, serverOpts, clientOpts SslOpts) {
+func assertConnectionSslFail(ctx context.Context, t testing.TB, serverOpts,
+	clientOpts SslOpts) {
 	t.Helper()
 
-	l, c, _, _, err := createClientServerSsl(t, serverOpts, clientOpts)
+	l, c, _, _, err := createClientServerSsl(ctx, t, serverOpts, clientOpts)
 	l.Close()
 	if err == nil {
 		c.Close()
@@ -177,10 +181,11 @@ func assertConnectionSslFail(t testing.TB, serverOpts, clientOpts SslOpts) {
 	}
 }
 
-func assertConnectionSslOk(t testing.TB, serverOpts, clientOpts SslOpts) {
+func assertConnectionSslOk(ctx context.Context, t testing.TB, serverOpts,
+	clientOpts SslOpts) {
 	t.Helper()
 
-	l, c, msgs, errs := createClientServerSslOk(t, serverOpts, clientOpts)
+	l, c, msgs, errs := createClientServerSslOk(ctx, t, serverOpts, clientOpts)
 	const message = "any test string"
 	c.Write([]byte(message))
 	c.Close()
@@ -621,15 +626,19 @@ func TestSslOpts(t *testing.T) {
 	isTntSsl := isTestTntSsl()
 
 	for _, test := range tests {
+		var ctx context.Context
+		var cancel context.CancelFunc
+		ctx, cancel = test_helpers.GetConnectContext()
 		if test.ok {
 			t.Run("ok_ssl_"+test.name, func(t *testing.T) {
-				assertConnectionSslOk(t, test.serverOpts, test.clientOpts)
+				assertConnectionSslOk(ctx, t, test.serverOpts, test.clientOpts)
 			})
 		} else {
 			t.Run("fail_ssl_"+test.name, func(t *testing.T) {
-				assertConnectionSslFail(t, test.serverOpts, test.clientOpts)
+				assertConnectionSslFail(ctx, t, test.serverOpts, test.clientOpts)
 			})
 		}
+		cancel()
 		if !isTntSsl {
 			continue
 		}
@@ -642,6 +651,35 @@ func TestSslOpts(t *testing.T) {
 				assertConnectionTntFail(t, test.serverOpts, test.clientOpts)
 			})
 		}
+	}
+}
+
+func TestSslDialContextCancel(t *testing.T) {
+	serverOpts := SslOpts{
+		KeyFile:  "testdata/localhost.key",
+		CertFile: "testdata/localhost.crt",
+		CaFile:   "testdata/ca.crt",
+		Ciphers:  "ECDHE-RSA-AES256-GCM-SHA384",
+	}
+	clientOpts := SslOpts{
+		KeyFile:  "testdata/localhost.key",
+		CertFile: "testdata/localhost.crt",
+		CaFile:   "testdata/ca.crt",
+		Ciphers:  "ECDHE-RSA-AES256-GCM-SHA384",
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	l, c, _, _, err := createClientServerSsl(ctx, t, serverOpts, clientOpts)
+	l.Close()
+
+	if err == nil {
+		c.Close()
+		t.Fatalf("Expected error, dial was not canceled")
+	}
+	if !strings.Contains(err.Error(), "operation was canceled") {
+		t.Fatalf("Unexpected error, expected to contain %s, got %v",
+			"operation was canceled", err)
 	}
 }
 

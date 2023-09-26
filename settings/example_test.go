@@ -1,7 +1,9 @@
 package settings_test
 
 import (
+	"context"
 	"fmt"
+	"time"
 
 	"github.com/tarantool/go-tarantool/v2"
 	"github.com/tarantool/go-tarantool/v2/settings"
@@ -9,7 +11,9 @@ import (
 )
 
 func example_connect(opts tarantool.Opts) *tarantool.Connection {
-	conn, err := tarantool.Connect(server, opts)
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
+	conn, err := tarantool.Connect(ctx, server, opts)
 	if err != nil {
 		panic("Connection is not established: " + err.Error())
 	}
