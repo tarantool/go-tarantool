@@ -138,6 +138,7 @@ func (opts BaseOpts) EncodeMsgpack(enc *msgpack.Encoder) error {
 }
 
 // SimpleOperationOpts describes options for simple CRUD operations.
+// It also covers `upsert_object` options.
 type SimpleOperationOpts struct {
 	// Timeout is a `vshard.call` timeout and vshard
 	// master discovery timeout (in seconds).
@@ -168,7 +169,7 @@ func (opts SimpleOperationOpts) EncodeMsgpack(enc *msgpack.Encoder) error {
 }
 
 // SimpleOperationObjectOpts describes options for simple CRUD
-// operations with objects.
+// operations with objects. It doesn't cover `upsert_object` options.
 type SimpleOperationObjectOpts struct {
 	// Timeout is a `vshard.call` timeout and vshard
 	// master discovery timeout (in seconds).
@@ -203,6 +204,7 @@ func (opts SimpleOperationObjectOpts) EncodeMsgpack(enc *msgpack.Encoder) error 
 }
 
 // OperationManyOpts describes options for CRUD operations with many tuples.
+// It also covers `upsert_object_many` options.
 type OperationManyOpts struct {
 	// Timeout is a `vshard.call` timeout and vshard
 	// master discovery timeout (in seconds).
@@ -239,7 +241,7 @@ func (opts OperationManyOpts) EncodeMsgpack(enc *msgpack.Encoder) error {
 }
 
 // OperationObjectManyOpts describes options for CRUD operations
-// with many objects.
+// with many objects. It doesn't cover `upsert_object_many` options.
 type OperationObjectManyOpts struct {
 	// Timeout is a `vshard.call` timeout and vshard
 	// master discovery timeout (in seconds).
