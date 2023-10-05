@@ -808,6 +808,27 @@ func TestStorageInfoResult(t *testing.T) {
 	}
 }
 
+func TestGetAdditionalOpts(t *testing.T) {
+	conn := connect(t)
+	defer conn.Close()
+
+	req := crud.MakeGetRequest(spaceName).Key(key).Opts(crud.GetOpts{
+		Timeout:       crud.MakeOptUint(1),
+		Fields:        crud.MakeOptTuple([]interface{}{"name"}),
+		Mode:          crud.MakeOptString("read"),
+		PreferReplica: crud.MakeOptBool(true),
+		Balance:       crud.MakeOptBool(true),
+	})
+	resp := crud.Result{}
+
+	testCrudRequestPrepareData(t, conn)
+
+	err := conn.Do(req).GetTyped(&resp)
+	if err != nil {
+		t.Fatalf("Failed to Do CRUD request: %s", err)
+	}
+}
+
 // runTestMain is a body of TestMain function
 // (see https://pkg.go.dev/testing#hdr-Main).
 // Using defer + os.Exit is not works so TestMain body

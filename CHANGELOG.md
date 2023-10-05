@@ -55,6 +55,8 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 - Incorrect decoding of an MP_DECIMAL when the `scale` value is negative (#314)
 - Incorrect options (`after`, `batch_size` and `force_map_call`) setup for
   crud.SelectRequest (#320)
+- Incorrect options (`vshard_router`, `fields`, `bucket_id`, `mode`,
+  `prefer_replica`, `balance`) setup for crud.GetRequest (#335)
 
 ## [1.12.0] - 2023-06-07
 

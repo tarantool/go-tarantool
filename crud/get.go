@@ -42,10 +42,11 @@ func (opts GetOpts) EncodeMsgpack(enc *msgpack.Encoder) error {
 	exists := [optsCnt]bool{}
 	values[0], exists[0] = opts.Timeout.Get()
 	values[1], exists[1] = opts.VshardRouter.Get()
-	values[1], exists[1] = opts.BucketId.Get()
-	values[2], exists[2] = opts.Mode.Get()
-	values[3], exists[3] = opts.PreferReplica.Get()
-	values[4], exists[4] = opts.Balance.Get()
+	values[2], exists[2] = opts.Fields.Get()
+	values[3], exists[3] = opts.BucketId.Get()
+	values[4], exists[4] = opts.Mode.Get()
+	values[5], exists[5] = opts.PreferReplica.Get()
+	values[6], exists[6] = opts.Balance.Get()
 
 	return encodeOptions(enc, names[:], values[:], exists[:])
 }
