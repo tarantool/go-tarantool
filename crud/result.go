@@ -79,6 +79,9 @@ func (r *Result) DecodeMsgpack(d *msgpack.Decoder) error {
 		return fmt.Errorf("unexpected empty response array")
 	}
 
+	// DecodeMapLen processes `nil` as zero length map,
+	// so in `return nil, err` case we don't miss error info.
+	// https://github.com/vmihailenco/msgpack/blob/3f7bd806fea698e7a9fe80979aa3512dea0a7368/decode_map.go#L79-L81
 	l, err := d.DecodeMapLen()
 	if err != nil {
 		return err
@@ -184,6 +187,9 @@ func (r *NumberResult) DecodeMsgpack(d *msgpack.Decoder) error {
 		return fmt.Errorf("unexpected empty response array")
 	}
 
+	// DecodeUint64 processes `nil` as `0`,
+	// so in `return nil, err` case we don't miss error info.
+	// https://github.com/vmihailenco/msgpack/blob/3f7bd806fea698e7a9fe80979aa3512dea0a7368/decode_number.go#L91-L93
 	if r.Value, err = d.DecodeUint64(); err != nil {
 		return err
 	}
@@ -225,6 +231,9 @@ func (r *BoolResult) DecodeMsgpack(d *msgpack.Decoder) error {
 		return fmt.Errorf("unexpected empty response array")
 	}
 
+	// DecodeBool processes `nil` as `false`,
+	// so in `return nil, err` case we don't miss error info.
+	// https://github.com/vmihailenco/msgpack/blob/3f7bd806fea698e7a9fe80979aa3512dea0a7368/decode.go#L367-L369
 	if r.Value, err = d.DecodeBool(); err != nil {
 		return err
 	}
