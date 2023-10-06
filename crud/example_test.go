@@ -187,6 +187,33 @@ func ExampleResult_many() {
 	// [[2010 45 bla] [2011 4 bla]]
 }
 
+// ExampleResult_noreturn demonstrates noreturn request: a data change
+// request where you don't need to retrieve the result, just want to know
+// whether it was successful or not.
+func ExampleResult_noreturn() {
+	conn := exampleConnect()
+	req := crud.MakeReplaceManyRequest(exampleSpace).
+		Tuples([]crud.Tuple{
+			[]interface{}{uint(2010), nil, "bla"},
+			[]interface{}{uint(2011), nil, "bla"},
+		}).
+		Opts(crud.ReplaceManyOpts{
+			Noreturn: crud.MakeOptBool(true),
+		})
+
+	ret := crud.Result{}
+	if err := conn.Do(req).GetTyped(&ret); err != nil {
+		fmt.Printf("Failed to execute request: %s", err)
+		return
+	}
+
+	fmt.Println(ret.Metadata)
+	fmt.Println(ret.Rows)
+	// Output:
+	// []
+	// <nil>
+}
+
 // ExampleResult_error demonstrates how to use a helper type Result
 // to handle a crud error.
 func ExampleResult_error() {

@@ -18,6 +18,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 - Support password and password file to decrypt private SSL key file (#319)
 - Support `operation_data` in `crud.Error` (#330) 
 - Support `fetch_latest_metadata` option for crud requests with metadata (#335)
+- Support `noreturn` option for data change crud requests (#335)
 
 ### Changed
 
