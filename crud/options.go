@@ -21,6 +21,7 @@ const (
 	firstOptName                         = "first"
 	afterOptName                         = "after"
 	batchSizeOptName                     = "batch_size"
+	fetchLatestMetadataOptName           = "fetch_latest_metadata"
 )
 
 // OptUint is an optional uint.
@@ -150,20 +151,26 @@ type SimpleOperationOpts struct {
 	Fields OptTuple
 	// BucketId is a bucket ID.
 	BucketId OptUint
+	// FetchLatestMetadata guarantees the up-to-date metadata (space format)
+	// in first return value, otherwise it may not take into account
+	// the latest migration of the data format. Performance overhead is up to 15%.
+	// Disabled by default.
+	FetchLatestMetadata OptBool
 }
 
 // EncodeMsgpack provides custom msgpack encoder.
 func (opts SimpleOperationOpts) EncodeMsgpack(enc *msgpack.Encoder) error {
-	const optsCnt = 4
+	const optsCnt = 5
 
 	names := [optsCnt]string{timeoutOptName, vshardRouterOptName,
-		fieldsOptName, bucketIdOptName}
+		fieldsOptName, bucketIdOptName, fetchLatestMetadataOptName}
 	values := [optsCnt]interface{}{}
 	exists := [optsCnt]bool{}
 	values[0], exists[0] = opts.Timeout.Get()
 	values[1], exists[1] = opts.VshardRouter.Get()
 	values[2], exists[2] = opts.Fields.Get()
 	values[3], exists[3] = opts.BucketId.Get()
+	values[4], exists[4] = opts.FetchLatestMetadata.Get()
 
 	return encodeOptions(enc, names[:], values[:], exists[:])
 }
@@ -184,14 +191,20 @@ type SimpleOperationObjectOpts struct {
 	// SkipNullabilityCheckOnFlatten is a parameter to allow
 	// setting null values to non-nullable fields.
 	SkipNullabilityCheckOnFlatten OptBool
+	// FetchLatestMetadata guarantees the up-to-date metadata (space format)
+	// in first return value, otherwise it may not take into account
+	// the latest migration of the data format. Performance overhead is up to 15%.
+	// Disabled by default.
+	FetchLatestMetadata OptBool
 }
 
 // EncodeMsgpack provides custom msgpack encoder.
 func (opts SimpleOperationObjectOpts) EncodeMsgpack(enc *msgpack.Encoder) error {
-	const optsCnt = 5
+	const optsCnt = 6
 
 	names := [optsCnt]string{timeoutOptName, vshardRouterOptName,
-		fieldsOptName, bucketIdOptName, skipNullabilityCheckOnFlattenOptName}
+		fieldsOptName, bucketIdOptName, skipNullabilityCheckOnFlattenOptName,
+		fetchLatestMetadataOptName}
 	values := [optsCnt]interface{}{}
 	exists := [optsCnt]bool{}
 	values[0], exists[0] = opts.Timeout.Get()
@@ -199,6 +212,7 @@ func (opts SimpleOperationObjectOpts) EncodeMsgpack(enc *msgpack.Encoder) error 
 	values[2], exists[2] = opts.Fields.Get()
 	values[3], exists[3] = opts.BucketId.Get()
 	values[4], exists[4] = opts.SkipNullabilityCheckOnFlatten.Get()
+	values[5], exists[5] = opts.FetchLatestMetadata.Get()
 
 	return encodeOptions(enc, names[:], values[:], exists[:])
 }
@@ -221,14 +235,20 @@ type OperationManyOpts struct {
 	// RollbackOnError is a parameter because of what any failed operation
 	// will lead to rollback on a storage, where the operation is failed.
 	RollbackOnError OptBool
+	// FetchLatestMetadata guarantees the up-to-date metadata (space format)
+	// in first return value, otherwise it may not take into account
+	// the latest migration of the data format. Performance overhead is up to 15%.
+	// Disabled by default.
+	FetchLatestMetadata OptBool
 }
 
 // EncodeMsgpack provides custom msgpack encoder.
 func (opts OperationManyOpts) EncodeMsgpack(enc *msgpack.Encoder) error {
-	const optsCnt = 5
+	const optsCnt = 6
 
 	names := [optsCnt]string{timeoutOptName, vshardRouterOptName,
-		fieldsOptName, stopOnErrorOptName, rollbackOnErrorOptName}
+		fieldsOptName, stopOnErrorOptName, rollbackOnErrorOptName,
+		fetchLatestMetadataOptName}
 	values := [optsCnt]interface{}{}
 	exists := [optsCnt]bool{}
 	values[0], exists[0] = opts.Timeout.Get()
@@ -236,6 +256,7 @@ func (opts OperationManyOpts) EncodeMsgpack(enc *msgpack.Encoder) error {
 	values[2], exists[2] = opts.Fields.Get()
 	values[3], exists[3] = opts.StopOnError.Get()
 	values[4], exists[4] = opts.RollbackOnError.Get()
+	values[5], exists[5] = opts.FetchLatestMetadata.Get()
 
 	return encodeOptions(enc, names[:], values[:], exists[:])
 }
@@ -261,15 +282,20 @@ type OperationObjectManyOpts struct {
 	// SkipNullabilityCheckOnFlatten is a parameter to allow
 	// setting null values to non-nullable fields.
 	SkipNullabilityCheckOnFlatten OptBool
+	// FetchLatestMetadata guarantees the up-to-date metadata (space format)
+	// in first return value, otherwise it may not take into account
+	// the latest migration of the data format. Performance overhead is up to 15%.
+	// Disabled by default.
+	FetchLatestMetadata OptBool
 }
 
 // EncodeMsgpack provides custom msgpack encoder.
 func (opts OperationObjectManyOpts) EncodeMsgpack(enc *msgpack.Encoder) error {
-	const optsCnt = 6
+	const optsCnt = 7
 
 	names := [optsCnt]string{timeoutOptName, vshardRouterOptName,
 		fieldsOptName, stopOnErrorOptName, rollbackOnErrorOptName,
-		skipNullabilityCheckOnFlattenOptName}
+		skipNullabilityCheckOnFlattenOptName, fetchLatestMetadataOptName}
 	values := [optsCnt]interface{}{}
 	exists := [optsCnt]bool{}
 	values[0], exists[0] = opts.Timeout.Get()
@@ -278,6 +304,7 @@ func (opts OperationObjectManyOpts) EncodeMsgpack(enc *msgpack.Encoder) error {
 	values[3], exists[3] = opts.StopOnError.Get()
 	values[4], exists[4] = opts.RollbackOnError.Get()
 	values[5], exists[5] = opts.SkipNullabilityCheckOnFlatten.Get()
+	values[6], exists[6] = opts.FetchLatestMetadata.Get()
 
 	return encodeOptions(enc, names[:], values[:], exists[:])
 }
@@ -292,18 +319,25 @@ type BorderOpts struct {
 	VshardRouter OptString
 	// Fields is field names for getting only a subset of fields.
 	Fields OptTuple
+	// FetchLatestMetadata guarantees the up-to-date metadata (space format)
+	// in first return value, otherwise it may not take into account
+	// the latest migration of the data format. Performance overhead is up to 15%.
+	// Disabled by default.
+	FetchLatestMetadata OptBool
 }
 
 // EncodeMsgpack provides custom msgpack encoder.
 func (opts BorderOpts) EncodeMsgpack(enc *msgpack.Encoder) error {
-	const optsCnt = 3
+	const optsCnt = 4
 
-	names := [optsCnt]string{timeoutOptName, vshardRouterOptName, fieldsOptName}
+	names := [optsCnt]string{timeoutOptName, vshardRouterOptName, fieldsOptName,
+		fetchLatestMetadataOptName}
 	values := [optsCnt]interface{}{}
 	exists := [optsCnt]bool{}
 	values[0], exists[0] = opts.Timeout.Get()
 	values[1], exists[1] = opts.VshardRouter.Get()
 	values[2], exists[2] = opts.Fields.Get()
+	values[3], exists[3] = opts.FetchLatestMetadata.Get()
 
 	return encodeOptions(enc, names[:], values[:], exists[:])
 }

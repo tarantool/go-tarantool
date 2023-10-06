@@ -829,6 +829,189 @@ func TestGetAdditionalOpts(t *testing.T) {
 	}
 }
 
+var testMetadataCases = []struct {
+	name string
+	req  tarantool.Request
+}{
+	{
+		"Insert",
+		crud.MakeInsertRequest(spaceName).
+			Tuple(tuple).
+			Opts(crud.InsertOpts{
+				FetchLatestMetadata: crud.MakeOptBool(true),
+			}),
+	},
+	{
+		"InsertObject",
+		crud.MakeInsertObjectRequest(spaceName).
+			Object(object).
+			Opts(crud.InsertObjectOpts{
+				FetchLatestMetadata: crud.MakeOptBool(true),
+			}),
+	},
+	{
+		"InsertMany",
+		crud.MakeInsertManyRequest(spaceName).
+			Tuples(tuples).
+			Opts(crud.InsertManyOpts{
+				FetchLatestMetadata: crud.MakeOptBool(true),
+			}),
+	},
+	{
+		"InsertObjectMany",
+		crud.MakeInsertObjectManyRequest(spaceName).
+			Objects(objects).
+			Opts(crud.InsertObjectManyOpts{
+				FetchLatestMetadata: crud.MakeOptBool(true),
+			}),
+	},
+	{
+		"Replace",
+		crud.MakeReplaceRequest(spaceName).
+			Tuple(tuple).
+			Opts(crud.ReplaceOpts{
+				FetchLatestMetadata: crud.MakeOptBool(true),
+			}),
+	},
+	{
+		"ReplaceObject",
+		crud.MakeReplaceObjectRequest(spaceName).
+			Object(object).
+			Opts(crud.ReplaceObjectOpts{
+				FetchLatestMetadata: crud.MakeOptBool(true),
+			}),
+	},
+	{
+		"ReplaceMany",
+		crud.MakeReplaceManyRequest(spaceName).
+			Tuples(tuples).
+			Opts(crud.ReplaceManyOpts{
+				FetchLatestMetadata: crud.MakeOptBool(true),
+			}),
+	},
+	{
+		"ReplaceObjectMany",
+		crud.MakeReplaceObjectManyRequest(spaceName).
+			Objects(objects).
+			Opts(crud.ReplaceObjectManyOpts{
+				FetchLatestMetadata: crud.MakeOptBool(true),
+			}),
+	},
+	{
+		"Upsert",
+		crud.MakeUpsertRequest(spaceName).
+			Tuple(tuple).
+			Operations(operations).
+			Opts(crud.UpsertOpts{
+				FetchLatestMetadata: crud.MakeOptBool(true),
+			}),
+	},
+	{
+		"UpsertObject",
+		crud.MakeUpsertObjectRequest(spaceName).
+			Object(object).
+			Operations(operations).
+			Opts(crud.UpsertObjectOpts{
+				FetchLatestMetadata: crud.MakeOptBool(true),
+			}),
+	},
+	{
+		"UpsertMany",
+		crud.MakeUpsertManyRequest(spaceName).
+			TuplesOperationsData(tuplesOperationsData).
+			Opts(crud.UpsertManyOpts{
+				FetchLatestMetadata: crud.MakeOptBool(true),
+			}),
+	},
+	{
+		"UpsertObjectMany",
+		crud.MakeUpsertObjectManyRequest(spaceName).
+			ObjectsOperationsData(objectsOperationData).
+			Opts(crud.UpsertObjectManyOpts{
+				FetchLatestMetadata: crud.MakeOptBool(true),
+			}),
+	},
+	{
+		"Select",
+		crud.MakeSelectRequest(spaceName).
+			Conditions(conditions).
+			Opts(crud.SelectOpts{
+				FetchLatestMetadata: crud.MakeOptBool(true),
+			}),
+	},
+	{
+		"Get",
+		crud.MakeGetRequest(spaceName).
+			Key(key).
+			Opts(crud.GetOpts{
+				FetchLatestMetadata: crud.MakeOptBool(true),
+			}),
+	},
+	{
+		"Update",
+		crud.MakeUpdateRequest(spaceName).
+			Key(key).
+			Operations(operations).
+			Opts(crud.UpdateOpts{
+				FetchLatestMetadata: crud.MakeOptBool(true),
+			}),
+	},
+	{
+		"Delete",
+		crud.MakeDeleteRequest(spaceName).
+			Key(key).
+			Opts(crud.DeleteOpts{
+				FetchLatestMetadata: crud.MakeOptBool(true),
+			}),
+	},
+	{
+		"Min",
+		crud.MakeMinRequest(spaceName).
+			Opts(crud.MinOpts{
+				FetchLatestMetadata: crud.MakeOptBool(true),
+			}),
+	},
+	{
+		"Max",
+		crud.MakeMaxRequest(spaceName).
+			Opts(crud.MaxOpts{
+				FetchLatestMetadata: crud.MakeOptBool(true),
+			}),
+	},
+}
+
+func TestFetchLatestMetadataOption(t *testing.T) {
+	conn := connect(t)
+	defer conn.Close()
+
+	for _, testCase := range testMetadataCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			for i := 1010; i < 1020; i++ {
+				req := tarantool.NewDeleteRequest(spaceName).
+					Key([]interface{}{uint(i)})
+				conn.Do(req).Get()
+			}
+
+			resp := crud.Result{}
+
+			err := conn.Do(testCase.req).GetTyped(&resp)
+			if err != nil {
+				t.Fatalf("Failed to Do CRUD request: %s", err)
+			}
+
+			if len(resp.Metadata) == 0 {
+				t.Fatalf("Failed to get relevant metadata")
+			}
+
+			for i := 1010; i < 1020; i++ {
+				req := tarantool.NewDeleteRequest(spaceName).
+					Key([]interface{}{uint(i)})
+				conn.Do(req).Get()
+			}
+		})
+	}
+}
+
 // runTestMain is a body of TestMain function
 // (see https://pkg.go.dev/testing#hdr-Main).
 // Using defer + os.Exit is not works so TestMain body
