@@ -1012,6 +1012,201 @@ func TestFetchLatestMetadataOption(t *testing.T) {
 	}
 }
 
+var testNoreturnCases = []struct {
+	name string
+	req  tarantool.Request
+}{
+	{
+		"Insert",
+		crud.MakeInsertRequest(spaceName).
+			Tuple(tuple).
+			Opts(crud.InsertOpts{
+				Noreturn: crud.MakeOptBool(true),
+			}),
+	},
+	{
+		"InsertObject",
+		crud.MakeInsertObjectRequest(spaceName).
+			Object(object).
+			Opts(crud.InsertObjectOpts{
+				Noreturn: crud.MakeOptBool(true),
+			}),
+	},
+	{
+		"InsertMany",
+		crud.MakeInsertManyRequest(spaceName).
+			Tuples(tuples).
+			Opts(crud.InsertManyOpts{
+				Noreturn: crud.MakeOptBool(true),
+			}),
+	},
+	{
+		"InsertObjectMany",
+		crud.MakeInsertObjectManyRequest(spaceName).
+			Objects(objects).
+			Opts(crud.InsertObjectManyOpts{
+				Noreturn: crud.MakeOptBool(true),
+			}),
+	},
+	{
+		"Replace",
+		crud.MakeReplaceRequest(spaceName).
+			Tuple(tuple).
+			Opts(crud.ReplaceOpts{
+				Noreturn: crud.MakeOptBool(true),
+			}),
+	},
+	{
+		"ReplaceObject",
+		crud.MakeReplaceObjectRequest(spaceName).
+			Object(object).
+			Opts(crud.ReplaceObjectOpts{
+				Noreturn: crud.MakeOptBool(true),
+			}),
+	},
+	{
+		"ReplaceMany",
+		crud.MakeReplaceManyRequest(spaceName).
+			Tuples(tuples).
+			Opts(crud.ReplaceManyOpts{
+				Noreturn: crud.MakeOptBool(true),
+			}),
+	},
+	{
+		"ReplaceObjectMany",
+		crud.MakeReplaceObjectManyRequest(spaceName).
+			Objects(objects).
+			Opts(crud.ReplaceObjectManyOpts{
+				Noreturn: crud.MakeOptBool(true),
+			}),
+	},
+	{
+		"Upsert",
+		crud.MakeUpsertRequest(spaceName).
+			Tuple(tuple).
+			Operations(operations).
+			Opts(crud.UpsertOpts{
+				Noreturn: crud.MakeOptBool(true),
+			}),
+	},
+	{
+		"UpsertObject",
+		crud.MakeUpsertObjectRequest(spaceName).
+			Object(object).
+			Operations(operations).
+			Opts(crud.UpsertObjectOpts{
+				Noreturn: crud.MakeOptBool(true),
+			}),
+	},
+	{
+		"UpsertMany",
+		crud.MakeUpsertManyRequest(spaceName).
+			TuplesOperationsData(tuplesOperationsData).
+			Opts(crud.UpsertManyOpts{
+				Noreturn: crud.MakeOptBool(true),
+			}),
+	},
+	{
+		"UpsertObjectMany",
+		crud.MakeUpsertObjectManyRequest(spaceName).
+			ObjectsOperationsData(objectsOperationData).
+			Opts(crud.UpsertObjectManyOpts{
+				Noreturn: crud.MakeOptBool(true),
+			}),
+	},
+	{
+		"Update",
+		crud.MakeUpdateRequest(spaceName).
+			Key(key).
+			Operations(operations).
+			Opts(crud.UpdateOpts{
+				Noreturn: crud.MakeOptBool(true),
+			}),
+	},
+	{
+		"Delete",
+		crud.MakeDeleteRequest(spaceName).
+			Key(key).
+			Opts(crud.DeleteOpts{
+				Noreturn: crud.MakeOptBool(true),
+			}),
+	},
+}
+
+func TestNoreturnOption(t *testing.T) {
+	conn := connect(t)
+	defer conn.Close()
+
+	for _, testCase := range testNoreturnCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			for i := 1010; i < 1020; i++ {
+				req := tarantool.NewDeleteRequest(spaceName).
+					Key([]interface{}{uint(i)})
+				conn.Do(req).Get()
+			}
+
+			resp, err := conn.Do(testCase.req).Get()
+			if err != nil {
+				t.Fatalf("Failed to Do CRUD request: %s", err)
+			}
+
+			if len(resp.Data) == 0 {
+				t.Fatalf("Expected explicit nil")
+			}
+
+			if resp.Data[0] != nil {
+				t.Fatalf("Expected nil result, got %v", resp.Data[0])
+			}
+
+			if len(resp.Data) >= 2 && resp.Data[1] != nil {
+				t.Fatalf("Expected no returned errors, got %v", resp.Data[1])
+			}
+
+			for i := 1010; i < 1020; i++ {
+				req := tarantool.NewDeleteRequest(spaceName).
+					Key([]interface{}{uint(i)})
+				conn.Do(req).Get()
+			}
+		})
+	}
+}
+
+func TestNoreturnOptionTyped(t *testing.T) {
+	conn := connect(t)
+	defer conn.Close()
+
+	for _, testCase := range testNoreturnCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			for i := 1010; i < 1020; i++ {
+				req := tarantool.NewDeleteRequest(spaceName).
+					Key([]interface{}{uint(i)})
+				conn.Do(req).Get()
+			}
+
+			resp := crud.Result{}
+
+			err := conn.Do(testCase.req).GetTyped(&resp)
+			if err != nil {
+				t.Fatalf("Failed to Do CRUD request: %s", err)
+			}
+
+			if resp.Rows != nil {
+				t.Fatalf("Expected nil rows, got %v", resp.Rows)
+			}
+
+			if len(resp.Metadata) != 0 {
+				t.Fatalf("Expected no metadata")
+			}
+
+			for i := 1010; i < 1020; i++ {
+				req := tarantool.NewDeleteRequest(spaceName).
+					Key([]interface{}{uint(i)})
+				conn.Do(req).Get()
+			}
+		})
+	}
+}
+
 // runTestMain is a body of TestMain function
 // (see https://pkg.go.dev/testing#hdr-Main).
 // Using defer + os.Exit is not works so TestMain body
