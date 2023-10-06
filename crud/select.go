@@ -41,17 +41,22 @@ type SelectOpts struct {
 	// Fullscan describes if a critical log entry will be skipped on
 	// potentially long select.
 	Fullscan OptBool
+	// FetchLatestMetadata guarantees the up-to-date metadata (space format)
+	// in first return value, otherwise it may not take into account
+	// the latest migration of the data format. Performance overhead is up to 15%.
+	// Disabled by default.
+	FetchLatestMetadata OptBool
 }
 
 // EncodeMsgpack provides custom msgpack encoder.
 func (opts SelectOpts) EncodeMsgpack(enc *msgpack.Encoder) error {
-	const optsCnt = 12
+	const optsCnt = 13
 
 	names := [optsCnt]string{timeoutOptName, vshardRouterOptName,
 		fieldsOptName, bucketIdOptName,
 		modeOptName, preferReplicaOptName, balanceOptName,
 		firstOptName, afterOptName, batchSizeOptName,
-		forceMapCallOptName, fullscanOptName}
+		forceMapCallOptName, fullscanOptName, fetchLatestMetadataOptName}
 	values := [optsCnt]interface{}{}
 	exists := [optsCnt]bool{}
 	values[0], exists[0] = opts.Timeout.Get()
@@ -66,6 +71,7 @@ func (opts SelectOpts) EncodeMsgpack(enc *msgpack.Encoder) error {
 	values[9], exists[9] = opts.BatchSize.Get()
 	values[10], exists[10] = opts.ForceMapCall.Get()
 	values[11], exists[11] = opts.Fullscan.Get()
+	values[12], exists[12] = opts.FetchLatestMetadata.Get()
 
 	return encodeOptions(enc, names[:], values[:], exists[:])
 }

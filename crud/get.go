@@ -29,15 +29,20 @@ type GetOpts struct {
 	// Balance is a parameter to use replica according to vshard
 	// load balancing policy.
 	Balance OptBool
+	// FetchLatestMetadata guarantees the up-to-date metadata (space format)
+	// in first return value, otherwise it may not take into account
+	// the latest migration of the data format. Performance overhead is up to 15%.
+	// Disabled by default.
+	FetchLatestMetadata OptBool
 }
 
 // EncodeMsgpack provides custom msgpack encoder.
 func (opts GetOpts) EncodeMsgpack(enc *msgpack.Encoder) error {
-	const optsCnt = 7
+	const optsCnt = 8
 
 	names := [optsCnt]string{timeoutOptName, vshardRouterOptName,
 		fieldsOptName, bucketIdOptName, modeOptName,
-		preferReplicaOptName, balanceOptName}
+		preferReplicaOptName, balanceOptName, fetchLatestMetadataOptName}
 	values := [optsCnt]interface{}{}
 	exists := [optsCnt]bool{}
 	values[0], exists[0] = opts.Timeout.Get()
@@ -47,6 +52,7 @@ func (opts GetOpts) EncodeMsgpack(enc *msgpack.Encoder) error {
 	values[4], exists[4] = opts.Mode.Get()
 	values[5], exists[5] = opts.PreferReplica.Get()
 	values[6], exists[6] = opts.Balance.Get()
+	values[7], exists[7] = opts.FetchLatestMetadata.Get()
 
 	return encodeOptions(enc, names[:], values[:], exists[:])
 }
