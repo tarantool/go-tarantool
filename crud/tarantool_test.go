@@ -254,7 +254,7 @@ var testGenerateDataCases = []struct {
 }{
 	{
 		"Insert",
-		2,
+		1,
 		1,
 		crud.MakeInsertRequest(spaceName).
 			Tuple(tuple).
@@ -262,7 +262,7 @@ var testGenerateDataCases = []struct {
 	},
 	{
 		"InsertObject",
-		2,
+		1,
 		1,
 		crud.MakeInsertObjectRequest(spaceName).
 			Object(object).
@@ -270,7 +270,7 @@ var testGenerateDataCases = []struct {
 	},
 	{
 		"InsertMany",
-		2,
+		1,
 		10,
 		crud.MakeInsertManyRequest(spaceName).
 			Tuples(tuples).
@@ -278,7 +278,7 @@ var testGenerateDataCases = []struct {
 	},
 	{
 		"InsertObjectMany",
-		2,
+		1,
 		10,
 		crud.MakeInsertObjectManyRequest(spaceName).
 			Objects(objects).
@@ -286,7 +286,7 @@ var testGenerateDataCases = []struct {
 	},
 	{
 		"Replace",
-		2,
+		1,
 		1,
 		crud.MakeReplaceRequest(spaceName).
 			Tuple(tuple).
@@ -294,7 +294,7 @@ var testGenerateDataCases = []struct {
 	},
 	{
 		"ReplaceObject",
-		2,
+		1,
 		1,
 		crud.MakeReplaceObjectRequest(spaceName).
 			Object(object).
@@ -302,7 +302,7 @@ var testGenerateDataCases = []struct {
 	},
 	{
 		"ReplaceMany",
-		2,
+		1,
 		10,
 		crud.MakeReplaceManyRequest(spaceName).
 			Tuples(tuples).
@@ -310,7 +310,7 @@ var testGenerateDataCases = []struct {
 	},
 	{
 		"ReplaceObjectMany",
-		2,
+		1,
 		10,
 		crud.MakeReplaceObjectManyRequest(spaceName).
 			Objects(objects).
@@ -318,7 +318,7 @@ var testGenerateDataCases = []struct {
 	},
 	{
 		"Upsert",
-		2,
+		1,
 		1,
 		crud.MakeUpsertRequest(spaceName).
 			Tuple(tuple).
@@ -327,7 +327,7 @@ var testGenerateDataCases = []struct {
 	},
 	{
 		"UpsertObject",
-		2,
+		1,
 		1,
 		crud.MakeUpsertObjectRequest(spaceName).
 			Object(object).
@@ -336,7 +336,7 @@ var testGenerateDataCases = []struct {
 	},
 	{
 		"UpsertMany",
-		2,
+		1,
 		10,
 		crud.MakeUpsertManyRequest(spaceName).
 			TuplesOperationsData(tuplesOperationsData).
@@ -344,7 +344,7 @@ var testGenerateDataCases = []struct {
 	},
 	{
 		"UpsertObjectMany",
-		2,
+		1,
 		10,
 		crud.MakeUpsertObjectManyRequest(spaceName).
 			ObjectsOperationsData(objectsOperationData).
@@ -475,7 +475,7 @@ func testCrudRequestCheck(t *testing.T, req tarantool.Request,
 
 	// resp.Data[0] - CRUD res.
 	// resp.Data[1] - CRUD err.
-	if expectedLen >= 2 {
+	if expectedLen >= 2 && resp.Data[1] != nil {
 		if crudErr, err := getCrudError(req, resp.Data[1]); err != nil {
 			t.Fatalf("Failed to get CRUD error: %#v", err)
 		} else if crudErr != nil {

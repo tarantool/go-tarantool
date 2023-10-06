@@ -75,8 +75,8 @@ func (r *Result) DecodeMsgpack(d *msgpack.Decoder) error {
 		return err
 	}
 
-	if arrLen < 2 {
-		return fmt.Errorf("array len doesn't match: %d", arrLen)
+	if arrLen == 0 {
+		return fmt.Errorf("unexpected empty response array")
 	}
 
 	l, err := d.DecodeMapLen()
@@ -130,27 +130,32 @@ func (r *Result) DecodeMsgpack(d *msgpack.Decoder) error {
 		}
 	}
 
-	code, err := d.PeekCode()
-	if err != nil {
-		return err
-	}
+	if arrLen > 1 {
+		code, err := d.PeekCode()
+		if err != nil {
+			return err
+		}
 
-	var retErr error
-	if msgpackIsArray(code) {
-		crudErr := newErrorMany(r.rowType)
-		if err := d.Decode(&crudErr); err != nil {
-			return err
-		}
-		retErr = *crudErr
-	} else if code != msgpcode.Nil {
-		crudErr := newError(r.rowType)
-		if err := d.Decode(&crudErr); err != nil {
-			return err
-		}
-		retErr = *crudErr
-	} else {
-		if err := d.DecodeNil(); err != nil {
-			return err
+		if msgpackIsArray(code) {
+			crudErr := newErrorMany(r.rowType)
+			if err := d.Decode(&crudErr); err != nil {
+				return err
+			}
+			if crudErr != nil {
+				return *crudErr
+			}
+		} else if code != msgpcode.Nil {
+			crudErr := newError(r.rowType)
+			if err := d.Decode(&crudErr); err != nil {
+				return err
+			}
+			if crudErr != nil {
+				return *crudErr
+			}
+		} else {
+			if err := d.DecodeNil(); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -160,7 +165,7 @@ func (r *Result) DecodeMsgpack(d *msgpack.Decoder) error {
 		}
 	}
 
-	return retErr
+	return nil
 }
 
 // NumberResult describes CRUD result as an object containing number.
@@ -175,28 +180,30 @@ func (r *NumberResult) DecodeMsgpack(d *msgpack.Decoder) error {
 		return err
 	}
 
-	if arrLen < 2 {
-		return fmt.Errorf("array len doesn't match: %d", arrLen)
+	if arrLen == 0 {
+		return fmt.Errorf("unexpected empty response array")
 	}
 
 	if r.Value, err = d.DecodeUint64(); err != nil {
 		return err
 	}
 
-	var crudErr *Error = nil
+	if arrLen > 1 {
+		var crudErr *Error = nil
 
-	if err := d.Decode(&crudErr); err != nil {
-		return err
+		if err := d.Decode(&crudErr); err != nil {
+			return err
+		}
+
+		if crudErr != nil {
+			return crudErr
+		}
 	}
 
 	for i := 2; i < arrLen; i++ {
 		if err := d.Skip(); err != nil {
 			return err
 		}
-	}
-
-	if crudErr != nil {
-		return crudErr
 	}
 
 	return nil
@@ -213,26 +220,31 @@ func (r *BoolResult) DecodeMsgpack(d *msgpack.Decoder) error {
 	if err != nil {
 		return err
 	}
-	if arrLen < 2 {
-		if r.Value, err = d.DecodeBool(); err != nil {
+
+	if arrLen == 0 {
+		return fmt.Errorf("unexpected empty response array")
+	}
+
+	if r.Value, err = d.DecodeBool(); err != nil {
+		return err
+	}
+
+	if arrLen > 1 {
+		var crudErr *Error = nil
+
+		if err := d.Decode(&crudErr); err != nil {
 			return err
 		}
 
-		return nil
+		if crudErr != nil {
+			return crudErr
+		}
 	}
 
-	if _, err = d.DecodeInterface(); err != nil {
-		return err
-	}
-
-	var crudErr *Error = nil
-
-	if err := d.Decode(&crudErr); err != nil {
-		return err
-	}
-
-	if crudErr != nil {
-		return crudErr
+	for i := 2; i < arrLen; i++ {
+		if err := d.Skip(); err != nil {
+			return err
+		}
 	}
 
 	return nil
