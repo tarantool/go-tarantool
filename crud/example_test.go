@@ -302,3 +302,32 @@ func ExampleSelectRequest_pagination() {
 	// [{id unsigned false} {bucket_id unsigned true} {name string false}]
 	// [[3006 32 bla] [3007 33 bla]]
 }
+
+func ExampleSchema() {
+	conn := exampleConnect()
+
+	req := crud.MakeSchemaRequest()
+	var result crud.SchemaResult
+
+	if err := conn.Do(req).GetTyped(&result); err != nil {
+		fmt.Printf("Failed to execute request: %s", err)
+		return
+	}
+
+	// Schema may differ between different Tarantool versions.
+	// https://github.com/tarantool/tarantool/issues/4091
+	// https://github.com/tarantool/tarantool/commit/17c9c034933d726925910ce5bf8b20e8e388f6e3
+	for spaceName, spaceSchema := range result.Value {
+		fmt.Printf("Space format for '%s' is as follows:\n", spaceName)
+
+		for _, field := range spaceSchema.Format {
+			fmt.Printf("    - field '%s' with type '%s'\n", field.Name, field.Type)
+		}
+	}
+
+	// Output:
+	// Space format for 'test' is as follows:
+	//     - field 'id' with type 'unsigned'
+	//     - field 'bucket_id' with type 'unsigned'
+	//     - field 'name' with type 'string'
+}
