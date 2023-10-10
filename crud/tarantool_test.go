@@ -1207,6 +1207,130 @@ func TestNoreturnOptionTyped(t *testing.T) {
 	}
 }
 
+func getTestSchema(t *testing.T) crud.Schema {
+	schema := crud.Schema{
+		"test": crud.SpaceSchema{
+			Format: []crud.FieldFormat{
+				crud.FieldFormat{
+					Name:       "id",
+					Type:       "unsigned",
+					IsNullable: false,
+				},
+				{
+					Name:       "bucket_id",
+					Type:       "unsigned",
+					IsNullable: true,
+				},
+				{
+					Name:       "name",
+					Type:       "string",
+					IsNullable: false,
+				},
+			},
+			Indexes: map[uint32]crud.Index{
+				0: {
+					Id:     0,
+					Name:   "primary_index",
+					Type:   "TREE",
+					Unique: true,
+					Parts: []crud.IndexPart{
+						{
+							Fieldno:     1,
+							Type:        "unsigned",
+							ExcludeNull: false,
+							IsNullable:  false,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// https://github.com/tarantool/tarantool/issues/4091
+	uniqueIssue, err := test_helpers.IsTarantoolVersionLess(2, 2, 1)
+	require.Equal(t, err, nil, "expected version check to succeed")
+
+	if uniqueIssue {
+		for sk, sv := range schema {
+			for ik, iv := range sv.Indexes {
+				iv.Unique = false
+				sv.Indexes[ik] = iv
+			}
+			schema[sk] = sv
+		}
+	}
+
+	// https://github.com/tarantool/tarantool/commit/17c9c034933d726925910ce5bf8b20e8e388f6e3
+	excludeNullUnsupported, err := test_helpers.IsTarantoolVersionLess(2, 8, 1)
+	require.Equal(t, err, nil, "expected version check to succeed")
+
+	if excludeNullUnsupported {
+		for sk, sv := range schema {
+			for ik, iv := range sv.Indexes {
+				for pk, pv := range iv.Parts {
+					// Struct default value.
+					pv.ExcludeNull = false
+					iv.Parts[pk] = pv
+				}
+				sv.Indexes[ik] = iv
+			}
+			schema[sk] = sv
+		}
+	}
+
+	return schema
+}
+
+func TestSchemaTyped(t *testing.T) {
+	conn := connect(t)
+	defer conn.Close()
+
+	req := crud.MakeSchemaRequest()
+	var result crud.SchemaResult
+
+	err := conn.Do(req).GetTyped(&result)
+	require.Equal(t, err, nil, "Expected CRUD request to succeed")
+	require.Equal(t, result.Value, getTestSchema(t), "map with \"test\" schema expected")
+}
+
+func TestSpaceSchemaTyped(t *testing.T) {
+	conn := connect(t)
+	defer conn.Close()
+
+	req := crud.MakeSchemaRequest().Space("test")
+	var result crud.SpaceSchemaResult
+
+	err := conn.Do(req).GetTyped(&result)
+	require.Equal(t, err, nil, "Expected CRUD request to succeed")
+	require.Equal(t, result.Value, getTestSchema(t)["test"], "map with \"test\" schema expected")
+}
+
+func TestSpaceSchemaTypedError(t *testing.T) {
+	conn := connect(t)
+	defer conn.Close()
+
+	req := crud.MakeSchemaRequest().Space("not_exist")
+	var result crud.SpaceSchemaResult
+
+	err := conn.Do(req).GetTyped(&result)
+	require.NotEqual(t, err, nil, "Expected CRUD request to fail")
+	require.Regexp(t, "Space \"not_exist\" doesn't exist", err.Error())
+}
+
+func TestUnitEmptySchema(t *testing.T) {
+	// We need to create another cluster with no spaces
+	// to test `{}` schema, so let's at least add a unit test.
+	conn := connect(t)
+	defer conn.Close()
+
+	req := tarantool.NewEvalRequest("return {}")
+	var result crud.SchemaResult
+
+	err := conn.Do(req).GetTyped(&result)
+	require.Equal(t, err, nil, "Expected CRUD request to succeed")
+	require.Equal(t, result.Value, crud.Schema{}, "empty schema expected")
+}
+
 // runTestMain is a body of TestMain function
 // (see https://pkg.go.dev/testing#hdr-Main).
 // Using defer + os.Exit is not works so TestMain body
