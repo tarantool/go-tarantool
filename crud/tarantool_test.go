@@ -231,7 +231,7 @@ var testResultWithErrCases = []struct {
 	{
 		"ManyResult",
 		&crud.Result{},
-		crud.MakeReplaceManyRequest(invalidSpaceName).Opts(opManyOpts),
+		crud.MakeReplaceManyRequest(invalidSpaceName).Tuples(tuples).Opts(opManyOpts),
 	},
 	{
 		"NumberResult",
