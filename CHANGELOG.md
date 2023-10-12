@@ -60,6 +60,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
   crud.SelectRequest (#320)
 - Incorrect options (`vshard_router`, `fields`, `bucket_id`, `mode`,
   `prefer_replica`, `balance`) setup for crud.GetRequest (#335)
+- Tests with crud 1.4.0 (#336)
 
 ## [1.12.0] - 2023-06-07
 
