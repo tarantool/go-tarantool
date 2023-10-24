@@ -2606,6 +2606,53 @@ func TestConnectionDoSelectRequest(t *testing.T) {
 	testConnectionDoSelectRequestCheck(t, resp, err, false, 10, 1010)
 }
 
+func TestConnectionDoWatchOnceRequest(t *testing.T) {
+	test_helpers.SkipIfWatchOnceUnsupported(t)
+
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	defer conn.Close()
+
+	_, err := conn.Do(NewBroadcastRequest("hello").Value("world")).Get()
+	if err != nil {
+		t.Fatalf("Failed to create a broadcast : %s", err.Error())
+	}
+
+	resp, err := conn.Do(NewWatchOnceRequest("hello")).Get()
+	if err != nil {
+		t.Fatalf("Failed to WatchOnce: %s", err.Error())
+	}
+	if resp.Code != OkCode {
+		t.Errorf("Failed to WatchOnce: wrong code returned %d", resp.Code)
+	}
+	if len(resp.Data) < 1 || resp.Data[0] != "world" {
+		t.Errorf("Failed to WatchOnce: wrong value returned %v", resp.Data)
+	}
+}
+
+func TestConnectionDoWatchOnceOnEmptyKey(t *testing.T) {
+	watchOnceNotSupported, err := test_helpers.IsTarantoolVersionLess(3, 0, 0)
+	if err != nil {
+		log.Fatalf("Could not check the Tarantool version")
+	}
+	if watchOnceNotSupported {
+		return
+	}
+
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	defer conn.Close()
+
+	resp, err := conn.Do(NewWatchOnceRequest("notexists!")).Get()
+	if err != nil {
+		t.Fatalf("Failed to WatchOnce: %s", err.Error())
+	}
+	if resp.Code != OkCode {
+		t.Errorf("Failed to WatchOnce: wrong code returned %d", resp.Code)
+	}
+	if len(resp.Data) > 0 {
+		t.Errorf("Failed to WatchOnce: wrong value returned %v", resp.Data)
+	}
+}
+
 func TestConnectionDoSelectRequest_fetch_pos(t *testing.T) {
 	test_helpers.SkipIfPaginationUnsupported(t)
 
@@ -3247,13 +3294,14 @@ func TestConnectionProtocolInfoSupported(t *testing.T) {
 	require.Equal(t,
 		clientProtocolInfo,
 		ProtocolInfo{
-			Version: ProtocolVersion(4),
+			Version: ProtocolVersion(6),
 			Features: []ProtocolFeature{
 				StreamsFeature,
 				TransactionsFeature,
 				ErrorExtensionFeature,
 				WatchersFeature,
 				PaginationFeature,
+				WatchOnceFeature,
 			},
 		})
 
@@ -3364,13 +3412,14 @@ func TestConnectionProtocolInfoUnsupported(t *testing.T) {
 	require.Equal(t,
 		clientProtocolInfo,
 		ProtocolInfo{
-			Version: ProtocolVersion(4),
+			Version: ProtocolVersion(6),
 			Features: []ProtocolFeature{
 				StreamsFeature,
 				TransactionsFeature,
 				ErrorExtensionFeature,
 				WatchersFeature,
 				PaginationFeature,
+				WatchOnceFeature,
 			},
 		})
 

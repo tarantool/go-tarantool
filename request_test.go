@@ -196,6 +196,7 @@ func TestRequestsTypes(t *testing.T) {
 		{req: NewRollbackRequest(), rtype: iproto.IPROTO_ROLLBACK},
 		{req: NewIdRequest(validProtocolInfo), rtype: iproto.IPROTO_ID},
 		{req: NewBroadcastRequest(validKey), rtype: iproto.IPROTO_CALL},
+		{req: NewWatchOnceRequest(validKey), rtype: iproto.IPROTO_WATCH_ONCE},
 	}
 
 	for _, test := range tests {
@@ -231,6 +232,7 @@ func TestRequestsAsync(t *testing.T) {
 		{req: NewRollbackRequest(), async: false},
 		{req: NewIdRequest(validProtocolInfo), async: false},
 		{req: NewBroadcastRequest(validKey), async: false},
+		{req: NewWatchOnceRequest(validKey), async: false},
 	}
 
 	for _, test := range tests {
@@ -265,6 +267,7 @@ func TestRequestsCtx_default(t *testing.T) {
 		{req: NewRollbackRequest(), expected: nil},
 		{req: NewIdRequest(validProtocolInfo), expected: nil},
 		{req: NewBroadcastRequest(validKey), expected: nil},
+		{req: NewWatchOnceRequest(validKey), expected: nil},
 	}
 
 	for _, test := range tests {
@@ -300,6 +303,7 @@ func TestRequestsCtx_setter(t *testing.T) {
 		{req: NewRollbackRequest().Context(ctx), expected: ctx},
 		{req: NewIdRequest(validProtocolInfo).Context(ctx), expected: ctx},
 		{req: NewBroadcastRequest(validKey).Context(ctx), expected: ctx},
+		{req: NewWatchOnceRequest(validKey).Context(ctx), expected: ctx},
 	}
 
 	for _, test := range tests {
@@ -821,5 +825,19 @@ func TestBroadcastRequestSetters(t *testing.T) {
 	}
 
 	req := NewBroadcastRequest(validKey).Value(value)
+	assertBodyEqual(t, refBuf.Bytes(), req)
+}
+
+func TestWatchOnceRequestDefaultValues(t *testing.T) {
+	var refBuf bytes.Buffer
+
+	refEnc := msgpack.NewEncoder(&refBuf)
+	err := RefImplWatchOnceBody(refEnc, validKey)
+	if err != nil {
+		t.Errorf("An unexpected RefImplCallBody() error: %q", err.Error())
+		return
+	}
+
+	req := NewWatchOnceRequest(validKey)
 	assertBodyEqual(t, refBuf.Bytes(), req)
 }

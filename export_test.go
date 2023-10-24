@@ -120,3 +120,9 @@ func RefImplRollbackBody(enc *msgpack.Encoder) error {
 func RefImplIdBody(enc *msgpack.Encoder, protocolInfo ProtocolInfo) error {
 	return fillId(enc, protocolInfo)
 }
+
+// RefImplWatchOnceBody is reference implementation for filling of an watchOnce
+// request's body.
+func RefImplWatchOnceBody(enc *msgpack.Encoder, key string) error {
+	return fillWatchOnce(enc, key)
+}

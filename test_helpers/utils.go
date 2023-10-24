@@ -192,6 +192,14 @@ func SkipIfPaginationUnsupported(t *testing.T) {
 	SkipIfFeatureUnsupported(t, "pagination", 2, 11, 0)
 }
 
+// SkipIfWatchOnceUnsupported skips test run if Tarantool without WatchOnce
+// request type is used.
+func SkipIfWatchOnceUnsupported(t *testing.T) {
+	t.Helper()
+
+	SkipIfFeatureUnsupported(t, "watch once", 3, 0, 0)
+}
+
 // CheckEqualBoxErrors checks equivalence of tarantool.BoxError objects.
 //
 // Tarantool errors are not comparable by nature:
