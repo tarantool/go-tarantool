@@ -32,6 +32,7 @@ func TestFeatureStringRepresentation(t *testing.T) {
 	require.Equal(t, ErrorExtensionFeature.String(), "ErrorExtensionFeature")
 	require.Equal(t, WatchersFeature.String(), "WatchersFeature")
 	require.Equal(t, PaginationFeature.String(), "PaginationFeature")
+	require.Equal(t, WatchOnceFeature.String(), "WatchOnceFeature")
 
 	require.Equal(t, ProtocolFeature(15532).String(), "Unknown feature (code 15532)")
 }

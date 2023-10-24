@@ -20,6 +20,8 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 - Support `fetch_latest_metadata` option for crud requests with metadata (#335)
 - Support `noreturn` option for data change crud requests (#335)
 - Support `crud.schema` request (#336)
+- Support `IPROTO_WATCH_ONCE` request type for Tarantool 
+  version >= 3.0.0-alpha1 (#337)
 
 ### Changed
 

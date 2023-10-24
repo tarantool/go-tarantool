@@ -166,6 +166,16 @@ func fillPing(enc *msgpack.Encoder) error {
 	return enc.EncodeMapLen(0)
 }
 
+func fillWatchOnce(enc *msgpack.Encoder, key string) error {
+	if err := enc.EncodeMapLen(1); err != nil {
+		return err
+	}
+	if err := enc.EncodeUint(uint64(iproto.IPROTO_EVENT_KEY)); err != nil {
+		return err
+	}
+	return enc.EncodeString(key)
+}
+
 // Ping sends empty request to Tarantool to check connection.
 //
 // Deprecated: the method will be removed in the next major version,
@@ -1351,6 +1361,32 @@ func (req *ExecuteRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error 
 // of the request. For those purposes use context.WithTimeout() as
 // the root context.
 func (req *ExecuteRequest) Context(ctx context.Context) *ExecuteRequest {
+	req.ctx = ctx
+	return req
+}
+
+// WatchOnceRequest synchronously fetches the value currently associated with a
+// specified notification key without subscribing to changes.
+type WatchOnceRequest struct {
+	baseRequest
+	key string
+}
+
+// NewWatchOnceRequest returns a new watchOnceRequest.
+func NewWatchOnceRequest(key string) *WatchOnceRequest {
+	req := new(WatchOnceRequest)
+	req.rtype = iproto.IPROTO_WATCH_ONCE
+	req.key = key
+	return req
+}
+
+// Body fills an msgpack.Encoder with the watchOnce request body.
+func (req *WatchOnceRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
+	return fillWatchOnce(enc, req.key)
+}
+
+// Context sets a passed context to the request.
+func (req *WatchOnceRequest) Context(ctx context.Context) *WatchOnceRequest {
 	req.ctx = ctx
 	return req
 }

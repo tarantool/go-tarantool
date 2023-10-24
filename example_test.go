@@ -626,12 +626,13 @@ func ExampleProtocolVersion() {
 		fmt.Println("Connector client protocol feature:", f)
 	}
 	// Output:
-	// Connector client protocol version: 4
+	// Connector client protocol version: 6
 	// Connector client protocol feature: StreamsFeature
 	// Connector client protocol feature: TransactionsFeature
 	// Connector client protocol feature: ErrorExtensionFeature
 	// Connector client protocol feature: WatchersFeature
 	// Connector client protocol feature: PaginationFeature
+	// Connector client protocol feature: WatchOnceFeature
 }
 
 func getTestTxnOpts() tarantool.Opts {
@@ -1229,4 +1230,27 @@ func ExampleConnection_CloseGraceful_force() {
 	// Connection.CloseGraceful() done!
 	// Result:
 	// <nil> connection closed by client (0x4001)
+}
+
+func ExampleWatchOnceRequest() {
+	const key = "foo"
+	const value = "bar"
+
+	// WatchOnce request present in Tarantool since version 3.0
+	isLess, err := test_helpers.IsTarantoolVersionLess(3, 0, 0)
+	if err != nil || isLess {
+		return
+	}
+
+	conn := exampleConnect(opts)
+	defer conn.Close()
+
+	conn.Do(tarantool.NewBroadcastRequest(key).Value(value)).Get()
+
+	resp, err := conn.Do(tarantool.NewWatchOnceRequest(key)).Get()
+	if err != nil {
+		fmt.Printf("Failed to execute the request: %s\n", err)
+	} else {
+		fmt.Println(resp.Data)
+	}
 }

@@ -12,7 +12,7 @@ import (
 type ProtocolVersion uint64
 
 // ProtocolVersion type stores a Tarantool protocol feature.
-type ProtocolFeature uint64
+type ProtocolFeature iproto.Feature
 
 // ProtocolInfo type aggregates Tarantool protocol version and features info.
 type ProtocolInfo struct {
@@ -52,6 +52,8 @@ const (
 	// PaginationFeature represents support of pagination
 	// (supported by connector).
 	PaginationFeature ProtocolFeature = 4
+	// WatchOnceFeature represents support of WatchOnce request types.
+	WatchOnceFeature ProtocolFeature = 6
 )
 
 // String returns the name of a Tarantool feature.
@@ -68,6 +70,8 @@ func (ftr ProtocolFeature) String() string {
 		return "WatchersFeature"
 	case PaginationFeature:
 		return "PaginationFeature"
+	case WatchOnceFeature:
+		return "WatchOnceFeature"
 	default:
 		return fmt.Sprintf("Unknown feature (code %d)", ftr)
 	}
@@ -79,7 +83,7 @@ var clientProtocolInfo ProtocolInfo = ProtocolInfo{
 	// introduced in master 948e5cd (possible 2.10.5 or 2.11.0).
 	// Support of protocol version on connector side was introduced in
 	// 1.10.0.
-	Version: ProtocolVersion(4),
+	Version: ProtocolVersion(6),
 	// Streams and transactions were introduced in protocol version 1
 	// (Tarantool 2.10.0), in connector since 1.7.0.
 	// Error extension type was introduced in protocol
@@ -88,12 +92,15 @@ var clientProtocolInfo ProtocolInfo = ProtocolInfo{
 	// connector since 1.10.0.
 	// Pagination were introduced in protocol version 4 (Tarantool 2.11.0), in
 	// connector since 1.11.0.
+	// WatchOnce request type was introduces in protocol version 6
+	// (Tarantool 3.0.0), in connector since 2.0.0.
 	Features: []ProtocolFeature{
 		StreamsFeature,
 		TransactionsFeature,
 		ErrorExtensionFeature,
 		WatchersFeature,
 		PaginationFeature,
+		WatchOnceFeature,
 	},
 }
 
