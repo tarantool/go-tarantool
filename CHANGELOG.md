@@ -15,6 +15,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 ### Fixed
 
 - Tests with crud 1.4.0 (#336)
+- Tests with case sensitive SQL (#341)
 
 ## [1.12.1] - 2023-08-03
 

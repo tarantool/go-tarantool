@@ -116,7 +116,7 @@ func TestSQLDefaultEngineSetting(t *testing.T) {
 	require.Equal(t, []interface{}{[]interface{}{"sql_default_engine", "vinyl"}}, resp.Data)
 
 	// Create a space with "CREATE TABLE".
-	resp, err = conn.Execute("CREATE TABLE t1_vinyl(a INT PRIMARY KEY, b INT, c INT);", []interface{}{})
+	resp, err = conn.Execute("CREATE TABLE T1_VINYL(a INT PRIMARY KEY, b INT, c INT);", []interface{}{})
 	require.Nil(t, err)
 	require.NotNil(t, resp)
 	require.Equal(t, uint64(1), resp.SQLInfo.AffectedCount)
@@ -140,7 +140,7 @@ func TestSQLDefaultEngineSetting(t *testing.T) {
 	require.Equal(t, []interface{}{[]interface{}{"sql_default_engine", "memtx"}}, resp.Data)
 
 	// Create a space with "CREATE TABLE".
-	resp, err = conn.Execute("CREATE TABLE t2_memtx(a INT PRIMARY KEY, b INT, c INT);", []interface{}{})
+	resp, err = conn.Execute("CREATE TABLE T2_MEMTX(a INT PRIMARY KEY, b INT, c INT);", []interface{}{})
 	require.Nil(t, err)
 	require.NotNil(t, resp)
 	require.Equal(t, uint64(1), resp.SQLInfo.AffectedCount)
@@ -233,13 +233,13 @@ func TestSQLFullColumnNamesSetting(t *testing.T) {
 	defer conn.Close()
 
 	// Create a space.
-	resp, err = conn.Execute("CREATE TABLE fkname(id INT PRIMARY KEY, x INT);", []interface{}{})
+	resp, err = conn.Execute("CREATE TABLE FKNAME(ID INT PRIMARY KEY, X INT);", []interface{}{})
 	require.Nil(t, err)
 	require.NotNil(t, resp)
 	require.Equal(t, uint64(1), resp.SQLInfo.AffectedCount)
 
 	// Fill it with some data.
-	resp, err = conn.Execute("INSERT INTO fkname VALUES (1, 1);", []interface{}{})
+	resp, err = conn.Execute("INSERT INTO FKNAME VALUES (1, 1);", []interface{}{})
 	require.Nil(t, err)
 	require.NotNil(t, resp)
 	require.Equal(t, uint64(1), resp.SQLInfo.AffectedCount)
@@ -257,7 +257,7 @@ func TestSQLFullColumnNamesSetting(t *testing.T) {
 	require.Equal(t, []interface{}{[]interface{}{"sql_full_column_names", false}}, resp.Data)
 
 	// Get a data with short column names in metadata.
-	resp, err = conn.Execute("SELECT x FROM fkname WHERE id = 1;", []interface{}{})
+	resp, err = conn.Execute("SELECT X FROM FKNAME WHERE ID = 1;", []interface{}{})
 	require.Nil(t, err)
 	require.NotNil(t, resp)
 	require.Equal(t, "X", resp.MetaData[0].FieldName)
@@ -275,7 +275,7 @@ func TestSQLFullColumnNamesSetting(t *testing.T) {
 	require.Equal(t, []interface{}{[]interface{}{"sql_full_column_names", true}}, resp.Data)
 
 	// Get a data with full column names in metadata.
-	resp, err = conn.Execute("SELECT x FROM fkname WHERE id = 1;", []interface{}{})
+	resp, err = conn.Execute("SELECT X FROM FKNAME WHERE ID = 1;", []interface{}{})
 	require.Nil(t, err)
 	require.NotNil(t, resp)
 	require.Equal(t, "FKNAME.X", resp.MetaData[0].FieldName)
