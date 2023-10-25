@@ -17,6 +17,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/tarantool/go-iproto"
+
 	"github.com/tarantool/go-tarantool/v2"
 )
 
@@ -911,8 +913,8 @@ func (p *ConnectionPool) NewPrepared(expr string, userMode Mode) (*tarantool.Pre
 
 // NewWatcher creates a new Watcher object for the connection pool.
 //
-// You need to require WatchersFeature to use watchers, see examples for the
-// function.
+// You need to require IPROTO_FEATURE_WATCHERS to use watchers, see examples
+// for the function.
 //
 // The behavior is same as if Connection.NewWatcher() called for each
 // connection with a suitable role.
@@ -932,14 +934,14 @@ func (p *ConnectionPool) NewWatcher(key string,
 	callback tarantool.WatchCallback, mode Mode) (tarantool.Watcher, error) {
 	watchersRequired := false
 	for _, feature := range p.connOpts.RequiredProtocolInfo.Features {
-		if tarantool.WatchersFeature == feature {
+		if iproto.IPROTO_FEATURE_WATCHERS == feature {
 			watchersRequired = true
 			break
 		}
 	}
 	if !watchersRequired {
-		return nil, errors.New("the feature WatchersFeature must be " +
-			"required by connection options to create a watcher")
+		return nil, errors.New("the feature IPROTO_FEATURE_WATCHERS must " +
+			"be required by connection options to create a watcher")
 	}
 
 	watcher := &poolWatcher{

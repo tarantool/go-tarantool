@@ -13,6 +13,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tarantool/go-iproto"
 
 	"github.com/tarantool/go-tarantool/v2"
 	"github.com/tarantool/go-tarantool/v2/test_helpers"
@@ -72,8 +73,8 @@ func TestDialer_Dial_passedOpts(t *testing.T) {
 		RequiredProtocol: tarantool.ProtocolInfo{
 			Auth:    tarantool.ChapSha1Auth,
 			Version: 33,
-			Features: []tarantool.ProtocolFeature{
-				tarantool.ErrorExtensionFeature,
+			Features: []iproto.Feature{
+				iproto.IPROTO_FEATURE_ERROR_EXTENSION,
 			},
 		},
 		Auth:     tarantool.ChapSha1Auth,
@@ -302,8 +303,8 @@ func TestConn_ProtocolInfo(t *testing.T) {
 	info := tarantool.ProtocolInfo{
 		Auth:    tarantool.ChapSha1Auth,
 		Version: 33,
-		Features: []tarantool.ProtocolFeature{
-			tarantool.ErrorExtensionFeature,
+		Features: []iproto.Feature{
+			iproto.IPROTO_FEATURE_ERROR_EXTENSION,
 		},
 	}
 	conn, dialer := dialIo(t, func(conn *mockIoConn) {

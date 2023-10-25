@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/tarantool/go-iproto"
+
 	"github.com/tarantool/go-tarantool/v2"
 	"github.com/tarantool/go-tarantool/v2/test_helpers"
 )
@@ -627,12 +629,12 @@ func ExampleProtocolVersion() {
 	}
 	// Output:
 	// Connector client protocol version: 6
-	// Connector client protocol feature: StreamsFeature
-	// Connector client protocol feature: TransactionsFeature
-	// Connector client protocol feature: ErrorExtensionFeature
-	// Connector client protocol feature: WatchersFeature
-	// Connector client protocol feature: PaginationFeature
-	// Connector client protocol feature: WatchOnceFeature
+	// Connector client protocol feature: IPROTO_FEATURE_STREAMS
+	// Connector client protocol feature: IPROTO_FEATURE_TRANSACTIONS
+	// Connector client protocol feature: IPROTO_FEATURE_ERROR_EXTENSION
+	// Connector client protocol feature: IPROTO_FEATURE_WATCHERS
+	// Connector client protocol feature: IPROTO_FEATURE_PAGINATION
+	// Connector client protocol feature: IPROTO_FEATURE_WATCH_ONCE
 }
 
 func getTestTxnOpts() tarantool.Opts {
@@ -641,9 +643,9 @@ func getTestTxnOpts() tarantool.Opts {
 	// Assert that server supports expected protocol features
 	txnOpts.RequiredProtocolInfo = tarantool.ProtocolInfo{
 		Version: tarantool.ProtocolVersion(1),
-		Features: []tarantool.ProtocolFeature{
-			tarantool.StreamsFeature,
-			tarantool.TransactionsFeature,
+		Features: []iproto.Feature{
+			iproto.IPROTO_FEATURE_STREAMS,
+			iproto.IPROTO_FEATURE_TRANSACTIONS,
 		},
 	}
 
@@ -1168,7 +1170,7 @@ func ExampleConnection_NewWatcher() {
 		Pass:          "test",
 		// You need to require the feature to create a watcher.
 		RequiredProtocolInfo: tarantool.ProtocolInfo{
-			Features: []tarantool.ProtocolFeature{tarantool.WatchersFeature},
+			Features: []iproto.Feature{iproto.IPROTO_FEATURE_WATCHERS},
 		},
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)

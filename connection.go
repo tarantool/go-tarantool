@@ -564,7 +564,8 @@ func (conn *Connection) dial(ctx context.Context) error {
 
 	// Subscribe shutdown event to process graceful shutdown.
 	if conn.shutdownWatcher == nil &&
-		isFeatureInSlice(WatchersFeature, conn.serverProtocolInfo.Features) {
+		isFeatureInSlice(iproto.IPROTO_FEATURE_WATCHERS,
+			conn.serverProtocolInfo.Features) {
 		watcher, werr := conn.newWatcherImpl(shutdownEventKey, shutdownEventCallback)
 		if werr != nil {
 			return werr
@@ -1425,7 +1426,7 @@ func subscribeWatchChannel(conn *Connection, key string) (chan watchState, error
 	return st, nil
 }
 
-func isFeatureInSlice(expected ProtocolFeature, actualSlice []ProtocolFeature) bool {
+func isFeatureInSlice(expected iproto.Feature, actualSlice []iproto.Feature) bool {
 	for _, actual := range actualSlice {
 		if expected == actual {
 			return true
@@ -1436,8 +1437,8 @@ func isFeatureInSlice(expected ProtocolFeature, actualSlice []ProtocolFeature) b
 
 // NewWatcher creates a new Watcher object for the connection.
 //
-// You need to require WatchersFeature to use watchers, see examples for the
-// function.
+// You need to require IPROTO_FEATURE_WATCHERS to use watchers, see examples
+// for the function.
 //
 // After watcher creation, the watcher callback is invoked for the first time.
 // In this case, the callback is triggered whether or not the key has already
@@ -1472,9 +1473,10 @@ func (conn *Connection) NewWatcher(key string, callback WatchCallback) (Watcher,
 	// asynchronous. We do not expect any response from a Tarantool instance
 	// That's why we can't just check the Tarantool response for an unsupported
 	// request error.
-	if !isFeatureInSlice(WatchersFeature, conn.opts.RequiredProtocolInfo.Features) {
+	if !isFeatureInSlice(iproto.IPROTO_FEATURE_WATCHERS,
+		conn.opts.RequiredProtocolInfo.Features) {
 		err := fmt.Errorf("the feature %s must be required by connection "+
-			"options to create a watcher", WatchersFeature)
+			"options to create a watcher", iproto.IPROTO_FEATURE_WATCHERS)
 		return nil, err
 	}
 

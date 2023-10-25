@@ -14,6 +14,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tarantool/go-iproto"
 	"github.com/vmihailenco/msgpack/v5"
 
 	"github.com/tarantool/go-tarantool/v2"
@@ -2832,7 +2833,7 @@ func TestConnectionPool_NewWatcher_noWatchersFeature(t *testing.T) {
 	roles := []bool{true, false, false, true, true}
 
 	opts := connOpts.Clone()
-	opts.RequiredProtocolInfo.Features = []tarantool.ProtocolFeature{}
+	opts.RequiredProtocolInfo.Features = []iproto.Feature{}
 	err := test_helpers.SetClusterRO(servers, opts, roles)
 	require.Nilf(t, err, "fail to set roles for cluster")
 
@@ -2847,8 +2848,8 @@ func TestConnectionPool_NewWatcher_noWatchersFeature(t *testing.T) {
 		func(event tarantool.WatchEvent) {}, pool.ANY)
 	require.Nilf(t, watcher, "watcher must not be created")
 	require.NotNilf(t, err, "an error is expected")
-	expected := "the feature WatchersFeature must be required by connection " +
-		"options to create a watcher"
+	expected := "the feature IPROTO_FEATURE_WATCHERS must be required by " +
+		"connection options to create a watcher"
 	require.Equal(t, expected, err.Error())
 }
 
@@ -2860,8 +2861,8 @@ func TestConnectionPool_NewWatcher_modes(t *testing.T) {
 	roles := []bool{true, false, false, true, true}
 
 	opts := connOpts.Clone()
-	opts.RequiredProtocolInfo.Features = []tarantool.ProtocolFeature{
-		tarantool.WatchersFeature,
+	opts.RequiredProtocolInfo.Features = []iproto.Feature{
+		iproto.IPROTO_FEATURE_WATCHERS,
 	}
 	err := test_helpers.SetClusterRO(servers, opts, roles)
 	require.Nilf(t, err, "fail to set roles for cluster")
@@ -2941,8 +2942,8 @@ func TestConnectionPool_NewWatcher_update(t *testing.T) {
 	roles := []bool{true, false, false, true, true}
 
 	opts := connOpts.Clone()
-	opts.RequiredProtocolInfo.Features = []tarantool.ProtocolFeature{
-		tarantool.WatchersFeature,
+	opts.RequiredProtocolInfo.Features = []iproto.Feature{
+		iproto.IPROTO_FEATURE_WATCHERS,
 	}
 	err := test_helpers.SetClusterRO(servers, opts, roles)
 	require.Nilf(t, err, "fail to set roles for cluster")
@@ -3030,8 +3031,8 @@ func TestWatcher_Unregister(t *testing.T) {
 	roles := []bool{true, false, false, true, true}
 
 	opts := connOpts.Clone()
-	opts.RequiredProtocolInfo.Features = []tarantool.ProtocolFeature{
-		tarantool.WatchersFeature,
+	opts.RequiredProtocolInfo.Features = []iproto.Feature{
+		iproto.IPROTO_FEATURE_WATCHERS,
 	}
 	err := test_helpers.SetClusterRO(servers, opts, roles)
 	require.Nilf(t, err, "fail to set roles for cluster")
@@ -3091,8 +3092,8 @@ func TestConnectionPool_NewWatcher_concurrent(t *testing.T) {
 	roles := []bool{true, false, false, true, true}
 
 	opts := connOpts.Clone()
-	opts.RequiredProtocolInfo.Features = []tarantool.ProtocolFeature{
-		tarantool.WatchersFeature,
+	opts.RequiredProtocolInfo.Features = []iproto.Feature{
+		iproto.IPROTO_FEATURE_WATCHERS,
 	}
 	err := test_helpers.SetClusterRO(servers, opts, roles)
 	require.Nilf(t, err, "fail to set roles for cluster")
@@ -3133,8 +3134,8 @@ func TestWatcher_Unregister_concurrent(t *testing.T) {
 	roles := []bool{true, false, false, true, true}
 
 	opts := connOpts.Clone()
-	opts.RequiredProtocolInfo.Features = []tarantool.ProtocolFeature{
-		tarantool.WatchersFeature,
+	opts.RequiredProtocolInfo.Features = []iproto.Feature{
+		iproto.IPROTO_FEATURE_WATCHERS,
 	}
 	err := test_helpers.SetClusterRO(servers, opts, roles)
 	require.Nilf(t, err, "fail to set roles for cluster")

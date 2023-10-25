@@ -14,6 +14,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tarantool/go-iproto"
 	. "github.com/tarantool/go-tarantool/v2"
 	"github.com/tarantool/go-tarantool/v2/test_helpers"
 )
@@ -25,7 +26,7 @@ var shtdnClntOpts = Opts{
 	Timeout:              20 * time.Second,
 	Reconnect:            500 * time.Millisecond,
 	MaxReconnects:        10,
-	RequiredProtocolInfo: ProtocolInfo{Features: []ProtocolFeature{WatchersFeature}},
+	RequiredProtocolInfo: ProtocolInfo{Features: []iproto.Feature{iproto.IPROTO_FEATURE_WATCHERS}},
 }
 var shtdnSrvOpts = test_helpers.StartOpts{
 	InitScript:   "config.lua",

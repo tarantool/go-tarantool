@@ -3273,20 +3273,21 @@ func TestConnectionProtocolInfoSupported(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
-	// First Tarantool protocol version (1, StreamsFeature and TransactionsFeature)
-	// was introduced between 2.10.0-beta1 and 2.10.0-beta2.
-	// Versions 2 (ErrorExtensionFeature) and 3 (WatchersFeature) were also
-	// introduced between 2.10.0-beta1 and 2.10.0-beta2. Version 4
-	// (PaginationFeature) was introduced in master 948e5cd (possible 2.10.5 or
-	// 2.11.0). So each release Tarantool >= 2.10 (same as each Tarantool with
-	// id support) has protocol version >= 3 and first four features.
+	// First Tarantool protocol version (1, IPROTO_FEATURE_STREAMS and
+	// IPROTO_FEATURE_TRANSACTIONS) was introduced between 2.10.0-beta1 and
+	// 2.10.0-beta2. Versions 2 (IPROTO_FEATURE_ERROR_EXTENSION) and
+	// 3 (IPROTO_FEATURE_WATCHERS) were also introduced between 2.10.0-beta1 and
+	// 2.10.0-beta2. Version 4 (IPROTO_FEATURE_PAGINATION) was introduced in
+	// master 948e5cd (possible 2.10.5 or 2.11.0). So each release
+	// Tarantool >= 2.10 (same as each Tarantool with id support) has protocol
+	// version >= 3 and first four features.
 	tarantool210ProtocolInfo := ProtocolInfo{
 		Version: ProtocolVersion(3),
-		Features: []ProtocolFeature{
-			StreamsFeature,
-			TransactionsFeature,
-			ErrorExtensionFeature,
-			WatchersFeature,
+		Features: []iproto.Feature{
+			iproto.IPROTO_FEATURE_STREAMS,
+			iproto.IPROTO_FEATURE_TRANSACTIONS,
+			iproto.IPROTO_FEATURE_ERROR_EXTENSION,
+			iproto.IPROTO_FEATURE_WATCHERS,
 		},
 	}
 
@@ -3295,13 +3296,13 @@ func TestConnectionProtocolInfoSupported(t *testing.T) {
 		clientProtocolInfo,
 		ProtocolInfo{
 			Version: ProtocolVersion(6),
-			Features: []ProtocolFeature{
-				StreamsFeature,
-				TransactionsFeature,
-				ErrorExtensionFeature,
-				WatchersFeature,
-				PaginationFeature,
-				WatchOnceFeature,
+			Features: []iproto.Feature{
+				iproto.IPROTO_FEATURE_STREAMS,
+				iproto.IPROTO_FEATURE_TRANSACTIONS,
+				iproto.IPROTO_FEATURE_ERROR_EXTENSION,
+				iproto.IPROTO_FEATURE_WATCHERS,
+				iproto.IPROTO_FEATURE_PAGINATION,
+				iproto.IPROTO_FEATURE_WATCH_ONCE,
 			},
 		})
 
@@ -3322,17 +3323,17 @@ func TestClientIdRequestObject(t *testing.T) {
 
 	tarantool210ProtocolInfo := ProtocolInfo{
 		Version: ProtocolVersion(3),
-		Features: []ProtocolFeature{
-			StreamsFeature,
-			TransactionsFeature,
-			ErrorExtensionFeature,
-			WatchersFeature,
+		Features: []iproto.Feature{
+			iproto.IPROTO_FEATURE_STREAMS,
+			iproto.IPROTO_FEATURE_TRANSACTIONS,
+			iproto.IPROTO_FEATURE_ERROR_EXTENSION,
+			iproto.IPROTO_FEATURE_WATCHERS,
 		},
 	}
 
 	req := NewIdRequest(ProtocolInfo{
 		Version:  ProtocolVersion(1),
-		Features: []ProtocolFeature{StreamsFeature},
+		Features: []iproto.Feature{iproto.IPROTO_FEATURE_STREAMS},
 	})
 	resp, err := conn.Do(req).Get()
 	require.Nilf(t, err, "No errors on Id request execution")
@@ -3358,17 +3359,17 @@ func TestClientIdRequestObjectWithNilContext(t *testing.T) {
 
 	tarantool210ProtocolInfo := ProtocolInfo{
 		Version: ProtocolVersion(3),
-		Features: []ProtocolFeature{
-			StreamsFeature,
-			TransactionsFeature,
-			ErrorExtensionFeature,
-			WatchersFeature,
+		Features: []iproto.Feature{
+			iproto.IPROTO_FEATURE_STREAMS,
+			iproto.IPROTO_FEATURE_TRANSACTIONS,
+			iproto.IPROTO_FEATURE_ERROR_EXTENSION,
+			iproto.IPROTO_FEATURE_WATCHERS,
 		},
 	}
 
 	req := NewIdRequest(ProtocolInfo{
 		Version:  ProtocolVersion(1),
-		Features: []ProtocolFeature{StreamsFeature},
+		Features: []iproto.Feature{iproto.IPROTO_FEATURE_STREAMS},
 	}).Context(nil) //nolint
 	resp, err := conn.Do(req).Get()
 	require.Nilf(t, err, "No errors on Id request execution")
@@ -3393,7 +3394,7 @@ func TestClientIdRequestObjectWithPassedCanceledContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	req := NewIdRequest(ProtocolInfo{
 		Version:  ProtocolVersion(1),
-		Features: []ProtocolFeature{StreamsFeature},
+		Features: []iproto.Feature{iproto.IPROTO_FEATURE_STREAMS},
 	}).Context(ctx) //nolint
 	cancel()
 	resp, err := conn.Do(req).Get()
@@ -3413,13 +3414,13 @@ func TestConnectionProtocolInfoUnsupported(t *testing.T) {
 		clientProtocolInfo,
 		ProtocolInfo{
 			Version: ProtocolVersion(6),
-			Features: []ProtocolFeature{
-				StreamsFeature,
-				TransactionsFeature,
-				ErrorExtensionFeature,
-				WatchersFeature,
-				PaginationFeature,
-				WatchOnceFeature,
+			Features: []iproto.Feature{
+				iproto.IPROTO_FEATURE_STREAMS,
+				iproto.IPROTO_FEATURE_TRANSACTIONS,
+				iproto.IPROTO_FEATURE_ERROR_EXTENSION,
+				iproto.IPROTO_FEATURE_WATCHERS,
+				iproto.IPROTO_FEATURE_PAGINATION,
+				iproto.IPROTO_FEATURE_WATCH_ONCE,
 			},
 		})
 
@@ -3433,7 +3434,7 @@ func TestConnectionClientFeaturesUmmutable(t *testing.T) {
 
 	info := conn.ClientProtocolInfo()
 	infoOrig := info.Clone()
-	info.Features[0] = ProtocolFeature(15532)
+	info.Features[0] = iproto.Feature(15532)
 
 	require.Equal(t, conn.ClientProtocolInfo(), infoOrig)
 	require.NotEqual(t, conn.ClientProtocolInfo(), info)
@@ -3447,7 +3448,7 @@ func TestConnectionServerFeaturesUmmutable(t *testing.T) {
 
 	info := conn.ServerProtocolInfo()
 	infoOrig := info.Clone()
-	info.Features[0] = ProtocolFeature(15532)
+	info.Features[0] = iproto.Feature(15532)
 
 	require.Equal(t, conn.ServerProtocolInfo(), infoOrig)
 	require.NotEqual(t, conn.ServerProtocolInfo(), info)
@@ -3493,7 +3494,7 @@ func TestConnectionProtocolFeatureRequirementSuccess(t *testing.T) {
 
 	connOpts := opts.Clone()
 	connOpts.RequiredProtocolInfo = ProtocolInfo{
-		Features: []ProtocolFeature{TransactionsFeature},
+		Features: []iproto.Feature{iproto.IPROTO_FEATURE_TRANSACTIONS},
 	}
 
 	ctx, cancel := test_helpers.GetConnectContext()
@@ -3511,7 +3512,7 @@ func TestConnectionProtocolFeatureRequirementFail(t *testing.T) {
 
 	connOpts := opts.Clone()
 	connOpts.RequiredProtocolInfo = ProtocolInfo{
-		Features: []ProtocolFeature{TransactionsFeature},
+		Features: []iproto.Feature{iproto.IPROTO_FEATURE_TRANSACTIONS},
 	}
 
 	ctx, cancel := test_helpers.GetConnectContext()
@@ -3521,7 +3522,8 @@ func TestConnectionProtocolFeatureRequirementFail(t *testing.T) {
 	require.Nilf(t, conn, "Connect fail")
 	require.NotNilf(t, err, "Got error on connect")
 	require.Contains(t, err.Error(),
-		"invalid server protocol: protocol feature TransactionsFeature is not supported")
+		"invalid server protocol: protocol feature "+
+			"IPROTO_FEATURE_TRANSACTIONS is not supported")
 }
 
 func TestConnectionProtocolFeatureRequirementManyFail(t *testing.T) {
@@ -3529,7 +3531,8 @@ func TestConnectionProtocolFeatureRequirementManyFail(t *testing.T) {
 
 	connOpts := opts.Clone()
 	connOpts.RequiredProtocolInfo = ProtocolInfo{
-		Features: []ProtocolFeature{TransactionsFeature, ProtocolFeature(15532)},
+		Features: []iproto.Feature{iproto.IPROTO_FEATURE_TRANSACTIONS,
+			iproto.Feature(15532)},
 	}
 
 	ctx, cancel := test_helpers.GetConnectContext()
@@ -3540,8 +3543,8 @@ func TestConnectionProtocolFeatureRequirementManyFail(t *testing.T) {
 	require.NotNilf(t, err, "Got error on connect")
 	require.Contains(t,
 		err.Error(),
-		"invalid server protocol: protocol features TransactionsFeature, "+
-			"Unknown feature (code 15532) are not supported")
+		"invalid server protocol: protocol features IPROTO_FEATURE_TRANSACTIONS, "+
+			"Feature(15532) are not supported")
 }
 
 func TestConnectionFeatureOptsImmutable(t *testing.T) {
@@ -3564,7 +3567,7 @@ func TestConnectionFeatureOptsImmutable(t *testing.T) {
 	connOpts.Reconnect = timeout
 	connOpts.MaxReconnects = retries
 	connOpts.RequiredProtocolInfo = ProtocolInfo{
-		Features: []ProtocolFeature{TransactionsFeature},
+		Features: []iproto.Feature{iproto.IPROTO_FEATURE_TRANSACTIONS},
 	}
 
 	// Connect with valid opts
@@ -3572,7 +3575,7 @@ func TestConnectionFeatureOptsImmutable(t *testing.T) {
 	defer conn.Close()
 
 	// Change opts outside
-	connOpts.RequiredProtocolInfo.Features[0] = ProtocolFeature(15532)
+	connOpts.RequiredProtocolInfo.Features[0] = iproto.Feature(15532)
 
 	// Trigger reconnect with opts re-check
 	test_helpers.StopTarantool(inst)
@@ -3685,8 +3688,8 @@ func TestConnection_NewWatcher(t *testing.T) {
 
 	const key = "TestConnection_NewWatcher"
 	connOpts := opts.Clone()
-	connOpts.RequiredProtocolInfo.Features = []ProtocolFeature{
-		WatchersFeature,
+	connOpts.RequiredProtocolInfo.Features = []iproto.Feature{
+		iproto.IPROTO_FEATURE_WATCHERS,
 	}
 	conn := test_helpers.ConnectWithValidation(t, server, connOpts)
 	defer conn.Close()
@@ -3721,15 +3724,15 @@ func TestConnection_NewWatcher(t *testing.T) {
 func TestConnection_NewWatcher_noWatchersFeature(t *testing.T) {
 	const key = "TestConnection_NewWatcher_noWatchersFeature"
 	connOpts := opts.Clone()
-	connOpts.RequiredProtocolInfo.Features = []ProtocolFeature{}
+	connOpts.RequiredProtocolInfo.Features = []iproto.Feature{}
 	conn := test_helpers.ConnectWithValidation(t, server, connOpts)
 	defer conn.Close()
 
 	watcher, err := conn.NewWatcher(key, func(event WatchEvent) {})
 	require.Nilf(t, watcher, "watcher must not be created")
 	require.NotNilf(t, err, "an error is expected")
-	expected := "the feature WatchersFeature must be required by connection " +
-		"options to create a watcher"
+	expected := "the feature IPROTO_FEATURE_WATCHERS must be required by " +
+		"connection options to create a watcher"
 	require.Equal(t, expected, err.Error())
 }
 
@@ -3756,8 +3759,8 @@ func TestConnection_NewWatcher_reconnect(t *testing.T) {
 	reconnectOpts := opts
 	reconnectOpts.Reconnect = 100 * time.Millisecond
 	reconnectOpts.MaxReconnects = 10
-	reconnectOpts.RequiredProtocolInfo.Features = []ProtocolFeature{
-		WatchersFeature,
+	reconnectOpts.RequiredProtocolInfo.Features = []iproto.Feature{
+		iproto.IPROTO_FEATURE_WATCHERS,
 	}
 	conn := test_helpers.ConnectWithValidation(t, server, reconnectOpts)
 	defer conn.Close()
@@ -3794,8 +3797,8 @@ func TestBroadcastRequest(t *testing.T) {
 	const value = "bar"
 
 	connOpts := opts.Clone()
-	connOpts.RequiredProtocolInfo.Features = []ProtocolFeature{
-		WatchersFeature,
+	connOpts.RequiredProtocolInfo.Features = []iproto.Feature{
+		iproto.IPROTO_FEATURE_WATCHERS,
 	}
 	conn := test_helpers.ConnectWithValidation(t, server, connOpts)
 	defer conn.Close()
@@ -3844,8 +3847,8 @@ func TestBroadcastRequest_multi(t *testing.T) {
 	const key = "TestBroadcastRequest_multi"
 
 	connOpts := opts.Clone()
-	connOpts.RequiredProtocolInfo.Features = []ProtocolFeature{
-		WatchersFeature,
+	connOpts.RequiredProtocolInfo.Features = []iproto.Feature{
+		iproto.IPROTO_FEATURE_WATCHERS,
 	}
 	conn := test_helpers.ConnectWithValidation(t, server, connOpts)
 	defer conn.Close()
@@ -3892,8 +3895,8 @@ func TestConnection_NewWatcher_multiOnKey(t *testing.T) {
 	const value = "bar"
 
 	connOpts := opts.Clone()
-	connOpts.RequiredProtocolInfo.Features = []ProtocolFeature{
-		WatchersFeature,
+	connOpts.RequiredProtocolInfo.Features = []iproto.Feature{
+		iproto.IPROTO_FEATURE_WATCHERS,
 	}
 	conn := test_helpers.ConnectWithValidation(t, server, connOpts)
 	defer conn.Close()
@@ -3955,8 +3958,8 @@ func TestWatcher_Unregister(t *testing.T) {
 	const value = "bar"
 
 	connOpts := opts.Clone()
-	connOpts.RequiredProtocolInfo.Features = []ProtocolFeature{
-		WatchersFeature,
+	connOpts.RequiredProtocolInfo.Features = []iproto.Feature{
+		iproto.IPROTO_FEATURE_WATCHERS,
 	}
 	conn := test_helpers.ConnectWithValidation(t, server, connOpts)
 	defer conn.Close()
@@ -3991,8 +3994,8 @@ func TestConnection_NewWatcher_concurrent(t *testing.T) {
 	const testConcurrency = 1000
 	const key = "TestConnection_NewWatcher_concurrent"
 	connOpts := opts.Clone()
-	connOpts.RequiredProtocolInfo.Features = []ProtocolFeature{
-		WatchersFeature,
+	connOpts.RequiredProtocolInfo.Features = []iproto.Feature{
+		iproto.IPROTO_FEATURE_WATCHERS,
 	}
 	conn := test_helpers.ConnectWithValidation(t, server, connOpts)
 	defer conn.Close()
@@ -4036,8 +4039,8 @@ func TestWatcher_Unregister_concurrent(t *testing.T) {
 	const testConcurrency = 1000
 	const key = "TestWatcher_Unregister_concurrent"
 	connOpts := opts.Clone()
-	connOpts.RequiredProtocolInfo.Features = []ProtocolFeature{
-		WatchersFeature,
+	connOpts.RequiredProtocolInfo.Features = []iproto.Feature{
+		iproto.IPROTO_FEATURE_WATCHERS,
 	}
 	conn := test_helpers.ConnectWithValidation(t, server, connOpts)
 	defer conn.Close()
