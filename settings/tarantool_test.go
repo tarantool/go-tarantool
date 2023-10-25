@@ -117,7 +117,7 @@ func TestSQLDefaultEngineSetting(t *testing.T) {
 	require.Equal(t, []interface{}{[]interface{}{"sql_default_engine", "vinyl"}}, resp.Data)
 
 	// Create a space with "CREATE TABLE".
-	exec := tarantool.NewExecuteRequest("CREATE TABLE t1_vinyl(a INT PRIMARY KEY, b INT, c INT);")
+	exec := tarantool.NewExecuteRequest("CREATE TABLE T1_VINYL(a INT PRIMARY KEY, b INT, c INT);")
 	resp, err = conn.Do(exec).Get()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
@@ -143,7 +143,7 @@ func TestSQLDefaultEngineSetting(t *testing.T) {
 	require.Equal(t, []interface{}{[]interface{}{"sql_default_engine", "memtx"}}, resp.Data)
 
 	// Create a space with "CREATE TABLE".
-	exec = tarantool.NewExecuteRequest("CREATE TABLE t2_memtx(a INT PRIMARY KEY, b INT, c INT);")
+	exec = tarantool.NewExecuteRequest("CREATE TABLE T2_MEMTX(a INT PRIMARY KEY, b INT, c INT);")
 	resp, err = conn.Do(exec).Get()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
@@ -241,14 +241,14 @@ func TestSQLFullColumnNamesSetting(t *testing.T) {
 	defer conn.Close()
 
 	// Create a space.
-	exec := tarantool.NewExecuteRequest("CREATE TABLE fkname(id INT PRIMARY KEY, x INT);")
+	exec := tarantool.NewExecuteRequest("CREATE TABLE FKNAME(ID INT PRIMARY KEY, X INT);")
 	resp, err = conn.Do(exec).Get()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
 	require.Equal(t, uint64(1), resp.SQLInfo.AffectedCount)
 
 	// Fill it with some data.
-	exec = tarantool.NewExecuteRequest("INSERT INTO fkname VALUES (1, 1);")
+	exec = tarantool.NewExecuteRequest("INSERT INTO FKNAME VALUES (1, 1);")
 	resp, err = conn.Do(exec).Get()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
@@ -267,7 +267,7 @@ func TestSQLFullColumnNamesSetting(t *testing.T) {
 	require.Equal(t, []interface{}{[]interface{}{"sql_full_column_names", false}}, resp.Data)
 
 	// Get a data with short column names in metadata.
-	exec = tarantool.NewExecuteRequest("SELECT x FROM fkname WHERE id = 1;")
+	exec = tarantool.NewExecuteRequest("SELECT X FROM FKNAME WHERE ID = 1;")
 	resp, err = conn.Do(exec).Get()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
@@ -286,7 +286,7 @@ func TestSQLFullColumnNamesSetting(t *testing.T) {
 	require.Equal(t, []interface{}{[]interface{}{"sql_full_column_names", true}}, resp.Data)
 
 	// Get a data with full column names in metadata.
-	exec = tarantool.NewExecuteRequest("SELECT x FROM fkname WHERE id = 1;")
+	exec = tarantool.NewExecuteRequest("SELECT X FROM FKNAME WHERE ID = 1;")
 	resp, err = conn.Do(exec).Get()
 	require.Nil(t, err)
 	require.NotNil(t, resp)

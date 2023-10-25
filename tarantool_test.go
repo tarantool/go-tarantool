@@ -1336,18 +1336,18 @@ func TestClientSessionPush(t *testing.T) {
 }
 
 const (
-	createTableQuery = "CREATE TABLE SQL_SPACE (id STRING PRIMARY KEY, name " +
+	createTableQuery = "CREATE TABLE SQL_SPACE (ID STRING PRIMARY KEY, NAME " +
 		"STRING COLLATE \"unicode\" DEFAULT NULL);"
 	insertQuery              = "INSERT INTO SQL_SPACE VALUES (?, ?);"
-	selectNamedQuery         = "SELECT id, name FROM SQL_SPACE WHERE id=:id AND name=:name;"
-	selectPosQuery           = "SELECT id, name FROM SQL_SPACE WHERE id=? AND name=?;"
-	updateQuery              = "UPDATE SQL_SPACE SET name=? WHERE id=?;"
+	selectNamedQuery         = "SELECT ID, NAME FROM SQL_SPACE WHERE ID=:ID AND NAME=:NAME;"
+	selectPosQuery           = "SELECT ID, NAME FROM SQL_SPACE WHERE ID=? AND NAME=?;"
+	updateQuery              = "UPDATE SQL_SPACE SET NAME=? WHERE ID=?;"
 	enableFullMetaDataQuery  = "SET SESSION \"sql_full_metadata\" = true;"
-	selectSpanDifQueryNew    = "SELECT id||id, name, id FROM seqscan SQL_SPACE WHERE name=?;"
-	selectSpanDifQueryOld    = "SELECT id||id, name, id FROM SQL_SPACE WHERE name=?;"
+	selectSpanDifQueryNew    = "SELECT ID||ID, NAME, ID FROM seqscan SQL_SPACE WHERE NAME=?;"
+	selectSpanDifQueryOld    = "SELECT ID||ID, NAME, ID FROM SQL_SPACE WHERE NAME=?;"
 	alterTableQuery          = "ALTER TABLE SQL_SPACE RENAME TO SQL_SPACE2;"
 	insertIncrQuery          = "INSERT INTO SQL_SPACE2 VALUES (?, ?);"
-	deleteQuery              = "DELETE FROM SQL_SPACE2 WHERE name=?;"
+	deleteQuery              = "DELETE FROM SQL_SPACE2 WHERE NAME=?;"
 	dropQuery                = "DROP TABLE SQL_SPACE2;"
 	dropQuery2               = "DROP TABLE SQL_SPACE;"
 	disableFullMetaDataQuery = "SET SESSION \"sql_full_metadata\" = false;"
@@ -1396,8 +1396,8 @@ func TestSQL(t *testing.T) {
 		{
 			selectNamedQuery,
 			map[string]interface{}{
-				"id":   "1",
-				"name": "test",
+				"ID":   "1",
+				"NAME": "test",
 			},
 			Response{
 				SQLInfo: SQLInfo{AffectedCount: 0},
@@ -1448,14 +1448,14 @@ func TestSQL(t *testing.T) {
 						FieldName:            "COLUMN_1",
 						FieldIsNullable:      false,
 						FieldIsAutoincrement: false,
-						FieldSpan:            "id||id",
+						FieldSpan:            "ID||ID",
 					},
 					{
 						FieldType:            "string",
 						FieldName:            "NAME",
 						FieldIsNullable:      true,
 						FieldIsAutoincrement: false,
-						FieldSpan:            "name",
+						FieldSpan:            "NAME",
 						FieldCollation:       "unicode",
 					},
 					{
@@ -1463,7 +1463,7 @@ func TestSQL(t *testing.T) {
 						FieldName:            "ID",
 						FieldIsNullable:      false,
 						FieldIsAutoincrement: false,
-						FieldSpan:            "id",
+						FieldSpan:            "ID",
 						FieldCollation:       "",
 					},
 				}},
