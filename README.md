@@ -234,6 +234,11 @@ now does not attempt to reconnect and tries to establish a connection only once.
 Function might be canceled via context. Context accepted as first argument, 
 and user may cancel it in process.
 
+#### Protocol changes
+
+* `iproto.Feature` type used instead of `ProtocolFeature`.
+* `iproto.IPROTO_FEATURE_` constants used instead of local ones.
+
 ## Contributing
 
 See [the contributing guide](CONTRIBUTING.md) for detailed instructions on how

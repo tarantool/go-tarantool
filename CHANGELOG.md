@@ -40,6 +40,9 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
   `pool.Connect` and `pool.Add` now accept context as first argument, which 
   user may cancel in process. If `pool.Connect` is canceled in progress, an 
   error will be returned. All created connections will be closed.
+- `iproto.Feature` type now used instead of `ProtocolFeature` (#337)
+- `iproto.IPROTO_FEATURE_` constants now used instead of local `Feature` 
+  constants for `protocol` (#337)
 
 ### Deprecated
 

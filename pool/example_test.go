@@ -2,7 +2,10 @@ package pool_test
 
 import (
 	"fmt"
+	"strings"
 	"time"
+
+	"github.com/tarantool/go-iproto"
 
 	"github.com/tarantool/go-tarantool/v2"
 	"github.com/tarantool/go-tarantool/v2/pool"
@@ -92,8 +95,8 @@ func ExampleConnectionPool_NewWatcher() {
 	const value = "bar"
 
 	opts := connOpts.Clone()
-	opts.RequiredProtocolInfo.Features = []tarantool.ProtocolFeature{
-		tarantool.WatchersFeature,
+	opts.RequiredProtocolInfo.Features = []iproto.Feature{
+		iproto.IPROTO_FEATURE_WATCHERS,
 	}
 
 	connPool, err := examplePool(testRoles, connOpts)
@@ -123,7 +126,7 @@ func ExampleConnectionPool_NewWatcher_noWatchersFeature() {
 	const key = "foo"
 
 	opts := connOpts.Clone()
-	opts.RequiredProtocolInfo.Features = []tarantool.ProtocolFeature{}
+	opts.RequiredProtocolInfo.Features = []iproto.Feature{}
 
 	connPool, err := examplePool(testRoles, connOpts)
 	if err != nil {
@@ -134,10 +137,19 @@ func ExampleConnectionPool_NewWatcher_noWatchersFeature() {
 	callback := func(event tarantool.WatchEvent) {}
 	watcher, err := connPool.NewWatcher(key, callback, pool.ANY)
 	fmt.Println(watcher)
-	fmt.Println(err)
+	if err != nil {
+		// Need to split the error message into two lines to pass
+		// golangci-lint.
+		str := err.Error()
+		fmt.Println(strings.Trim(str[:56], " "))
+		fmt.Println(str[56:])
+	} else {
+		fmt.Println(err)
+	}
 	// Output:
 	// <nil>
-	// the feature WatchersFeature must be required by connection options to create a watcher
+	// the feature IPROTO_FEATURE_WATCHERS must be required by
+	// connection options to create a watcher
 }
 
 func getTestTxnOpts() tarantool.Opts {
@@ -146,9 +158,9 @@ func getTestTxnOpts() tarantool.Opts {
 	// Assert that server supports expected protocol features
 	txnOpts.RequiredProtocolInfo = tarantool.ProtocolInfo{
 		Version: tarantool.ProtocolVersion(1),
-		Features: []tarantool.ProtocolFeature{
-			tarantool.StreamsFeature,
-			tarantool.TransactionsFeature,
+		Features: []iproto.Feature{
+			iproto.IPROTO_FEATURE_STREAMS,
+			iproto.IPROTO_FEATURE_TRANSACTIONS,
 		},
 	}
 

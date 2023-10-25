@@ -35,7 +35,7 @@ var validStmt *Prepared = &Prepared{StatementID: 1, Conn: &Connection{}}
 
 var validProtocolInfo ProtocolInfo = ProtocolInfo{
 	Version:  ProtocolVersion(3),
-	Features: []ProtocolFeature{StreamsFeature},
+	Features: []iproto.Feature{iproto.IPROTO_FEATURE_STREAMS},
 }
 
 type ValidSchemeResolver struct {

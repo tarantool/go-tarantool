@@ -156,7 +156,7 @@ func (resp *Response) decodeBody() (err error) {
 		var l, larr int
 		var stmtID, bindCount uint64
 		var serverProtocolInfo ProtocolInfo
-		var feature ProtocolFeature
+		var feature iproto.Feature
 		var errorExtendedInfo *BoxError = nil
 
 		d := msgpack.NewDecoder(&resp.buf)
@@ -215,7 +215,7 @@ func (resp *Response) decodeBody() (err error) {
 					return err
 				}
 
-				serverProtocolInfo.Features = make([]ProtocolFeature, larr)
+				serverProtocolInfo.Features = make([]iproto.Feature, larr)
 				for i := 0; i < larr; i++ {
 					if err = d.Decode(&feature); err != nil {
 						return err
