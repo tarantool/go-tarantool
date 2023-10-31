@@ -63,6 +63,25 @@ func (opt OptInt) Get() (int, bool) {
 	return opt.value, opt.exist
 }
 
+// OptFloat64 is an optional float64.
+type OptFloat64 struct {
+	value float64
+	exist bool
+}
+
+// MakeOptFloat64 creates an optional float64 from value.
+func MakeOptFloat64(value float64) OptFloat64 {
+	return OptFloat64{
+		value: value,
+		exist: true,
+	}
+}
+
+// Get returns the float64 value or an error if not present.
+func (opt OptFloat64) Get() (float64, bool) {
+	return opt.value, opt.exist
+}
+
 // OptString is an optional string.
 type OptString struct {
 	value string
@@ -120,7 +139,7 @@ func (o *OptTuple) Get() (interface{}, bool) {
 type BaseOpts struct {
 	// Timeout is a `vshard.call` timeout and vshard
 	// master discovery timeout (in seconds).
-	Timeout OptUint
+	Timeout OptFloat64
 	// VshardRouter is cartridge vshard group name or
 	// vshard router instance.
 	VshardRouter OptString
@@ -144,7 +163,7 @@ func (opts BaseOpts) EncodeMsgpack(enc *msgpack.Encoder) error {
 type SimpleOperationOpts struct {
 	// Timeout is a `vshard.call` timeout and vshard
 	// master discovery timeout (in seconds).
-	Timeout OptUint
+	Timeout OptFloat64
 	// VshardRouter is cartridge vshard group name or
 	// vshard router instance.
 	VshardRouter OptString
@@ -186,7 +205,7 @@ func (opts SimpleOperationOpts) EncodeMsgpack(enc *msgpack.Encoder) error {
 type SimpleOperationObjectOpts struct {
 	// Timeout is a `vshard.call` timeout and vshard
 	// master discovery timeout (in seconds).
-	Timeout OptUint
+	Timeout OptFloat64
 	// VshardRouter is cartridge vshard group name or
 	// vshard router instance.
 	VshardRouter OptString
@@ -232,7 +251,7 @@ func (opts SimpleOperationObjectOpts) EncodeMsgpack(enc *msgpack.Encoder) error 
 type OperationManyOpts struct {
 	// Timeout is a `vshard.call` timeout and vshard
 	// master discovery timeout (in seconds).
-	Timeout OptUint
+	Timeout OptFloat64
 	// VshardRouter is cartridge vshard group name or
 	// vshard router instance.
 	VshardRouter OptString
@@ -280,7 +299,7 @@ func (opts OperationManyOpts) EncodeMsgpack(enc *msgpack.Encoder) error {
 type OperationObjectManyOpts struct {
 	// Timeout is a `vshard.call` timeout and vshard
 	// master discovery timeout (in seconds).
-	Timeout OptUint
+	Timeout OptFloat64
 	// VshardRouter is cartridge vshard group name or
 	// vshard router instance.
 	VshardRouter OptString
@@ -332,7 +351,7 @@ func (opts OperationObjectManyOpts) EncodeMsgpack(enc *msgpack.Encoder) error {
 type BorderOpts struct {
 	// Timeout is a `vshard.call` timeout and vshard
 	// master discovery timeout (in seconds).
-	Timeout OptUint
+	Timeout OptFloat64
 	// VshardRouter is cartridge vshard group name or
 	// vshard router instance.
 	VshardRouter OptString

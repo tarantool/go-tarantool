@@ -37,7 +37,7 @@ var startOpts test_helpers.StartOpts = test_helpers.StartOpts{
 	RetryTimeout: 500 * time.Millisecond,
 }
 
-var timeout = uint(1)
+var timeout = float64(1.1)
 
 var operations = []crud.Operation{
 	{
@@ -48,43 +48,43 @@ var operations = []crud.Operation{
 }
 
 var selectOpts = crud.SelectOpts{
-	Timeout: crud.MakeOptUint(timeout),
+	Timeout: crud.MakeOptFloat64(timeout),
 }
 
 var countOpts = crud.CountOpts{
-	Timeout: crud.MakeOptUint(timeout),
+	Timeout: crud.MakeOptFloat64(timeout),
 }
 
 var getOpts = crud.GetOpts{
-	Timeout: crud.MakeOptUint(timeout),
+	Timeout: crud.MakeOptFloat64(timeout),
 }
 
 var minOpts = crud.MinOpts{
-	Timeout: crud.MakeOptUint(timeout),
+	Timeout: crud.MakeOptFloat64(timeout),
 }
 
 var maxOpts = crud.MaxOpts{
-	Timeout: crud.MakeOptUint(timeout),
+	Timeout: crud.MakeOptFloat64(timeout),
 }
 
 var baseOpts = crud.BaseOpts{
-	Timeout: crud.MakeOptUint(timeout),
+	Timeout: crud.MakeOptFloat64(timeout),
 }
 
 var simpleOperationOpts = crud.SimpleOperationOpts{
-	Timeout: crud.MakeOptUint(timeout),
+	Timeout: crud.MakeOptFloat64(timeout),
 }
 
 var simpleOperationObjectOpts = crud.SimpleOperationObjectOpts{
-	Timeout: crud.MakeOptUint(timeout),
+	Timeout: crud.MakeOptFloat64(timeout),
 }
 
 var opManyOpts = crud.OperationManyOpts{
-	Timeout: crud.MakeOptUint(timeout),
+	Timeout: crud.MakeOptFloat64(timeout),
 }
 
 var opObjManyOpts = crud.OperationObjectManyOpts{
-	Timeout: crud.MakeOptUint(timeout),
+	Timeout: crud.MakeOptFloat64(timeout),
 }
 
 var conditions = []crud.Condition{
@@ -815,7 +815,7 @@ func TestGetAdditionalOpts(t *testing.T) {
 	defer conn.Close()
 
 	req := crud.MakeGetRequest(spaceName).Key(key).Opts(crud.GetOpts{
-		Timeout:       crud.MakeOptUint(1),
+		Timeout:       crud.MakeOptFloat64(1.1),
 		Fields:        crud.MakeOptTuple([]interface{}{"name"}),
 		Mode:          crud.MakeOptString("read"),
 		PreferReplica: crud.MakeOptBool(true),

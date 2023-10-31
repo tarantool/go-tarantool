@@ -43,6 +43,8 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 - `iproto.Feature` type now used instead of `ProtocolFeature` (#337)
 - `iproto.IPROTO_FEATURE_` constants now used instead of local `Feature` 
   constants for `protocol` (#337)
+- Change `crud` operations `Timeout` option type to `crud.OptFloat64`
+  instead of `crud.OptUint` (#342)
 
 ### Deprecated
 
