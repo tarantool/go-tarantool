@@ -15,7 +15,7 @@ type CountResult = NumberResult
 type CountOpts struct {
 	// Timeout is a `vshard.call` timeout and vshard
 	// master discovery timeout (in seconds).
-	Timeout OptUint
+	Timeout OptFloat64
 	// VshardRouter is cartridge vshard group name or
 	// vshard router instance.
 	VshardRouter OptString

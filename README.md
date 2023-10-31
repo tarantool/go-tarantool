@@ -31,6 +31,7 @@ faster than other packages according to public benchmarks.
     * [decimal package](#decimal-package)
     * [multi package](#multi-package)
     * [pool package](#pool-package)
+    * [crud package](#crud-package)
     * [msgpack.v5](#msgpackv5)
     * [Call = Call17](#call--call17)
     * [IPROTO constants](#iproto-constants)
@@ -186,6 +187,11 @@ The subpackage has been deleted. You could use `pool` instead.
   All created connections will be closed.
 * `pool.Add` now accepts context as first argument, which user may cancel in 
   process.
+
+#### crud package
+
+* `crud` operations `Timeout` option has `crud.OptFloat64` type
+  instead of `crud.OptUint`.
 
 #### msgpack.v5
 

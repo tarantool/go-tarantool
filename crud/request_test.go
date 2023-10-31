@@ -137,7 +137,7 @@ func BenchmarkLenRequest(b *testing.B) {
 		buf.Reset()
 		req := crud.MakeLenRequest(spaceName).
 			Opts(crud.LenOpts{
-				Timeout: crud.MakeOptUint(3),
+				Timeout: crud.MakeOptFloat64(3.5),
 			})
 		if err := req.Body(nil, enc); err != nil {
 			b.Error(err)
@@ -156,7 +156,7 @@ func BenchmarkSelectRequest(b *testing.B) {
 		buf.Reset()
 		req := crud.MakeSelectRequest(spaceName).
 			Opts(crud.SelectOpts{
-				Timeout:      crud.MakeOptUint(3),
+				Timeout:      crud.MakeOptFloat64(3.5),
 				VshardRouter: crud.MakeOptString("asd"),
 				Balance:      crud.MakeOptBool(true),
 			})
