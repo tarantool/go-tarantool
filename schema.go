@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/tarantool/go-iproto"
 	"github.com/vmihailenco/msgpack/v5"
 	"github.com/vmihailenco/msgpack/v5/msgpcode"
 )
@@ -41,9 +42,16 @@ func msgpackIsString(code byte) bool {
 
 // SchemaResolver is an interface for resolving schema details.
 type SchemaResolver interface {
-	// ResolveSpaceIndex returns resolved space and index numbers or an
-	// error if it cannot be resolved.
-	ResolveSpaceIndex(s interface{}, i interface{}) (spaceNo, indexNo uint32, err error)
+	// ResolveSpace returns resolved space number or an error
+	// if it cannot be resolved.
+	ResolveSpace(s interface{}) (spaceNo uint32, err error)
+	// ResolveIndex returns resolved index number or an error
+	// if it cannot be resolved.
+	ResolveIndex(i interface{}, spaceNo uint32) (indexNo uint32, err error)
+	// NamesUseSupported shows if usage of space and index names, instead of
+	// IDs, is supported. It must return true if
+	// iproto.IPROTO_FEATURE_SPACE_AND_INDEX_NAMES is supported.
+	NamesUseSupported() bool
 }
 
 // Schema contains information about spaces and indexes.
@@ -364,33 +372,27 @@ func (conn *Connection) loadSchema() (err error) {
 		}
 	}
 
+	spaceAndIndexNamesSupported :=
+		isFeatureInSlice(iproto.IPROTO_FEATURE_SPACE_AND_INDEX_NAMES,
+			conn.serverProtocolInfo.Features)
+
 	conn.lockShards()
 	conn.Schema = schema
+	conn.schemaResolver = &loadedSchemaResolver{
+		Schema:                      schema,
+		SpaceAndIndexNamesSupported: spaceAndIndexNamesSupported,
+	}
 	conn.unlockShards()
 
 	return nil
 }
 
-// ResolveSpaceIndex tries to resolve space and index numbers.
-// Note: s can be a number, string, or an object of Space type.
-// Note: i can be a number, string, or an object of Index type.
-func (schema *Schema) ResolveSpaceIndex(s interface{}, i interface{}) (uint32, uint32, error) {
-	var (
-		spaceNo, indexNo uint32
-		space            *Space
-		index            *Index
-		ok               bool
-	)
+// resolveSpaceNumber tries to resolve a space number.
+// Note: at this point, s can be a number, or an object of Space type.
+func resolveSpaceNumber(s interface{}) (uint32, error) {
+	var spaceNo uint32
 
 	switch s := s.(type) {
-	case string:
-		if schema == nil {
-			return spaceNo, indexNo, fmt.Errorf("Schema is not loaded")
-		}
-		if space, ok = schema.Spaces[s]; !ok {
-			return spaceNo, indexNo, fmt.Errorf("there is no space with name %s", s)
-		}
-		spaceNo = space.Id
 	case uint:
 		spaceNo = uint32(s)
 	case uint64:
@@ -419,50 +421,109 @@ func (schema *Schema) ResolveSpaceIndex(s interface{}, i interface{}) (uint32, u
 		panic("unexpected type of space param")
 	}
 
-	if i != nil {
-		switch i := i.(type) {
-		case string:
-			if schema == nil {
-				return spaceNo, indexNo, fmt.Errorf("schema is not loaded")
-			}
-			if space == nil {
-				if space, ok = schema.SpacesById[spaceNo]; !ok {
-					return spaceNo, indexNo, fmt.Errorf("there is no space with id %d", spaceNo)
-				}
-			}
-			if index, ok = space.Indexes[i]; !ok {
-				err := fmt.Errorf("space %s has not index with name %s", space.Name, i)
-				return spaceNo, indexNo, err
-			}
-			indexNo = index.Id
-		case uint:
-			indexNo = uint32(i)
-		case uint64:
-			indexNo = uint32(i)
-		case uint32:
-			indexNo = i
-		case uint16:
-			indexNo = uint32(i)
-		case uint8:
-			indexNo = uint32(i)
-		case int:
-			indexNo = uint32(i)
-		case int64:
-			indexNo = uint32(i)
-		case int32:
-			indexNo = uint32(i)
-		case int16:
-			indexNo = uint32(i)
-		case int8:
-			indexNo = uint32(i)
-		case Index:
-			indexNo = i.Id
-		case *Index:
-			indexNo = i.Id
-		default:
-			panic("unexpected type of index param")
-		}
+	return spaceNo, nil
+}
+
+// resolveIndexNumber tries to resolve an index number.
+// Note: at this point, i can be a number, or an object of Index type.
+func resolveIndexNumber(i interface{}) (uint32, error) {
+	var indexNo uint32
+
+	switch i := i.(type) {
+	case uint:
+		indexNo = uint32(i)
+	case uint64:
+		indexNo = uint32(i)
+	case uint32:
+		indexNo = i
+	case uint16:
+		indexNo = uint32(i)
+	case uint8:
+		indexNo = uint32(i)
+	case int:
+		indexNo = uint32(i)
+	case int64:
+		indexNo = uint32(i)
+	case int32:
+		indexNo = uint32(i)
+	case int16:
+		indexNo = uint32(i)
+	case int8:
+		indexNo = uint32(i)
+	case Index:
+		indexNo = i.Id
+	case *Index:
+		indexNo = i.Id
+	default:
+		panic("unexpected type of index param")
 	}
 
-	return spaceNo, indexNo, nil
+	return indexNo, nil
+}
+
+type loadedSchemaResolver struct {
+	Schema *Schema
+	// SpaceAndIndexNamesSupported shows if a current Tarantool version supports
+	// iproto.IPROTO_FEATURE_SPACE_AND_INDEX_NAMES.
+	SpaceAndIndexNamesSupported bool
+}
+
+func (r *loadedSchemaResolver) ResolveSpace(s interface{}) (uint32, error) {
+	if str, ok := s.(string); ok {
+		space, ok := r.Schema.Spaces[str]
+		if !ok {
+			return 0, fmt.Errorf("there is no space with name %s", s)
+		}
+		return space.Id, nil
+	}
+	return resolveSpaceNumber(s)
+}
+
+func (r *loadedSchemaResolver) ResolveIndex(i interface{}, spaceNo uint32) (uint32, error) {
+	if i == nil {
+		return 0, nil
+	}
+	if str, ok := i.(string); ok {
+		space, ok := r.Schema.SpacesById[spaceNo]
+		if !ok {
+			return 0, fmt.Errorf("there is no space with id %d", spaceNo)
+		}
+		index, ok := space.Indexes[str]
+		if !ok {
+			err := fmt.Errorf("space %s has not index with name %s", space.Name, i)
+			return 0, err
+		}
+		return index.Id, nil
+	}
+	return resolveIndexNumber(i)
+}
+
+func (r *loadedSchemaResolver) NamesUseSupported() bool {
+	return r.SpaceAndIndexNamesSupported
+}
+
+type noSchemaResolver struct {
+	// SpaceAndIndexNamesSupported shows if a current Tarantool version supports
+	// iproto.IPROTO_FEATURE_SPACE_AND_INDEX_NAMES.
+	SpaceAndIndexNamesSupported bool
+}
+
+func (*noSchemaResolver) ResolveSpace(s interface{}) (uint32, error) {
+	if _, ok := s.(string); ok {
+		return 0, fmt.Errorf("unable to use an index name " +
+			"because schema is not loaded")
+	}
+	return resolveSpaceNumber(s)
+}
+
+func (*noSchemaResolver) ResolveIndex(i interface{}, spaceNo uint32) (uint32, error) {
+	if _, ok := i.(string); ok {
+		return 0, fmt.Errorf("unable to use an index name " +
+			"because schema is not loaded")
+	}
+	return resolveIndexNumber(i)
+}
+
+func (r *noSchemaResolver) NamesUseSupported() bool {
+	return r.SpaceAndIndexNamesSupported
 }

@@ -17,14 +17,14 @@ import (
 const invalidSpaceMsg = "invalid space"
 const invalidIndexMsg = "invalid index"
 
-const invalidSpace = 2
-const invalidIndex = 2
-const validSpace = 1           // Any valid value != default.
-const validIndex = 3           // Any valid value != default.
+const invalidSpace uint32 = 2
+const invalidIndex uint32 = 2
+const validSpace uint32 = 1    // Any valid value != default.
+const validIndex uint32 = 3    // Any valid value != default.
 const validExpr = "any string" // We don't check the value here.
 const validKey = "foo"         // Any string.
-const defaultSpace = 0         // And valid too.
-const defaultIndex = 0         // And valid too.
+const defaultSpace uint32 = 0  // And valid too.
+const defaultIndex uint32 = 0  // And valid too.
 
 const defaultIsolationLevel = DefaultIsolationLevel
 const defaultTimeout = 0
@@ -39,27 +39,43 @@ var validProtocolInfo ProtocolInfo = ProtocolInfo{
 }
 
 type ValidSchemeResolver struct {
+	nameUseSupported   bool
+	spaceResolverCalls int
+	indexResolverCalls int
 }
 
-func (*ValidSchemeResolver) ResolveSpaceIndex(s, i interface{}) (uint32, uint32, error) {
-	var spaceNo, indexNo uint32
-	if s != nil {
-		spaceNo = uint32(s.(int))
+func (r *ValidSchemeResolver) ResolveSpace(s interface{}) (uint32, error) {
+	r.spaceResolverCalls++
+
+	var spaceNo uint32
+	if no, ok := s.(uint32); ok {
+		spaceNo = no
 	} else {
 		spaceNo = defaultSpace
 	}
-	if i != nil {
-		indexNo = uint32(i.(int))
+	if spaceNo == invalidSpace {
+		return 0, errors.New(invalidSpaceMsg)
+	}
+	return spaceNo, nil
+}
+
+func (r *ValidSchemeResolver) ResolveIndex(i interface{}, spaceNo uint32) (uint32, error) {
+	r.indexResolverCalls++
+
+	var indexNo uint32
+	if no, ok := i.(uint32); ok {
+		indexNo = no
 	} else {
 		indexNo = defaultIndex
 	}
-	if spaceNo == invalidSpace {
-		return 0, 0, errors.New(invalidSpaceMsg)
-	}
 	if indexNo == invalidIndex {
-		return 0, 0, errors.New(invalidIndexMsg)
+		return 0, errors.New(invalidIndexMsg)
 	}
-	return spaceNo, indexNo, nil
+	return indexNo, nil
+}
+
+func (r *ValidSchemeResolver) NamesUseSupported() bool {
+	return r.nameUseSupported
 }
 
 var resolver ValidSchemeResolver
@@ -313,6 +329,58 @@ func TestRequestsCtx_setter(t *testing.T) {
 	}
 }
 
+func TestResolverCalledWithoutNameSupport(t *testing.T) {
+	resolver.nameUseSupported = false
+	resolver.spaceResolverCalls = 0
+	resolver.indexResolverCalls = 0
+
+	req := NewSelectRequest("valid")
+	req.Index("valid")
+
+	var reqBuf bytes.Buffer
+	reqEnc := msgpack.NewEncoder(&reqBuf)
+
+	err := req.Body(&resolver, reqEnc)
+	if err != nil {
+		t.Errorf("An unexpected Response.Body() error: %q", err.Error())
+	}
+
+	if resolver.spaceResolverCalls != 1 {
+		t.Errorf("ResolveSpace was called %d times instead of 1.",
+			resolver.spaceResolverCalls)
+	}
+	if resolver.indexResolverCalls != 1 {
+		t.Errorf("ResolveIndex was called %d times instead of 1.",
+			resolver.indexResolverCalls)
+	}
+}
+
+func TestResolverNotCalledWithNameSupport(t *testing.T) {
+	resolver.nameUseSupported = true
+	resolver.spaceResolverCalls = 0
+	resolver.indexResolverCalls = 0
+
+	req := NewSelectRequest("valid")
+	req.Index("valid")
+
+	var reqBuf bytes.Buffer
+	reqEnc := msgpack.NewEncoder(&reqBuf)
+
+	err := req.Body(&resolver, reqEnc)
+	if err != nil {
+		t.Errorf("An unexpected Response.Body() error: %q", err.Error())
+	}
+
+	if resolver.spaceResolverCalls != 0 {
+		t.Errorf("ResolveSpace was called %d times instead of 0.",
+			resolver.spaceResolverCalls)
+	}
+	if resolver.indexResolverCalls != 0 {
+		t.Errorf("ResolveIndex was called %d times instead of 0.",
+			resolver.indexResolverCalls)
+	}
+}
+
 func TestPingRequestDefaultValues(t *testing.T) {
 	var refBuf bytes.Buffer
 
@@ -331,7 +399,7 @@ func TestSelectRequestDefaultValues(t *testing.T) {
 	var refBuf bytes.Buffer
 
 	refEnc := msgpack.NewEncoder(&refBuf)
-	err := RefImplSelectBody(refEnc, validSpace, defaultIndex, 0, 0xFFFFFFFF,
+	err := RefImplSelectBody(refEnc, &resolver, validSpace, defaultIndex, 0, 0xFFFFFFFF,
 		IterAll, []interface{}{}, nil, false)
 	if err != nil {
 		t.Errorf("An unexpected RefImplSelectBody() error %q", err.Error())
@@ -342,12 +410,45 @@ func TestSelectRequestDefaultValues(t *testing.T) {
 	assertBodyEqual(t, refBuf.Bytes(), req)
 }
 
+func TestSelectRequestSpaceByName(t *testing.T) {
+	var refBuf bytes.Buffer
+
+	resolver.nameUseSupported = true
+
+	refEnc := msgpack.NewEncoder(&refBuf)
+	err := RefImplSelectBody(refEnc, &resolver, "valid", defaultIndex, 0, 0xFFFFFFFF,
+		IterAll, []interface{}{}, nil, false)
+	if err != nil {
+		t.Fatalf("An unexpected RefImplSelectBody() error %q", err.Error())
+	}
+
+	req := NewSelectRequest("valid")
+	assertBodyEqual(t, refBuf.Bytes(), req)
+}
+
+func TestSelectRequestIndexByName(t *testing.T) {
+	var refBuf bytes.Buffer
+
+	resolver.nameUseSupported = true
+
+	refEnc := msgpack.NewEncoder(&refBuf)
+	err := RefImplSelectBody(refEnc, &resolver, defaultSpace, "valid", 0, 0xFFFFFFFF,
+		IterAll, []interface{}{}, nil, false)
+	if err != nil {
+		t.Fatalf("An unexpected RefImplSelectBody() error %q", err.Error())
+	}
+
+	req := NewSelectRequest(defaultSpace)
+	req.Index("valid")
+	assertBodyEqual(t, refBuf.Bytes(), req)
+}
+
 func TestSelectRequestDefaultIteratorEqIfKey(t *testing.T) {
 	var refBuf bytes.Buffer
 	key := []interface{}{uint(18)}
 
 	refEnc := msgpack.NewEncoder(&refBuf)
-	err := RefImplSelectBody(refEnc, validSpace, defaultIndex, 0, 0xFFFFFFFF,
+	err := RefImplSelectBody(refEnc, &resolver, validSpace, defaultIndex, 0, 0xFFFFFFFF,
 		IterEq, key, nil, false)
 	if err != nil {
 		t.Errorf("An unexpected RefImplSelectBody() error %q", err.Error())
@@ -365,7 +466,7 @@ func TestSelectRequestIteratorNotChangedIfKey(t *testing.T) {
 	const iter = IterGe
 
 	refEnc := msgpack.NewEncoder(&refBuf)
-	err := RefImplSelectBody(refEnc, validSpace, defaultIndex, 0, 0xFFFFFFFF,
+	err := RefImplSelectBody(refEnc, &resolver, validSpace, defaultIndex, 0, 0xFFFFFFFF,
 		iter, key, nil, false)
 	if err != nil {
 		t.Errorf("An unexpected RefImplSelectBody() error %q", err.Error())
@@ -388,7 +489,7 @@ func TestSelectRequestSetters(t *testing.T) {
 	var refBufAfterBytes, refBufAfterKey bytes.Buffer
 
 	refEncAfterBytes := msgpack.NewEncoder(&refBufAfterBytes)
-	err := RefImplSelectBody(refEncAfterBytes, validSpace, validIndex, offset,
+	err := RefImplSelectBody(refEncAfterBytes, &resolver, validSpace, validIndex, offset,
 		limit, iter, key, afterBytes, true)
 	if err != nil {
 		t.Errorf("An unexpected RefImplSelectBody() error %s", err)
@@ -396,7 +497,7 @@ func TestSelectRequestSetters(t *testing.T) {
 	}
 
 	refEncAfterKey := msgpack.NewEncoder(&refBufAfterKey)
-	err = RefImplSelectBody(refEncAfterKey, validSpace, validIndex, offset,
+	err = RefImplSelectBody(refEncAfterKey, &resolver, validSpace, validIndex, offset,
 		limit, iter, key, afterKey, true)
 	if err != nil {
 		t.Errorf("An unexpected RefImplSelectBody() error %s", err)
@@ -428,7 +529,7 @@ func TestInsertRequestDefaultValues(t *testing.T) {
 	var refBuf bytes.Buffer
 
 	refEnc := msgpack.NewEncoder(&refBuf)
-	err := RefImplInsertBody(refEnc, validSpace, []interface{}{})
+	err := RefImplInsertBody(refEnc, &resolver, validSpace, []interface{}{})
 	if err != nil {
 		t.Errorf("An unexpected RefImplInsertBody() error: %q", err.Error())
 		return
@@ -438,12 +539,27 @@ func TestInsertRequestDefaultValues(t *testing.T) {
 	assertBodyEqual(t, refBuf.Bytes(), req)
 }
 
+func TestInsertRequestSpaceByName(t *testing.T) {
+	var refBuf bytes.Buffer
+
+	resolver.nameUseSupported = true
+
+	refEnc := msgpack.NewEncoder(&refBuf)
+	err := RefImplInsertBody(refEnc, &resolver, "valid", []interface{}{})
+	if err != nil {
+		t.Fatalf("An unexpected RefImplInsertBody() error: %q", err.Error())
+	}
+
+	req := NewInsertRequest("valid")
+	assertBodyEqual(t, refBuf.Bytes(), req)
+}
+
 func TestInsertRequestSetters(t *testing.T) {
 	tuple := []interface{}{uint(24)}
 	var refBuf bytes.Buffer
 
 	refEnc := msgpack.NewEncoder(&refBuf)
-	err := RefImplInsertBody(refEnc, validSpace, tuple)
+	err := RefImplInsertBody(refEnc, &resolver, validSpace, tuple)
 	if err != nil {
 		t.Errorf("An unexpected RefImplInsertBody() error: %q", err.Error())
 		return
@@ -458,7 +574,7 @@ func TestReplaceRequestDefaultValues(t *testing.T) {
 	var refBuf bytes.Buffer
 
 	refEnc := msgpack.NewEncoder(&refBuf)
-	err := RefImplReplaceBody(refEnc, validSpace, []interface{}{})
+	err := RefImplReplaceBody(refEnc, &resolver, validSpace, []interface{}{})
 	if err != nil {
 		t.Errorf("An unexpected RefImplReplaceBody() error: %q", err.Error())
 		return
@@ -468,12 +584,28 @@ func TestReplaceRequestDefaultValues(t *testing.T) {
 	assertBodyEqual(t, refBuf.Bytes(), req)
 }
 
+func TestReplaceRequestSpaceByName(t *testing.T) {
+	var refBuf bytes.Buffer
+
+	resolver.nameUseSupported = true
+
+	refEnc := msgpack.NewEncoder(&refBuf)
+	err := RefImplReplaceBody(refEnc, &resolver, "valid", []interface{}{})
+	if err != nil {
+		t.Errorf("An unexpected RefImplReplaceBody() error: %q", err.Error())
+		return
+	}
+
+	req := NewReplaceRequest("valid")
+	assertBodyEqual(t, refBuf.Bytes(), req)
+}
+
 func TestReplaceRequestSetters(t *testing.T) {
 	tuple := []interface{}{uint(99)}
 	var refBuf bytes.Buffer
 
 	refEnc := msgpack.NewEncoder(&refBuf)
-	err := RefImplReplaceBody(refEnc, validSpace, tuple)
+	err := RefImplReplaceBody(refEnc, &resolver, validSpace, tuple)
 	if err != nil {
 		t.Errorf("An unexpected RefImplReplaceBody() error: %q", err.Error())
 		return
@@ -488,7 +620,7 @@ func TestDeleteRequestDefaultValues(t *testing.T) {
 	var refBuf bytes.Buffer
 
 	refEnc := msgpack.NewEncoder(&refBuf)
-	err := RefImplDeleteBody(refEnc, validSpace, defaultIndex, []interface{}{})
+	err := RefImplDeleteBody(refEnc, &resolver, validSpace, defaultIndex, []interface{}{})
 	if err != nil {
 		t.Errorf("An unexpected RefImplDeleteBody() error: %q", err.Error())
 		return
@@ -498,12 +630,43 @@ func TestDeleteRequestDefaultValues(t *testing.T) {
 	assertBodyEqual(t, refBuf.Bytes(), req)
 }
 
+func TestDeleteRequestSpaceByName(t *testing.T) {
+	var refBuf bytes.Buffer
+
+	resolver.nameUseSupported = true
+
+	refEnc := msgpack.NewEncoder(&refBuf)
+	err := RefImplDeleteBody(refEnc, &resolver, "valid", defaultIndex, []interface{}{})
+	if err != nil {
+		t.Fatalf("An unexpected RefImplDeleteBody() error: %q", err.Error())
+	}
+
+	req := NewDeleteRequest("valid")
+	assertBodyEqual(t, refBuf.Bytes(), req)
+}
+
+func TestDeleteRequestIndexByName(t *testing.T) {
+	var refBuf bytes.Buffer
+
+	resolver.nameUseSupported = true
+
+	refEnc := msgpack.NewEncoder(&refBuf)
+	err := RefImplDeleteBody(refEnc, &resolver, defaultSpace, "valid", []interface{}{})
+	if err != nil {
+		t.Fatalf("An unexpected RefImplDeleteBody() error: %q", err.Error())
+	}
+
+	req := NewDeleteRequest(defaultSpace)
+	req.Index("valid")
+	assertBodyEqual(t, refBuf.Bytes(), req)
+}
+
 func TestDeleteRequestSetters(t *testing.T) {
 	key := []interface{}{uint(923)}
 	var refBuf bytes.Buffer
 
 	refEnc := msgpack.NewEncoder(&refBuf)
-	err := RefImplDeleteBody(refEnc, validSpace, validIndex, key)
+	err := RefImplDeleteBody(refEnc, &resolver, validSpace, validIndex, key)
 	if err != nil {
 		t.Errorf("An unexpected RefImplDeleteBody() error: %q", err.Error())
 		return
@@ -519,7 +682,8 @@ func TestUpdateRequestDefaultValues(t *testing.T) {
 	var refBuf bytes.Buffer
 
 	refEnc := msgpack.NewEncoder(&refBuf)
-	err := RefImplUpdateBody(refEnc, validSpace, defaultIndex, []interface{}{}, []Op{})
+	err := RefImplUpdateBody(refEnc, &resolver, validSpace, defaultIndex,
+		[]interface{}{}, []Op{})
 	if err != nil {
 		t.Errorf("An unexpected RefImplUpdateBody() error: %q", err.Error())
 		return
@@ -529,13 +693,46 @@ func TestUpdateRequestDefaultValues(t *testing.T) {
 	assertBodyEqual(t, refBuf.Bytes(), req)
 }
 
+func TestUpdateRequestSpaceByName(t *testing.T) {
+	var refBuf bytes.Buffer
+
+	resolver.nameUseSupported = true
+
+	refEnc := msgpack.NewEncoder(&refBuf)
+	err := RefImplUpdateBody(refEnc, &resolver, "valid", defaultIndex,
+		[]interface{}{}, []Op{})
+	if err != nil {
+		t.Fatalf("An unexpected RefImplUpdateBody() error: %q", err.Error())
+	}
+
+	req := NewUpdateRequest("valid")
+	assertBodyEqual(t, refBuf.Bytes(), req)
+}
+
+func TestUpdateRequestIndexByName(t *testing.T) {
+	var refBuf bytes.Buffer
+
+	resolver.nameUseSupported = true
+
+	refEnc := msgpack.NewEncoder(&refBuf)
+	err := RefImplUpdateBody(refEnc, &resolver, defaultSpace, "valid",
+		[]interface{}{}, []Op{})
+	if err != nil {
+		t.Fatalf("An unexpected RefImplUpdateBody() error: %q", err.Error())
+	}
+
+	req := NewUpdateRequest(defaultSpace)
+	req.Index("valid")
+	assertBodyEqual(t, refBuf.Bytes(), req)
+}
+
 func TestUpdateRequestSetters(t *testing.T) {
 	key := []interface{}{uint(44)}
 	refOps, reqOps := getTestOps()
 	var refBuf bytes.Buffer
 
 	refEnc := msgpack.NewEncoder(&refBuf)
-	err := RefImplUpdateBody(refEnc, validSpace, validIndex, key, refOps)
+	err := RefImplUpdateBody(refEnc, &resolver, validSpace, validIndex, key, refOps)
 	if err != nil {
 		t.Errorf("An unexpected RefImplUpdateBody() error: %q", err.Error())
 		return
@@ -552,7 +749,7 @@ func TestUpsertRequestDefaultValues(t *testing.T) {
 	var refBuf bytes.Buffer
 
 	refEnc := msgpack.NewEncoder(&refBuf)
-	err := RefImplUpsertBody(refEnc, validSpace, []interface{}{}, []Op{})
+	err := RefImplUpsertBody(refEnc, &resolver, validSpace, []interface{}{}, []Op{})
 	if err != nil {
 		t.Errorf("An unexpected RefImplUpsertBody() error: %q", err.Error())
 		return
@@ -562,13 +759,28 @@ func TestUpsertRequestDefaultValues(t *testing.T) {
 	assertBodyEqual(t, refBuf.Bytes(), req)
 }
 
+func TestUpsertRequestSpaceByName(t *testing.T) {
+	var refBuf bytes.Buffer
+
+	resolver.nameUseSupported = true
+
+	refEnc := msgpack.NewEncoder(&refBuf)
+	err := RefImplUpsertBody(refEnc, &resolver, "valid", []interface{}{}, []Op{})
+	if err != nil {
+		t.Fatalf("An unexpected RefImplUpsertBody() error: %q", err.Error())
+	}
+
+	req := NewUpsertRequest("valid")
+	assertBodyEqual(t, refBuf.Bytes(), req)
+}
+
 func TestUpsertRequestSetters(t *testing.T) {
 	tuple := []interface{}{uint(64)}
 	refOps, reqOps := getTestOps()
 	var refBuf bytes.Buffer
 
 	refEnc := msgpack.NewEncoder(&refBuf)
-	err := RefImplUpsertBody(refEnc, validSpace, tuple, refOps)
+	err := RefImplUpsertBody(refEnc, &resolver, validSpace, tuple, refOps)
 	if err != nil {
 		t.Errorf("An unexpected RefImplUpsertBody() error: %q", err.Error())
 		return

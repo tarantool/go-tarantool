@@ -231,6 +231,21 @@ func ExampleSelectRequest() {
 	// response is [{{} 1111 hello world}]
 }
 
+func ExampleSelectRequest_spaceAndIndexNames() {
+	conn := exampleConnect(opts)
+	defer conn.Close()
+
+	req := tarantool.NewSelectRequest(spaceName)
+	req.Index(indexName)
+	resp, err := conn.Do(req).Get()
+
+	if err != nil {
+		fmt.Printf("Failed to execute the request: %s\n", err)
+	} else {
+		fmt.Println(resp.Data)
+	}
+}
+
 func ExampleInsertRequest() {
 	conn := exampleConnect(opts)
 	defer conn.Close()
@@ -271,6 +286,20 @@ func ExampleInsertRequest() {
 	// Error <nil>
 	// Code 0
 	// Data [[32 test one]]
+}
+
+func ExampleInsertRequest_spaceAndIndexNames() {
+	conn := exampleConnect(opts)
+	defer conn.Close()
+
+	req := tarantool.NewInsertRequest(spaceName)
+	resp, err := conn.Do(req).Get()
+
+	if err != nil {
+		fmt.Printf("Failed to execute the request: %s\n", err)
+	} else {
+		fmt.Println(resp.Data)
+	}
 }
 
 func ExampleDeleteRequest() {
@@ -314,6 +343,21 @@ func ExampleDeleteRequest() {
 	// Error <nil>
 	// Code 0
 	// Data [[36 test one]]
+}
+
+func ExampleDeleteRequest_spaceAndIndexNames() {
+	conn := exampleConnect(opts)
+	defer conn.Close()
+
+	req := tarantool.NewDeleteRequest(spaceName)
+	req.Index(indexName)
+	resp, err := conn.Do(req).Get()
+
+	if err != nil {
+		fmt.Printf("Failed to execute the request: %s\n", err)
+	} else {
+		fmt.Println(resp.Data)
+	}
 }
 
 func ExampleReplaceRequest() {
@@ -375,6 +419,20 @@ func ExampleReplaceRequest() {
 	// Data [[13 test twelve]]
 }
 
+func ExampleReplaceRequest_spaceAndIndexNames() {
+	conn := exampleConnect(opts)
+	defer conn.Close()
+
+	req := tarantool.NewReplaceRequest(spaceName)
+	resp, err := conn.Do(req).Get()
+
+	if err != nil {
+		fmt.Printf("Failed to execute the request: %s\n", err)
+	} else {
+		fmt.Println(resp.Data)
+	}
+}
+
 func ExampleUpdateRequest() {
 	conn := exampleConnect(opts)
 	defer conn.Close()
@@ -409,6 +467,21 @@ func ExampleUpdateRequest() {
 	// Output:
 	// response is []interface {}{[]interface {}{0x457, "bye", "world"}}
 	// response is []interface {}{[]interface {}{0x457, "hello", "world"}}
+}
+
+func ExampleUpdateRequest_spaceAndIndexNames() {
+	conn := exampleConnect(opts)
+	defer conn.Close()
+
+	req := tarantool.NewUpdateRequest(spaceName)
+	req.Index(indexName)
+	resp, err := conn.Do(req).Get()
+
+	if err != nil {
+		fmt.Printf("Failed to execute the request: %s\n", err)
+	} else {
+		fmt.Println(resp.Data)
+	}
 }
 
 func ExampleUpsertRequest() {
@@ -450,6 +523,20 @@ func ExampleUpsertRequest() {
 	// response is []interface {}{}
 	// response is []interface {}{}
 	// response is []interface {}{[]interface {}{0x459, "first", "updated"}}
+}
+
+func ExampleUpsertRequest_spaceAndIndexNames() {
+	conn := exampleConnect(opts)
+	defer conn.Close()
+
+	req := tarantool.NewUpsertRequest(spaceName)
+	resp, err := conn.Do(req).Get()
+
+	if err != nil {
+		fmt.Printf("Failed to execute the request: %s\n", err)
+	} else {
+		fmt.Println(resp.Data)
+	}
 }
 
 func ExampleCallRequest() {
@@ -634,6 +721,7 @@ func ExampleProtocolVersion() {
 	// Connector client protocol feature: IPROTO_FEATURE_ERROR_EXTENSION
 	// Connector client protocol feature: IPROTO_FEATURE_WATCHERS
 	// Connector client protocol feature: IPROTO_FEATURE_PAGINATION
+	// Connector client protocol feature: IPROTO_FEATURE_SPACE_AND_INDEX_NAMES
 	// Connector client protocol feature: IPROTO_FEATURE_WATCH_ONCE
 }
 

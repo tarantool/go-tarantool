@@ -56,6 +56,7 @@ var clientProtocolInfo ProtocolInfo = ProtocolInfo{
 		iproto.IPROTO_FEATURE_ERROR_EXTENSION,
 		iproto.IPROTO_FEATURE_WATCHERS,
 		iproto.IPROTO_FEATURE_PAGINATION,
+		iproto.IPROTO_FEATURE_SPACE_AND_INDEX_NAMES,
 		iproto.IPROTO_FEATURE_WATCH_ONCE,
 	},
 }

@@ -585,15 +585,10 @@ func BenchmarkClientReplaceParallel(b *testing.B) {
 	conn := test_helpers.ConnectWithValidation(b, server, opts)
 	defer conn.Close()
 
-	rSpaceNo, _, err := conn.Schema.ResolveSpaceIndex("test_perf", "secondary")
-	if err != nil {
-		b.Fatalf("Space is not resolved: %s", err.Error())
-	}
-
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			_, err := conn.Replace(rSpaceNo, []interface{}{uint(1), "hello", []interface{}{}})
+			_, err := conn.Replace("test_perf", []interface{}{uint(1), "hello", []interface{}{}})
 			if err != nil {
 				b.Error(err)
 			}
@@ -605,17 +600,11 @@ func BenchmarkClientLargeSelectParallel(b *testing.B) {
 	conn := test_helpers.ConnectWithValidation(b, server, opts)
 	defer conn.Close()
 
-	schema := conn.Schema
-	rSpaceNo, rIndexNo, err := schema.ResolveSpaceIndex("test_perf", "secondary")
-	if err != nil {
-		b.Fatalf("symbolic space and index params not resolved")
-	}
-
 	offset, limit := uint32(0), uint32(1000)
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			_, err := conn.Select(rSpaceNo, rIndexNo, offset, limit, IterEq,
+			_, err := conn.Select("test_perf", "secondary", offset, limit, IterEq,
 				[]interface{}{"test_name"})
 			if err != nil {
 				b.Fatal(err)
@@ -1889,8 +1878,6 @@ func TestNewPreparedFromResponse(t *testing.T) {
 }
 
 func TestSchema(t *testing.T) {
-	var err error
-
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
@@ -2034,32 +2021,6 @@ func TestSchema(t *testing.T) {
 	if (ifield1.Type != "num" && ifield1.Type != "unsigned") ||
 		(ifield2.Type != "STR" && ifield2.Type != "string") {
 		t.Errorf("index field has incorrect Type '%s'", ifield2.Type)
-	}
-
-	var rSpaceNo, rIndexNo uint32
-	rSpaceNo, rIndexNo, err = schema.ResolveSpaceIndex(616, 3)
-	if err != nil || rSpaceNo != 616 || rIndexNo != 3 {
-		t.Errorf("numeric space and index params not resolved as-is")
-	}
-	rSpaceNo, _, err = schema.ResolveSpaceIndex(616, nil)
-	if err != nil || rSpaceNo != 616 {
-		t.Errorf("numeric space param not resolved as-is")
-	}
-	rSpaceNo, rIndexNo, err = schema.ResolveSpaceIndex("schematest", "secondary")
-	if err != nil || rSpaceNo != 616 || rIndexNo != 3 {
-		t.Errorf("symbolic space and index params not resolved")
-	}
-	rSpaceNo, _, err = schema.ResolveSpaceIndex("schematest", nil)
-	if err != nil || rSpaceNo != 616 {
-		t.Errorf("symbolic space param not resolved")
-	}
-	_, _, err = schema.ResolveSpaceIndex("schematest22", "secondary")
-	if err == nil {
-		t.Errorf("ResolveSpaceIndex didn't returned error with not existing space name")
-	}
-	_, _, err = schema.ResolveSpaceIndex("schematest", "secondary22")
-	if err == nil {
-		t.Errorf("ResolveSpaceIndex didn't returned error with not existing index name")
 	}
 }
 
@@ -3302,6 +3263,7 @@ func TestConnectionProtocolInfoSupported(t *testing.T) {
 				iproto.IPROTO_FEATURE_ERROR_EXTENSION,
 				iproto.IPROTO_FEATURE_WATCHERS,
 				iproto.IPROTO_FEATURE_PAGINATION,
+				iproto.IPROTO_FEATURE_SPACE_AND_INDEX_NAMES,
 				iproto.IPROTO_FEATURE_WATCH_ONCE,
 			},
 		})
@@ -3420,6 +3382,7 @@ func TestConnectionProtocolInfoUnsupported(t *testing.T) {
 				iproto.IPROTO_FEATURE_ERROR_EXTENSION,
 				iproto.IPROTO_FEATURE_WATCHERS,
 				iproto.IPROTO_FEATURE_PAGINATION,
+				iproto.IPROTO_FEATURE_SPACE_AND_INDEX_NAMES,
 				iproto.IPROTO_FEATURE_WATCH_ONCE,
 			},
 		})

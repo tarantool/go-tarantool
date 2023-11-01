@@ -12,19 +12,90 @@ import (
 	"github.com/vmihailenco/msgpack/v5"
 )
 
-func fillSearch(enc *msgpack.Encoder, spaceNo, indexNo uint32, key interface{}) error {
-	if err := enc.EncodeUint(uint64(iproto.IPROTO_SPACE_ID)); err != nil {
+type spaceEncoder struct {
+	Id   uint32
+	Name string
+	IsId bool
+}
+
+func newSpaceEncoder(res SchemaResolver, spaceInfo interface{}) (spaceEncoder, error) {
+	if res.NamesUseSupported() {
+		if spaceName, ok := spaceInfo.(string); ok {
+			return spaceEncoder{
+				Id:   0,
+				Name: spaceName,
+				IsId: false,
+			}, nil
+		}
+	}
+
+	spaceId, err := res.ResolveSpace(spaceInfo)
+	return spaceEncoder{
+		Id:   spaceId,
+		IsId: true,
+	}, err
+}
+
+func (e spaceEncoder) Encode(enc *msgpack.Encoder) error {
+	if e.IsId {
+		if err := enc.EncodeUint(uint64(iproto.IPROTO_SPACE_ID)); err != nil {
+			return err
+		}
+		return enc.EncodeUint(uint64(e.Id))
+	}
+	if err := enc.EncodeUint(uint64(iproto.IPROTO_SPACE_NAME)); err != nil {
 		return err
 	}
-	if err := enc.EncodeUint(uint64(spaceNo)); err != nil {
+	return enc.EncodeString(e.Name)
+}
+
+type indexEncoder struct {
+	Id   uint32
+	Name string
+	IsId bool
+}
+
+func newIndexEncoder(res SchemaResolver, indexInfo interface{},
+	spaceNo uint32) (indexEncoder, error) {
+	if res.NamesUseSupported() {
+		if indexName, ok := indexInfo.(string); ok {
+			return indexEncoder{
+				Name: indexName,
+				IsId: false,
+			}, nil
+		}
+	}
+
+	indexId, err := res.ResolveIndex(indexInfo, spaceNo)
+	return indexEncoder{
+		Id:   indexId,
+		IsId: true,
+	}, err
+}
+
+func (e indexEncoder) Encode(enc *msgpack.Encoder) error {
+	if e.IsId {
+		if err := enc.EncodeUint(uint64(iproto.IPROTO_INDEX_ID)); err != nil {
+			return err
+		}
+		return enc.EncodeUint(uint64(e.Id))
+	}
+	if err := enc.EncodeUint(uint64(iproto.IPROTO_INDEX_NAME)); err != nil {
 		return err
 	}
-	if err := enc.EncodeUint(uint64(iproto.IPROTO_INDEX_ID)); err != nil {
+	return enc.EncodeString(e.Name)
+}
+
+func fillSearch(enc *msgpack.Encoder, spaceEnc spaceEncoder, indexEnc indexEncoder,
+	key interface{}) error {
+	if err := spaceEnc.Encode(enc); err != nil {
 		return err
 	}
-	if err := enc.EncodeUint(uint64(indexNo)); err != nil {
+
+	if err := indexEnc.Encode(enc); err != nil {
 		return err
 	}
+
 	if err := enc.EncodeUint(uint64(iproto.IPROTO_KEY)); err != nil {
 		return err
 	}
@@ -50,24 +121,22 @@ func fillIterator(enc *msgpack.Encoder, offset, limit uint32, iterator Iter) err
 	return enc.EncodeUint(uint64(limit))
 }
 
-func fillInsert(enc *msgpack.Encoder, spaceNo uint32, tuple interface{}) error {
+func fillInsert(enc *msgpack.Encoder, spaceEnc spaceEncoder, tuple interface{}) error {
 	if err := enc.EncodeMapLen(2); err != nil {
 		return err
 	}
-	if err := enc.EncodeUint(uint64(iproto.IPROTO_SPACE_ID)); err != nil {
+	if err := spaceEnc.Encode(enc); err != nil {
 		return err
 	}
-	if err := enc.EncodeUint(uint64(spaceNo)); err != nil {
-		return err
-	}
+
 	if err := enc.EncodeUint(uint64(iproto.IPROTO_TUPLE)); err != nil {
 		return err
 	}
 	return enc.Encode(tuple)
 }
 
-func fillSelect(enc *msgpack.Encoder, spaceNo, indexNo, offset, limit uint32, iterator Iter,
-	key, after interface{}, fetchPos bool) error {
+func fillSelect(enc *msgpack.Encoder, spaceEnc spaceEncoder, indexEnc indexEncoder,
+	offset, limit uint32, iterator Iter, key, after interface{}, fetchPos bool) error {
 	mapLen := 6
 	if fetchPos {
 		mapLen += 1
@@ -81,7 +150,7 @@ func fillSelect(enc *msgpack.Encoder, spaceNo, indexNo, offset, limit uint32, it
 	if err := fillIterator(enc, offset, limit, iterator); err != nil {
 		return err
 	}
-	if err := fillSearch(enc, spaceNo, indexNo, key); err != nil {
+	if err := fillSearch(enc, spaceEnc, indexEnc, key); err != nil {
 		return err
 	}
 	if fetchPos {
@@ -112,19 +181,22 @@ func fillSelect(enc *msgpack.Encoder, spaceNo, indexNo, offset, limit uint32, it
 	return nil
 }
 
-func fillUpdate(enc *msgpack.Encoder, spaceNo, indexNo uint32, key, ops interface{}) error {
+func fillUpdate(enc *msgpack.Encoder, spaceEnc spaceEncoder, indexEnc indexEncoder,
+	key, ops interface{}) error {
 	enc.EncodeMapLen(4)
-	if err := fillSearch(enc, spaceNo, indexNo, key); err != nil {
+	if err := fillSearch(enc, spaceEnc, indexEnc, key); err != nil {
 		return err
 	}
 	enc.EncodeUint(uint64(iproto.IPROTO_TUPLE))
 	return enc.Encode(ops)
 }
 
-func fillUpsert(enc *msgpack.Encoder, spaceNo uint32, tuple, ops interface{}) error {
+func fillUpsert(enc *msgpack.Encoder, spaceEnc spaceEncoder, tuple, ops interface{}) error {
 	enc.EncodeMapLen(3)
-	enc.EncodeUint(uint64(iproto.IPROTO_SPACE_ID))
-	enc.EncodeUint(uint64(spaceNo))
+	if err := spaceEnc.Encode(enc); err != nil {
+		return err
+	}
+
 	enc.EncodeUint(uint64(iproto.IPROTO_TUPLE))
 	if err := enc.Encode(tuple); err != nil {
 		return err
@@ -133,9 +205,10 @@ func fillUpsert(enc *msgpack.Encoder, spaceNo uint32, tuple, ops interface{}) er
 	return enc.Encode(ops)
 }
 
-func fillDelete(enc *msgpack.Encoder, spaceNo, indexNo uint32, key interface{}) error {
+func fillDelete(enc *msgpack.Encoder, spaceEnc spaceEncoder, indexEnc indexEncoder,
+	key interface{}) error {
 	enc.EncodeMapLen(3)
-	return fillSearch(enc, spaceNo, indexNo, key)
+	return fillSearch(enc, spaceEnc, indexEnc, key)
 }
 
 func fillCall(enc *msgpack.Encoder, functionName string, args interface{}) error {
@@ -948,12 +1021,16 @@ func (req *SelectRequest) After(after interface{}) *SelectRequest {
 
 // Body fills an encoder with the select request body.
 func (req *SelectRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
-	spaceNo, indexNo, err := res.ResolveSpaceIndex(req.space, req.index)
+	spaceEnc, err := newSpaceEncoder(res, req.space)
+	if err != nil {
+		return err
+	}
+	indexEnc, err := newIndexEncoder(res, req.index, spaceEnc.Id)
 	if err != nil {
 		return err
 	}
 
-	return fillSelect(enc, spaceNo, indexNo, req.offset, req.limit, req.iterator,
+	return fillSelect(enc, spaceEnc, indexEnc, req.offset, req.limit, req.iterator,
 		req.key, req.after, req.fetchPos)
 }
 
@@ -993,12 +1070,12 @@ func (req *InsertRequest) Tuple(tuple interface{}) *InsertRequest {
 
 // Body fills an msgpack.Encoder with the insert request body.
 func (req *InsertRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
-	spaceNo, _, err := res.ResolveSpaceIndex(req.space, nil)
+	spaceEnc, err := newSpaceEncoder(res, req.space)
 	if err != nil {
 		return err
 	}
 
-	return fillInsert(enc, spaceNo, req.tuple)
+	return fillInsert(enc, spaceEnc, req.tuple)
 }
 
 // Context sets a passed context to the request.
@@ -1037,12 +1114,12 @@ func (req *ReplaceRequest) Tuple(tuple interface{}) *ReplaceRequest {
 
 // Body fills an msgpack.Encoder with the replace request body.
 func (req *ReplaceRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
-	spaceNo, _, err := res.ResolveSpaceIndex(req.space, nil)
+	spaceEnc, err := newSpaceEncoder(res, req.space)
 	if err != nil {
 		return err
 	}
 
-	return fillInsert(enc, spaceNo, req.tuple)
+	return fillInsert(enc, spaceEnc, req.tuple)
 }
 
 // Context sets a passed context to the request.
@@ -1088,12 +1165,16 @@ func (req *DeleteRequest) Key(key interface{}) *DeleteRequest {
 
 // Body fills an msgpack.Encoder with the delete request body.
 func (req *DeleteRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
-	spaceNo, indexNo, err := res.ResolveSpaceIndex(req.space, req.index)
+	spaceEnc, err := newSpaceEncoder(res, req.space)
+	if err != nil {
+		return err
+	}
+	indexEnc, err := newIndexEncoder(res, req.index, spaceEnc.Id)
 	if err != nil {
 		return err
 	}
 
-	return fillDelete(enc, spaceNo, indexNo, req.key)
+	return fillDelete(enc, spaceEnc, indexEnc, req.key)
 }
 
 // Context sets a passed context to the request.
@@ -1150,12 +1231,16 @@ func (req *UpdateRequest) Operations(ops *Operations) *UpdateRequest {
 
 // Body fills an msgpack.Encoder with the update request body.
 func (req *UpdateRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
-	spaceNo, indexNo, err := res.ResolveSpaceIndex(req.space, req.index)
+	spaceEnc, err := newSpaceEncoder(res, req.space)
+	if err != nil {
+		return err
+	}
+	indexEnc, err := newIndexEncoder(res, req.index, spaceEnc.Id)
 	if err != nil {
 		return err
 	}
 
-	return fillUpdate(enc, spaceNo, indexNo, req.key, req.ops)
+	return fillUpdate(enc, spaceEnc, indexEnc, req.key, req.ops)
 }
 
 // Context sets a passed context to the request.
@@ -1205,12 +1290,12 @@ func (req *UpsertRequest) Operations(ops *Operations) *UpsertRequest {
 
 // Body fills an msgpack.Encoder with the upsert request body.
 func (req *UpsertRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
-	spaceNo, _, err := res.ResolveSpaceIndex(req.space, nil)
+	spaceEnc, err := newSpaceEncoder(res, req.space)
 	if err != nil {
 		return err
 	}
 
-	return fillUpsert(enc, spaceNo, req.tuple, req.ops)
+	return fillUpsert(enc, spaceEnc, req.tuple, req.ops)
 }
 
 // Context sets a passed context to the request.

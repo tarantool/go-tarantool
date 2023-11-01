@@ -3,7 +3,6 @@ package crud_test
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"testing"
 
@@ -14,14 +13,7 @@ import (
 	"github.com/tarantool/go-tarantool/v2/crud"
 )
 
-const invalidSpaceMsg = "invalid space"
-const invalidIndexMsg = "invalid index"
-
-const invalidSpace = 2
-const invalidIndex = 2
 const validSpace = "test" // Any valid value != default.
-const defaultSpace = 0    // And valid too.
-const defaultIndex = 0    // And valid too.
 
 const CrudRequestType = iproto.IPROTO_CALL
 
@@ -69,38 +61,11 @@ var expectedOpts = map[string]interface{}{
 	"timeout": timeout,
 }
 
-type ValidSchemeResolver struct {
-}
-
-func (*ValidSchemeResolver) ResolveSpaceIndex(s, i interface{}) (uint32, uint32, error) {
-	var spaceNo, indexNo uint32
-	if s != nil {
-		spaceNo = uint32(s.(int))
-	} else {
-		spaceNo = defaultSpace
-	}
-	if i != nil {
-		indexNo = uint32(i.(int))
-	} else {
-		indexNo = defaultIndex
-	}
-	if spaceNo == invalidSpace {
-		return 0, 0, errors.New(invalidSpaceMsg)
-	}
-	if indexNo == invalidIndex {
-		return 0, 0, errors.New(invalidIndexMsg)
-	}
-	return spaceNo, indexNo, nil
-}
-
-var resolver ValidSchemeResolver
-
-func extractRequestBody(req tarantool.Request,
-	resolver tarantool.SchemaResolver) ([]byte, error) {
+func extractRequestBody(req tarantool.Request) ([]byte, error) {
 	var reqBuf bytes.Buffer
 	reqEnc := msgpack.NewEncoder(&reqBuf)
 
-	err := req.Body(resolver, reqEnc)
+	err := req.Body(nil, reqEnc)
 	if err != nil {
 		return nil, fmt.Errorf("An unexpected Response.Body() error: %q", err.Error())
 	}
@@ -111,12 +76,12 @@ func extractRequestBody(req tarantool.Request,
 func assertBodyEqual(t testing.TB, reference tarantool.Request, req tarantool.Request) {
 	t.Helper()
 
-	reqBody, err := extractRequestBody(req, &resolver)
+	reqBody, err := extractRequestBody(req)
 	if err != nil {
 		t.Fatalf("An unexpected Response.Body() error: %q", err.Error())
 	}
 
-	refBody, err := extractRequestBody(reference, &resolver)
+	refBody, err := extractRequestBody(reference)
 	if err != nil {
 		t.Fatalf("An unexpected Response.Body() error: %q", err.Error())
 	}
