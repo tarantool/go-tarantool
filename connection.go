@@ -162,6 +162,8 @@ type Connection struct {
 	cond  *sync.Cond
 	// Schema contains schema loaded on connection.
 	Schema *Schema
+	// schemaResolver contains a SchemaResolver implementation.
+	schemaResolver SchemaResolver
 	// requestId contains the last request ID for requests with nil context.
 	requestId uint32
 	// contextRequestId contains the last request ID for requests with context.
@@ -527,6 +529,14 @@ func (conn *Connection) dial(ctx context.Context) error {
 
 	conn.Greeting.Version = c.Greeting().Version
 	conn.serverProtocolInfo = c.ProtocolInfo()
+
+	spaceAndIndexNamesSupported :=
+		isFeatureInSlice(iproto.IPROTO_FEATURE_SPACE_AND_INDEX_NAMES,
+			conn.serverProtocolInfo.Features)
+
+	conn.schemaResolver = &noSchemaResolver{
+		SpaceAndIndexNamesSupported: spaceAndIndexNamesSupported,
+	}
 
 	// Watchers.
 	conn.watchMap.Range(func(key, value interface{}) bool {
@@ -1102,7 +1112,7 @@ func (conn *Connection) putFuture(fut *Future, req Request, streamId uint64) {
 	}
 	blen := shard.buf.Len()
 	reqid := fut.requestId
-	if err := pack(&shard.buf, shard.enc, reqid, req, streamId, conn.Schema); err != nil {
+	if err := pack(&shard.buf, shard.enc, reqid, req, streamId, conn.schemaResolver); err != nil {
 		shard.buf.Trunc(blen)
 		shard.bufmut.Unlock()
 		if f := conn.fetchFuture(reqid); f == fut {

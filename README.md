@@ -245,6 +245,14 @@ and user may cancel it in process.
 * `iproto.Feature` type used instead of `ProtocolFeature`.
 * `iproto.IPROTO_FEATURE_` constants used instead of local ones.
 
+#### Schema changes
+
+* `ResolveSpaceIndex` function for `SchemaResolver` interface split into two: 
+`ResolveSpace` and `ResolveIndex`. `NamesUseSupported` function added into the 
+interface to get information if the usage of space and index names in requests 
+is supported.
+* `Schema` structure no longer implements `SchemaResolver` interface.
+
 ## Contributing
 
 See [the contributing guide](CONTRIBUTING.md) for detailed instructions on how

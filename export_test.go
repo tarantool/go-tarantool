@@ -25,39 +25,80 @@ func RefImplPingBody(enc *msgpack.Encoder) error {
 
 // RefImplSelectBody is reference implementation for filling of a select
 // request's body.
-func RefImplSelectBody(enc *msgpack.Encoder, space, index, offset, limit uint32, iterator Iter,
-	key, after interface{}, fetchPos bool) error {
-	return fillSelect(enc, space, index, offset, limit, iterator, key, after, fetchPos)
+func RefImplSelectBody(enc *msgpack.Encoder, res SchemaResolver, space, index interface{},
+	offset, limit uint32, iterator Iter, key, after interface{}, fetchPos bool) error {
+	spaceEnc, err := newSpaceEncoder(res, space)
+	if err != nil {
+		return err
+	}
+	indexEnc, err := newIndexEncoder(res, index, spaceEnc.Id)
+	if err != nil {
+		return err
+	}
+	return fillSelect(enc, spaceEnc, indexEnc, offset, limit, iterator, key, after, fetchPos)
 }
 
 // RefImplInsertBody is reference implementation for filling of an insert
 // request's body.
-func RefImplInsertBody(enc *msgpack.Encoder, space uint32, tuple interface{}) error {
-	return fillInsert(enc, space, tuple)
+func RefImplInsertBody(enc *msgpack.Encoder, res SchemaResolver, space,
+	tuple interface{}) error {
+	spaceEnc, err := newSpaceEncoder(res, space)
+	if err != nil {
+		return err
+	}
+	return fillInsert(enc, spaceEnc, tuple)
 }
 
 // RefImplReplaceBody is reference implementation for filling of a replace
 // request's body.
-func RefImplReplaceBody(enc *msgpack.Encoder, space uint32, tuple interface{}) error {
-	return fillInsert(enc, space, tuple)
+func RefImplReplaceBody(enc *msgpack.Encoder, res SchemaResolver, space,
+	tuple interface{}) error {
+	spaceEnc, err := newSpaceEncoder(res, space)
+	if err != nil {
+		return err
+	}
+	return fillInsert(enc, spaceEnc, tuple)
 }
 
 // RefImplDeleteBody is reference implementation for filling of a delete
 // request's body.
-func RefImplDeleteBody(enc *msgpack.Encoder, space, index uint32, key interface{}) error {
-	return fillDelete(enc, space, index, key)
+func RefImplDeleteBody(enc *msgpack.Encoder, res SchemaResolver, space, index,
+	key interface{}) error {
+	spaceEnc, err := newSpaceEncoder(res, space)
+	if err != nil {
+		return err
+	}
+	indexEnc, err := newIndexEncoder(res, index, spaceEnc.Id)
+	if err != nil {
+		return err
+	}
+	return fillDelete(enc, spaceEnc, indexEnc, key)
 }
 
 // RefImplUpdateBody is reference implementation for filling of an update
 // request's body.
-func RefImplUpdateBody(enc *msgpack.Encoder, space, index uint32, key, ops interface{}) error {
-	return fillUpdate(enc, space, index, key, ops)
+func RefImplUpdateBody(enc *msgpack.Encoder, res SchemaResolver, space, index,
+	key, ops interface{}) error {
+	spaceEnc, err := newSpaceEncoder(res, space)
+	if err != nil {
+		return err
+	}
+	indexEnc, err := newIndexEncoder(res, index, spaceEnc.Id)
+	if err != nil {
+		return err
+	}
+	return fillUpdate(enc, spaceEnc, indexEnc, key, ops)
 }
 
 // RefImplUpsertBody is reference implementation for filling of an upsert
 // request's body.
-func RefImplUpsertBody(enc *msgpack.Encoder, space uint32, tuple, ops interface{}) error {
-	return fillUpsert(enc, space, tuple, ops)
+func RefImplUpsertBody(enc *msgpack.Encoder, res SchemaResolver, space,
+	tuple, ops interface{}) error {
+	spaceEnc, err := newSpaceEncoder(res, space)
+	if err != nil {
+		return err
+	}
+	return fillUpsert(enc, spaceEnc, tuple, ops)
 }
 
 // RefImplCallBody is reference implementation for filling of a call or call17

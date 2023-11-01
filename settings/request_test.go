@@ -16,24 +16,16 @@ import (
 type ValidSchemeResolver struct {
 }
 
-func (*ValidSchemeResolver) ResolveSpaceIndex(s, i interface{}) (uint32, uint32, error) {
-	var spaceNo, indexNo uint32
-	if s == nil {
-		if s == "_session_settings" {
-			spaceNo = 380
-		} else {
-			spaceNo = uint32(s.(int))
-		}
-	} else {
-		spaceNo = 0
-	}
-	if i != nil {
-		indexNo = uint32(i.(int))
-	} else {
-		indexNo = 0
-	}
+func (*ValidSchemeResolver) ResolveSpace(s interface{}) (uint32, error) {
+	return 0, nil
+}
 
-	return spaceNo, indexNo, nil
+func (*ValidSchemeResolver) ResolveIndex(i interface{}, spaceNo uint32) (uint32, error) {
+	return 0, nil
+}
+
+func (r *ValidSchemeResolver) NamesUseSupported() bool {
+	return false
 }
 
 var resolver ValidSchemeResolver

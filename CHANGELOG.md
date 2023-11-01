@@ -23,6 +23,9 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 - Support `IPROTO_WATCH_ONCE` request type for Tarantool 
   version >= 3.0.0-alpha1 (#337)
 - Support `yield_every` option for crud select requests (#350)
+- Support `IPROTO_FEATURE_SPACE_AND_INDEX_NAMES` for Tarantool
+  version >= 3.0.0-alpha1 (#338). It allows to use space and index names 
+  in requests instead of their IDs.
 
 ### Changed
 
