@@ -34,14 +34,14 @@ jobs:
           - '1.10'
           - '2.8'
           - '2.10'
-          - '2.x-latest'
+          - 'master'
         coveralls: [false]
         fuzzing: [false]
         include:
-          - tarantool: '2.x-latest'
+          - tarantool: 'master'
             coveralls: true
             golang: 1.13
-          - tarantool: '2.x-latest'
+          - tarantool: 'master'
             fuzzing: true
             golang: 1.18
             coveralls: false
@@ -56,34 +56,34 @@ jobs:
           sudo apt install -y tt
 
       - name: Setup Tarantool ${{ matrix.tarantool }}
-        if: matrix.tarantool != '2.x-latest'
+        if: matrix.tarantool != 'master'
         uses: tarantool/setup-tarantool@v2
         with:
           tarantool-version: ${{ matrix.tarantool }}
 
-      - name: Get Tarantool 2.x latest commit
-        if: matrix.tarantool == '2.x-latest'
+      - name: Get Tarantool master commit
+        if: matrix.tarantool == 'master'
         run: |
           commit_hash=$(git ls-remote https://github.com/tarantool/tarantool.git --branch master | head -c 8)
           echo "LATEST_COMMIT=${commit_hash}" >> $GITHUB_ENV
         shell: bash
 
-      - name: Cache Tarantool 2.x latest
-        if: matrix.tarantool == '2.x-latest'
+      - name: Cache Tarantool master
+        if: matrix.tarantool == 'master'
         id: cache-latest
         uses: actions/cache@v3
         with:
           path: "${GITHUB_WORKSPACE}/bin"
           key: cache-latest-${{ env.LATEST_COMMIT }}
 
-      - name: Setup Tarantool 2.x latest
-        if: matrix.tarantool == '2.x-latest' && steps.cache-latest.outputs.cache-hit != 'true'
+      - name: Setup Tarantool master
+        if: matrix.tarantool == 'master' && steps.cache-latest.outputs.cache-hit != 'true'
         run: |
           tt init
           sudo tt install tarantool master
 
-      - name: Add Tarantool 2.x latest to PATH
-        if: matrix.tarantool == '2.x-latest'
+      - name: Add Tarantool master to PATH
+        if: matrix.tarantool == 'master'
         run: echo "${GITHUB_WORKSPACE}/bin" >> $GITHUB_PATH
 
       - name: Setup golang for the connector and tests
