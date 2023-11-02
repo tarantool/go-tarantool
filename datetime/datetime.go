@@ -101,7 +101,7 @@ const (
 // [-12 * 60 * 60, 14 * 60 * 60].
 //
 // NOTE: Tarantool's datetime.tz value is picked from t.Location().String().
-// "Local" location is unsupported, see ExampleNewDatetime_localUnsupported.
+// "Local" location is unsupported, see ExampleMakeDatetime_localUnsupported.
 func MakeDatetime(t time.Time) (Datetime, error) {
 	dt := Datetime{}
 	seconds := t.Unix()
@@ -253,7 +253,7 @@ func datetimeEncoder(e *msgpack.Encoder, v reflect.Value) ([]byte, error) {
 	zone := tm.Location().String()
 	_, offset := tm.Zone()
 	if zone != NoTimezone {
-		// The zone value already checked in NewDatetime() or
+		// The zone value already checked in MakeDatetime() or
 		// UnmarshalMsgpack() calls.
 		dt.tzIndex = int16(timezoneToIndex[zone])
 	}
