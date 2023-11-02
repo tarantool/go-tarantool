@@ -55,6 +55,9 @@ jobs:
           curl -L https://tarantool.io/release/2/installer.sh | sudo bash
           sudo apt install -y tt
 
+      - name: Setup tt environment
+        run: tt init
+
       - name: Setup Tarantool ${{ matrix.tarantool }}
         if: matrix.tarantool != 'master'
         uses: tarantool/setup-tarantool@v2
@@ -73,13 +76,14 @@ jobs:
         id: cache-latest
         uses: actions/cache@v3
         with:
-          path: "${GITHUB_WORKSPACE}/bin"
+          path: |
+            ${{ github.workspace }}/bin
+            ${{ github.workspace }}/include
           key: cache-latest-${{ env.LATEST_COMMIT }}
 
       - name: Setup Tarantool master
         if: matrix.tarantool == 'master' && steps.cache-latest.outputs.cache-hit != 'true'
         run: |
-          tt init
           sudo tt install tarantool master
 
       - name: Add Tarantool master to PATH
