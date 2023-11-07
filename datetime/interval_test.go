@@ -105,7 +105,7 @@ func TestIntervalSub(t *testing.T) {
 func TestIntervalTarantoolEncoding(t *testing.T) {
 	skipIfDatetimeUnsupported(t)
 
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	cases := []Interval{

@@ -20,10 +20,10 @@ type Tuple struct {
 	Name     string
 }
 
-func exampleConnect(opts tarantool.Opts) *tarantool.Connection {
+func exampleConnect(dialer tarantool.Dialer, opts tarantool.Opts) *tarantool.Connection {
 	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	defer cancel()
-	conn, err := tarantool.Connect(ctx, server, opts)
+	conn, err := tarantool.Connect(ctx, dialer, opts)
 	if err != nil {
 		panic("Connection is not established: " + err.Error())
 	}
@@ -31,27 +31,25 @@ func exampleConnect(opts tarantool.Opts) *tarantool.Connection {
 }
 
 // Example demonstrates how to use SSL transport.
-func ExampleSslOpts() {
-	var opts = tarantool.Opts{
-		User:      "test",
-		Pass:      "test",
-		Transport: "ssl",
-		Ssl: tarantool.SslOpts{
-			KeyFile:  "testdata/localhost.key",
-			CertFile: "testdata/localhost.crt",
-			CaFile:   "testdata/ca.crt",
-		},
+func ExampleOpenSslDialer() {
+	sslDialer := tarantool.OpenSslDialer{
+		Address:     "127.0.0.1:3013",
+		User:        "test",
+		Password:    "test",
+		SslKeyFile:  "testdata/localhost.key",
+		SslCertFile: "testdata/localhost.crt",
+		SslCaFile:   "testdata/ca.crt",
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	defer cancel()
-	_, err := tarantool.Connect(ctx, "127.0.0.1:3013", opts)
+	_, err := tarantool.Connect(ctx, sslDialer, opts)
 	if err != nil {
 		panic("Connection is not established: " + err.Error())
 	}
 }
 
 func ExampleIntKey() {
-	conn := exampleConnect(opts)
+	conn := exampleConnect(dialer, opts)
 	defer conn.Close()
 
 	const space = "test"
@@ -73,7 +71,7 @@ func ExampleIntKey() {
 }
 
 func ExampleUintKey() {
-	conn := exampleConnect(opts)
+	conn := exampleConnect(dialer, opts)
 	defer conn.Close()
 
 	const space = "test"
@@ -95,7 +93,7 @@ func ExampleUintKey() {
 }
 
 func ExampleStringKey() {
-	conn := exampleConnect(opts)
+	conn := exampleConnect(dialer, opts)
 	defer conn.Close()
 
 	const space = "teststring"
@@ -120,7 +118,7 @@ func ExampleStringKey() {
 }
 
 func ExampleIntIntKey() {
-	conn := exampleConnect(opts)
+	conn := exampleConnect(dialer, opts)
 	defer conn.Close()
 
 	const space = "testintint"
@@ -146,7 +144,7 @@ func ExampleIntIntKey() {
 }
 
 func ExamplePingRequest() {
-	conn := exampleConnect(opts)
+	conn := exampleConnect(dialer, opts)
 	defer conn.Close()
 
 	// Ping a Tarantool instance to check connection.
@@ -166,7 +164,7 @@ func ExamplePingRequest() {
 // of the request. For those purposes use context.WithTimeout() as
 // the root context.
 func ExamplePingRequest_Context() {
-	conn := exampleConnect(opts)
+	conn := exampleConnect(dialer, opts)
 	defer conn.Close()
 
 	timeout := time.Nanosecond
@@ -191,7 +189,7 @@ func ExamplePingRequest_Context() {
 }
 
 func ExampleSelectRequest() {
-	conn := exampleConnect(opts)
+	conn := exampleConnect(dialer, opts)
 	defer conn.Close()
 
 	for i := 1111; i <= 1112; i++ {
@@ -232,7 +230,7 @@ func ExampleSelectRequest() {
 }
 
 func ExampleSelectRequest_spaceAndIndexNames() {
-	conn := exampleConnect(opts)
+	conn := exampleConnect(dialer, opts)
 	defer conn.Close()
 
 	req := tarantool.NewSelectRequest(spaceName)
@@ -247,7 +245,7 @@ func ExampleSelectRequest_spaceAndIndexNames() {
 }
 
 func ExampleInsertRequest() {
-	conn := exampleConnect(opts)
+	conn := exampleConnect(dialer, opts)
 	defer conn.Close()
 
 	// Insert a new tuple { 31, 1 }.
@@ -289,7 +287,7 @@ func ExampleInsertRequest() {
 }
 
 func ExampleInsertRequest_spaceAndIndexNames() {
-	conn := exampleConnect(opts)
+	conn := exampleConnect(dialer, opts)
 	defer conn.Close()
 
 	req := tarantool.NewInsertRequest(spaceName)
@@ -303,7 +301,7 @@ func ExampleInsertRequest_spaceAndIndexNames() {
 }
 
 func ExampleDeleteRequest() {
-	conn := exampleConnect(opts)
+	conn := exampleConnect(dialer, opts)
 	defer conn.Close()
 
 	// Insert a new tuple { 35, 1 }.
@@ -346,7 +344,7 @@ func ExampleDeleteRequest() {
 }
 
 func ExampleDeleteRequest_spaceAndIndexNames() {
-	conn := exampleConnect(opts)
+	conn := exampleConnect(dialer, opts)
 	defer conn.Close()
 
 	req := tarantool.NewDeleteRequest(spaceName)
@@ -361,7 +359,7 @@ func ExampleDeleteRequest_spaceAndIndexNames() {
 }
 
 func ExampleReplaceRequest() {
-	conn := exampleConnect(opts)
+	conn := exampleConnect(dialer, opts)
 	defer conn.Close()
 
 	// Insert a new tuple { 13, 1 }.
@@ -420,7 +418,7 @@ func ExampleReplaceRequest() {
 }
 
 func ExampleReplaceRequest_spaceAndIndexNames() {
-	conn := exampleConnect(opts)
+	conn := exampleConnect(dialer, opts)
 	defer conn.Close()
 
 	req := tarantool.NewReplaceRequest(spaceName)
@@ -434,7 +432,7 @@ func ExampleReplaceRequest_spaceAndIndexNames() {
 }
 
 func ExampleUpdateRequest() {
-	conn := exampleConnect(opts)
+	conn := exampleConnect(dialer, opts)
 	defer conn.Close()
 
 	for i := 1111; i <= 1112; i++ {
@@ -465,7 +463,7 @@ func ExampleUpdateRequest() {
 }
 
 func ExampleUpdateRequest_spaceAndIndexNames() {
-	conn := exampleConnect(opts)
+	conn := exampleConnect(dialer, opts)
 	defer conn.Close()
 
 	req := tarantool.NewUpdateRequest(spaceName)
@@ -480,7 +478,7 @@ func ExampleUpdateRequest_spaceAndIndexNames() {
 }
 
 func ExampleUpsertRequest() {
-	conn := exampleConnect(opts)
+	conn := exampleConnect(dialer, opts)
 	defer conn.Close()
 
 	var req tarantool.Request
@@ -521,7 +519,7 @@ func ExampleUpsertRequest() {
 }
 
 func ExampleUpsertRequest_spaceAndIndexNames() {
-	conn := exampleConnect(opts)
+	conn := exampleConnect(dialer, opts)
 	defer conn.Close()
 
 	req := tarantool.NewUpsertRequest(spaceName)
@@ -535,7 +533,7 @@ func ExampleUpsertRequest_spaceAndIndexNames() {
 }
 
 func ExampleCallRequest() {
-	conn := exampleConnect(opts)
+	conn := exampleConnect(dialer, opts)
 	defer conn.Close()
 
 	// Call a function 'simple_concat' with arguments.
@@ -554,7 +552,7 @@ func ExampleCallRequest() {
 }
 
 func ExampleEvalRequest() {
-	conn := exampleConnect(opts)
+	conn := exampleConnect(dialer, opts)
 	defer conn.Close()
 
 	// Run raw Lua code.
@@ -582,7 +580,7 @@ func ExampleExecuteRequest() {
 		return
 	}
 
-	conn := exampleConnect(opts)
+	conn := exampleConnect(dialer, opts)
 	defer conn.Close()
 
 	req := tarantool.NewExecuteRequest(
@@ -700,31 +698,11 @@ func ExampleExecuteRequest() {
 	fmt.Println("SQL Info", resp.SQLInfo)
 }
 
-func ExampleProtocolVersion() {
-	conn := exampleConnect(opts)
-	defer conn.Close()
+func getTestTxnDialer() tarantool.Dialer {
+	txnDialer := dialer
 
-	clientProtocolInfo := conn.ClientProtocolInfo()
-	fmt.Println("Connector client protocol version:", clientProtocolInfo.Version)
-	for _, f := range clientProtocolInfo.Features {
-		fmt.Println("Connector client protocol feature:", f)
-	}
-	// Output:
-	// Connector client protocol version: 6
-	// Connector client protocol feature: IPROTO_FEATURE_STREAMS
-	// Connector client protocol feature: IPROTO_FEATURE_TRANSACTIONS
-	// Connector client protocol feature: IPROTO_FEATURE_ERROR_EXTENSION
-	// Connector client protocol feature: IPROTO_FEATURE_WATCHERS
-	// Connector client protocol feature: IPROTO_FEATURE_PAGINATION
-	// Connector client protocol feature: IPROTO_FEATURE_SPACE_AND_INDEX_NAMES
-	// Connector client protocol feature: IPROTO_FEATURE_WATCH_ONCE
-}
-
-func getTestTxnOpts() tarantool.Opts {
-	txnOpts := opts.Clone()
-
-	// Assert that server supports expected protocol features
-	txnOpts.RequiredProtocolInfo = tarantool.ProtocolInfo{
+	// Assert that server supports expected protocol features.
+	txnDialer.RequiredProtocolInfo = tarantool.ProtocolInfo{
 		Version: tarantool.ProtocolVersion(1),
 		Features: []iproto.Feature{
 			iproto.IPROTO_FEATURE_STREAMS,
@@ -732,7 +710,7 @@ func getTestTxnOpts() tarantool.Opts {
 		},
 	}
 
-	return txnOpts
+	return txnDialer
 }
 
 func ExampleCommitRequest() {
@@ -746,8 +724,8 @@ func ExampleCommitRequest() {
 		return
 	}
 
-	txnOpts := getTestTxnOpts()
-	conn := exampleConnect(txnOpts)
+	txnDialer := getTestTxnDialer()
+	conn := exampleConnect(txnDialer, opts)
 	defer conn.Close()
 
 	stream, _ := conn.NewStream()
@@ -823,8 +801,8 @@ func ExampleRollbackRequest() {
 		return
 	}
 
-	txnOpts := getTestTxnOpts()
-	conn := exampleConnect(txnOpts)
+	txnDialer := getTestTxnDialer()
+	conn := exampleConnect(txnDialer, opts)
 	defer conn.Close()
 
 	stream, _ := conn.NewStream()
@@ -900,8 +878,8 @@ func ExampleBeginRequest_TxnIsolation() {
 		return
 	}
 
-	txnOpts := getTestTxnOpts()
-	conn := exampleConnect(txnOpts)
+	txnDialer := getTestTxnDialer()
+	conn := exampleConnect(txnDialer, opts)
 	defer conn.Close()
 
 	stream, _ := conn.NewStream()
@@ -969,7 +947,7 @@ func ExampleBeginRequest_TxnIsolation() {
 }
 
 func ExampleFuture_GetIterator() {
-	conn := exampleConnect(opts)
+	conn := exampleConnect(dialer, opts)
 	defer conn.Close()
 
 	const timeout = 3 * time.Second
@@ -1006,10 +984,14 @@ func ExampleConnect() {
 	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	defer cancel()
 
-	conn, err := tarantool.Connect(ctx, "127.0.0.1:3013", tarantool.Opts{
+	dialer := tarantool.NetDialer{
+		Address:  server,
+		User:     "test",
+		Password: "test",
+	}
+
+	conn, err := tarantool.Connect(ctx, dialer, tarantool.Opts{
 		Timeout:     5 * time.Second,
-		User:        "test",
-		Pass:        "test",
 		Concurrency: 32,
 	})
 	if err != nil {
@@ -1025,10 +1007,14 @@ func ExampleConnect() {
 }
 
 func ExampleConnect_reconnects() {
+	dialer := tarantool.NetDialer{
+		Address:  "127.0.0.1:3013",
+		User:     "test",
+		Password: "test",
+	}
+
 	opts := tarantool.Opts{
 		Timeout:       5 * time.Second,
-		User:          "test",
-		Pass:          "test",
 		Concurrency:   32,
 		Reconnect:     time.Second,
 		MaxReconnects: 10,
@@ -1039,7 +1025,7 @@ func ExampleConnect_reconnects() {
 
 	for i := uint(0); i < opts.MaxReconnects; i++ {
 		ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
-		conn, err = tarantool.Connect(ctx, "127.0.0.1:3013", opts)
+		conn, err = tarantool.Connect(ctx, dialer, opts)
 		cancel()
 		if err == nil {
 			break
@@ -1060,7 +1046,7 @@ func ExampleConnect_reconnects() {
 
 // Example demonstrates how to retrieve information with space schema.
 func ExampleSchema() {
-	conn := exampleConnect(opts)
+	conn := exampleConnect(dialer, opts)
 	defer conn.Close()
 
 	schema, err := tarantool.GetSchema(conn)
@@ -1085,7 +1071,7 @@ func ExampleSchema() {
 
 // Example demonstrates how to update the connection schema.
 func ExampleConnection_SetSchema() {
-	conn := exampleConnect(opts)
+	conn := exampleConnect(dialer, opts)
 	defer conn.Close()
 
 	// Get the actual schema.
@@ -1099,7 +1085,7 @@ func ExampleConnection_SetSchema() {
 
 // Example demonstrates how to retrieve information with space schema.
 func ExampleSpace() {
-	conn := exampleConnect(opts)
+	conn := exampleConnect(dialer, opts)
 	defer conn.Close()
 
 	// Save Schema to a local variable to avoid races
@@ -1148,7 +1134,7 @@ func ExampleSpace() {
 // ExampleConnection_Do demonstrates how to send a request and process
 // a response.
 func ExampleConnection_Do() {
-	conn := exampleConnect(opts)
+	conn := exampleConnect(dialer, opts)
 	defer conn.Close()
 
 	// It could be any request.
@@ -1175,7 +1161,7 @@ func ExampleConnection_Do() {
 // ExampleConnection_Do_failure demonstrates how to send a request and process
 // failure.
 func ExampleConnection_Do_failure() {
-	conn := exampleConnect(opts)
+	conn := exampleConnect(dialer, opts)
 	defer conn.Close()
 
 	// It could be any request.
@@ -1222,15 +1208,17 @@ func ExampleConnection_NewPrepared() {
 		return
 	}
 
-	server := "127.0.0.1:3013"
+	dialer := tarantool.NetDialer{
+		Address:  "127.0.0.1:3013",
+		User:     "test",
+		Password: "test",
+	}
 	opts := tarantool.Opts{
 		Timeout: 5 * time.Second,
-		User:    "test",
-		Pass:    "test",
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	defer cancel()
-	conn, err := tarantool.Connect(ctx, server, opts)
+	conn, err := tarantool.Connect(ctx, dialer, opts)
 	if err != nil {
 		fmt.Printf("Failed to connect: %s", err.Error())
 	}
@@ -1264,21 +1252,24 @@ func ExampleConnection_NewWatcher() {
 		return
 	}
 
-	server := "127.0.0.1:3013"
-	opts := tarantool.Opts{
-		Timeout:       5 * time.Second,
-		Reconnect:     5 * time.Second,
-		MaxReconnects: 3,
-		User:          "test",
-		Pass:          "test",
-		// You need to require the feature to create a watcher.
+	dialer := tarantool.NetDialer{
+		Address:  "127.0.0.1:3013",
+		User:     "test",
+		Password: "test",
+		// You can require the feature explicitly.
 		RequiredProtocolInfo: tarantool.ProtocolInfo{
 			Features: []iproto.Feature{iproto.IPROTO_FEATURE_WATCHERS},
 		},
 	}
+
+	opts := tarantool.Opts{
+		Timeout:       5 * time.Second,
+		Reconnect:     5 * time.Second,
+		MaxReconnects: 3,
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	defer cancel()
-	conn, err := tarantool.Connect(ctx, server, opts)
+	conn, err := tarantool.Connect(ctx, dialer, opts)
 	if err != nil {
 		fmt.Printf("Failed to connect: %s\n", err)
 		return
@@ -1304,7 +1295,7 @@ func ExampleConnection_NewWatcher() {
 // ExampleConnection_CloseGraceful_force demonstrates how to force close
 // a connection with graceful close in progress after a while.
 func ExampleConnection_CloseGraceful_force() {
-	conn := exampleConnect(opts)
+	conn := exampleConnect(dialer, opts)
 
 	eval := `local fiber = require('fiber')
 	local time = ...
@@ -1347,7 +1338,7 @@ func ExampleWatchOnceRequest() {
 		return
 	}
 
-	conn := exampleConnect(opts)
+	conn := exampleConnect(dialer, opts)
 	defer conn.Close()
 
 	conn.Do(tarantool.NewBroadcastRequest(key).Value(value)).Get()

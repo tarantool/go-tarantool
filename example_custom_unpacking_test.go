@@ -77,14 +77,15 @@ func (c *Tuple2) DecodeMsgpack(d *msgpack.Decoder) error {
 // a custom packer/unpacker, but it will work slower.
 func Example_customUnpacking() {
 	// Establish a connection.
-	server := "127.0.0.1:3013"
-	opts := tarantool.Opts{
-		Timeout: 500 * time.Millisecond,
-		User:    "test",
-		Pass:    "test",
+
+	dialer := tarantool.NetDialer{
+		Address:  "127.0.0.1:3013",
+		User:     "test",
+		Password: "test",
 	}
+	opts := tarantool.Opts{}
 	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
-	conn, err := tarantool.Connect(ctx, server, opts)
+	conn, err := tarantool.Connect(ctx, dialer, opts)
 	cancel()
 	if err != nil {
 		log.Fatalf("Failed to connect: %s", err.Error())

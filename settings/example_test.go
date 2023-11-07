@@ -10,10 +10,20 @@ import (
 	"github.com/tarantool/go-tarantool/v2/test_helpers"
 )
 
-func example_connect(opts tarantool.Opts) *tarantool.Connection {
+var exampleDialer = tarantool.NetDialer{
+	Address:  "127.0.0.1",
+	User:     "test",
+	Password: "test",
+}
+
+var exampleOpts = tarantool.Opts{
+	Timeout: 5 * time.Second,
+}
+
+func example_connect(dialer tarantool.Dialer, opts tarantool.Opts) *tarantool.Connection {
 	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	defer cancel()
-	conn, err := tarantool.Connect(ctx, server, opts)
+	conn, err := tarantool.Connect(ctx, dialer, opts)
 	if err != nil {
 		panic("Connection is not established: " + err.Error())
 	}
@@ -25,7 +35,7 @@ func Example_sqlFullColumnNames() {
 	var err error
 	var isLess bool
 
-	conn := example_connect(opts)
+	conn := example_connect(exampleDialer, exampleOpts)
 	defer conn.Close()
 
 	// Tarantool supports session settings since version 2.3.1

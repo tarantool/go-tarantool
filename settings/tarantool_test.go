@@ -18,10 +18,13 @@ import (
 var isSettingsSupported = false
 
 var server = "127.0.0.1:3013"
+var dialer = tarantool.NetDialer{
+	Address:  server,
+	User:     "test",
+	Password: "test",
+}
 var opts = tarantool.Opts{
 	Timeout: 5 * time.Second,
-	User:    "test",
-	Pass:    "test",
 }
 
 func skipIfSettingsUnsupported(t *testing.T) {
@@ -52,7 +55,7 @@ func TestErrorMarshalingEnabledSetting(t *testing.T) {
 	var resp *tarantool.Response
 	var err error
 
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	// Disable receiving box.error as MP_EXT 3.
@@ -101,7 +104,7 @@ func TestSQLDefaultEngineSetting(t *testing.T) {
 	var resp *tarantool.Response
 	var err error
 
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	// Set default SQL "CREATE TABLE" engine to "vinyl".
@@ -164,7 +167,7 @@ func TestSQLDeferForeignKeysSetting(t *testing.T) {
 	var resp *tarantool.Response
 	var err error
 
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	// Create a parent space.
@@ -237,7 +240,7 @@ func TestSQLFullColumnNamesSetting(t *testing.T) {
 	var resp *tarantool.Response
 	var err error
 
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	// Create a space.
@@ -299,7 +302,7 @@ func TestSQLFullMetadataSetting(t *testing.T) {
 	var resp *tarantool.Response
 	var err error
 
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	// Create a space.
@@ -360,7 +363,7 @@ func TestSQLParserDebugSetting(t *testing.T) {
 	var resp *tarantool.Response
 	var err error
 
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	// Disable parser debug mode.
@@ -398,7 +401,7 @@ func TestSQLRecursiveTriggersSetting(t *testing.T) {
 	var resp *tarantool.Response
 	var err error
 
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	// Create a space.
@@ -470,7 +473,7 @@ func TestSQLReverseUnorderedSelectsSetting(t *testing.T) {
 	var resp *tarantool.Response
 	var err error
 
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	// Create a space.
@@ -510,7 +513,7 @@ func TestSQLReverseUnorderedSelectsSetting(t *testing.T) {
 	// Select multiple records.
 	query := "SELECT * FROM seqscan data;"
 	if isSeqScanOld, err := test_helpers.IsTarantoolVersionLess(3, 0, 0); err != nil {
-		t.Fatal("Could not check the Tarantool version")
+		t.Fatalf("Could not check the Tarantool version: %s", err)
 	} else if isSeqScanOld {
 		query = "SELECT * FROM data;"
 	}
@@ -549,7 +552,7 @@ func TestSQLSelectDebugSetting(t *testing.T) {
 	var resp *tarantool.Response
 	var err error
 
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	// Disable select debug mode.
@@ -586,7 +589,7 @@ func TestSQLVDBEDebugSetting(t *testing.T) {
 	var resp *tarantool.Response
 	var err error
 
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	// Disable VDBE debug mode.
@@ -623,7 +626,7 @@ func TestSessionSettings(t *testing.T) {
 	var resp *tarantool.Response
 	var err error
 
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	// Set some settings values.
@@ -668,10 +671,9 @@ func runTestMain(m *testing.M) int {
 	isSettingsSupported = true
 
 	inst, err := test_helpers.StartTarantool(test_helpers.StartOpts{
+		Dialer:       dialer,
 		InitScript:   "testdata/config.lua",
 		Listen:       server,
-		User:         opts.User,
-		Pass:         opts.Pass,
 		WaitStart:    100 * time.Millisecond,
 		ConnectRetry: 10,
 		RetryTimeout: 500 * time.Millisecond,

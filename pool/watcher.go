@@ -76,7 +76,7 @@ type poolWatcher struct {
 	key      string
 	callback tarantool.WatchCallback
 	// watchers is a map connection -> connection watcher.
-	watchers map[string]tarantool.Watcher
+	watchers map[*tarantool.Connection]tarantool.Watcher
 	// unregistered is true if the watcher already unregistered.
 	unregistered bool
 	// mutex for the pool watcher.
@@ -101,18 +101,16 @@ func (w *poolWatcher) Unregister() {
 
 // watch adds a watcher for the connection.
 func (w *poolWatcher) watch(conn *tarantool.Connection) error {
-	addr := conn.Addr()
-
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
 
 	if !w.unregistered {
-		if _, ok := w.watchers[addr]; ok {
+		if _, ok := w.watchers[conn]; ok {
 			return nil
 		}
 
 		if watcher, err := conn.NewWatcher(w.key, w.callback); err == nil {
-			w.watchers[addr] = watcher
+			w.watchers[conn] = watcher
 			return nil
 		} else {
 			return err
@@ -123,15 +121,13 @@ func (w *poolWatcher) watch(conn *tarantool.Connection) error {
 
 // unwatch removes a watcher for the connection.
 func (w *poolWatcher) unwatch(conn *tarantool.Connection) {
-	addr := conn.Addr()
-
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
 
 	if !w.unregistered {
-		if watcher, ok := w.watchers[addr]; ok {
+		if watcher, ok := w.watchers[conn]; ok {
 			watcher.Unregister()
-			delete(w.watchers, addr)
+			delete(w.watchers, conn)
 		}
 	}
 }

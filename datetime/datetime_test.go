@@ -40,8 +40,11 @@ var isDatetimeSupported = false
 var server = "127.0.0.1:3013"
 var opts = Opts{
 	Timeout: 5 * time.Second,
-	User:    "test",
-	Pass:    "test",
+}
+var dialer = NetDialer{
+	Address:  server,
+	User:     "test",
+	Password: "test",
 }
 
 var spaceTuple1 = "testDatetime_1"
@@ -364,7 +367,7 @@ func TestDatetimeInterval(t *testing.T) {
 func TestDatetimeTarantoolInterval(t *testing.T) {
 	skipIfDatetimeUnsupported(t)
 
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	dates := []string{
@@ -504,7 +507,7 @@ func TestInvalidOffset(t *testing.T) {
 				t.Fatalf("Unexpected success: %v", dt)
 			}
 			if testcase.ok && isDatetimeSupported {
-				conn := test_helpers.ConnectWithValidation(t, server, opts)
+				conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 				defer conn.Close()
 
 				tupleInsertSelectDelete(t, conn, tm)
@@ -516,7 +519,7 @@ func TestInvalidOffset(t *testing.T) {
 func TestCustomTimezone(t *testing.T) {
 	skipIfDatetimeUnsupported(t)
 
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	customZone := "Europe/Moscow"
@@ -676,7 +679,7 @@ var datetimeSample = []struct {
 func TestDatetimeInsertSelectDelete(t *testing.T) {
 	skipIfDatetimeUnsupported(t)
 
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	for _, testcase := range datetimeSample {
@@ -705,7 +708,7 @@ func TestDatetimeInsertSelectDelete(t *testing.T) {
 func TestDatetimeBoundaryRange(t *testing.T) {
 	skipIfDatetimeUnsupported(t)
 
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	for _, tm := range append(lesserBoundaryTimes, boundaryTimes...) {
@@ -731,7 +734,7 @@ func TestDatetimeOutOfRange(t *testing.T) {
 func TestDatetimeReplace(t *testing.T) {
 	skipIfDatetimeUnsupported(t)
 
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	tm, err := time.Parse(time.RFC3339, "2007-01-02T15:04:05Z")
@@ -896,7 +899,7 @@ func (c *Tuple2) DecodeMsgpack(d *msgpack.Decoder) error {
 func TestCustomEncodeDecodeTuple1(t *testing.T) {
 	skipIfDatetimeUnsupported(t)
 
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	tm1, _ := time.Parse(time.RFC3339, "2010-05-24T17:51:56.000000009Z")
@@ -966,7 +969,7 @@ func TestCustomEncodeDecodeTuple1(t *testing.T) {
 func TestCustomDecodeFunction(t *testing.T) {
 	skipIfDatetimeUnsupported(t)
 
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	// Call function 'call_datetime_testdata' returning a custom tuples.
@@ -1010,7 +1013,7 @@ func TestCustomDecodeFunction(t *testing.T) {
 func TestCustomEncodeDecodeTuple5(t *testing.T) {
 	skipIfDatetimeUnsupported(t)
 
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	tm := time.Unix(500, 1000).In(time.FixedZone(NoTimezone, 0))
@@ -1166,10 +1169,9 @@ func runTestMain(m *testing.M) int {
 	}
 
 	instance, err := test_helpers.StartTarantool(test_helpers.StartOpts{
+		Dialer:       dialer,
 		InitScript:   "config.lua",
 		Listen:       server,
-		User:         opts.User,
-		Pass:         opts.Pass,
 		WaitStart:    100 * time.Millisecond,
 		ConnectRetry: 10,
 		RetryTimeout: 500 * time.Millisecond,

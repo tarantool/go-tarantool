@@ -17,14 +17,18 @@ const (
 
 var exampleOpts = tarantool.Opts{
 	Timeout: 5 * time.Second,
-	User:    "test",
-	Pass:    "test",
+}
+
+var exampleDialer = tarantool.NetDialer{
+	Address:  exampleServer,
+	User:     "test",
+	Password: "test",
 }
 
 func exampleConnect() *tarantool.Connection {
 	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	defer cancel()
-	conn, err := tarantool.Connect(ctx, exampleServer, exampleOpts)
+	conn, err := tarantool.Connect(ctx, exampleDialer, exampleOpts)
 	if err != nil {
 		panic("Connection is not established: " + err.Error())
 	}

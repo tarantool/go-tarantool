@@ -39,18 +39,6 @@ type StartOpts struct {
 	// https://www.tarantool.io/en/doc/latest/reference/configuration/#cfg-basic-listen
 	Listen string
 
-	// ClientServer changes a host to connect to test startup of a Tarantool
-	// instance. By default, it uses Listen value as the host for the connection.
-	ClientServer string
-
-	// ClientTransport changes Opts.Transport for a connection that checks startup
-	// of a Tarantool instance.
-	ClientTransport string
-
-	// ClientSsl changes Opts.Ssl for a connection that checks startup of
-	// a Tarantool instance.
-	ClientSsl tarantool.SslOpts
-
 	// WorkDir is box.cfg work_dir parameter for a Tarantool instance:
 	// a folder to store data files. If not specified, helpers create a
 	// new temporary directory.
@@ -61,13 +49,6 @@ type StartOpts struct {
 	// SslCertsDir is a path to a directory with SSL certificates. It will be
 	// copied to the working directory.
 	SslCertsDir string
-
-	// User is a username used to connect to tarantool.
-	// All required grants must be given in InitScript.
-	User string
-
-	// Pass is a password for specified User.
-	Pass string
 
 	// WaitStart is a time to wait before starting to ping tarantool.
 	WaitStart time.Duration
@@ -82,6 +63,9 @@ type StartOpts struct {
 	// MemtxUseMvccEngine is flag to enable transactional
 	// manager if set to true.
 	MemtxUseMvccEngine bool
+
+	// Dialer to check that connection established.
+	Dialer tarantool.Dialer
 }
 
 // TarantoolInstance is a data for instance graceful shutdown and cleanup.
@@ -91,16 +75,19 @@ type TarantoolInstance struct {
 
 	// Options for restarting a tarantool instance.
 	Opts StartOpts
+
+	// Dialer to check that connection established.
+	Dialer tarantool.Dialer
 }
 
-func isReady(server string, opts *tarantool.Opts) error {
+func isReady(dialer tarantool.Dialer, opts *tarantool.Opts) error {
 	var err error
 	var conn *tarantool.Connection
 	var resp *tarantool.Response
 
 	ctx, cancel := GetConnectContext()
 	defer cancel()
-	conn, err = tarantool.Connect(ctx, server, *opts)
+	conn, err = tarantool.Connect(ctx, dialer, *opts)
 	if err != nil {
 		return err
 	}
@@ -199,6 +186,8 @@ func StartTarantool(startOpts StartOpts) (TarantoolInstance, error) {
 	var dir string
 	var err error
 
+	inst.Dialer = startOpts.Dialer
+
 	if startOpts.WorkDir == "" {
 		// Create work_dir for a new instance.
 		// TO DO: replace with `os.MkdirTemp` when we drop support of
@@ -255,24 +244,13 @@ func StartTarantool(startOpts StartOpts) (TarantoolInstance, error) {
 	time.Sleep(startOpts.WaitStart)
 
 	opts := tarantool.Opts{
-		Auth:       startOpts.Auth,
 		Timeout:    500 * time.Millisecond,
-		User:       startOpts.User,
-		Pass:       startOpts.Pass,
 		SkipSchema: true,
-		Transport:  startOpts.ClientTransport,
-		Ssl:        startOpts.ClientSsl,
 	}
 
 	var i int
-	var server string
-	if startOpts.ClientServer != "" {
-		server = startOpts.ClientServer
-	} else {
-		server = startOpts.Listen
-	}
 	for i = 0; i <= startOpts.ConnectRetry; i++ {
-		err = isReady(server, &opts)
+		err = isReady(inst.Dialer, &opts)
 
 		// Both connect and ping is ok.
 		if err == nil {
@@ -336,6 +314,9 @@ func copyDirectoryFiles(scrDir, dest string) error {
 		return err
 	}
 	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
 		sourcePath := filepath.Join(scrDir, entry.Name())
 		destPath := filepath.Join(dest, entry.Name())
 		_, err := os.Stat(sourcePath)

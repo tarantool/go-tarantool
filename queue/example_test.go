@@ -28,13 +28,16 @@ func Example_simpleQueue() {
 	}
 	opts := tarantool.Opts{
 		Timeout: 2500 * time.Millisecond,
-		User:    "test",
-		Pass:    "test",
+	}
+	dialer := tarantool.NetDialer{
+		Address:  "127.0.0.1:3013",
+		User:     "test",
+		Password: "test",
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	defer cancel()
-	conn, err := tarantool.Connect(ctx, "127.0.0.1:3013", opts)
+	conn, err := tarantool.Connect(ctx, dialer, opts)
 	if err != nil {
 		fmt.Printf("error in prepare is %v", err)
 		return

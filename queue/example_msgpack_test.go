@@ -49,15 +49,18 @@ func (c *dummyData) EncodeMsgpack(e *msgpack.Encoder) error {
 // cannot take the task out of the queue within the time corresponding to the
 // connection timeout.
 func Example_simpleQueueCustomMsgPack() {
+	dialer := tarantool.NetDialer{
+		Address:  "127.0.0.1:3013",
+		User:     "test",
+		Password: "test",
+	}
 	opts := tarantool.Opts{
 		Reconnect:     time.Second,
 		Timeout:       5 * time.Second,
 		MaxReconnects: 5,
-		User:          "test",
-		Pass:          "test",
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
-	conn, err := tarantool.Connect(ctx, "127.0.0.1:3013", opts)
+	conn, err := tarantool.Connect(ctx, dialer, opts)
 	cancel()
 	if err != nil {
 		log.Fatalf("connection: %s", err)

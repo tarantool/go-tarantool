@@ -4,98 +4,19 @@
 package tarantool_test
 
 import (
-	"context"
-	"errors"
 	"fmt"
-	"io/ioutil"
-	"net"
 	"os"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/tarantool/go-openssl"
 	. "github.com/tarantool/go-tarantool/v2"
 	"github.com/tarantool/go-tarantool/v2/test_helpers"
 )
 
-const sslHost = "127.0.0.1"
 const tntHost = "127.0.0.1:3014"
 
-func serverSsl(network, address string, opts SslOpts) (net.Listener, error) {
-	ctx, err := SslCreateContext(opts)
-	if err != nil {
-		return nil, errors.New("Unable to create SSL context: " + err.Error())
-	}
-
-	return openssl.Listen(network, address, ctx.(*openssl.Ctx))
-}
-
-func serverSslAccept(l net.Listener) (<-chan string, <-chan error) {
-	message := make(chan string, 1)
-	errors := make(chan error, 1)
-
-	go func() {
-		conn, err := l.Accept()
-		if err != nil {
-			errors <- err
-		} else {
-			bytes, err := ioutil.ReadAll(conn)
-			if err != nil {
-				errors <- err
-			} else {
-				message <- string(bytes)
-			}
-			conn.Close()
-		}
-
-		close(message)
-		close(errors)
-	}()
-
-	return message, errors
-}
-
-func serverSslRecv(msgs <-chan string, errs <-chan error) (string, error) {
-	return <-msgs, <-errs
-}
-
-func clientSsl(ctx context.Context, network, address string,
-	opts SslOpts) (net.Conn, error) {
-	return SslDialContext(ctx, network, address, opts)
-}
-
-func createClientServerSsl(ctx context.Context, t testing.TB, serverOpts,
-	clientOpts SslOpts) (net.Listener, net.Conn, <-chan string, <-chan error, error) {
-	t.Helper()
-
-	l, err := serverSsl("tcp", sslHost+":0", serverOpts)
-	if err != nil {
-		t.Fatalf("Unable to create server, error %q", err.Error())
-	}
-
-	msgs, errs := serverSslAccept(l)
-
-	port := l.Addr().(*net.TCPAddr).Port
-	c, err := clientSsl(ctx, "tcp", sslHost+":"+strconv.Itoa(port), clientOpts)
-
-	return l, c, msgs, errs, err
-}
-
-func createClientServerSslOk(ctx context.Context, t testing.TB, serverOpts,
-	clientOpts SslOpts) (net.Listener, net.Conn, <-chan string, <-chan error) {
-	t.Helper()
-
-	l, c, msgs, errs, err := createClientServerSsl(ctx, t, serverOpts, clientOpts)
-	if err != nil {
-		t.Fatalf("Unable to create client, error %q", err.Error())
-	}
-
-	return l, c, msgs, errs
-}
-
-func serverTnt(serverOpts SslOpts, auth Auth) (test_helpers.TarantoolInstance, error) {
+func serverTnt(serverOpts SslTestOpts, auth Auth) (test_helpers.TarantoolInstance, error) {
 	listen := tntHost + "?transport=ssl&"
 
 	key := serverOpts.KeyFile
@@ -130,37 +51,41 @@ func serverTnt(serverOpts SslOpts, auth Auth) (test_helpers.TarantoolInstance, e
 
 	listen = listen[:len(listen)-1]
 
-	return test_helpers.StartTarantool(test_helpers.StartOpts{
-		Auth:            auth,
-		InitScript:      "config.lua",
-		Listen:          listen,
-		SslCertsDir:     "testdata",
-		ClientServer:    tntHost,
-		ClientTransport: "ssl",
-		ClientSsl:       serverOpts,
-		User:            "test",
-		Pass:            "test",
-		WaitStart:       100 * time.Millisecond,
-		ConnectRetry:    10,
-		RetryTimeout:    500 * time.Millisecond,
-	})
+	return test_helpers.StartTarantool(
+		test_helpers.StartOpts{
+			Dialer: OpenSslDialer{
+				Address:         tntHost,
+				Auth:            auth,
+				User:            "test",
+				Password:        "test",
+				SslKeyFile:      serverOpts.KeyFile,
+				SslCertFile:     serverOpts.CertFile,
+				SslCaFile:       serverOpts.CaFile,
+				SslCiphers:      serverOpts.Ciphers,
+				SslPassword:     serverOpts.Password,
+				SslPasswordFile: serverOpts.PasswordFile,
+			},
+			Auth:         auth,
+			InitScript:   "config.lua",
+			Listen:       listen,
+			SslCertsDir:  "testdata",
+			WaitStart:    100 * time.Millisecond,
+			ConnectRetry: 10,
+			RetryTimeout: 500 * time.Millisecond,
+		},
+	)
 }
 
 func serverTntStop(inst test_helpers.TarantoolInstance) {
 	test_helpers.StopTarantoolWithCleanup(inst)
 }
 
-func checkTntConn(clientOpts SslOpts) error {
+func checkTntConn(dialer Dialer) error {
 	ctx, cancel := test_helpers.GetConnectContext()
 	defer cancel()
-	conn, err := Connect(ctx, tntHost, Opts{
-		Auth:       AutoAuth,
+	conn, err := Connect(ctx, dialer, Opts{
 		Timeout:    500 * time.Millisecond,
-		User:       "test",
-		Pass:       "test",
 		SkipSchema: true,
-		Transport:  "ssl",
-		Ssl:        clientOpts,
 	})
 	if err != nil {
 		return err
@@ -169,38 +94,7 @@ func checkTntConn(clientOpts SslOpts) error {
 	return nil
 }
 
-func assertConnectionSslFail(ctx context.Context, t testing.TB, serverOpts,
-	clientOpts SslOpts) {
-	t.Helper()
-
-	l, c, _, _, err := createClientServerSsl(ctx, t, serverOpts, clientOpts)
-	l.Close()
-	if err == nil {
-		c.Close()
-		t.Errorf("An unexpected connection to the server.")
-	}
-}
-
-func assertConnectionSslOk(ctx context.Context, t testing.TB, serverOpts,
-	clientOpts SslOpts) {
-	t.Helper()
-
-	l, c, msgs, errs := createClientServerSslOk(ctx, t, serverOpts, clientOpts)
-	const message = "any test string"
-	c.Write([]byte(message))
-	c.Close()
-
-	recv, err := serverSslRecv(msgs, errs)
-	l.Close()
-
-	if err != nil {
-		t.Errorf("An unexpected server error: %q", err.Error())
-	} else if recv != message {
-		t.Errorf("An unexpected server message: %q, expected %q", recv, message)
-	}
-}
-
-func assertConnectionTntFail(t testing.TB, serverOpts, clientOpts SslOpts) {
+func assertConnectionTntFail(t testing.TB, serverOpts SslTestOpts, dialer OpenSslDialer) {
 	t.Helper()
 
 	inst, err := serverTnt(serverOpts, AutoAuth)
@@ -209,13 +103,13 @@ func assertConnectionTntFail(t testing.TB, serverOpts, clientOpts SslOpts) {
 		t.Fatalf("An unexpected server error %q", err.Error())
 	}
 
-	err = checkTntConn(clientOpts)
+	err = checkTntConn(dialer)
 	if err == nil {
 		t.Errorf("An unexpected connection to the server")
 	}
 }
 
-func assertConnectionTntOk(t testing.TB, serverOpts, clientOpts SslOpts) {
+func assertConnectionTntOk(t testing.TB, serverOpts SslTestOpts, dialer OpenSslDialer) {
 	t.Helper()
 
 	inst, err := serverTnt(serverOpts, AutoAuth)
@@ -224,17 +118,17 @@ func assertConnectionTntOk(t testing.TB, serverOpts, clientOpts SslOpts) {
 		t.Fatalf("An unexpected server error %q", err.Error())
 	}
 
-	err = checkTntConn(clientOpts)
+	err = checkTntConn(dialer)
 	if err != nil {
 		t.Errorf("An unexpected connection error %q", err.Error())
 	}
 }
 
-type test struct {
+type sslTest struct {
 	name       string
 	ok         bool
-	serverOpts SslOpts
-	clientOpts SslOpts
+	serverOpts SslTestOpts
+	clientOpts SslTestOpts
 }
 
 /*
@@ -253,24 +147,24 @@ CertFile - optional, mandatory if server.CaFile set
 CaFile - optional,
 Ciphers - optional
 */
-var tests = []test{
+var sslTests = []sslTest{
 	{
 		"key_crt_server",
 		true,
-		SslOpts{
+		SslTestOpts{
 			KeyFile:  "testdata/localhost.key",
 			CertFile: "testdata/localhost.crt",
 		},
-		SslOpts{},
+		SslTestOpts{},
 	},
 	{
 		"key_crt_server_and_client",
 		true,
-		SslOpts{
+		SslTestOpts{
 			KeyFile:  "testdata/localhost.key",
 			CertFile: "testdata/localhost.crt",
 		},
-		SslOpts{
+		SslTestOpts{
 			KeyFile:  "testdata/localhost.key",
 			CertFile: "testdata/localhost.crt",
 		},
@@ -278,22 +172,22 @@ var tests = []test{
 	{
 		"key_crt_ca_server",
 		false,
-		SslOpts{
+		SslTestOpts{
 			KeyFile:  "testdata/localhost.key",
 			CertFile: "testdata/localhost.crt",
 			CaFile:   "testdata/ca.crt",
 		},
-		SslOpts{},
+		SslTestOpts{},
 	},
 	{
 		"key_crt_ca_server_key_crt_client",
 		true,
-		SslOpts{
+		SslTestOpts{
 			KeyFile:  "testdata/localhost.key",
 			CertFile: "testdata/localhost.crt",
 			CaFile:   "testdata/ca.crt",
 		},
-		SslOpts{
+		SslTestOpts{
 			KeyFile:  "testdata/localhost.key",
 			CertFile: "testdata/localhost.crt",
 		},
@@ -301,12 +195,12 @@ var tests = []test{
 	{
 		"key_crt_ca_server_and_client",
 		true,
-		SslOpts{
+		SslTestOpts{
 			KeyFile:  "testdata/localhost.key",
 			CertFile: "testdata/localhost.crt",
 			CaFile:   "testdata/ca.crt",
 		},
-		SslOpts{
+		SslTestOpts{
 			KeyFile:  "testdata/localhost.key",
 			CertFile: "testdata/localhost.crt",
 			CaFile:   "testdata/ca.crt",
@@ -315,12 +209,12 @@ var tests = []test{
 	{
 		"key_crt_ca_server_and_client_invalid_path_key",
 		false,
-		SslOpts{
+		SslTestOpts{
 			KeyFile:  "testdata/localhost.key",
 			CertFile: "testdata/localhost.crt",
 			CaFile:   "testdata/ca.crt",
 		},
-		SslOpts{
+		SslTestOpts{
 			KeyFile:  "any_invalid_path",
 			CertFile: "testdata/localhost.crt",
 			CaFile:   "testdata/ca.crt",
@@ -329,12 +223,12 @@ var tests = []test{
 	{
 		"key_crt_ca_server_and_client_invalid_path_crt",
 		false,
-		SslOpts{
+		SslTestOpts{
 			KeyFile:  "testdata/localhost.key",
 			CertFile: "testdata/localhost.crt",
 			CaFile:   "testdata/ca.crt",
 		},
-		SslOpts{
+		SslTestOpts{
 			KeyFile:  "testdata/localhost.key",
 			CertFile: "any_invalid_path",
 			CaFile:   "testdata/ca.crt",
@@ -343,12 +237,12 @@ var tests = []test{
 	{
 		"key_crt_ca_server_and_client_invalid_path_ca",
 		false,
-		SslOpts{
+		SslTestOpts{
 			KeyFile:  "testdata/localhost.key",
 			CertFile: "testdata/localhost.crt",
 			CaFile:   "testdata/ca.crt",
 		},
-		SslOpts{
+		SslTestOpts{
 			KeyFile:  "testdata/localhost.key",
 			CertFile: "testdata/localhost.crt",
 			CaFile:   "any_invalid_path",
@@ -357,12 +251,12 @@ var tests = []test{
 	{
 		"key_crt_ca_server_and_client_empty_key",
 		false,
-		SslOpts{
+		SslTestOpts{
 			KeyFile:  "testdata/localhost.key",
 			CertFile: "testdata/localhost.crt",
 			CaFile:   "testdata/ca.crt",
 		},
-		SslOpts{
+		SslTestOpts{
 			KeyFile:  "testdata/empty",
 			CertFile: "testdata/localhost.crt",
 			CaFile:   "testdata/ca.crt",
@@ -371,12 +265,12 @@ var tests = []test{
 	{
 		"key_crt_ca_server_and_client_empty_crt",
 		false,
-		SslOpts{
+		SslTestOpts{
 			KeyFile:  "testdata/localhost.key",
 			CertFile: "testdata/localhost.crt",
 			CaFile:   "testdata/ca.crt",
 		},
-		SslOpts{
+		SslTestOpts{
 			KeyFile:  "testdata/localhost.key",
 			CertFile: "testdata/empty",
 			CaFile:   "testdata/ca.crt",
@@ -385,12 +279,12 @@ var tests = []test{
 	{
 		"key_crt_ca_server_and_client_empty_ca",
 		false,
-		SslOpts{
+		SslTestOpts{
 			KeyFile:  "testdata/localhost.key",
 			CertFile: "testdata/localhost.crt",
 			CaFile:   "testdata/ca.crt",
 		},
-		SslOpts{
+		SslTestOpts{
 			KeyFile:  "testdata/localhost.key",
 			CertFile: "testdata/localhost.crt",
 			CaFile:   "testdata/empty",
@@ -399,11 +293,11 @@ var tests = []test{
 	{
 		"key_crt_server_and_key_crt_ca_client",
 		true,
-		SslOpts{
+		SslTestOpts{
 			KeyFile:  "testdata/localhost.key",
 			CertFile: "testdata/localhost.crt",
 		},
-		SslOpts{
+		SslTestOpts{
 			KeyFile:  "testdata/localhost.key",
 			CertFile: "testdata/localhost.crt",
 			CaFile:   "testdata/ca.crt",
@@ -412,13 +306,13 @@ var tests = []test{
 	{
 		"key_crt_ca_ciphers_server_key_crt_ca_client",
 		true,
-		SslOpts{
+		SslTestOpts{
 			KeyFile:  "testdata/localhost.key",
 			CertFile: "testdata/localhost.crt",
 			CaFile:   "testdata/ca.crt",
 			Ciphers:  "ECDHE-RSA-AES256-GCM-SHA384",
 		},
-		SslOpts{
+		SslTestOpts{
 			KeyFile:  "testdata/localhost.key",
 			CertFile: "testdata/localhost.crt",
 			CaFile:   "testdata/ca.crt",
@@ -427,13 +321,13 @@ var tests = []test{
 	{
 		"key_crt_ca_ciphers_server_and_client",
 		true,
-		SslOpts{
+		SslTestOpts{
 			KeyFile:  "testdata/localhost.key",
 			CertFile: "testdata/localhost.crt",
 			CaFile:   "testdata/ca.crt",
 			Ciphers:  "ECDHE-RSA-AES256-GCM-SHA384",
 		},
-		SslOpts{
+		SslTestOpts{
 			KeyFile:  "testdata/localhost.key",
 			CertFile: "testdata/localhost.crt",
 			CaFile:   "testdata/ca.crt",
@@ -443,13 +337,13 @@ var tests = []test{
 	{
 		"non_equal_ciphers_client",
 		false,
-		SslOpts{
+		SslTestOpts{
 			KeyFile:  "testdata/localhost.key",
 			CertFile: "testdata/localhost.crt",
 			CaFile:   "testdata/ca.crt",
 			Ciphers:  "ECDHE-RSA-AES256-GCM-SHA384",
 		},
-		SslOpts{
+		SslTestOpts{
 			KeyFile:  "testdata/localhost.key",
 			CertFile: "testdata/localhost.crt",
 			CaFile:   "testdata/ca.crt",
@@ -459,12 +353,12 @@ var tests = []test{
 	{
 		"pass_key_encrypt_client",
 		true,
-		SslOpts{
+		SslTestOpts{
 			KeyFile:  "testdata/localhost.key",
 			CertFile: "testdata/localhost.crt",
 			CaFile:   "testdata/ca.crt",
 		},
-		SslOpts{
+		SslTestOpts{
 			KeyFile:  "testdata/localhost.enc.key",
 			CertFile: "testdata/localhost.crt",
 			Password: "mysslpassword",
@@ -473,12 +367,12 @@ var tests = []test{
 	{
 		"passfile_key_encrypt_client",
 		true,
-		SslOpts{
+		SslTestOpts{
 			KeyFile:  "testdata/localhost.key",
 			CertFile: "testdata/localhost.crt",
 			CaFile:   "testdata/ca.crt",
 		},
-		SslOpts{
+		SslTestOpts{
 			KeyFile:      "testdata/localhost.enc.key",
 			CertFile:     "testdata/localhost.crt",
 			PasswordFile: "testdata/passwords",
@@ -487,12 +381,12 @@ var tests = []test{
 	{
 		"pass_and_passfile_key_encrypt_client",
 		true,
-		SslOpts{
+		SslTestOpts{
 			KeyFile:  "testdata/localhost.key",
 			CertFile: "testdata/localhost.crt",
 			CaFile:   "testdata/ca.crt",
 		},
-		SslOpts{
+		SslTestOpts{
 			KeyFile:      "testdata/localhost.enc.key",
 			CertFile:     "testdata/localhost.crt",
 			Password:     "mysslpassword",
@@ -502,12 +396,12 @@ var tests = []test{
 	{
 		"inv_pass_and_passfile_key_encrypt_client",
 		true,
-		SslOpts{
+		SslTestOpts{
 			KeyFile:  "testdata/localhost.key",
 			CertFile: "testdata/localhost.crt",
 			CaFile:   "testdata/ca.crt",
 		},
-		SslOpts{
+		SslTestOpts{
 			KeyFile:      "testdata/localhost.enc.key",
 			CertFile:     "testdata/localhost.crt",
 			Password:     "invalidpassword",
@@ -517,12 +411,12 @@ var tests = []test{
 	{
 		"pass_and_inv_passfile_key_encrypt_client",
 		true,
-		SslOpts{
+		SslTestOpts{
 			KeyFile:  "testdata/localhost.key",
 			CertFile: "testdata/localhost.crt",
 			CaFile:   "testdata/ca.crt",
 		},
-		SslOpts{
+		SslTestOpts{
 			KeyFile:      "testdata/localhost.enc.key",
 			CertFile:     "testdata/localhost.crt",
 			Password:     "mysslpassword",
@@ -532,12 +426,12 @@ var tests = []test{
 	{
 		"pass_and_not_existing_passfile_key_encrypt_client",
 		true,
-		SslOpts{
+		SslTestOpts{
 			KeyFile:  "testdata/localhost.key",
 			CertFile: "testdata/localhost.crt",
 			CaFile:   "testdata/ca.crt",
 		},
-		SslOpts{
+		SslTestOpts{
 			KeyFile:      "testdata/localhost.enc.key",
 			CertFile:     "testdata/localhost.crt",
 			Password:     "mysslpassword",
@@ -547,12 +441,12 @@ var tests = []test{
 	{
 		"inv_pass_and_inv_passfile_key_encrypt_client",
 		false,
-		SslOpts{
+		SslTestOpts{
 			KeyFile:  "testdata/localhost.key",
 			CertFile: "testdata/localhost.crt",
 			CaFile:   "testdata/ca.crt",
 		},
-		SslOpts{
+		SslTestOpts{
 			KeyFile:      "testdata/localhost.enc.key",
 			CertFile:     "testdata/localhost.crt",
 			Password:     "invalidpassword",
@@ -562,12 +456,12 @@ var tests = []test{
 	{
 		"not_existing_passfile_key_encrypt_client",
 		false,
-		SslOpts{
+		SslTestOpts{
 			KeyFile:  "testdata/localhost.key",
 			CertFile: "testdata/localhost.crt",
 			CaFile:   "testdata/ca.crt",
 		},
-		SslOpts{
+		SslTestOpts{
 			KeyFile:      "testdata/localhost.enc.key",
 			CertFile:     "testdata/localhost.crt",
 			PasswordFile: "testdata/notafile",
@@ -576,12 +470,12 @@ var tests = []test{
 	{
 		"no_pass_key_encrypt_client",
 		false,
-		SslOpts{
+		SslTestOpts{
 			KeyFile:  "testdata/localhost.key",
 			CertFile: "testdata/localhost.crt",
 			CaFile:   "testdata/ca.crt",
 		},
-		SslOpts{
+		SslTestOpts{
 			KeyFile:  "testdata/localhost.enc.key",
 			CertFile: "testdata/localhost.crt",
 		},
@@ -589,12 +483,12 @@ var tests = []test{
 	{
 		"pass_key_non_encrypt_client",
 		true,
-		SslOpts{
+		SslTestOpts{
 			KeyFile:  "testdata/localhost.key",
 			CertFile: "testdata/localhost.crt",
 			CaFile:   "testdata/ca.crt",
 		},
-		SslOpts{
+		SslTestOpts{
 			KeyFile:  "testdata/localhost.key",
 			CertFile: "testdata/localhost.crt",
 			Password: "invalidpassword",
@@ -603,12 +497,12 @@ var tests = []test{
 	{
 		"passfile_key_non_encrypt_client",
 		true,
-		SslOpts{
+		SslTestOpts{
 			KeyFile:  "testdata/localhost.key",
 			CertFile: "testdata/localhost.crt",
 			CaFile:   "testdata/ca.crt",
 		},
-		SslOpts{
+		SslTestOpts{
 			KeyFile:      "testdata/localhost.key",
 			CertFile:     "testdata/localhost.crt",
 			PasswordFile: "testdata/invalidpasswords",
@@ -622,64 +516,37 @@ func isTestTntSsl() bool {
 		(testTntSsl == "1" || strings.ToUpper(testTntSsl) == "TRUE")
 }
 
-func TestSslOpts(t *testing.T) {
-	isTntSsl := isTestTntSsl()
-
-	for _, test := range tests {
-		var ctx context.Context
-		var cancel context.CancelFunc
-		ctx, cancel = test_helpers.GetConnectContext()
-		if test.ok {
-			t.Run("ok_ssl_"+test.name, func(t *testing.T) {
-				assertConnectionSslOk(ctx, t, test.serverOpts, test.clientOpts)
-			})
-		} else {
-			t.Run("fail_ssl_"+test.name, func(t *testing.T) {
-				assertConnectionSslFail(ctx, t, test.serverOpts, test.clientOpts)
-			})
-		}
-		cancel()
-		if !isTntSsl {
-			continue
-		}
-		if test.ok {
-			t.Run("ok_tnt_"+test.name, func(t *testing.T) {
-				assertConnectionTntOk(t, test.serverOpts, test.clientOpts)
-			})
-		} else {
-			t.Run("fail_tnt_"+test.name, func(t *testing.T) {
-				assertConnectionTntFail(t, test.serverOpts, test.clientOpts)
-			})
-		}
+func makeOpenSslDialer(opts SslTestOpts) OpenSslDialer {
+	return OpenSslDialer{
+		Address:         tntHost,
+		User:            "test",
+		Password:        "test",
+		SslKeyFile:      opts.KeyFile,
+		SslCertFile:     opts.CertFile,
+		SslCaFile:       opts.CaFile,
+		SslCiphers:      opts.Ciphers,
+		SslPassword:     opts.Password,
+		SslPasswordFile: opts.PasswordFile,
 	}
 }
 
-func TestSslDialContextCancel(t *testing.T) {
-	serverOpts := SslOpts{
-		KeyFile:  "testdata/localhost.key",
-		CertFile: "testdata/localhost.crt",
-		CaFile:   "testdata/ca.crt",
-		Ciphers:  "ECDHE-RSA-AES256-GCM-SHA384",
-	}
-	clientOpts := SslOpts{
-		KeyFile:  "testdata/localhost.key",
-		CertFile: "testdata/localhost.crt",
-		CaFile:   "testdata/ca.crt",
-		Ciphers:  "ECDHE-RSA-AES256-GCM-SHA384",
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
+func TestSslOpts(t *testing.T) {
+	isTntSsl := isTestTntSsl()
 
-	l, c, _, _, err := createClientServerSsl(ctx, t, serverOpts, clientOpts)
-	l.Close()
-
-	if err == nil {
-		c.Close()
-		t.Fatalf("Expected error, dial was not canceled")
-	}
-	if !strings.Contains(err.Error(), "operation was canceled") {
-		t.Fatalf("Unexpected error, expected to contain %s, got %v",
-			"operation was canceled", err)
+	for _, test := range sslTests {
+		if !isTntSsl {
+			continue
+		}
+		dialer := makeOpenSslDialer(test.clientOpts)
+		if test.ok {
+			t.Run("ok_tnt_"+test.name, func(t *testing.T) {
+				assertConnectionTntOk(t, test.serverOpts, dialer)
+			})
+		} else {
+			t.Run("fail_tnt_"+test.name, func(t *testing.T) {
+				assertConnectionTntFail(t, test.serverOpts, dialer)
+			})
+		}
 	}
 }
 
@@ -691,13 +558,13 @@ func TestOpts_PapSha256Auth(t *testing.T) {
 
 	isLess, err := test_helpers.IsTarantoolVersionLess(2, 11, 0)
 	if err != nil {
-		t.Fatalf("Could not check Tarantool version.")
+		t.Fatalf("Could not check Tarantool version: %s", err)
 	}
 	if isLess {
-		t.Skip("Skipping test for Tarantoo without pap-sha256 support")
+		t.Skip("Skipping test for Tarantool without pap-sha256 support")
 	}
 
-	sslOpts := SslOpts{
+	sslOpts := SslTestOpts{
 		KeyFile:  "testdata/localhost.key",
 		CertFile: "testdata/localhost.crt",
 	}
@@ -708,14 +575,20 @@ func TestOpts_PapSha256Auth(t *testing.T) {
 		t.Fatalf("An unexpected server error %q", err.Error())
 	}
 
-	clientOpts := opts
-	clientOpts.Transport = "ssl"
-	clientOpts.Ssl = sslOpts
-	clientOpts.Auth = PapSha256Auth
-	conn := test_helpers.ConnectWithValidation(t, tntHost, clientOpts)
+	client := OpenSslDialer{
+		Address:              tntHost,
+		Auth:                 PapSha256Auth,
+		User:                 "test",
+		Password:             "test",
+		RequiredProtocolInfo: ProtocolInfo{},
+		SslKeyFile:           sslOpts.KeyFile,
+		SslCertFile:          sslOpts.CertFile,
+	}
+
+	conn := test_helpers.ConnectWithValidation(t, client, opts)
 	conn.Close()
 
-	clientOpts.Auth = AutoAuth
-	conn = test_helpers.ConnectWithValidation(t, tntHost, clientOpts)
+	client.Auth = AutoAuth
+	conn = test_helpers.ConnectWithValidation(t, client, opts)
 	conn.Close()
 }

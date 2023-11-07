@@ -904,10 +904,28 @@ func (req authRequest) Ctx() context.Context {
 
 // Body fills an encoder with the auth request body.
 func (req authRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
-	return enc.Encode(map[uint32]interface{}{
-		uint32(iproto.IPROTO_USER_NAME): req.user,
-		uint32(iproto.IPROTO_TUPLE):     []interface{}{req.auth.String(), req.pass},
-	})
+	if err := enc.EncodeMapLen(2); err != nil {
+		return err
+	}
+	if err := enc.EncodeUint32(uint32(iproto.IPROTO_USER_NAME)); err != nil {
+		return err
+	}
+	if err := enc.EncodeString(req.user); err != nil {
+		return err
+	}
+	if err := enc.EncodeUint32(uint32(iproto.IPROTO_TUPLE)); err != nil {
+		return err
+	}
+	if err := enc.EncodeArrayLen(2); err != nil {
+		return err
+	}
+	if err := enc.EncodeString(req.auth.String()); err != nil {
+		return err
+	}
+	if err := enc.EncodeString(req.pass); err != nil {
+		return err
+	}
+	return nil
 }
 
 // PingRequest helps you to create an execute request object for execution

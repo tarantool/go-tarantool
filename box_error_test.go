@@ -299,7 +299,7 @@ func TestErrorTypeMPEncodeDecode(t *testing.T) {
 func TestErrorTypeEval(t *testing.T) {
 	test_helpers.SkipIfErrorMessagePackTypeUnsupported(t)
 
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	for name, testcase := range tupleCases {
@@ -318,7 +318,7 @@ func TestErrorTypeEval(t *testing.T) {
 func TestErrorTypeEvalTyped(t *testing.T) {
 	test_helpers.SkipIfErrorMessagePackTypeUnsupported(t)
 
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	for name, testcase := range tupleCases {
@@ -336,7 +336,7 @@ func TestErrorTypeEvalTyped(t *testing.T) {
 func TestErrorTypeInsert(t *testing.T) {
 	test_helpers.SkipIfErrorMessagePackTypeUnsupported(t)
 
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	truncateEval := fmt.Sprintf("box.space[%q]:truncate()", space)
@@ -374,7 +374,7 @@ func TestErrorTypeInsert(t *testing.T) {
 func TestErrorTypeInsertTyped(t *testing.T) {
 	test_helpers.SkipIfErrorMessagePackTypeUnsupported(t)
 
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	truncateEval := fmt.Sprintf("box.space[%q]:truncate()", space)
@@ -416,7 +416,7 @@ func TestErrorTypeInsertTyped(t *testing.T) {
 func TestErrorTypeSelect(t *testing.T) {
 	test_helpers.SkipIfErrorMessagePackTypeUnsupported(t)
 
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	truncateEval := fmt.Sprintf("box.space[%q]:truncate()", space)
@@ -461,7 +461,7 @@ func TestErrorTypeSelect(t *testing.T) {
 func TestErrorTypeSelectTyped(t *testing.T) {
 	test_helpers.SkipIfErrorMessagePackTypeUnsupported(t)
 
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	truncateEval := fmt.Sprintf("box.space[%q]:truncate()", space)

@@ -20,10 +20,13 @@ import (
 var isDecimalSupported = false
 
 var server = "127.0.0.1:3013"
+var dialer = NetDialer{
+	Address:  server,
+	User:     "test",
+	Password: "test",
+}
 var opts = Opts{
 	Timeout: 5 * time.Second,
-	User:    "test",
-	Pass:    "test",
 }
 
 func skipIfDecimalUnsupported(t *testing.T) {
@@ -526,7 +529,7 @@ func BenchmarkDecodeStringFromBCD(b *testing.B) {
 func TestSelect(t *testing.T) {
 	skipIfDecimalUnsupported(t)
 
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	number, err := decimal.NewFromString("-12.34")
@@ -572,7 +575,7 @@ func TestSelect(t *testing.T) {
 func TestUnmarshal_from_decimal_new(t *testing.T) {
 	skipIfDecimalUnsupported(t)
 
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	samples := correctnessSamples
@@ -627,7 +630,7 @@ func assertInsert(t *testing.T, conn *Connection, numString string) {
 func TestInsert(t *testing.T) {
 	skipIfDecimalUnsupported(t)
 
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	samples := correctnessSamples
@@ -642,7 +645,7 @@ func TestInsert(t *testing.T) {
 func TestReplace(t *testing.T) {
 	skipIfDecimalUnsupported(t)
 
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	number, err := decimal.NewFromString("-12.34")
@@ -695,10 +698,9 @@ func runTestMain(m *testing.M) int {
 	}
 
 	instance, err := test_helpers.StartTarantool(test_helpers.StartOpts{
+		Dialer:       dialer,
 		InitScript:   "config.lua",
 		Listen:       server,
-		User:         opts.User,
-		Pass:         opts.Pass,
 		WaitStart:    100 * time.Millisecond,
 		ConnectRetry: 10,
 		RetryTimeout: 500 * time.Millisecond,
