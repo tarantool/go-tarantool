@@ -1333,6 +1333,40 @@ func TestUnitEmptySchema(t *testing.T) {
 	require.Equal(t, result.Value, crud.Schema{}, "empty schema expected")
 }
 
+var testStorageYieldCases = []struct {
+	name string
+	req  tarantool.Request
+}{
+	{
+		"Count",
+		crud.MakeCountRequest(spaceName).
+			Opts(crud.CountOpts{
+				YieldEvery: crud.MakeOptUint(500),
+			}),
+	},
+	{
+		"Select",
+		crud.MakeSelectRequest(spaceName).
+			Opts(crud.SelectOpts{
+				YieldEvery: crud.MakeOptUint(500),
+			}),
+	},
+}
+
+func TestYieldEveryOption(t *testing.T) {
+	conn := connect(t)
+	defer conn.Close()
+
+	for _, testCase := range testStorageYieldCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			_, err := conn.Do(testCase.req).Get()
+			if err != nil {
+				t.Fatalf("Failed to Do CRUD request: %s", err)
+			}
+		})
+	}
+}
+
 // runTestMain is a body of TestMain function
 // (see https://pkg.go.dev/testing#hdr-Main).
 // Using defer + os.Exit is not works so TestMain body

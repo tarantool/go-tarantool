@@ -46,17 +46,21 @@ type SelectOpts struct {
 	// the latest migration of the data format. Performance overhead is up to 15%.
 	// Disabled by default.
 	FetchLatestMetadata OptBool
+	// YieldEvery describes number of tuples processed to yield after.
+	// Should be positive.
+	YieldEvery OptUint
 }
 
 // EncodeMsgpack provides custom msgpack encoder.
 func (opts SelectOpts) EncodeMsgpack(enc *msgpack.Encoder) error {
-	const optsCnt = 13
+	const optsCnt = 14
 
 	names := [optsCnt]string{timeoutOptName, vshardRouterOptName,
 		fieldsOptName, bucketIdOptName,
 		modeOptName, preferReplicaOptName, balanceOptName,
 		firstOptName, afterOptName, batchSizeOptName,
-		forceMapCallOptName, fullscanOptName, fetchLatestMetadataOptName}
+		forceMapCallOptName, fullscanOptName, fetchLatestMetadataOptName,
+		yieldEveryOptName}
 	values := [optsCnt]interface{}{}
 	exists := [optsCnt]bool{}
 	values[0], exists[0] = opts.Timeout.Get()
@@ -72,6 +76,7 @@ func (opts SelectOpts) EncodeMsgpack(enc *msgpack.Encoder) error {
 	values[10], exists[10] = opts.ForceMapCall.Get()
 	values[11], exists[11] = opts.Fullscan.Get()
 	values[12], exists[12] = opts.FetchLatestMetadata.Get()
+	values[13], exists[13] = opts.YieldEvery.Get()
 
 	return encodeOptions(enc, names[:], values[:], exists[:])
 }
