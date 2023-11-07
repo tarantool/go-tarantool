@@ -19,16 +19,21 @@ import (
 	_ "github.com/tarantool/go-tarantool/v2/uuid"
 )
 
+var exampleOpts = tarantool.Opts{
+	Timeout: 5 * time.Second,
+}
+
 // Example demonstrates how to use tuples with UUID. To enable UUID support
 // in msgpack with google/uuid (https://github.com/google/uuid), import
 // tarantool/uuid submodule.
 func Example() {
-	opts := tarantool.Opts{
-		User: "test",
-		Pass: "test",
+	dialer := tarantool.NetDialer{
+		Address:  "127.0.0.1:3013",
+		User:     "test",
+		Password: "test",
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
-	client, err := tarantool.Connect(ctx, "127.0.0.1:3013", opts)
+	client, err := tarantool.Connect(ctx, dialer, exampleOpts)
 	cancel()
 	if err != nil {
 		log.Fatalf("Failed to connect: %s", err.Error())

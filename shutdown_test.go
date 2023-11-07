@@ -2,7 +2,6 @@
 // +build linux darwin,!cgo
 
 // Use OS build flags since signals are system-dependent.
-
 package tarantool_test
 
 import (
@@ -14,25 +13,26 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tarantool/go-iproto"
 	. "github.com/tarantool/go-tarantool/v2"
 	"github.com/tarantool/go-tarantool/v2/test_helpers"
 )
 
 var shtdnServer = "127.0.0.1:3014"
+var shtdnDialer = NetDialer{
+	Address:  shtdnServer,
+	User:     dialer.User,
+	Password: dialer.Password,
+}
+
 var shtdnClntOpts = Opts{
-	User:                 opts.User,
-	Pass:                 opts.Pass,
-	Timeout:              20 * time.Second,
-	Reconnect:            500 * time.Millisecond,
-	MaxReconnects:        10,
-	RequiredProtocolInfo: ProtocolInfo{Features: []iproto.Feature{iproto.IPROTO_FEATURE_WATCHERS}},
+	Timeout:       20 * time.Second,
+	Reconnect:     500 * time.Millisecond,
+	MaxReconnects: 10,
 }
 var shtdnSrvOpts = test_helpers.StartOpts{
+	Dialer:       shtdnDialer,
 	InitScript:   "config.lua",
 	Listen:       shtdnServer,
-	User:         shtdnClntOpts.User,
-	Pass:         shtdnClntOpts.Pass,
 	WaitStart:    100 * time.Millisecond,
 	ConnectRetry: 10,
 	RetryTimeout: 500 * time.Millisecond,
@@ -139,7 +139,7 @@ func TestGracefulShutdown(t *testing.T) {
 	require.Nil(t, err)
 	defer test_helpers.StopTarantoolWithCleanup(inst)
 
-	conn = test_helpers.ConnectWithValidation(t, shtdnServer, shtdnClntOpts)
+	conn = test_helpers.ConnectWithValidation(t, shtdnDialer, shtdnClntOpts)
 	defer conn.Close()
 
 	testGracefulShutdown(t, conn, &inst)
@@ -147,16 +147,18 @@ func TestGracefulShutdown(t *testing.T) {
 
 func TestCloseGraceful(t *testing.T) {
 	opts := Opts{
-		User:    shtdnClntOpts.User,
-		Pass:    shtdnClntOpts.Pass,
 		Timeout: shtdnClntOpts.Timeout,
 	}
+	testDialer := shtdnDialer
+	testDialer.RequiredProtocolInfo = ProtocolInfo{}
+	testSrvOpts := shtdnSrvOpts
+	testSrvOpts.Dialer = testDialer
 
-	inst, err := test_helpers.StartTarantool(shtdnSrvOpts)
+	inst, err := test_helpers.StartTarantool(testSrvOpts)
 	require.Nil(t, err)
 	defer test_helpers.StopTarantoolWithCleanup(inst)
 
-	conn := test_helpers.ConnectWithValidation(t, shtdnServer, opts)
+	conn := test_helpers.ConnectWithValidation(t, testDialer, opts)
 	defer conn.Close()
 
 	// Send request with sleep.
@@ -197,7 +199,7 @@ func TestGracefulShutdownWithReconnect(t *testing.T) {
 	require.Nil(t, err)
 	defer test_helpers.StopTarantoolWithCleanup(inst)
 
-	conn := test_helpers.ConnectWithValidation(t, shtdnServer, shtdnClntOpts)
+	conn := test_helpers.ConnectWithValidation(t, shtdnDialer, shtdnClntOpts)
 	defer conn.Close()
 
 	testGracefulShutdown(t, conn, &inst)
@@ -214,19 +216,23 @@ func TestGracefulShutdownWithReconnect(t *testing.T) {
 
 func TestNoGracefulShutdown(t *testing.T) {
 	// No watchers = no graceful shutdown.
-	noShtdnClntOpts := shtdnClntOpts.Clone()
-	noShtdnClntOpts.RequiredProtocolInfo = ProtocolInfo{}
+	noSthdClntOpts := opts
+	noShtdDialer := shtdnDialer
+	noShtdDialer.RequiredProtocolInfo = ProtocolInfo{}
 	test_helpers.SkipIfWatchersSupported(t)
 
 	var inst test_helpers.TarantoolInstance
 	var conn *Connection
 	var err error
 
-	inst, err = test_helpers.StartTarantool(shtdnSrvOpts)
+	testSrvOpts := shtdnSrvOpts
+	testSrvOpts.Dialer = noShtdDialer
+
+	inst, err = test_helpers.StartTarantool(testSrvOpts)
 	require.Nil(t, err)
 	defer test_helpers.StopTarantoolWithCleanup(inst)
 
-	conn = test_helpers.ConnectWithValidation(t, shtdnServer, noShtdnClntOpts)
+	conn = test_helpers.ConnectWithValidation(t, noShtdDialer, noSthdClntOpts)
 	defer conn.Close()
 
 	evalSleep := 10             // in seconds
@@ -278,7 +284,7 @@ func TestGracefulShutdownRespectsClose(t *testing.T) {
 	require.Nil(t, err)
 	defer test_helpers.StopTarantoolWithCleanup(inst)
 
-	conn = test_helpers.ConnectWithValidation(t, shtdnServer, shtdnClntOpts)
+	conn = test_helpers.ConnectWithValidation(t, shtdnDialer, shtdnClntOpts)
 	defer conn.Close()
 
 	// Create a helper watcher to ensure that async
@@ -358,7 +364,7 @@ func TestGracefulShutdownNotRacesWithRequestReconnect(t *testing.T) {
 	require.Nil(t, err)
 	defer test_helpers.StopTarantoolWithCleanup(inst)
 
-	conn = test_helpers.ConnectWithValidation(t, shtdnServer, shtdnClntOpts)
+	conn = test_helpers.ConnectWithValidation(t, shtdnDialer, shtdnClntOpts)
 	defer conn.Close()
 
 	// Create a helper watcher to ensure that async
@@ -429,7 +435,7 @@ func TestGracefulShutdownCloseConcurrent(t *testing.T) {
 	require.Nil(t, err)
 	defer test_helpers.StopTarantoolWithCleanup(inst)
 
-	conn := test_helpers.ConnectWithValidation(t, shtdnServer, shtdnClntOpts)
+	conn := test_helpers.ConnectWithValidation(t, shtdnDialer, shtdnClntOpts)
 	defer conn.Close()
 
 	// Create a helper watcher to ensure that async
@@ -466,7 +472,7 @@ func TestGracefulShutdownCloseConcurrent(t *testing.T) {
 
 			// Do not wait till Tarantool register out watcher,
 			// test everything is ok even on async.
-			conn, err := Connect(ctx, shtdnServer, shtdnClntOpts)
+			conn, err := Connect(ctx, shtdnDialer, shtdnClntOpts)
 			if err != nil {
 				t.Errorf("Failed to connect: %s", err)
 			} else {
@@ -519,7 +525,7 @@ func TestGracefulShutdownConcurrent(t *testing.T) {
 	require.Nil(t, err)
 	defer test_helpers.StopTarantoolWithCleanup(inst)
 
-	conn := test_helpers.ConnectWithValidation(t, shtdnServer, shtdnClntOpts)
+	conn := test_helpers.ConnectWithValidation(t, shtdnDialer, shtdnClntOpts)
 	defer conn.Close()
 
 	// Set a big timeout so it would be easy to differ
@@ -542,7 +548,7 @@ func TestGracefulShutdownConcurrent(t *testing.T) {
 		go func(i int) {
 			defer caseWg.Done()
 
-			conn := test_helpers.ConnectWithValidation(t, shtdnServer, shtdnClntOpts)
+			conn := test_helpers.ConnectWithValidation(t, shtdnDialer, shtdnClntOpts)
 			defer conn.Close()
 
 			// Create a helper watcher to ensure that async

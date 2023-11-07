@@ -20,13 +20,15 @@ import (
 // Example demonstrates how to use tuples with datetime. To enable support of
 // datetime import tarantool/datetime package.
 func Example() {
-	opts := tarantool.Opts{
-		User: "test",
-		Pass: "test",
+	dialer := tarantool.NetDialer{
+		Address:  "127.0.0.1:3013",
+		User:     "test",
+		Password: "test",
 	}
+	opts := tarantool.Opts{}
 	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	defer cancel()
-	conn, err := tarantool.Connect(ctx, "127.0.0.1:3013", opts)
+	conn, err := tarantool.Connect(ctx, dialer, opts)
 	if err != nil {
 		fmt.Printf("Error in connect is %v", err)
 		return

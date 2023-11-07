@@ -8,27 +8,27 @@ import (
 )
 
 type roundRobinStrategy struct {
-	conns       []*tarantool.Connection
-	indexByAddr map[string]uint
-	mutex       sync.RWMutex
-	size        uint64
-	current     uint64
+	conns     []*tarantool.Connection
+	indexById map[string]uint
+	mutex     sync.RWMutex
+	size      uint64
+	current   uint64
 }
 
 func newRoundRobinStrategy(size int) *roundRobinStrategy {
 	return &roundRobinStrategy{
-		conns:       make([]*tarantool.Connection, 0, size),
-		indexByAddr: make(map[string]uint),
-		size:        0,
-		current:     0,
+		conns:     make([]*tarantool.Connection, 0, size),
+		indexById: make(map[string]uint, size),
+		size:      0,
+		current:   0,
 	}
 }
 
-func (r *roundRobinStrategy) GetConnByAddr(addr string) *tarantool.Connection {
+func (r *roundRobinStrategy) GetConnById(id string) *tarantool.Connection {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
 
-	index, found := r.indexByAddr[addr]
+	index, found := r.indexById[id]
 	if !found {
 		return nil
 	}
@@ -36,7 +36,7 @@ func (r *roundRobinStrategy) GetConnByAddr(addr string) *tarantool.Connection {
 	return r.conns[index]
 }
 
-func (r *roundRobinStrategy) DeleteConnByAddr(addr string) *tarantool.Connection {
+func (r *roundRobinStrategy) DeleteConnById(id string) *tarantool.Connection {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
@@ -44,20 +44,20 @@ func (r *roundRobinStrategy) DeleteConnByAddr(addr string) *tarantool.Connection
 		return nil
 	}
 
-	index, found := r.indexByAddr[addr]
+	index, found := r.indexById[id]
 	if !found {
 		return nil
 	}
 
-	delete(r.indexByAddr, addr)
+	delete(r.indexById, id)
 
 	conn := r.conns[index]
 	r.conns = append(r.conns[:index], r.conns[index+1:]...)
 	r.size -= 1
 
-	for k, v := range r.indexByAddr {
+	for k, v := range r.indexById {
 		if v > index {
-			r.indexByAddr[k] = v - 1
+			r.indexById[k] = v - 1
 		}
 	}
 
@@ -81,25 +81,27 @@ func (r *roundRobinStrategy) GetNextConnection() *tarantool.Connection {
 	return r.conns[r.nextIndex()]
 }
 
-func (r *roundRobinStrategy) GetConnections() []*tarantool.Connection {
+func (r *roundRobinStrategy) GetConnections() map[string]*tarantool.Connection {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
 
-	ret := make([]*tarantool.Connection, len(r.conns))
-	copy(ret, r.conns)
+	conns := map[string]*tarantool.Connection{}
+	for id, index := range r.indexById {
+		conns[id] = r.conns[index]
+	}
 
-	return ret
+	return conns
 }
 
-func (r *roundRobinStrategy) AddConn(addr string, conn *tarantool.Connection) {
+func (r *roundRobinStrategy) AddConn(id string, conn *tarantool.Connection) {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
-	if idx, ok := r.indexByAddr[addr]; ok {
+	if idx, ok := r.indexById[id]; ok {
 		r.conns[idx] = conn
 	} else {
 		r.conns = append(r.conns, conn)
-		r.indexByAddr[addr] = uint(r.size)
+		r.indexById[id] = uint(r.size)
 		r.size += 1
 	}
 }

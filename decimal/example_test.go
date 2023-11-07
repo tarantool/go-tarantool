@@ -22,13 +22,16 @@ import (
 // import tarantool/decimal submodule.
 func Example() {
 	server := "127.0.0.1:3013"
+	dialer := tarantool.NetDialer{
+		Address:  server,
+		User:     "test",
+		Password: "test",
+	}
 	opts := tarantool.Opts{
 		Timeout: 5 * time.Second,
-		User:    "test",
-		Pass:    "test",
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
-	client, err := tarantool.Connect(ctx, server, opts)
+	client, err := tarantool.Connect(ctx, dialer, opts)
 	cancel()
 	if err != nil {
 		log.Fatalf("Failed to connect: %s", err.Error())

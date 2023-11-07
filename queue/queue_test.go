@@ -15,18 +15,24 @@ import (
 	"github.com/tarantool/go-tarantool/v2/test_helpers"
 )
 
+const (
+	user = "test"
+	pass = "test"
+)
+
+var servers = []string{"127.0.0.1:3014", "127.0.0.1:3015"}
 var server = "127.0.0.1:3013"
-var serversPool = []string{
-	"127.0.0.1:3014",
-	"127.0.0.1:3015",
-}
 
 var instances []test_helpers.TarantoolInstance
 
+var dialer = NetDialer{
+	Address:  server,
+	User:     user,
+	Password: pass,
+}
+
 var opts = Opts{
 	Timeout: 5 * time.Second,
-	User:    "test",
-	Pass:    "test",
 	//Concurrency: 32,
 	//RateLimit: 4*1024,
 }
@@ -53,7 +59,7 @@ func dropQueue(t *testing.T, q queue.Queue) {
 /////////QUEUE/////////
 
 func TestFifoQueue(t *testing.T) {
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	name := "test_queue"
@@ -62,7 +68,7 @@ func TestFifoQueue(t *testing.T) {
 }
 
 func TestQueue_Cfg(t *testing.T) {
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	name := "test_queue"
@@ -76,7 +82,7 @@ func TestQueue_Cfg(t *testing.T) {
 }
 
 func TestQueue_Identify(t *testing.T) {
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	name := "test_queue"
@@ -99,7 +105,7 @@ func TestQueue_Identify(t *testing.T) {
 }
 
 func TestQueue_ReIdentify(t *testing.T) {
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer func() {
 		if conn != nil {
 			conn.Close()
@@ -152,7 +158,7 @@ func TestQueue_ReIdentify(t *testing.T) {
 	conn.Close()
 	conn = nil
 
-	conn = test_helpers.ConnectWithValidation(t, server, opts)
+	conn = test_helpers.ConnectWithValidation(t, dialer, opts)
 	q = queue.New(conn, name)
 
 	// Identify in another connection.
@@ -182,7 +188,7 @@ func TestQueue_ReIdentify(t *testing.T) {
 }
 
 func TestQueue_State(t *testing.T) {
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	name := "test_queue"
@@ -199,7 +205,7 @@ func TestQueue_State(t *testing.T) {
 }
 
 func TestFifoQueue_GetExist_Statistic(t *testing.T) {
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	name := "test_queue"
@@ -229,7 +235,7 @@ func TestFifoQueue_GetExist_Statistic(t *testing.T) {
 }
 
 func TestFifoQueue_Put(t *testing.T) {
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	name := "test_queue"
@@ -249,7 +255,7 @@ func TestFifoQueue_Put(t *testing.T) {
 }
 
 func TestFifoQueue_Take(t *testing.T) {
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	name := "test_queue"
@@ -322,7 +328,7 @@ func (c *customData) EncodeMsgpack(e *msgpack.Encoder) error {
 }
 
 func TestFifoQueue_TakeTyped(t *testing.T) {
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	name := "test_queue"
@@ -385,7 +391,7 @@ func TestFifoQueue_TakeTyped(t *testing.T) {
 }
 
 func TestFifoQueue_Peek(t *testing.T) {
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	name := "test_queue"
@@ -417,7 +423,7 @@ func TestFifoQueue_Peek(t *testing.T) {
 }
 
 func TestFifoQueue_Bury_Kick(t *testing.T) {
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	name := "test_queue"
@@ -478,7 +484,7 @@ func TestFifoQueue_Bury_Kick(t *testing.T) {
 func TestFifoQueue_Delete(t *testing.T) {
 	var err error
 
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	name := "test_queue"
@@ -530,7 +536,7 @@ func TestFifoQueue_Delete(t *testing.T) {
 }
 
 func TestFifoQueue_Release(t *testing.T) {
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	name := "test_queue"
@@ -590,7 +596,7 @@ func TestFifoQueue_Release(t *testing.T) {
 }
 
 func TestQueue_ReleaseAll(t *testing.T) {
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	name := "test_queue"
@@ -654,7 +660,7 @@ func TestQueue_ReleaseAll(t *testing.T) {
 }
 
 func TestTtlQueue(t *testing.T) {
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	name := "test_queue"
@@ -688,7 +694,7 @@ func TestTtlQueue(t *testing.T) {
 }
 
 func TestTtlQueue_Put(t *testing.T) {
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	name := "test_queue"
@@ -737,7 +743,7 @@ func TestTtlQueue_Put(t *testing.T) {
 }
 
 func TestUtube_Put(t *testing.T) {
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	name := "test_utube"
@@ -810,7 +816,7 @@ func TestUtube_Put(t *testing.T) {
 }
 
 func TestTask_Touch(t *testing.T) {
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	tests := []struct {
@@ -896,10 +902,9 @@ func TestTask_Touch(t *testing.T) {
 // https://stackoverflow.com/questions/27629380/how-to-exit-a-go-program-honoring-deferred-calls
 func runTestMain(m *testing.M) int {
 	inst, err := test_helpers.StartTarantool(test_helpers.StartOpts{
+		Dialer:       dialer,
 		InitScript:   "testdata/config.lua",
 		Listen:       server,
-		User:         opts.User,
-		Pass:         opts.Pass,
 		WaitStart:    100 * time.Millisecond,
 		ConnectRetry: 10,
 		RetryTimeout: 500 * time.Millisecond,
@@ -911,14 +916,22 @@ func runTestMain(m *testing.M) int {
 
 	defer test_helpers.StopTarantoolWithCleanup(inst)
 
-	poolOpts := test_helpers.StartOpts{
-		InitScript:   "testdata/pool.lua",
-		User:         opts.User,
-		Pass:         opts.Pass,
-		WaitStart:    3 * time.Second, // replication_timeout * 3
-		ConnectRetry: -1,
+	poolInstsOpts := make([]test_helpers.StartOpts, 0, len(servers))
+	for _, serv := range servers {
+		poolInstsOpts = append(poolInstsOpts, test_helpers.StartOpts{
+			Listen: serv,
+			Dialer: NetDialer{
+				Address:  serv,
+				User:     user,
+				Password: pass,
+			},
+			InitScript:   "testdata/pool.lua",
+			WaitStart:    3 * time.Second, // replication_timeout * 3
+			ConnectRetry: -1,
+		})
 	}
-	instances, err = test_helpers.StartTarantoolInstances(serversPool, nil, poolOpts)
+
+	instances, err = test_helpers.StartTarantoolInstances(poolInstsOpts)
 
 	if err != nil {
 		log.Printf("Failed to prepare test tarantool pool: %s", err)
@@ -933,11 +946,17 @@ func runTestMain(m *testing.M) int {
 		roles := []bool{false, true}
 		connOpts := Opts{
 			Timeout: 500 * time.Millisecond,
-			User:    "test",
-			Pass:    "test",
+		}
+		dialers := make([]Dialer, 0, len(servers))
+		for _, serv := range servers {
+			dialers = append(dialers, NetDialer{
+				Address:  serv,
+				User:     user,
+				Password: pass,
+			})
 		}
 
-		err = test_helpers.SetClusterRO(serversPool, connOpts, roles)
+		err = test_helpers.SetClusterRO(dialers, connOpts, roles)
 		if err == nil {
 			break
 		}

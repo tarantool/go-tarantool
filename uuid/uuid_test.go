@@ -23,8 +23,11 @@ var isUUIDSupported = false
 var server = "127.0.0.1:3013"
 var opts = Opts{
 	Timeout: 5 * time.Second,
-	User:    "test",
-	Pass:    "test",
+}
+var dialer = NetDialer{
+	Address:  server,
+	User:     "test",
+	Password: "test",
 }
 
 var space = "testUUID"
@@ -73,7 +76,7 @@ func TestSelect(t *testing.T) {
 		t.Skip("Skipping test for Tarantool without UUID support in msgpack")
 	}
 
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	id, uuidErr := uuid.Parse("c8f0fa1f-da29-438c-a040-393f1126ad39")
@@ -113,7 +116,7 @@ func TestReplace(t *testing.T) {
 		t.Skip("Skipping test for Tarantool without UUID support in msgpack")
 	}
 
-	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	id, uuidErr := uuid.Parse("64d22e4d-ac92-4a23-899a-e59f34af5479")
@@ -166,10 +169,9 @@ func runTestMain(m *testing.M) int {
 	}
 
 	inst, err := test_helpers.StartTarantool(test_helpers.StartOpts{
+		Dialer:       dialer,
 		InitScript:   "config.lua",
 		Listen:       server,
-		User:         opts.User,
-		Pass:         opts.Pass,
 		WaitStart:    100 * time.Millisecond,
 		ConnectRetry: 10,
 		RetryTimeout: 500 * time.Millisecond,

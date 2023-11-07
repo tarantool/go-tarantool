@@ -13,13 +13,13 @@ import (
 // It returns a valid connection if it is successful, otherwise finishes a test
 // with an error.
 func ConnectWithValidation(t testing.TB,
-	server string,
+	dialer tarantool.Dialer,
 	opts tarantool.Opts) *tarantool.Connection {
 	t.Helper()
 
 	ctx, cancel := GetConnectContext()
 	defer cancel()
-	conn, err := tarantool.Connect(ctx, server, opts)
+	conn, err := tarantool.Connect(ctx, dialer, opts)
 	if err != nil {
 		t.Fatalf("Failed to connect: %s", err.Error())
 	}
@@ -67,7 +67,7 @@ func SkipIfSQLUnsupported(t testing.TB) {
 	// Tarantool supports SQL since version 2.0.0
 	isLess, err := IsTarantoolVersionLess(2, 0, 0)
 	if err != nil {
-		t.Fatalf("Could not check the Tarantool version")
+		t.Fatalf("Could not check the Tarantool version: %s", err)
 	}
 	if isLess {
 		t.Skip()
@@ -80,7 +80,7 @@ func SkipIfLess(t *testing.T, reason string, major, minor, patch uint64) {
 
 	isLess, err := IsTarantoolVersionLess(major, minor, patch)
 	if err != nil {
-		t.Fatalf("Could not check the Tarantool version")
+		t.Fatalf("Could not check the Tarantool version: %s", err)
 	}
 
 	if isLess {
@@ -95,7 +95,7 @@ func SkipIfGreaterOrEqual(t *testing.T, reason string, major, minor, patch uint6
 
 	isLess, err := IsTarantoolVersionLess(major, minor, patch)
 	if err != nil {
-		t.Fatalf("Could not check the Tarantool version")
+		t.Fatalf("Could not check the Tarantool version: %s", err)
 	}
 
 	if !isLess {

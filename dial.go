@@ -15,10 +15,7 @@ import (
 	"github.com/vmihailenco/msgpack/v5"
 )
 
-const (
-	dialTransportNone = ""
-	dialTransportSsl  = "ssl"
-)
+const bufSize = 128 * 1024
 
 // Greeting is a message sent by Tarantool on connect.
 type Greeting struct {
@@ -45,47 +42,31 @@ type Conn interface {
 	// Any blocked Read or Flush operations will be unblocked and return
 	// errors.
 	Close() error
-	// LocalAddr returns the local network address, if known.
-	LocalAddr() net.Addr
-	// RemoteAddr returns the remote network address, if known.
-	RemoteAddr() net.Addr
 	// Greeting returns server greeting.
 	Greeting() Greeting
 	// ProtocolInfo returns server protocol info.
 	ProtocolInfo() ProtocolInfo
+	// Addr returns the connection address.
+	Addr() net.Addr
 }
 
 // DialOpts is a way to configure a Dial method to create a new Conn.
 type DialOpts struct {
 	// IoTimeout is a timeout per a network read/write.
 	IoTimeout time.Duration
-	// Transport is a connect transport type.
-	Transport string
-	// Ssl configures "ssl" transport.
-	Ssl SslOpts
-	// RequiredProtocol contains minimal protocol version and
-	// list of protocol features that should be supported by
-	// Tarantool server. By default there are no restrictions.
-	RequiredProtocol ProtocolInfo
-	// Auth is an authentication method.
-	Auth Auth
-	// Username for logging in to Tarantool.
-	User string
-	// User password for logging in to Tarantool.
-	Password string
 }
 
 // Dialer is the interface that wraps a method to connect to a Tarantool
 // instance. The main idea is to provide a ready-to-work connection with
 // basic preparation, successful authorization and additional checks.
 //
-// You can provide your own implementation to Connect() call via Opts.Dialer if
-// some functionality is not implemented in the connector. See TtDialer.Dial()
+// You can provide your own implementation to Connect() call if
+// some functionality is not implemented in the connector. See NetDialer.Dial()
 // implementation as example.
 type Dialer interface {
 	// Dial connects to a Tarantool instance to the address with specified
 	// options.
-	Dial(ctx context.Context, address string, opts DialOpts) (Conn, error)
+	Dial(ctx context.Context, opts DialOpts) (Conn, error)
 }
 
 type tntConn struct {
@@ -96,59 +77,184 @@ type tntConn struct {
 	protocol ProtocolInfo
 }
 
-// TtDialer is a default implementation of the Dialer interface which is
-// used by the connector.
-type TtDialer struct {
-}
-
-// Dial connects to a Tarantool instance to the address with specified
-// options.
-func (t TtDialer) Dial(ctx context.Context, address string, opts DialOpts) (Conn, error) {
-	var err error
-	conn := new(tntConn)
-
-	if conn.net, err = dial(ctx, address, opts); err != nil {
-		return nil, fmt.Errorf("failed to dial: %w", err)
-	}
-
-	dc := &deadlineIO{to: opts.IoTimeout, c: conn.net}
-	conn.reader = bufio.NewReaderSize(dc, 128*1024)
-	conn.writer = bufio.NewWriterSize(dc, 128*1024)
-
-	var version, salt string
-	if version, salt, err = readGreeting(conn.reader); err != nil {
-		conn.net.Close()
-		return nil, fmt.Errorf("failed to read greeting: %w", err)
+// rawDial does basic dial operations:
+// reads greeting, identifies a protocol and validates it.
+func rawDial(conn *tntConn, requiredProto ProtocolInfo) (string, error) {
+	version, salt, err := readGreeting(conn.reader)
+	if err != nil {
+		return "", fmt.Errorf("failed to read greeting: %w", err)
 	}
 	conn.greeting.Version = version
 
 	if conn.protocol, err = identify(conn.writer, conn.reader); err != nil {
-		conn.net.Close()
-		return nil, fmt.Errorf("failed to identify: %w", err)
+		return "", fmt.Errorf("failed to identify: %w", err)
 	}
 
-	if err = checkProtocolInfo(opts.RequiredProtocol, conn.protocol); err != nil {
-		conn.net.Close()
-		return nil, fmt.Errorf("invalid server protocol: %w", err)
+	if err = checkProtocolInfo(requiredProto, conn.protocol); err != nil {
+		return "", fmt.Errorf("invalid server protocol: %w", err)
+	}
+	return salt, err
+}
+
+// NetDialer is a basic Dialer implementation.
+type NetDialer struct {
+	// Address is an address to connect.
+	// It could be specified in following ways:
+	//
+	// - TCP connections (tcp://192.168.1.1:3013, tcp://my.host:3013,
+	// tcp:192.168.1.1:3013, tcp:my.host:3013, 192.168.1.1:3013, my.host:3013)
+	//
+	// - Unix socket, first '/' or '.' indicates Unix socket
+	// (unix:///abs/path/tnt.sock, unix:path/tnt.sock, /abs/path/tnt.sock,
+	// ./rel/path/tnt.sock, unix/:path/tnt.sock)
+	Address string
+	// Username for logging in to Tarantool.
+	User string
+	// User password for logging in to Tarantool.
+	Password string
+	// RequiredProtocol contains minimal protocol version and
+	// list of protocol features that should be supported by
+	// Tarantool server. By default, there are no restrictions.
+	RequiredProtocolInfo ProtocolInfo
+}
+
+// Dial makes NetDialer satisfy the Dialer interface.
+func (d NetDialer) Dial(ctx context.Context, opts DialOpts) (Conn, error) {
+	var err error
+	conn := new(tntConn)
+
+	network, address := parseAddress(d.Address)
+	dialer := net.Dialer{}
+	conn.net, err = dialer.DialContext(ctx, network, address)
+	if err != nil {
+		return nil, fmt.Errorf("failed to dial: %w", err)
 	}
 
-	if opts.User != "" {
-		if opts.Auth == AutoAuth {
-			if conn.protocol.Auth != AutoAuth {
-				opts.Auth = conn.protocol.Auth
-			} else {
-				opts.Auth = ChapSha1Auth
-			}
-		}
+	dc := &deadlineIO{to: opts.IoTimeout, c: conn.net}
+	conn.reader = bufio.NewReaderSize(dc, bufSize)
+	conn.writer = bufio.NewWriterSize(dc, bufSize)
 
-		err := authenticate(conn, opts, salt)
-		if err != nil {
-			conn.net.Close()
-			return nil, fmt.Errorf("failed to authenticate: %w", err)
-		}
+	salt, err := rawDial(conn, d.RequiredProtocolInfo)
+	if err != nil {
+		conn.net.Close()
+		return nil, err
+	}
+
+	if d.User == "" {
+		return conn, nil
+	}
+
+	conn.protocol.Auth = ChapSha1Auth
+	if err = authenticate(conn, ChapSha1Auth, d.User, d.Password, salt); err != nil {
+		conn.net.Close()
+		return nil, fmt.Errorf("failed to authenticate: %w", err)
 	}
 
 	return conn, nil
+}
+
+// OpenSslDialer allows to use SSL transport for connection.
+type OpenSslDialer struct {
+	// Address is an address to connect.
+	// It could be specified in following ways:
+	//
+	// - TCP connections (tcp://192.168.1.1:3013, tcp://my.host:3013,
+	// tcp:192.168.1.1:3013, tcp:my.host:3013, 192.168.1.1:3013, my.host:3013)
+	//
+	// - Unix socket, first '/' or '.' indicates Unix socket
+	// (unix:///abs/path/tnt.sock, unix:path/tnt.sock, /abs/path/tnt.sock,
+	// ./rel/path/tnt.sock, unix/:path/tnt.sock)
+	Address string
+	// Auth is an authentication method.
+	Auth Auth
+	// Username for logging in to Tarantool.
+	User string
+	// User password for logging in to Tarantool.
+	Password string
+	// RequiredProtocol contains minimal protocol version and
+	// list of protocol features that should be supported by
+	// Tarantool server. By default, there are no restrictions.
+	RequiredProtocolInfo ProtocolInfo
+	// SslKeyFile is a path to a private SSL key file.
+	SslKeyFile string
+	// SslCertFile is a path to an SSL certificate file.
+	SslCertFile string
+	// SslCaFile is a path to a trusted certificate authorities (CA) file.
+	SslCaFile string
+	// SslCiphers is a colon-separated (:) list of SSL cipher suites the connection
+	// can use.
+	//
+	// We don't provide a list of supported ciphers. This is what OpenSSL
+	// does. The only limitation is usage of TLSv1.2 (because other protocol
+	// versions don't seem to support the GOST cipher). To add additional
+	// ciphers (GOST cipher), you must configure OpenSSL.
+	//
+	// See also
+	//
+	// * https://www.openssl.org/docs/man1.1.1/man1/ciphers.html
+	SslCiphers string
+	// SslPassword is a password for decrypting the private SSL key file.
+	// The priority is as follows: try to decrypt with SslPassword, then
+	// try SslPasswordFile.
+	SslPassword string
+	// SslPasswordFile is a path to the list of passwords for decrypting
+	// the private SSL key file. The connection tries every line from the
+	// file as a password.
+	SslPasswordFile string
+}
+
+// Dial makes OpenSslDialer satisfy the Dialer interface.
+func (d OpenSslDialer) Dial(ctx context.Context, opts DialOpts) (Conn, error) {
+	var err error
+	conn := new(tntConn)
+
+	network, address := parseAddress(d.Address)
+	conn.net, err = sslDialContext(ctx, network, address, sslOpts{
+		KeyFile:      d.SslKeyFile,
+		CertFile:     d.SslCertFile,
+		CaFile:       d.SslCaFile,
+		Ciphers:      d.SslCiphers,
+		Password:     d.SslPassword,
+		PasswordFile: d.SslPasswordFile,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to dial: %w", err)
+	}
+
+	dc := &deadlineIO{to: opts.IoTimeout, c: conn.net}
+	conn.reader = bufio.NewReaderSize(dc, bufSize)
+	conn.writer = bufio.NewWriterSize(dc, bufSize)
+
+	salt, err := rawDial(conn, d.RequiredProtocolInfo)
+	if err != nil {
+		conn.net.Close()
+		return nil, err
+	}
+
+	if d.User == "" {
+		return conn, nil
+	}
+
+	if d.Auth == AutoAuth {
+		if conn.protocol.Auth != AutoAuth {
+			d.Auth = conn.protocol.Auth
+		} else {
+			d.Auth = ChapSha1Auth
+		}
+	}
+	conn.protocol.Auth = d.Auth
+
+	if err = authenticate(conn, d.Auth, d.User, d.Password, salt); err != nil {
+		conn.net.Close()
+		return nil, fmt.Errorf("failed to authenticate: %w", err)
+	}
+
+	return conn, nil
+}
+
+// Addr makes tntConn satisfy the Conn interface.
+func (c *tntConn) Addr() net.Addr {
+	return c.net.RemoteAddr()
 }
 
 // Read makes tntConn satisfy the Conn interface.
@@ -177,16 +283,6 @@ func (c *tntConn) Close() error {
 	return c.net.Close()
 }
 
-// RemoteAddr makes tntConn satisfy the Conn interface.
-func (c *tntConn) RemoteAddr() net.Addr {
-	return c.net.RemoteAddr()
-}
-
-// LocalAddr makes tntConn satisfy the Conn interface.
-func (c *tntConn) LocalAddr() net.Addr {
-	return c.net.LocalAddr()
-}
-
 // Greeting makes tntConn satisfy the Conn interface.
 func (c *tntConn) Greeting() Greeting {
 	return c.greeting
@@ -195,20 +291,6 @@ func (c *tntConn) Greeting() Greeting {
 // ProtocolInfo makes tntConn satisfy the Conn interface.
 func (c *tntConn) ProtocolInfo() ProtocolInfo {
 	return c.protocol
-}
-
-// dial connects to a Tarantool instance.
-func dial(ctx context.Context, address string, opts DialOpts) (net.Conn, error) {
-	network, address := parseAddress(address)
-	switch opts.Transport {
-	case dialTransportNone:
-		dialer := net.Dialer{}
-		return dialer.DialContext(ctx, network, address)
-	case dialTransportSsl:
-		return sslDialContext(ctx, network, address, opts.Ssl)
-	default:
-		return nil, fmt.Errorf("unsupported transport type: %s", opts.Transport)
-	}
 }
 
 // parseAddress split address into network and address parts.
@@ -316,29 +398,21 @@ func checkProtocolInfo(required ProtocolInfo, actual ProtocolInfo) error {
 	}
 }
 
-// authenticate authenticate for a connection.
-func authenticate(c Conn, opts DialOpts, salt string) error {
-	auth := opts.Auth
-	user := opts.User
-	pass := opts.Password
-
+// authenticate authenticates for a connection.
+func authenticate(c Conn, auth Auth, user string, pass string, salt string) error {
 	var req Request
 	var err error
 
-	switch opts.Auth {
+	switch auth {
 	case ChapSha1Auth:
 		req, err = newChapSha1AuthRequest(user, pass, salt)
 		if err != nil {
 			return err
 		}
 	case PapSha256Auth:
-		if opts.Transport != dialTransportSsl {
-			return errors.New("forbidden to use " + auth.String() +
-				" unless SSL is enabled for the connection")
-		}
 		req = newPapSha256AuthRequest(user, pass)
 	default:
-		return errors.New("unsupported method " + opts.Auth.String())
+		return errors.New("unsupported method " + auth.String())
 	}
 
 	if err = writeRequest(c, req); err != nil {

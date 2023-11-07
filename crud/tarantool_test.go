@@ -21,17 +21,21 @@ var spaceName = "test"
 var invalidSpaceName = "invalid"
 var indexNo = uint32(0)
 var indexName = "primary_index"
+
+var dialer = tarantool.NetDialer{
+	Address:  server,
+	User:     "test",
+	Password: "test",
+}
+
 var opts = tarantool.Opts{
 	Timeout: 5 * time.Second,
-	User:    "test",
-	Pass:    "test",
 }
 
 var startOpts test_helpers.StartOpts = test_helpers.StartOpts{
+	Dialer:       dialer,
 	InitScript:   "testdata/config.lua",
 	Listen:       server,
-	User:         opts.User,
-	Pass:         opts.Pass,
 	WaitStart:    100 * time.Millisecond,
 	ConnectRetry: 10,
 	RetryTimeout: 500 * time.Millisecond,
@@ -171,7 +175,7 @@ var object = crud.MapObject{
 func connect(t testing.TB) *tarantool.Connection {
 	for i := 0; i < 10; i++ {
 		ctx, cancel := test_helpers.GetConnectContext()
-		conn, err := tarantool.Connect(ctx, server, opts)
+		conn, err := tarantool.Connect(ctx, dialer, opts)
 		cancel()
 		if err != nil {
 			t.Fatalf("Failed to connect: %s", err)

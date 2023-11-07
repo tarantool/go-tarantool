@@ -52,9 +52,9 @@ func CheckPoolStatuses(args interface{}) error {
 			checkArgs.ExpectedPoolStatus, connected)
 	}
 
-	poolInfo := checkArgs.ConnPool.GetPoolInfo()
+	poolInfo := checkArgs.ConnPool.GetInfo()
 	for _, server := range checkArgs.Servers {
-		status := poolInfo[server] != nil && poolInfo[server].ConnectedNow
+		status := poolInfo[server].ConnectedNow
 		if checkArgs.ExpectedStatuses[server] != status {
 			return fmt.Errorf(
 				"incorrect conn status: addr %s expected status %t actual status %t",
@@ -106,7 +106,7 @@ func ProcessListenOnInstance(args interface{}) error {
 	equal := reflect.DeepEqual(actualPorts, listenArgs.ExpectedPorts)
 	if !equal {
 		return fmt.Errorf("expected ports: %v, actual ports: %v",
-			actualPorts, listenArgs.ExpectedPorts)
+			listenArgs.ExpectedPorts, actualPorts)
 	}
 
 	return nil
@@ -131,11 +131,11 @@ func Retry(f func(interface{}) error, args interface{}, count int, timeout time.
 	return err
 }
 
-func InsertOnInstance(ctx context.Context, server string, connOpts tarantool.Opts,
+func InsertOnInstance(ctx context.Context, dialer tarantool.Dialer, connOpts tarantool.Opts,
 	space interface{}, tuple interface{}) error {
-	conn, err := tarantool.Connect(ctx, server, connOpts)
+	conn, err := tarantool.Connect(ctx, dialer, connOpts)
 	if err != nil {
-		return fmt.Errorf("fail to connect to %s: %s", server, err.Error())
+		return fmt.Errorf("fail to connect: %s", err.Error())
 	}
 	if conn == nil {
 		return fmt.Errorf("conn is nil after Connect")
@@ -169,22 +169,25 @@ func InsertOnInstance(ctx context.Context, server string, connOpts tarantool.Opt
 	return nil
 }
 
-func InsertOnInstances(servers []string, connOpts tarantool.Opts, space interface{},
+func InsertOnInstances(
+	dialers []tarantool.Dialer,
+	connOpts tarantool.Opts,
+	space interface{},
 	tuple interface{}) error {
-	serversNumber := len(servers)
+	serversNumber := len(dialers)
 	roles := make([]bool, serversNumber)
 	for i := 0; i < serversNumber; i++ {
 		roles[i] = false
 	}
 
-	err := SetClusterRO(servers, connOpts, roles)
+	err := SetClusterRO(dialers, connOpts, roles)
 	if err != nil {
 		return fmt.Errorf("fail to set roles for cluster: %s", err.Error())
 	}
 
-	for _, server := range servers {
+	for _, dialer := range dialers {
 		ctx, cancel := GetConnectContext()
-		err := InsertOnInstance(ctx, server, connOpts, space, tuple)
+		err := InsertOnInstance(ctx, dialer, connOpts, space, tuple)
 		cancel()
 		if err != nil {
 			return err
@@ -194,9 +197,9 @@ func InsertOnInstances(servers []string, connOpts tarantool.Opts, space interfac
 	return nil
 }
 
-func SetInstanceRO(ctx context.Context, server string, connOpts tarantool.Opts,
+func SetInstanceRO(ctx context.Context, dialer tarantool.Dialer, connOpts tarantool.Opts,
 	isReplica bool) error {
-	conn, err := tarantool.Connect(ctx, server, connOpts)
+	conn, err := tarantool.Connect(ctx, dialer, connOpts)
 	if err != nil {
 		return err
 	}
@@ -212,14 +215,15 @@ func SetInstanceRO(ctx context.Context, server string, connOpts tarantool.Opts,
 	return nil
 }
 
-func SetClusterRO(servers []string, connOpts tarantool.Opts, roles []bool) error {
-	if len(servers) != len(roles) {
+func SetClusterRO(dialers []tarantool.Dialer, connOpts tarantool.Opts,
+	roles []bool) error {
+	if len(dialers) != len(roles) {
 		return fmt.Errorf("number of servers should be equal to number of roles")
 	}
 
-	for i, server := range servers {
+	for i, dialer := range dialers {
 		ctx, cancel := GetConnectContext()
-		err := SetInstanceRO(ctx, server, connOpts, roles[i])
+		err := SetInstanceRO(ctx, dialer, connOpts, roles[i])
 		cancel()
 		if err != nil {
 			return err
@@ -229,23 +233,10 @@ func SetClusterRO(servers []string, connOpts tarantool.Opts, roles []bool) error
 	return nil
 }
 
-func StartTarantoolInstances(servers []string, workDirs []string,
-	opts StartOpts) ([]TarantoolInstance, error) {
-	isUserWorkDirs := (workDirs != nil)
-	if isUserWorkDirs && (len(servers) != len(workDirs)) {
-		return nil, fmt.Errorf("number of servers should be equal to number of workDirs")
-	}
+func StartTarantoolInstances(instsOpts []StartOpts) ([]TarantoolInstance, error) {
+	instances := make([]TarantoolInstance, 0, len(instsOpts))
 
-	instances := make([]TarantoolInstance, 0, len(servers))
-
-	for i, server := range servers {
-		opts.Listen = server
-		if isUserWorkDirs {
-			opts.WorkDir = workDirs[i]
-		} else {
-			opts.WorkDir = ""
-		}
-
+	for _, opts := range instsOpts {
 		instance, err := StartTarantool(opts)
 		if err != nil {
 			StopTarantoolInstances(instances)

@@ -1,20 +1,22 @@
 package tarantool
 
 import (
-	"context"
-	"net"
 	"time"
 
 	"github.com/vmihailenco/msgpack/v5"
 )
 
-func SslDialContext(ctx context.Context, network, address string,
-	opts SslOpts) (connection net.Conn, err error) {
-	return sslDialContext(ctx, network, address, opts)
+type SslTestOpts struct {
+	KeyFile      string
+	CertFile     string
+	CaFile       string
+	Ciphers      string
+	Password     string
+	PasswordFile string
 }
 
-func SslCreateContext(opts SslOpts) (ctx interface{}, err error) {
-	return sslCreateContext(opts)
+func SslCreateContext(opts SslTestOpts) (ctx interface{}, err error) {
+	return sslCreateContext(sslOpts(opts))
 }
 
 // RefImplPingBody is reference implementation for filling of a ping

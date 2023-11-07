@@ -2,7 +2,6 @@ package pool_test
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/tarantool/go-iproto"
@@ -22,14 +21,42 @@ type Tuple struct {
 
 var testRoles = []bool{true, true, false, true, true}
 
-func examplePool(roles []bool, connOpts tarantool.Opts) (*pool.ConnectionPool, error) {
-	err := test_helpers.SetClusterRO(servers, connOpts, roles)
+func examplePool(roles []bool,
+	connOpts tarantool.Opts) (*pool.ConnectionPool, error) {
+	err := test_helpers.SetClusterRO(dialers, connOpts, roles)
 	if err != nil {
 		return nil, fmt.Errorf("ConnectionPool is not established")
 	}
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.Connect(ctx, servers, connOpts)
+	connPool, err := pool.Connect(ctx, dialersMap, connOpts)
+	if err != nil || connPool == nil {
+		return nil, fmt.Errorf("ConnectionPool is not established")
+	}
+
+	return connPool, nil
+}
+
+func exampleFeaturesPool(roles []bool, connOpts tarantool.Opts,
+	requiredProtocol tarantool.ProtocolInfo) (*pool.ConnectionPool, error) {
+	poolDialersMap := map[string]tarantool.Dialer{}
+	poolDialers := []tarantool.Dialer{}
+	for _, serv := range servers {
+		poolDialersMap[serv] = tarantool.NetDialer{
+			Address:              serv,
+			User:                 user,
+			Password:             pass,
+			RequiredProtocolInfo: requiredProtocol,
+		}
+		poolDialers = append(poolDialers, poolDialersMap[serv])
+	}
+	err := test_helpers.SetClusterRO(poolDialers, connOpts, roles)
+	if err != nil {
+		return nil, fmt.Errorf("ConnectionPool is not established")
+	}
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx, poolDialersMap, connOpts)
 	if err != nil || connPool == nil {
 		return nil, fmt.Errorf("ConnectionPool is not established")
 	}
@@ -94,11 +121,6 @@ func ExampleConnectionPool_NewWatcher() {
 	const key = "foo"
 	const value = "bar"
 
-	opts := connOpts.Clone()
-	opts.RequiredProtocolInfo.Features = []iproto.Feature{
-		iproto.IPROTO_FEATURE_WATCHERS,
-	}
-
 	connPool, err := examplePool(testRoles, connOpts)
 	if err != nil {
 		fmt.Println(err)
@@ -122,49 +144,15 @@ func ExampleConnectionPool_NewWatcher() {
 	time.Sleep(time.Second)
 }
 
-func ExampleConnectionPool_NewWatcher_noWatchersFeature() {
-	const key = "foo"
-
-	opts := connOpts.Clone()
-	opts.RequiredProtocolInfo.Features = []iproto.Feature{}
-
-	connPool, err := examplePool(testRoles, connOpts)
-	if err != nil {
-		fmt.Println(err)
-	}
-	defer connPool.Close()
-
-	callback := func(event tarantool.WatchEvent) {}
-	watcher, err := connPool.NewWatcher(key, callback, pool.ANY)
-	fmt.Println(watcher)
-	if err != nil {
-		// Need to split the error message into two lines to pass
-		// golangci-lint.
-		str := err.Error()
-		fmt.Println(strings.Trim(str[:56], " "))
-		fmt.Println(str[56:])
-	} else {
-		fmt.Println(err)
-	}
-	// Output:
-	// <nil>
-	// the feature IPROTO_FEATURE_WATCHERS must be required by
-	// connection options to create a watcher
-}
-
-func getTestTxnOpts() tarantool.Opts {
-	txnOpts := connOpts.Clone()
-
+func getTestTxnProtocol() tarantool.ProtocolInfo {
 	// Assert that server supports expected protocol features
-	txnOpts.RequiredProtocolInfo = tarantool.ProtocolInfo{
+	return tarantool.ProtocolInfo{
 		Version: tarantool.ProtocolVersion(1),
 		Features: []iproto.Feature{
 			iproto.IPROTO_FEATURE_STREAMS,
 			iproto.IPROTO_FEATURE_TRANSACTIONS,
 		},
 	}
-
-	return txnOpts
 }
 
 func ExampleCommitRequest() {
@@ -178,8 +166,7 @@ func ExampleCommitRequest() {
 		return
 	}
 
-	txnOpts := getTestTxnOpts()
-	connPool, err := examplePool(testRoles, txnOpts)
+	connPool, err := exampleFeaturesPool(testRoles, connOpts, getTestTxnProtocol())
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -265,9 +252,8 @@ func ExampleRollbackRequest() {
 		return
 	}
 
-	txnOpts := getTestTxnOpts()
 	// example pool has only one rw instance
-	connPool, err := examplePool(testRoles, txnOpts)
+	connPool, err := exampleFeaturesPool(testRoles, connOpts, getTestTxnProtocol())
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -352,9 +338,8 @@ func ExampleBeginRequest_TxnIsolation() {
 		return
 	}
 
-	txnOpts := getTestTxnOpts()
 	// example pool has only one rw instance
-	connPool, err := examplePool(testRoles, txnOpts)
+	connPool, err := exampleFeaturesPool(testRoles, connOpts, getTestTxnProtocol())
 	if err != nil {
 		fmt.Println(err)
 		return
