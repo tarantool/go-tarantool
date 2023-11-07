@@ -29,6 +29,7 @@ type CountOpts struct {
 	// load balancing policy.
 	Balance OptBool
 	// YieldEvery describes number of tuples processed to yield after.
+	// Should be positive.
 	YieldEvery OptUint
 	// BucketId is a bucket ID.
 	BucketId OptUint
