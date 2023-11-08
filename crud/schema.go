@@ -14,11 +14,39 @@ func msgpackIsMap(code byte) bool {
 	return code == msgpcode.Map16 || code == msgpcode.Map32 || msgpcode.IsFixedMap(code)
 }
 
+// SchemaOpts describes options for `crud.schema` method.
+type SchemaOpts struct {
+	// Timeout is a `vshard.call` timeout and vshard
+	// master discovery timeout (in seconds).
+	Timeout OptFloat64
+	// VshardRouter is cartridge vshard group name or
+	// vshard router instance.
+	VshardRouter OptString
+	// Cached defines whether router should reload storage schema on call.
+	Cached OptBool
+}
+
+// EncodeMsgpack provides custom msgpack encoder.
+func (opts SchemaOpts) EncodeMsgpack(enc *msgpack.Encoder) error {
+	const optsCnt = 3
+
+	names := [optsCnt]string{timeoutOptName, vshardRouterOptName,
+		cachedOptName}
+	values := [optsCnt]interface{}{}
+	exists := [optsCnt]bool{}
+	values[0], exists[0] = opts.Timeout.Get()
+	values[1], exists[1] = opts.VshardRouter.Get()
+	values[2], exists[2] = opts.Cached.Get()
+
+	return encodeOptions(enc, names[:], values[:], exists[:])
+}
+
 // SchemaRequest helps you to create request object to call `crud.schema`
 // for execution by a Connection.
 type SchemaRequest struct {
 	baseRequest
 	space OptString
+	opts  SchemaOpts
 }
 
 // MakeSchemaRequest returns a new empty SchemaRequest.
@@ -35,12 +63,19 @@ func (req SchemaRequest) Space(space string) SchemaRequest {
 	return req
 }
 
+// Opts sets the options for the SchemaRequest request.
+// Note: default value is nil.
+func (req SchemaRequest) Opts(opts SchemaOpts) SchemaRequest {
+	req.opts = opts
+	return req
+}
+
 // Body fills an encoder with the call request body.
 func (req SchemaRequest) Body(res tarantool.SchemaResolver, enc *msgpack.Encoder) error {
 	if value, ok := req.space.Get(); ok {
-		req.impl = req.impl.Args([]interface{}{value})
+		req.impl = req.impl.Args([]interface{}{value, req.opts})
 	} else {
-		req.impl = req.impl.Args([]interface{}{})
+		req.impl = req.impl.Args([]interface{}{nil, req.opts})
 	}
 
 	return req.impl.Body(res, enc)

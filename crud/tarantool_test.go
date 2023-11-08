@@ -87,6 +87,11 @@ var opObjManyOpts = crud.OperationObjectManyOpts{
 	Timeout: crud.MakeOptFloat64(timeout),
 }
 
+var schemaOpts = crud.SchemaOpts{
+	Timeout: crud.MakeOptFloat64(timeout),
+	Cached:  crud.MakeOptBool(false),
+}
+
 var conditions = []crud.Condition{
 	{
 		Operator: crud.Lt,
@@ -215,6 +220,11 @@ var testProcessDataCases = []struct {
 		"StorageInfo",
 		1,
 		crud.MakeStorageInfoRequest().Opts(baseOpts),
+	},
+	{
+		"Schema",
+		1,
+		crud.MakeSchemaRequest().Opts(schemaOpts),
 	},
 }
 
