@@ -159,6 +159,7 @@ func TestRequestsCodes(t *testing.T) {
 		{req: crud.MakeCountRequest(validSpace), rtype: CrudRequestType},
 		{req: crud.MakeStorageInfoRequest(), rtype: CrudRequestType},
 		{req: crud.MakeStatsRequest(), rtype: CrudRequestType},
+		{req: crud.MakeSchemaRequest(), rtype: CrudRequestType},
 	}
 
 	for _, test := range tests {
@@ -196,6 +197,7 @@ func TestRequestsAsync(t *testing.T) {
 		{req: crud.MakeCountRequest(validSpace), async: false},
 		{req: crud.MakeStorageInfoRequest(), async: false},
 		{req: crud.MakeStatsRequest(), async: false},
+		{req: crud.MakeSchemaRequest(), async: false},
 	}
 
 	for _, test := range tests {
@@ -233,6 +235,7 @@ func TestRequestsCtx_default(t *testing.T) {
 		{req: crud.MakeCountRequest(validSpace), expected: nil},
 		{req: crud.MakeStorageInfoRequest(), expected: nil},
 		{req: crud.MakeStatsRequest(), expected: nil},
+		{req: crud.MakeSchemaRequest(), expected: nil},
 	}
 
 	for _, test := range tests {
@@ -271,6 +274,7 @@ func TestRequestsCtx_setter(t *testing.T) {
 		{req: crud.MakeCountRequest(validSpace).Context(ctx), expected: ctx},
 		{req: crud.MakeStorageInfoRequest().Context(ctx), expected: ctx},
 		{req: crud.MakeStatsRequest().Context(ctx), expected: ctx},
+		{req: crud.MakeSchemaRequest().Context(ctx), expected: ctx},
 	}
 
 	for _, test := range tests {
@@ -426,6 +430,12 @@ func TestRequestsDefaultValues(t *testing.T) {
 			ref: tarantool.NewCall17Request("crud.stats").Args(
 				[]interface{}{}),
 			target: crud.MakeStatsRequest(),
+		},
+		{
+			name: "SchemaRequest",
+			ref: tarantool.NewCall17Request("crud.schema").Args(
+				[]interface{}{nil, map[string]interface{}{}}),
+			target: crud.MakeSchemaRequest(),
 		},
 	}
 
@@ -588,6 +598,20 @@ func TestRequestsSetters(t *testing.T) {
 			ref: tarantool.NewCall17Request("crud.stats").Args(
 				[]interface{}{spaceName}),
 			target: crud.MakeStatsRequest().Space(spaceName),
+		},
+		{
+			name: "SchemaRequest",
+			ref: tarantool.NewCall17Request("crud.schema").Args(
+				[]interface{}{nil, schemaOpts},
+			),
+			target: crud.MakeSchemaRequest().Opts(schemaOpts),
+		},
+		{
+			name: "SchemaRequestWithSpace",
+			ref: tarantool.NewCall17Request("crud.schema").Args(
+				[]interface{}{spaceName, schemaOpts},
+			),
+			target: crud.MakeSchemaRequest().Space(spaceName).Opts(schemaOpts),
 		},
 	}
 
