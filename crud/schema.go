@@ -21,14 +21,14 @@ type SchemaRequest struct {
 	space OptString
 }
 
-// MakeSchemaRequest returns a new empty StatsRequest.
+// MakeSchemaRequest returns a new empty SchemaRequest.
 func MakeSchemaRequest() SchemaRequest {
 	req := SchemaRequest{}
 	req.impl = newCall("crud.schema")
 	return req
 }
 
-// Space sets the space name for the StatsRequest request.
+// Space sets the space name for the SchemaRequest request.
 // Note: default value is nil.
 func (req SchemaRequest) Space(space string) SchemaRequest {
 	req.space = MakeOptString(space)
