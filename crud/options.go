@@ -23,7 +23,6 @@ const (
 	batchSizeOptName                     = "batch_size"
 	fetchLatestMetadataOptName           = "fetch_latest_metadata"
 	noreturnOptName                      = "noreturn"
-	yieldEvery                           = "yield_every"
 )
 
 // OptUint is an optional uint.
