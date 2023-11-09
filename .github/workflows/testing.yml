@@ -138,17 +138,20 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        sdk-path:
+          - 'release/linux/x86_64/1.10/'
         sdk-version:
-          - 'bundle-1.10.11-0-gf0b0e7ecf-r470'
+          - 'sdk-1.10.15-0-r598'
         coveralls: [false]
         fuzzing: [false]
         ssl: [false]
         include:
-          - sdk-version: 'bundle-2.10.0-1-gfa775b383-r486-linux-x86_64'
+          - sdk-path: 'release/linux/x86_64/2.10/'
+            sdk-version: 'sdk-gc64-2.10.8-0-r598.linux.x86_64'
             coveralls: false
             ssl: true
           - sdk-path: 'release/linux/x86_64/2.11/'
-            sdk-version: 'sdk-gc64-2.11.0-0-r577.linux.x86_64'
+            sdk-version: 'sdk-gc64-2.11.1-0-r598.linux.x86_64'
             coveralls: true
             ssl: true
 
