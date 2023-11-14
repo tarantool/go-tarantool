@@ -59,12 +59,38 @@ type Op struct {
 	Op    string
 	Field int
 	Arg   interface{}
+	// Pos, Len, Replace fields used in the Splice operation.
+	Pos     int
+	Len     int
+	Replace string
 }
 
 func (o Op) EncodeMsgpack(enc *msgpack.Encoder) error {
-	enc.EncodeArrayLen(3)
-	enc.EncodeString(o.Op)
-	enc.EncodeInt(int64(o.Field))
+	isSpliceOperation := o.Op == spliceOperator
+	argsLen := 3
+	if isSpliceOperation {
+		argsLen = 5
+	}
+	if err := enc.EncodeArrayLen(argsLen); err != nil {
+		return err
+	}
+	if err := enc.EncodeString(o.Op); err != nil {
+		return err
+	}
+	if err := enc.EncodeInt(int64(o.Field)); err != nil {
+		return err
+	}
+
+	if isSpliceOperation {
+		if err := enc.EncodeInt(int64(o.Pos)); err != nil {
+			return err
+		}
+		if err := enc.EncodeInt(int64(o.Len)); err != nil {
+			return err
+		}
+		return enc.EncodeString(o.Replace)
+	}
+
 	return enc.Encode(o.Arg)
 }
 
@@ -92,7 +118,12 @@ func NewOperations() *Operations {
 }
 
 func (ops *Operations) append(op string, field int, arg interface{}) *Operations {
-	ops.ops = append(ops.ops, Op{op, field, arg})
+	ops.ops = append(ops.ops, Op{Op: op, Field: field, Arg: arg})
+	return ops
+}
+
+func (ops *Operations) appendSplice(op string, field, pos, len int, replace string) *Operations {
+	ops.ops = append(ops.ops, Op{Op: op, Field: field, Pos: pos, Len: len, Replace: replace})
 	return ops
 }
 
@@ -122,8 +153,8 @@ func (ops *Operations) BitwiseXor(field int, arg interface{}) *Operations {
 }
 
 // Splice adds a splice operation to the collection of update operations.
-func (ops *Operations) Splice(field int, arg interface{}) *Operations {
-	return ops.append(spliceOperator, field, arg)
+func (ops *Operations) Splice(field, pos, len int, replace string) *Operations {
+	return ops.appendSplice(spliceOperator, field, pos, len, replace)
 }
 
 // Insert adds an insert operation to the collection of update operations.
@@ -139,22 +170,4 @@ func (ops *Operations) Delete(field int, arg interface{}) *Operations {
 // Assign adds an assign operation to the collection of update operations.
 func (ops *Operations) Assign(field int, arg interface{}) *Operations {
 	return ops.append(assignOperator, field, arg)
-}
-
-type OpSplice struct {
-	Op      string
-	Field   int
-	Pos     int
-	Len     int
-	Replace string
-}
-
-func (o OpSplice) EncodeMsgpack(enc *msgpack.Encoder) error {
-	enc.EncodeArrayLen(5)
-	enc.EncodeString(o.Op)
-	enc.EncodeInt(int64(o.Field))
-	enc.EncodeInt(int64(o.Pos))
-	enc.EncodeInt(int64(o.Len))
-	enc.EncodeString(o.Replace)
-	return nil
 }

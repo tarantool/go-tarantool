@@ -120,16 +120,16 @@ func assertBodyEqual(t testing.TB, reference []byte, req Request) {
 
 func getTestOps() ([]Op, *Operations) {
 	ops := []Op{
-		{"+", 1, 2},
-		{"-", 3, 4},
-		{"&", 5, 6},
-		{"|", 7, 8},
-		{"^", 9, 1},
-		{"^", 9, 1}, // The duplication is for test purposes.
-		{":", 2, 3},
-		{"!", 4, 5},
-		{"#", 6, 7},
-		{"=", 8, 9},
+		{Op: "+", Field: 1, Arg: 2},
+		{Op: "-", Field: 3, Arg: 4},
+		{Op: "&", Field: 5, Arg: 6},
+		{Op: "|", Field: 7, Arg: 8},
+		{Op: "^", Field: 9, Arg: 1},
+		{Op: "^", Field: 9, Arg: 1}, // The duplication is for test purposes.
+		{Op: ":", Field: 2, Pos: 3, Len: 1, Replace: "!!"},
+		{Op: "!", Field: 4, Arg: 5},
+		{Op: "#", Field: 6, Arg: 7},
+		{Op: "=", Field: 8, Arg: 9},
 	}
 	operations := NewOperations().
 		Add(1, 2).
@@ -138,7 +138,7 @@ func getTestOps() ([]Op, *Operations) {
 		BitwiseOr(7, 8).
 		BitwiseXor(9, 1).
 		BitwiseXor(9, 1). // The duplication is for test purposes.
-		Splice(2, 3).
+		Splice(2, 3, 1, "!!").
 		Insert(4, 5).
 		Delete(6, 7).
 		Assign(8, 9)

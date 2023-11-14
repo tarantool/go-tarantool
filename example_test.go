@@ -439,34 +439,29 @@ func ExampleUpdateRequest() {
 
 	for i := 1111; i <= 1112; i++ {
 		conn.Do(tarantool.NewReplaceRequest(spaceNo).
-			Tuple([]interface{}{uint(i), "hello", "world"}),
+			Tuple([]interface{}{uint(i), "text", 1, 1, 1, 1, 1}),
 		).Get()
 	}
 
 	req := tarantool.NewUpdateRequest(617).
 		Key(tarantool.IntKey{1111}).
-		Operations(tarantool.NewOperations().Assign(1, "bye"))
+		Operations(tarantool.NewOperations().
+			Add(2, 1).
+			Subtract(3, 1).
+			BitwiseAnd(4, 1).
+			BitwiseOr(5, 1).
+			BitwiseXor(6, 1).
+			Splice(1, 1, 2, "!!").
+			Insert(7, "new").
+			Assign(7, "updated"))
 	resp, err := conn.Do(req).Get()
 	if err != nil {
 		fmt.Printf("error in do update request is %v", err)
 		return
 	}
 	fmt.Printf("response is %#v\n", resp.Data)
-
-	req = tarantool.NewUpdateRequest("test").
-		Index("primary").
-		Key(tarantool.IntKey{1111}).
-		Operations(tarantool.NewOperations().Assign(1, "hello"))
-	fut := conn.Do(req)
-	resp, err = fut.Get()
-	if err != nil {
-		fmt.Printf("error in do async update request is %v", err)
-		return
-	}
-	fmt.Printf("response is %#v\n", resp.Data)
 	// Output:
-	// response is []interface {}{[]interface {}{0x457, "bye", "world"}}
-	// response is []interface {}{[]interface {}{0x457, "hello", "world"}}
+	// response is []interface {}{[]interface {}{0x457, "t!!t", 2, 0, 1, 1, 0, "updated"}}
 }
 
 func ExampleUpdateRequest_spaceAndIndexNames() {
