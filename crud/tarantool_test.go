@@ -40,6 +40,63 @@ var startOpts test_helpers.StartOpts = test_helpers.StartOpts{
 var timeout = float64(1.1)
 
 var operations = []crud.Operation{
+	// Insert new fields,
+	// because double update of the same field results in an error.
+	{
+		Operator: crud.Insert,
+		Field:    4,
+		Value:    0,
+	},
+	{
+		Operator: crud.Insert,
+		Field:    5,
+		Value:    0,
+	},
+	{
+		Operator: crud.Insert,
+		Field:    6,
+		Value:    0,
+	},
+	{
+		Operator: crud.Insert,
+		Field:    7,
+		Value:    0,
+	},
+	{
+		Operator: crud.Insert,
+		Field:    8,
+		Value:    0,
+	},
+	{
+		Operator: crud.Add,
+		Field:    4,
+		Value:    1,
+	},
+	{
+		Operator: crud.Sub,
+		Field:    5,
+		Value:    1,
+	},
+	{
+		Operator: crud.And,
+		Field:    6,
+		Value:    1,
+	},
+	{
+		Operator: crud.Or,
+		Field:    7,
+		Value:    1,
+	},
+	{
+		Operator: crud.Xor,
+		Field:    8,
+		Value:    1,
+	},
+	{
+		Operator: crud.Delete,
+		Field:    4,
+		Value:    5,
+	},
 	{
 		Operator: crud.Assign,
 		Field:    "name",
@@ -540,6 +597,81 @@ func TestCrudProcessData(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestCrudUpdateSplice(t *testing.T) {
+	test_helpers.SkipIfCrudSpliceBroken(t)
+
+	conn := connect(t)
+	defer conn.Close()
+
+	req := crud.MakeUpdateRequest(spaceName).
+		Key(key).
+		Operations([]crud.Operation{
+			{
+				Operator: crud.Splice,
+				Field:    "name",
+				Pos:      1,
+				Len:      1,
+				Replace:  "!!",
+			},
+		}).
+		Opts(simpleOperationOpts)
+
+	testCrudRequestPrepareData(t, conn)
+	resp, err := conn.Do(req).Get()
+	testCrudRequestCheck(t, req, resp,
+		err, 2)
+}
+
+func TestCrudUpsertSplice(t *testing.T) {
+	test_helpers.SkipIfCrudSpliceBroken(t)
+
+	conn := connect(t)
+	defer conn.Close()
+
+	req := crud.MakeUpsertRequest(spaceName).
+		Tuple(tuple).
+		Operations([]crud.Operation{
+			{
+				Operator: crud.Splice,
+				Field:    "name",
+				Pos:      1,
+				Len:      1,
+				Replace:  "!!",
+			},
+		}).
+		Opts(simpleOperationOpts)
+
+	testCrudRequestPrepareData(t, conn)
+	resp, err := conn.Do(req).Get()
+	testCrudRequestCheck(t, req, resp,
+		err, 2)
+}
+
+func TestCrudUpsertObjectSplice(t *testing.T) {
+	test_helpers.SkipIfCrudSpliceBroken(t)
+
+	conn := connect(t)
+	defer conn.Close()
+
+	req := crud.MakeUpsertObjectRequest(spaceName).
+		Object(object).
+		Operations([]crud.Operation{
+			{
+				Operator: crud.Splice,
+				Field:    "name",
+				Pos:      1,
+				Len:      1,
+				Replace:  "!!",
+			},
+		}).
+		Opts(simpleOperationOpts)
+
+	testCrudRequestPrepareData(t, conn)
+	resp, err := conn.Do(req).Get()
+	testCrudRequestCheck(t, req, resp,
+		err, 2)
 }
 
 func TestUnflattenRows_IncorrectParams(t *testing.T) {

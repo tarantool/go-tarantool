@@ -200,6 +200,15 @@ func SkipIfWatchOnceUnsupported(t *testing.T) {
 	SkipIfFeatureUnsupported(t, "watch once", 3, 0, 0)
 }
 
+// SkipIfCrudSpliceBroken skips test run if splice operation is broken
+// on the crud side.
+// https://github.com/tarantool/crud/issues/397
+func SkipIfCrudSpliceBroken(t *testing.T) {
+	t.Helper()
+
+	SkipIfFeatureUnsupported(t, "crud update splice", 2, 0, 0)
+}
+
 // CheckEqualBoxErrors checks equivalence of tarantool.BoxError objects.
 //
 // Tarantool errors are not comparable by nature:

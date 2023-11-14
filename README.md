@@ -253,6 +253,11 @@ interface to get information if the usage of space and index names in requests
 is supported.
 * `Schema` structure no longer implements `SchemaResolver` interface.
 
+#### Client tools changes
+
+* Remove `OpSplice` struct.
+* `Operations.Splice` method now accepts 5 arguments instead of 3.
+
 ## Contributing
 
 See [the contributing guide](CONTRIBUTING.md) for detailed instructions on how

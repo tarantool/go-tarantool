@@ -80,6 +80,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
   `prefer_replica`, `balance`) setup for crud.GetRequest (#335)
 - Tests with crud 1.4.0 (#336)
 - Tests with case sensitive SQL (#341)
+- Splice update operation accepts 3 arguments instead of 5 (#348)
 
 ## [1.12.0] - 2023-06-07
 
