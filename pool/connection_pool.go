@@ -462,8 +462,8 @@ func (p *ConnectionPool) Delete(space, index interface{}, key interface{},
 //
 // Deprecated: the method will be removed in the next major version,
 // use a UpdateRequest object + Do() instead.
-func (p *ConnectionPool) Update(space, index interface{}, key, ops interface{},
-	userMode ...Mode) (*tarantool.Response, error) {
+func (p *ConnectionPool) Update(space, index interface{}, key interface{},
+	ops *tarantool.Operations, userMode ...Mode) (*tarantool.Response, error) {
 	conn, err := p.getConnByMode(RW, userMode)
 	if err != nil {
 		return nil, err
@@ -477,8 +477,8 @@ func (p *ConnectionPool) Update(space, index interface{}, key, ops interface{},
 //
 // Deprecated: the method will be removed in the next major version,
 // use a UpsertRequest object + Do() instead.
-func (p *ConnectionPool) Upsert(space interface{}, tuple, ops interface{},
-	userMode ...Mode) (*tarantool.Response, error) {
+func (p *ConnectionPool) Upsert(space interface{}, tuple interface{},
+	ops *tarantool.Operations, userMode ...Mode) (*tarantool.Response, error) {
 	conn, err := p.getConnByMode(RW, userMode)
 	if err != nil {
 		return nil, err
@@ -639,8 +639,8 @@ func (p *ConnectionPool) DeleteTyped(space, index interface{}, key interface{}, 
 //
 // Deprecated: the method will be removed in the next major version,
 // use a UpdateRequest object + Do() instead.
-func (p *ConnectionPool) UpdateTyped(space, index interface{}, key, ops interface{},
-	result interface{}, userMode ...Mode) error {
+func (p *ConnectionPool) UpdateTyped(space, index interface{}, key interface{},
+	ops *tarantool.Operations, result interface{}, userMode ...Mode) error {
 	conn, err := p.getConnByMode(RW, userMode)
 	if err != nil {
 		return err
@@ -788,8 +788,8 @@ func (p *ConnectionPool) DeleteAsync(space, index interface{}, key interface{},
 //
 // Deprecated: the method will be removed in the next major version,
 // use a UpdateRequest object + Do() instead.
-func (p *ConnectionPool) UpdateAsync(space, index interface{}, key, ops interface{},
-	userMode ...Mode) *tarantool.Future {
+func (p *ConnectionPool) UpdateAsync(space, index interface{}, key interface{},
+	ops *tarantool.Operations, userMode ...Mode) *tarantool.Future {
 	conn, err := p.getConnByMode(RW, userMode)
 	if err != nil {
 		return newErrorFuture(err)
@@ -803,8 +803,8 @@ func (p *ConnectionPool) UpdateAsync(space, index interface{}, key, ops interfac
 //
 // Deprecated: the method will be removed in the next major version,
 // use a UpsertRequest object + Do() instead.
-func (p *ConnectionPool) UpsertAsync(space interface{}, tuple interface{}, ops interface{},
-	userMode ...Mode) *tarantool.Future {
+func (p *ConnectionPool) UpsertAsync(space interface{}, tuple interface{},
+	ops *tarantool.Operations, userMode ...Mode) *tarantool.Future {
 	conn, err := p.getConnByMode(RW, userMode)
 	if err != nil {
 		return newErrorFuture(err)

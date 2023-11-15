@@ -54,8 +54,8 @@ func (k IntIntKey) EncodeMsgpack(enc *msgpack.Encoder) error {
 	return nil
 }
 
-// Op - is update operation.
-type Op struct {
+// operation - is update operation.
+type operation struct {
 	Op    string
 	Field int
 	Arg   interface{}
@@ -65,7 +65,7 @@ type Op struct {
 	Replace string
 }
 
-func (o Op) EncodeMsgpack(enc *msgpack.Encoder) error {
+func (o operation) EncodeMsgpack(enc *msgpack.Encoder) error {
 	isSpliceOperation := o.Op == spliceOperator
 	argsLen := 3
 	if isSpliceOperation {
@@ -108,22 +108,26 @@ const (
 
 // Operations is a collection of update operations.
 type Operations struct {
-	ops []Op
+	ops []operation
+}
+
+// EncodeMsgpack encodes Operations as an array of operations.
+func (ops *Operations) EncodeMsgpack(enc *msgpack.Encoder) error {
+	return enc.Encode(ops.ops)
 }
 
 // NewOperations returns a new empty collection of update operations.
 func NewOperations() *Operations {
-	ops := new(Operations)
-	return ops
+	return &Operations{[]operation{}}
 }
 
 func (ops *Operations) append(op string, field int, arg interface{}) *Operations {
-	ops.ops = append(ops.ops, Op{Op: op, Field: field, Arg: arg})
+	ops.ops = append(ops.ops, operation{Op: op, Field: field, Arg: arg})
 	return ops
 }
 
 func (ops *Operations) appendSplice(op string, field, pos, len int, replace string) *Operations {
-	ops.ops = append(ops.ops, Op{Op: op, Field: field, Pos: pos, Len: len, Replace: replace})
+	ops.ops = append(ops.ops, operation{Op: op, Field: field, Pos: pos, Len: len, Replace: replace})
 	return ops
 }
 

@@ -992,7 +992,7 @@ func TestClient(t *testing.T) {
 
 	// Update
 	resp, err = conn.Update(spaceNo, indexNo, []interface{}{uint(2)},
-		[]interface{}{[]interface{}{"=", 1, "bye"}, []interface{}{"#", 2, 1}})
+		NewOperations().Assign(1, "bye").Delete(2, 1))
 	if err != nil {
 		t.Fatalf("Failed to Update: %s", err.Error())
 	}
@@ -1021,7 +1021,7 @@ func TestClient(t *testing.T) {
 
 	// Upsert
 	resp, err = conn.Upsert(spaceNo, []interface{}{uint(3), 1},
-		[]interface{}{[]interface{}{"+", 1, 1}})
+		NewOperations().Add(1, 1))
 	if err != nil {
 		t.Fatalf("Failed to Upsert (insert): %s", err.Error())
 	}
@@ -1032,7 +1032,7 @@ func TestClient(t *testing.T) {
 		t.Errorf("Response should not have a position")
 	}
 	resp, err = conn.Upsert(spaceNo, []interface{}{uint(3), 1},
-		[]interface{}{[]interface{}{"+", 1, 1}})
+		NewOperations().Add(1, 1))
 	if err != nil {
 		t.Fatalf("Failed to Upsert (update): %s", err.Error())
 	}
@@ -2095,7 +2095,7 @@ func TestClientNamed(t *testing.T) {
 	resp, err = conn.Update(spaceName, indexName,
 		[]interface{}{
 			uint(1002)},
-		[]interface{}{[]interface{}{"=", 1, "bye"}, []interface{}{"#", 2, 1}})
+		NewOperations().Assign(1, "buy").Delete(2, 1))
 	if err != nil {
 		t.Fatalf("Failed to Update: %s", err.Error())
 	}
@@ -2105,7 +2105,7 @@ func TestClientNamed(t *testing.T) {
 
 	// Upsert
 	resp, err = conn.Upsert(spaceName,
-		[]interface{}{uint(1003), 1}, []interface{}{[]interface{}{"+", 1, 1}})
+		[]interface{}{uint(1003), 1}, NewOperations().Add(1, 1))
 	if err != nil {
 		t.Fatalf("Failed to Upsert (insert): %s", err.Error())
 	}
@@ -2113,7 +2113,7 @@ func TestClientNamed(t *testing.T) {
 		t.Errorf("Response is nil after Upsert (insert)")
 	}
 	resp, err = conn.Upsert(spaceName,
-		[]interface{}{uint(1003), 1}, []interface{}{[]interface{}{"+", 1, 1}})
+		[]interface{}{uint(1003), 1}, NewOperations().Add(1, 1))
 	if err != nil {
 		t.Fatalf("Failed to Upsert (update): %s", err.Error())
 	}

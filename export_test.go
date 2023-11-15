@@ -78,7 +78,7 @@ func RefImplDeleteBody(enc *msgpack.Encoder, res SchemaResolver, space, index,
 // RefImplUpdateBody is reference implementation for filling of an update
 // request's body.
 func RefImplUpdateBody(enc *msgpack.Encoder, res SchemaResolver, space, index,
-	key, ops interface{}) error {
+	key interface{}, ops *Operations) error {
 	spaceEnc, err := newSpaceEncoder(res, space)
 	if err != nil {
 		return err
@@ -93,7 +93,7 @@ func RefImplUpdateBody(enc *msgpack.Encoder, res SchemaResolver, space, index,
 // RefImplUpsertBody is reference implementation for filling of an upsert
 // request's body.
 func RefImplUpsertBody(enc *msgpack.Encoder, res SchemaResolver, space,
-	tuple, ops interface{}) error {
+	tuple interface{}, ops *Operations) error {
 	spaceEnc, err := newSpaceEncoder(res, space)
 	if err != nil {
 		return err

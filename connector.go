@@ -29,10 +29,10 @@ type Connector interface {
 	Delete(space, index interface{}, key interface{}) (*Response, error)
 	// Deprecated: the method will be removed in the next major version,
 	// use a UpdateRequest object + Do() instead.
-	Update(space, index interface{}, key, ops interface{}) (*Response, error)
+	Update(space, index interface{}, key interface{}, ops *Operations) (*Response, error)
 	// Deprecated: the method will be removed in the next major version,
 	// use a UpsertRequest object + Do() instead.
-	Upsert(space interface{}, tuple, ops interface{}) (*Response, error)
+	Upsert(space interface{}, tuple interface{}, ops *Operations) (*Response, error)
 	// Deprecated: the method will be removed in the next major version,
 	// use a CallRequest object + Do() instead.
 	Call(functionName string, args interface{}) (*Response, error)
@@ -67,7 +67,8 @@ type Connector interface {
 	DeleteTyped(space, index interface{}, key interface{}, result interface{}) error
 	// Deprecated: the method will be removed in the next major version,
 	// use a UpdateRequest object + Do() instead.
-	UpdateTyped(space, index interface{}, key, ops interface{}, result interface{}) error
+	UpdateTyped(space, index interface{}, key interface{}, ops *Operations,
+		result interface{}) error
 	// Deprecated: the method will be removed in the next major version,
 	// use a CallRequest object + Do() instead.
 	CallTyped(functionName string, args interface{}, result interface{}) error
@@ -100,10 +101,10 @@ type Connector interface {
 	DeleteAsync(space, index interface{}, key interface{}) *Future
 	// Deprecated: the method will be removed in the next major version,
 	// use a UpdateRequest object + Do() instead.
-	UpdateAsync(space, index interface{}, key, ops interface{}) *Future
+	UpdateAsync(space, index interface{}, key interface{}, ops *Operations) *Future
 	// Deprecated: the method will be removed in the next major version,
 	// use a UpsertRequest object + Do() instead.
-	UpsertAsync(space interface{}, tuple interface{}, ops interface{}) *Future
+	UpsertAsync(space interface{}, tuple interface{}, ops *Operations) *Future
 	// Deprecated: the method will be removed in the next major version,
 	// use a CallRequest object + Do() instead.
 	CallAsync(functionName string, args interface{}) *Future

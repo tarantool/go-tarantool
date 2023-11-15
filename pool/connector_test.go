@@ -148,7 +148,7 @@ var reqIndex interface{} = []interface{}{2}
 var reqArgs interface{} = []interface{}{3}
 var reqTuple interface{} = []interface{}{4}
 var reqKey interface{} = []interface{}{5}
-var reqOps interface{} = []interface{}{6}
+var reqOps = tarantool.NewOperations()
 
 var reqResult interface{} = []interface{}{7}
 var reqSqlInfo = tarantool.SQLInfo{AffectedCount: 3}
@@ -547,8 +547,8 @@ type updateMock struct {
 	baseRequestMock
 }
 
-func (m *updateMock) Update(space, index, key, ops interface{},
-	mode ...Mode) (*tarantool.Response, error) {
+func (m *updateMock) Update(space, index, key interface{},
+	ops *tarantool.Operations, mode ...Mode) (*tarantool.Response, error) {
 	m.called++
 	m.space = space
 	m.index = index
@@ -578,8 +578,8 @@ type updateTypedMock struct {
 	baseRequestMock
 }
 
-func (m *updateTypedMock) UpdateTyped(space, index, key, ops interface{},
-	result interface{}, mode ...Mode) error {
+func (m *updateTypedMock) UpdateTyped(space, index, key interface{},
+	ops *tarantool.Operations, result interface{}, mode ...Mode) error {
 	m.called++
 	m.space = space
 	m.index = index
@@ -610,8 +610,8 @@ type updateAsyncMock struct {
 	baseRequestMock
 }
 
-func (m *updateAsyncMock) UpdateAsync(space, index, key, ops interface{},
-	mode ...Mode) *tarantool.Future {
+func (m *updateAsyncMock) UpdateAsync(space, index, key interface{},
+	ops *tarantool.Operations, mode ...Mode) *tarantool.Future {
 	m.called++
 	m.space = space
 	m.index = index
@@ -640,7 +640,7 @@ type upsertMock struct {
 	baseRequestMock
 }
 
-func (m *upsertMock) Upsert(space, tuple, ops interface{},
+func (m *upsertMock) Upsert(space, tuple interface{}, ops *tarantool.Operations,
 	mode ...Mode) (*tarantool.Response, error) {
 	m.called++
 	m.space = space
@@ -669,8 +669,8 @@ type upsertAsyncMock struct {
 	baseRequestMock
 }
 
-func (m *upsertAsyncMock) UpsertAsync(space, tuple, ops interface{},
-	mode ...Mode) *tarantool.Future {
+func (m *upsertAsyncMock) UpsertAsync(space, tuple interface{},
+	ops *tarantool.Operations, mode ...Mode) *tarantool.Future {
 	m.called++
 	m.space = space
 	m.tuple = tuple

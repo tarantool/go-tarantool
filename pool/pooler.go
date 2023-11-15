@@ -38,11 +38,11 @@ type Pooler interface {
 		mode ...Mode) (*tarantool.Response, error)
 	// Deprecated: the method will be removed in the next major version,
 	// use a UpdateRequest object + Do() instead.
-	Update(space, index interface{}, key, ops interface{},
+	Update(space, index interface{}, key interface{}, ops *tarantool.Operations,
 		mode ...Mode) (*tarantool.Response, error)
 	// Deprecated: the method will be removed in the next major version,
 	// use a UpsertRequest object + Do() instead.
-	Upsert(space interface{}, tuple, ops interface{},
+	Upsert(space interface{}, tuple interface{}, ops *tarantool.Operations,
 		mode ...Mode) (*tarantool.Response, error)
 	// Deprecated: the method will be removed in the next major version,
 	// use a CallRequest object + Do() instead.
@@ -87,8 +87,8 @@ type Pooler interface {
 		mode ...Mode) error
 	// Deprecated: the method will be removed in the next major version,
 	// use a UpdateRequest object + Do() instead.
-	UpdateTyped(space, index interface{}, key, ops interface{},
-		result interface{}, mode ...Mode) error
+	UpdateTyped(space, index interface{}, key interface{},
+		ops *tarantool.Operations, result interface{}, mode ...Mode) error
 	// Deprecated: the method will be removed in the next major version,
 	// use a CallRequest object + Do() instead.
 	CallTyped(functionName string, args interface{}, result interface{},
@@ -128,11 +128,11 @@ type Pooler interface {
 		mode ...Mode) *tarantool.Future
 	// Deprecated: the method will be removed in the next major version,
 	// use a UpdateRequest object + Do() instead.
-	UpdateAsync(space, index interface{}, key, ops interface{},
-		mode ...Mode) *tarantool.Future
+	UpdateAsync(space, index interface{}, key interface{},
+		ops *tarantool.Operations, mode ...Mode) *tarantool.Future
 	// Deprecated: the method will be removed in the next major version,
 	// use a UpsertRequest object + Do() instead.
-	UpsertAsync(space interface{}, tuple interface{}, ops interface{},
+	UpsertAsync(space interface{}, tuple interface{}, ops *tarantool.Operations,
 		mode ...Mode) *tarantool.Future
 	// Deprecated: the method will be removed in the next major version,
 	// use a CallRequest object + Do() instead.

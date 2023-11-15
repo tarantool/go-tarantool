@@ -182,16 +182,20 @@ func fillSelect(enc *msgpack.Encoder, spaceEnc spaceEncoder, indexEnc indexEncod
 }
 
 func fillUpdate(enc *msgpack.Encoder, spaceEnc spaceEncoder, indexEnc indexEncoder,
-	key, ops interface{}) error {
+	key interface{}, ops *Operations) error {
 	enc.EncodeMapLen(4)
 	if err := fillSearch(enc, spaceEnc, indexEnc, key); err != nil {
 		return err
 	}
 	enc.EncodeUint(uint64(iproto.IPROTO_TUPLE))
+	if ops == nil {
+		return enc.Encode([]interface{}{})
+	}
 	return enc.Encode(ops)
 }
 
-func fillUpsert(enc *msgpack.Encoder, spaceEnc spaceEncoder, tuple, ops interface{}) error {
+func fillUpsert(enc *msgpack.Encoder, spaceEnc spaceEncoder, tuple interface{},
+	ops *Operations) error {
 	enc.EncodeMapLen(3)
 	if err := spaceEnc.Encode(enc); err != nil {
 		return err
@@ -202,6 +206,9 @@ func fillUpsert(enc *msgpack.Encoder, spaceEnc spaceEncoder, tuple, ops interfac
 		return err
 	}
 	enc.EncodeUint(uint64(iproto.IPROTO_OPS))
+	if ops == nil {
+		return enc.Encode([]interface{}{})
+	}
 	return enc.Encode(ops)
 }
 
@@ -308,7 +315,7 @@ func (conn *Connection) Delete(space, index interface{}, key interface{}) (*Resp
 //
 // Deprecated: the method will be removed in the next major version,
 // use a UpdateRequest object + Do() instead.
-func (conn *Connection) Update(space, index interface{}, key, ops interface{}) (*Response, error) {
+func (conn *Connection) Update(space, index, key interface{}, ops *Operations) (*Response, error) {
 	return conn.UpdateAsync(space, index, key, ops).Get()
 }
 
@@ -319,7 +326,7 @@ func (conn *Connection) Update(space, index interface{}, key, ops interface{}) (
 //
 // Deprecated: the method will be removed in the next major version,
 // use a UpsertRequest object + Do() instead.
-func (conn *Connection) Upsert(space interface{}, tuple, ops interface{}) (*Response, error) {
+func (conn *Connection) Upsert(space, tuple interface{}, ops *Operations) (*Response, error) {
 	return conn.UpsertAsync(space, tuple, ops).Get()
 }
 
@@ -464,8 +471,8 @@ func (conn *Connection) DeleteTyped(space, index interface{}, key interface{},
 //
 // Deprecated: the method will be removed in the next major version,
 // use a UpdateRequest object + Do() instead.
-func (conn *Connection) UpdateTyped(space, index interface{}, key, ops interface{},
-	result interface{}) error {
+func (conn *Connection) UpdateTyped(space, index interface{}, key interface{},
+	ops *Operations, result interface{}) error {
 	return conn.UpdateAsync(space, index, key, ops).GetTyped(result)
 }
 
@@ -580,7 +587,8 @@ func (conn *Connection) DeleteAsync(space, index interface{}, key interface{}) *
 //
 // Deprecated: the method will be removed in the next major version,
 // use a UpdateRequest object + Do() instead.
-func (conn *Connection) UpdateAsync(space, index interface{}, key, ops interface{}) *Future {
+func (conn *Connection) UpdateAsync(space, index interface{}, key interface{},
+	ops *Operations) *Future {
 	req := NewUpdateRequest(space).Index(index).Key(key)
 	req.ops = ops
 	return conn.Do(req)
@@ -591,8 +599,7 @@ func (conn *Connection) UpdateAsync(space, index interface{}, key, ops interface
 //
 // Deprecated: the method will be removed in the next major version,
 // use a UpsertRequest object + Do() instead.
-func (conn *Connection) UpsertAsync(space interface{}, tuple interface{},
-	ops interface{}) *Future {
+func (conn *Connection) UpsertAsync(space, tuple interface{}, ops *Operations) *Future {
 	req := NewUpsertRequest(space).Tuple(tuple)
 	req.ops = ops
 	return conn.Do(req)
@@ -1193,7 +1200,7 @@ func (req *DeleteRequest) Context(ctx context.Context) *DeleteRequest {
 type UpdateRequest struct {
 	spaceIndexRequest
 	key interface{}
-	ops interface{}
+	ops *Operations
 }
 
 // NewUpdateRequest returns a new empty UpdateRequest.
@@ -1202,7 +1209,6 @@ func NewUpdateRequest(space interface{}) *UpdateRequest {
 	req.rtype = iproto.IPROTO_UPDATE
 	req.setSpace(space)
 	req.key = []interface{}{}
-	req.ops = []interface{}{}
 	return req
 }
 
@@ -1223,9 +1229,7 @@ func (req *UpdateRequest) Key(key interface{}) *UpdateRequest {
 // Operations sets operations to be performed on update.
 // Note: default value is empty.
 func (req *UpdateRequest) Operations(ops *Operations) *UpdateRequest {
-	if ops != nil {
-		req.ops = ops.ops
-	}
+	req.ops = ops
 	return req
 }
 
@@ -1259,7 +1263,7 @@ func (req *UpdateRequest) Context(ctx context.Context) *UpdateRequest {
 type UpsertRequest struct {
 	spaceRequest
 	tuple interface{}
-	ops   interface{}
+	ops   *Operations
 }
 
 // NewUpsertRequest returns a new empty UpsertRequest.
@@ -1268,7 +1272,6 @@ func NewUpsertRequest(space interface{}) *UpsertRequest {
 	req.rtype = iproto.IPROTO_UPSERT
 	req.setSpace(space)
 	req.tuple = []interface{}{}
-	req.ops = []interface{}{}
 	return req
 }
 
@@ -1282,9 +1285,7 @@ func (req *UpsertRequest) Tuple(tuple interface{}) *UpsertRequest {
 // Operations sets operations to be performed on update case by the upsert request.
 // Note: default value is empty.
 func (req *UpsertRequest) Operations(ops *Operations) *UpsertRequest {
-	if ops != nil {
-		req.ops = ops.ops
-	}
+	req.ops = ops
 	return req
 }
 
