@@ -1964,7 +1964,7 @@ func TestUpsert(t *testing.T) {
 	// Mode is `RW` by default, we have only one RW instance (servers[2])
 	resp, err := connPool.Upsert(spaceName,
 		[]interface{}{"upsert_key", "upsert_value"},
-		[]interface{}{[]interface{}{"=", 1, "new_value"}})
+		tarantool.NewOperations().Assign(1, "new_value"))
 	require.Nilf(t, err, "failed to Upsert")
 	require.NotNilf(t, resp, "response is nil after Upsert")
 
@@ -1993,7 +1993,7 @@ func TestUpsert(t *testing.T) {
 	// PreferRW
 	resp, err = connPool.Upsert(
 		spaceName, []interface{}{"upsert_key", "upsert_value"},
-		[]interface{}{[]interface{}{"=", 1, "new_value"}}, pool.PreferRW)
+		tarantool.NewOperations().Assign(1, "new_value"), pool.PreferRW)
 
 	require.Nilf(t, err, "failed to Upsert")
 	require.NotNilf(t, resp, "response is nil after Upsert")
@@ -2056,7 +2056,7 @@ func TestUpdate(t *testing.T) {
 
 	// Mode is `RW` by default, we have only one RW instance (servers[2])
 	resp, err = connPool.Update(spaceName, indexNo,
-		[]interface{}{"update_key"}, []interface{}{[]interface{}{"=", 1, "new_value"}})
+		[]interface{}{"update_key"}, tarantool.NewOperations().Assign(1, "new_value"))
 	require.Nilf(t, err, "failed to Update")
 	require.NotNilf(t, resp, "response is nil after Update")
 
@@ -2085,7 +2085,7 @@ func TestUpdate(t *testing.T) {
 	// PreferRW
 	resp, err = connPool.Update(
 		spaceName, indexNo, []interface{}{"update_key"},
-		[]interface{}{[]interface{}{"=", 1, "another_value"}}, pool.PreferRW)
+		tarantool.NewOperations().Assign(1, "another_value"), pool.PreferRW)
 
 	require.Nilf(t, err, "failed to Update")
 	require.NotNilf(t, resp, "response is nil after Update")

@@ -106,7 +106,7 @@ func (c *ConnectorAdapter) Delete(space, index interface{},
 // Deprecated: the method will be removed in the next major version,
 // use a UpdateRequest object + Do() instead.
 func (c *ConnectorAdapter) Update(space, index interface{},
-	key, ops interface{}) (*tarantool.Response, error) {
+	key interface{}, ops *tarantool.Operations) (*tarantool.Response, error) {
 	return c.pool.Update(space, index, key, ops, c.mode)
 }
 
@@ -114,8 +114,8 @@ func (c *ConnectorAdapter) Update(space, index interface{},
 //
 // Deprecated: the method will be removed in the next major version,
 // use a UpsertRequest object + Do() instead.
-func (c *ConnectorAdapter) Upsert(space interface{},
-	tuple, ops interface{}) (*tarantool.Response, error) {
+func (c *ConnectorAdapter) Upsert(space, tuple interface{},
+	ops *tarantool.Operations) (*tarantool.Response, error) {
 	return c.pool.Upsert(space, tuple, ops, c.mode)
 }
 
@@ -220,7 +220,7 @@ func (c *ConnectorAdapter) DeleteTyped(space, index interface{},
 // Deprecated: the method will be removed in the next major version,
 // use a UpdateRequest object + Do() instead.
 func (c *ConnectorAdapter) UpdateTyped(space, index interface{},
-	key, ops interface{}, result interface{}) error {
+	key interface{}, ops *tarantool.Operations, result interface{}) error {
 	return c.pool.UpdateTyped(space, index, key, ops, result, c.mode)
 }
 
@@ -314,7 +314,7 @@ func (c *ConnectorAdapter) DeleteAsync(space, index interface{},
 // Deprecated: the method will be removed in the next major version,
 // use a UpdateRequest object + Do() instead.
 func (c *ConnectorAdapter) UpdateAsync(space, index interface{},
-	key, ops interface{}) *tarantool.Future {
+	key interface{}, ops *tarantool.Operations) *tarantool.Future {
 	return c.pool.UpdateAsync(space, index, key, ops, c.mode)
 }
 
@@ -322,8 +322,8 @@ func (c *ConnectorAdapter) UpdateAsync(space, index interface{},
 //
 // Deprecated: the method will be removed in the next major version,
 // use a UpsertRequest object + Do() instead.
-func (c *ConnectorAdapter) UpsertAsync(space interface{}, tuple interface{},
-	ops interface{}) *tarantool.Future {
+func (c *ConnectorAdapter) UpsertAsync(space, tuple interface{},
+	ops *tarantool.Operations) *tarantool.Future {
 	return c.pool.UpsertAsync(space, tuple, ops, c.mode)
 }
 

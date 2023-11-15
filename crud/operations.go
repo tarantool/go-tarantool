@@ -39,6 +39,7 @@ type Operation struct {
 	Replace string
 }
 
+// EncodeMsgpack encodes Operation.
 func (o Operation) EncodeMsgpack(enc *msgpack.Encoder) error {
 	isSpliceOperation := o.Operator == Splice
 	argsLen := 3

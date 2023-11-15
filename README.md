@@ -229,9 +229,17 @@ of the requests is an array instead of array of arrays.
 
 IPROTO constants have been moved to a separate package [go-iproto](https://github.com/tarantool/go-iproto).
 
-#### Request interface
+#### Request changes
 
 * The method `Code() uint32` replaced by the `Type() iproto.Type`.
+* `Op` struct for update operations made private.
+* Removed `OpSplice` struct.
+* `Operations.Splice` method now accepts 5 arguments instead of 3.
+* Requests `Update`, `UpdateAsync`, `UpdateTyped`, `Upsert`, `UpsertAsync` no 
+longer accept `ops` argument (operations) as an `interface{}`. `*Operations`
+needs to be passed instead.
+* `UpdateRequest` and `UpsertRequest` structs no longer accept `interface{}`
+for an `ops` field. `*Operations` needs to be used instead.
 
 #### Connect function
 
@@ -252,11 +260,6 @@ and user may cancel it in process.
 interface to get information if the usage of space and index names in requests 
 is supported.
 * `Schema` structure no longer implements `SchemaResolver` interface.
-
-#### Client tools changes
-
-* Remove `OpSplice` struct.
-* `Operations.Splice` method now accepts 5 arguments instead of 3.
 
 ## Contributing
 

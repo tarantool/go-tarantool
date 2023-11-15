@@ -49,6 +49,8 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
   constants for `protocol` (#337)
 - Change `crud` operations `Timeout` option type to `crud.OptFloat64`
   instead of `crud.OptUint` (#342)
+- Change all `Upsert` and `Update` requests to accept `*tarantool.Operations` 
+  as `ops` parameters instead of `interface{}` (#348)
 
 ### Deprecated
 
