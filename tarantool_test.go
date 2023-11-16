@@ -8,6 +8,8 @@ import (
 	"log"
 	"math"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"reflect"
 	"runtime"
 	"strings"
@@ -77,6 +79,7 @@ func (m *Member) DecodeMsgpack(d *msgpack.Decoder) error {
 }
 
 var server = "127.0.0.1:3013"
+var fdDialerTestServer = "127.0.0.1:3014"
 var spaceNo = uint32(617)
 var spaceName = "test"
 var indexNo = uint32(0)
@@ -3982,6 +3985,87 @@ func TestConnect_context_cancel(t *testing.T) {
 		t.Fatalf("Unexpected error, expected to contain %s, got %v",
 			"operation was canceled", err)
 	}
+}
+
+func buildSidecar(dir string) error {
+	goPath, err := exec.LookPath("go")
+	if err != nil {
+		return err
+	}
+	cmd := exec.Command(goPath, "build", "main.go")
+	cmd.Dir = filepath.Join(dir, "testdata", "sidecar")
+	return cmd.Run()
+}
+
+func TestFdDialer(t *testing.T) {
+	isLess, err := test_helpers.IsTarantoolVersionLess(3, 0, 0)
+	if err != nil || isLess {
+		t.Skip("box.session.new present in Tarantool since version 3.0")
+	}
+
+	wd, err := os.Getwd()
+	require.NoError(t, err)
+
+	err = buildSidecar(wd)
+	require.NoErrorf(t, err, "failed to build sidecar: %v", err)
+
+	instOpts := startOpts
+	instOpts.Listen = fdDialerTestServer
+	instOpts.Dialer = NetDialer{
+		Address:  fdDialerTestServer,
+		User:     "test",
+		Password: "test",
+	}
+
+	inst, err := test_helpers.StartTarantool(instOpts)
+	require.NoError(t, err)
+	defer test_helpers.StopTarantoolWithCleanup(inst)
+
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
+	defer conn.Close()
+
+	sidecarExe := filepath.Join(wd, "testdata", "sidecar", "main")
+
+	evalBody := fmt.Sprintf(`
+		local socket = require('socket')
+		local popen = require('popen')
+		local os = require('os')
+		local s1, s2 = socket.socketpair('AF_UNIX', 'SOCK_STREAM', 0)
+
+		--[[ Tell sidecar which fd use to connect. --]]
+		os.setenv('SOCKET_FD', tostring(s2:fd()))
+
+		box.session.new({
+			type = 'binary',
+			fd = s1:fd(),
+			user = 'test',
+		})
+		s1:detach()
+
+		local ph, err = popen.new({'%s'}, {
+			stdout = popen.opts.PIPE,
+			stderr = popen.opts.PIPE,
+			inherit_fds = {s2:fd()},
+		})
+
+		if err ~= nil then
+			return 1, err
+		end
+
+		ph:wait()
+
+		local status_code = ph:info().status.exit_code
+		local stderr = ph:read({stderr=true}):rstrip()
+		local stdout = ph:read({stdout=true}):rstrip()
+		return status_code, stderr, stdout
+	`, sidecarExe)
+
+	var resp []interface{}
+	err = conn.EvalTyped(evalBody, []interface{}{}, &resp)
+	require.NoError(t, err)
+	require.Equal(t, "", resp[1], resp[1])
+	require.Equal(t, "", resp[2], resp[2])
+	require.Equal(t, int8(0), resp[0])
 }
 
 // runTestMain is a body of TestMain function

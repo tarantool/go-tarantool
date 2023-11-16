@@ -4,3 +4,4 @@
 work_dir*
 .rocks
 bench*
+testdata/sidecar/main

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"strings"
 	"time"
 
@@ -247,6 +248,61 @@ func (d OpenSslDialer) Dial(ctx context.Context, opts DialOpts) (Conn, error) {
 	if err = authenticate(conn, d.Auth, d.User, d.Password, salt); err != nil {
 		conn.net.Close()
 		return nil, fmt.Errorf("failed to authenticate: %w", err)
+	}
+
+	return conn, nil
+}
+
+// FdDialer allows to use an existing socket fd for connection.
+type FdDialer struct {
+	// Fd is a socket file descrpitor.
+	Fd uintptr
+	// RequiredProtocol contains minimal protocol version and
+	// list of protocol features that should be supported by
+	// Tarantool server. By default, there are no restrictions.
+	RequiredProtocolInfo ProtocolInfo
+}
+
+type fdAddr struct {
+	Fd uintptr
+}
+
+func (a fdAddr) Network() string {
+	return "fd"
+}
+
+func (a fdAddr) String() string {
+	return fmt.Sprintf("fd://%d", a.Fd)
+}
+
+type fdConn struct {
+	net.Conn
+	Addr fdAddr
+}
+
+func (c *fdConn) RemoteAddr() net.Addr {
+	return c.Addr
+}
+
+// Dial makes FdDialer satisfy the Dialer interface.
+func (d FdDialer) Dial(ctx context.Context, opts DialOpts) (Conn, error) {
+	file := os.NewFile(d.Fd, "")
+	c, err := net.FileConn(file)
+	if err != nil {
+		return nil, fmt.Errorf("failed to dial: %w", err)
+	}
+
+	conn := new(tntConn)
+	conn.net = &fdConn{Conn: c, Addr: fdAddr{Fd: d.Fd}}
+
+	dc := &deadlineIO{to: opts.IoTimeout, c: conn.net}
+	conn.reader = bufio.NewReaderSize(dc, bufSize)
+	conn.writer = bufio.NewWriterSize(dc, bufSize)
+
+	_, err = rawDial(conn, d.RequiredProtocolInfo)
+	if err != nil {
+		conn.net.Close()
+		return nil, err
 	}
 
 	return conn, nil
