@@ -3,6 +3,7 @@ package tarantool_test
 import (
 	"context"
 	"fmt"
+	"net"
 	"time"
 
 	"github.com/tarantool/go-iproto"
@@ -1349,4 +1350,35 @@ func ExampleWatchOnceRequest() {
 	} else {
 		fmt.Println(resp.Data)
 	}
+}
+
+// This example demonstrates how to use an existing socket file descriptor
+// to establish a connection with Tarantool. This can be useful if the socket fd
+// was inherited from the Tarantool process itself.
+// For details, please see TestFdDialer in tarantool_test.go.
+func ExampleFdDialer() {
+	addr := dialer.Address
+	c, err := net.Dial("tcp", addr)
+	if err != nil {
+		fmt.Printf("can't establish connection: %v\n", err)
+		return
+	}
+	f, err := c.(*net.TCPConn).File()
+	if err != nil {
+		fmt.Printf("unexpected error: %v\n", err)
+		return
+	}
+	dialer := tarantool.FdDialer{
+		Fd: f.Fd(),
+	}
+	// Use an existing socket fd to create connection with Tarantool.
+	conn, err := tarantool.Connect(context.Background(), dialer, opts)
+	if err != nil {
+		fmt.Printf("connect error: %v\n", err)
+		return
+	}
+	resp, err := conn.Do(tarantool.NewPingRequest()).Get()
+	fmt.Println(resp.Code, err)
+	// Output:
+	// 0 <nil>
 }

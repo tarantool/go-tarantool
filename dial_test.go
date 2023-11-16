@@ -442,6 +442,7 @@ type testDialOpts struct {
 	isIdUnsupported bool
 	isPapSha256Auth bool
 	isErrAuth       bool
+	isEmptyAuth     bool
 }
 
 type dialServerActual struct {
@@ -484,6 +485,8 @@ func testDialAccept(opts testDialOpts, l net.Listener) chan dialServerActual {
 		authRequestExpected := authRequestExpectedChapSha1
 		if opts.isPapSha256Auth {
 			authRequestExpected = authRequestExpectedPapSha256
+		} else if opts.isEmptyAuth {
+			authRequestExpected = []byte{}
 		}
 		authRequestActual := make([]byte, len(authRequestExpected))
 		client.Read(authRequestActual)
@@ -526,6 +529,8 @@ func testDialer(t *testing.T, l net.Listener, dialer tarantool.Dialer,
 	authRequestExpected := authRequestExpectedChapSha1
 	if opts.isPapSha256Auth {
 		authRequestExpected = authRequestExpectedPapSha256
+	} else if opts.isEmptyAuth {
+		authRequestExpected = []byte{}
 	}
 	require.Equal(t, authRequestExpected, actual.AuthRequest)
 	conn.Close()
@@ -778,4 +783,78 @@ func TestOpenSslDialer_Dial_ctx_cancel(t *testing.T) {
 		conn.Close()
 	}
 	require.Error(t, err)
+}
+
+func TestFdDialer_Dial(t *testing.T) {
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	defer l.Close()
+	addr := l.Addr().String()
+
+	cases := []testDialOpts{
+		{
+			name:                 "all is ok",
+			expectedProtocolInfo: idResponseTyped.Clone(),
+			isEmptyAuth:          true,
+		},
+		{
+			name:                 "id request unsupported",
+			expectedProtocolInfo: tarantool.ProtocolInfo{},
+			isIdUnsupported:      true,
+			isEmptyAuth:          true,
+		},
+		{
+			name:          "greeting response error",
+			wantErr:       true,
+			expectedErr:   "failed to read greeting",
+			isErrGreeting: true,
+		},
+		{
+			name:        "id response error",
+			wantErr:     true,
+			expectedErr: "failed to identify",
+			isErrId:     true,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			sock, err := net.Dial("tcp", addr)
+			require.NoError(t, err)
+			f, err := sock.(*net.TCPConn).File()
+			require.NoError(t, err)
+			dialer := tarantool.FdDialer{
+				Fd: f.Fd(),
+			}
+			testDialer(t, l, dialer, tc)
+		})
+	}
+}
+
+func TestFdDialer_Dial_requirements(t *testing.T) {
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	defer l.Close()
+	addr := l.Addr().String()
+
+	sock, err := net.Dial("tcp", addr)
+	require.NoError(t, err)
+	f, err := sock.(*net.TCPConn).File()
+	require.NoError(t, err)
+	dialer := tarantool.FdDialer{
+		Fd: f.Fd(),
+		RequiredProtocolInfo: tarantool.ProtocolInfo{
+			Features: []iproto.Feature{42},
+		},
+	}
+
+	testDialAccept(testDialOpts{}, l)
+	ctx, cancel := test_helpers.GetConnectContext()
+	defer cancel()
+	conn, err := dialer.Dial(ctx, tarantool.DialOpts{})
+	if err == nil {
+		conn.Close()
+	}
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "invalid server protocol")
 }
