@@ -27,6 +27,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
   version >= 3.0.0-alpha1 (#338). It allows to use space and index names 
   in requests instead of their IDs.
 - `GetSchema` function to get the actual schema (#7)
+- Support connection via an existing socket fd (#321)
 
 ### Changed
 
@@ -55,6 +56,17 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 - Change `OverrideSchema(*Schema)` to `SetSchema(Schema)` (#7)
 - Change values, stored by pointers in the `Schema`, `Space`, `Index` structs, 
   to be stored by their values (#7)
+- Make `Dialer` mandatory for creation a single connection / connection pool (#321)
+- Remove `Connection.RemoteAddr()`, `Connection.LocalAddr()`.
+  Add `Addr()` function instead (#321)
+- Remove `Connection.ClientProtocolInfo`, `Connection.ServerProtocolInfo`.
+  Add `ProtocolInfo()` function, which returns the server protocol info (#321)
+- `NewWatcher` checks the actual features of the server, rather than relying
+  on the features provided by the user during connection creation (#321)
+- `pool.NewWatcher` does not create watchers for connections that do not support
+  it (#321)
+- Rename `pool.GetPoolInfo` to `pool.GetInfo`. Change return type to
+  `map[string]ConnectionInfo` (#321)
 
 ### Deprecated
 
