@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/tarantool/go-iproto"
 	"github.com/vmihailenco/msgpack/v5"
 	"github.com/vmihailenco/msgpack/v5/msgpcode"
 )
@@ -58,9 +57,22 @@ type SchemaResolver interface {
 type Schema struct {
 	Version uint
 	// Spaces is map from space names to spaces.
-	Spaces map[string]*Space
+	Spaces map[string]Space
 	// SpacesById is map from space numbers to spaces.
-	SpacesById map[uint32]*Space
+	SpacesById map[uint32]Space
+}
+
+func (schema *Schema) copy() Schema {
+	schemaCopy := *schema
+	schemaCopy.Spaces = make(map[string]Space, len(schema.Spaces))
+	for name, space := range schema.Spaces {
+		schemaCopy.Spaces[name] = space.copy()
+	}
+	schemaCopy.SpacesById = make(map[uint32]Space, len(schema.SpacesById))
+	for id, space := range schema.SpacesById {
+		schemaCopy.SpacesById[id] = space.copy()
+	}
+	return schemaCopy
 }
 
 // Space contains information about Tarantool's space.
@@ -72,12 +84,33 @@ type Space struct {
 	Temporary bool // Is this space temporary?
 	// Field configuration is not mandatory and not checked by Tarantool.
 	FieldsCount uint32
-	Fields      map[string]*Field
-	FieldsById  map[uint32]*Field
+	Fields      map[string]Field
+	FieldsById  map[uint32]Field
 	// Indexes is map from index names to indexes.
-	Indexes map[string]*Index
+	Indexes map[string]Index
 	// IndexesById is map from index numbers to indexes.
-	IndexesById map[uint32]*Index
+	IndexesById map[uint32]Index
+}
+
+func (space *Space) copy() Space {
+	spaceCopy := *space
+	spaceCopy.Fields = make(map[string]Field, len(space.Fields))
+	for name, field := range space.Fields {
+		spaceCopy.Fields[name] = field
+	}
+	spaceCopy.FieldsById = make(map[uint32]Field, len(space.FieldsById))
+	for id, field := range space.FieldsById {
+		spaceCopy.FieldsById[id] = field
+	}
+	spaceCopy.Indexes = make(map[string]Index, len(space.Indexes))
+	for name, index := range space.Indexes {
+		spaceCopy.Indexes[name] = index.copy()
+	}
+	spaceCopy.IndexesById = make(map[uint32]Index, len(space.IndexesById))
+	for id, index := range space.IndexesById {
+		spaceCopy.IndexesById[id] = index.copy()
+	}
+	return spaceCopy
 }
 
 func (space *Space) DecodeMsgpack(d *msgpack.Decoder) error {
@@ -135,17 +168,17 @@ func (space *Space) DecodeMsgpack(d *msgpack.Decoder) error {
 			return errors.New("unexpected schema format (space flags)")
 		}
 	}
-	space.FieldsById = make(map[uint32]*Field)
-	space.Fields = make(map[string]*Field)
-	space.IndexesById = make(map[uint32]*Index)
-	space.Indexes = make(map[string]*Index)
+	space.FieldsById = make(map[uint32]Field)
+	space.Fields = make(map[string]Field)
+	space.IndexesById = make(map[uint32]Index)
+	space.Indexes = make(map[string]Index)
 	if arrayLen >= vspaceSpFormatFieldNum {
 		fieldCount, err := d.DecodeArrayLen()
 		if err != nil {
 			return err
 		}
 		for i := 0; i < fieldCount; i++ {
-			field := &Field{}
+			field := Field{}
 			if err := field.DecodeMsgpack(d); err != nil {
 				return err
 			}
@@ -206,7 +239,14 @@ type Index struct {
 	Name    string
 	Type    string
 	Unique  bool
-	Fields  []*IndexField
+	Fields  []IndexField
+}
+
+func (index *Index) copy() Index {
+	indexCopy := *index
+	indexCopy.Fields = make([]IndexField, len(index.Fields))
+	copy(indexCopy.Fields, index.Fields)
+	return indexCopy
 }
 
 func (index *Index) DecodeMsgpack(d *msgpack.Decoder) error {
@@ -261,9 +301,9 @@ func (index *Index) DecodeMsgpack(d *msgpack.Decoder) error {
 		if err != nil {
 			return err
 		}
-		index.Fields = make([]*IndexField, fieldCount)
+		index.Fields = make([]IndexField, fieldCount)
 		for i := 0; i < int(fieldCount); i++ {
-			index.Fields[i] = new(IndexField)
+			index.Fields[i] = IndexField{}
 			if index.Fields[i].Id, err = d.DecodeUint32(); err != nil {
 				return err
 			}
@@ -340,16 +380,17 @@ func (indexField *IndexField) DecodeMsgpack(d *msgpack.Decoder) error {
 	return errors.New("unexpected schema format (index fields)")
 }
 
-func (conn *Connection) loadSchema() (err error) {
-	schema := new(Schema)
-	schema.SpacesById = make(map[uint32]*Space)
-	schema.Spaces = make(map[string]*Space)
+// GetSchema returns the actual schema for the connection.
+func GetSchema(conn Connector) (Schema, error) {
+	schema := Schema{}
+	schema.SpacesById = make(map[uint32]Space)
+	schema.Spaces = make(map[string]Space)
 
 	// Reload spaces.
-	var spaces []*Space
-	err = conn.SelectTyped(vspaceSpId, 0, 0, maxSchemas, IterAll, []interface{}{}, &spaces)
+	var spaces []Space
+	err := conn.SelectTyped(vspaceSpId, 0, 0, maxSchemas, IterAll, []interface{}{}, &spaces)
 	if err != nil {
-		return err
+		return Schema{}, err
 	}
 	for _, space := range spaces {
 		schema.SpacesById[space.Id] = space
@@ -357,10 +398,10 @@ func (conn *Connection) loadSchema() (err error) {
 	}
 
 	// Reload indexes.
-	var indexes []*Index
+	var indexes []Index
 	err = conn.SelectTyped(vindexSpId, 0, 0, maxSchemas, IterAll, []interface{}{}, &indexes)
 	if err != nil {
-		return err
+		return Schema{}, err
 	}
 	for _, index := range indexes {
 		spaceId := index.SpaceId
@@ -368,23 +409,11 @@ func (conn *Connection) loadSchema() (err error) {
 			schema.SpacesById[spaceId].IndexesById[index.Id] = index
 			schema.SpacesById[spaceId].Indexes[index.Name] = index
 		} else {
-			return errors.New("concurrent schema update")
+			return Schema{}, errors.New("concurrent schema update")
 		}
 	}
 
-	spaceAndIndexNamesSupported :=
-		isFeatureInSlice(iproto.IPROTO_FEATURE_SPACE_AND_INDEX_NAMES,
-			conn.serverProtocolInfo.Features)
-
-	conn.lockShards()
-	conn.Schema = schema
-	conn.schemaResolver = &loadedSchemaResolver{
-		Schema:                      schema,
-		SpaceAndIndexNamesSupported: spaceAndIndexNamesSupported,
-	}
-	conn.unlockShards()
-
-	return nil
+	return schema, nil
 }
 
 // resolveSpaceNumber tries to resolve a space number.
@@ -462,7 +491,7 @@ func resolveIndexNumber(i interface{}) (uint32, error) {
 }
 
 type loadedSchemaResolver struct {
-	Schema *Schema
+	Schema Schema
 	// SpaceAndIndexNamesSupported shows if a current Tarantool version supports
 	// iproto.IPROTO_FEATURE_SPACE_AND_INDEX_NAMES.
 	SpaceAndIndexNamesSupported bool

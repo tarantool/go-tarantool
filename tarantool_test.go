@@ -1851,6 +1851,57 @@ func TestConnection_DoWithStrangerConn(t *testing.T) {
 	}
 }
 
+func TestGetSchema(t *testing.T) {
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	defer conn.Close()
+
+	s, err := GetSchema(conn)
+	if err != nil {
+		t.Errorf("unexpected error: %s", err.Error())
+	}
+	if s.Version != 0 || s.Spaces[spaceName].Id != spaceNo {
+		t.Errorf("GetSchema() returns incorrect schema")
+	}
+}
+
+func TestConnection_SetSchema_Changes(t *testing.T) {
+	conn := test_helpers.ConnectWithValidation(t, server, opts)
+	defer conn.Close()
+
+	req := NewInsertRequest(spaceName)
+	req.Tuple([]interface{}{uint(1010), "Tarantool"})
+	resp, err := conn.Do(req).Get()
+	if err != nil {
+		t.Fatalf("Failed to Insert: %s", err.Error())
+	}
+	if resp.Code != OkCode {
+		t.Errorf("Failed to Insert: wrong code returned %d", resp.Code)
+	}
+
+	s, err := GetSchema(conn)
+	if err != nil {
+		t.Errorf("unexpected error: %s", err.Error())
+	}
+	conn.SetSchema(s)
+
+	// Check if changes of the SetSchema result will do nothing to the
+	// connection schema.
+	s.Spaces[spaceName] = Space{}
+
+	reqS := NewSelectRequest(spaceName)
+	reqS.Key([]interface{}{uint(1010)})
+	resp, err = conn.Do(reqS).Get()
+	if err != nil {
+		t.Fatalf("failed to Select: %s", err.Error())
+	}
+	if resp.Code != OkCode {
+		t.Errorf("failed to Select: wrong code returned %d", resp.Code)
+	}
+	if resp.Data[0].([]interface{})[1] != "Tarantool" {
+		t.Errorf("wrong Select body: %v", resp.Data)
+	}
+}
+
 func TestNewPreparedFromResponse(t *testing.T) {
 	var (
 		ErrNilResponsePassed = fmt.Errorf("passed nil response")
@@ -1882,14 +1933,17 @@ func TestSchema(t *testing.T) {
 	defer conn.Close()
 
 	// Schema
-	schema := conn.Schema
+	schema, err := GetSchema(conn)
+	if err != nil {
+		t.Errorf("unexpected error: %s", err.Error())
+	}
 	if schema.SpacesById == nil {
 		t.Errorf("schema.SpacesById is nil")
 	}
 	if schema.Spaces == nil {
 		t.Errorf("schema.Spaces is nil")
 	}
-	var space, space2 *Space
+	var space, space2 Space
 	var ok bool
 	if space, ok = schema.SpacesById[616]; !ok {
 		t.Errorf("space with id = 616 was not found in schema.SpacesById")
@@ -1897,9 +1951,8 @@ func TestSchema(t *testing.T) {
 	if space2, ok = schema.Spaces["schematest"]; !ok {
 		t.Errorf("space with name 'schematest' was not found in schema.SpacesById")
 	}
-	if space != space2 {
-		t.Errorf("space with id = 616 and space with name schematest are different")
-	}
+	assert.Equal(t, space, space2,
+		"space with id = 616 and space with name schematest are different")
 	if space.Id != 616 {
 		t.Errorf("space 616 has incorrect Id")
 	}
@@ -1929,7 +1982,7 @@ func TestSchema(t *testing.T) {
 		t.Errorf("space.Fields len is incorrect")
 	}
 
-	var field1, field2, field5, field1n, field5n *Field
+	var field1, field2, field5, field1n, field5n Field
 	if field1, ok = space.FieldsById[1]; !ok {
 		t.Errorf("field id = 1 was not found")
 	}
@@ -1975,7 +2028,7 @@ func TestSchema(t *testing.T) {
 		t.Errorf("space.Indexes len is incorrect")
 	}
 
-	var index0, index3, index0n, index3n *Index
+	var index0, index3, index0n, index3n Index
 	if index0, ok = space.IndexesById[0]; !ok {
 		t.Errorf("index id = 0 was not found")
 	}
@@ -1988,9 +2041,10 @@ func TestSchema(t *testing.T) {
 	if index3n, ok = space.Indexes["secondary"]; !ok {
 		t.Errorf("index name = secondary was not found")
 	}
-	if index0 != index0n || index3 != index3n {
-		t.Errorf("index with id = 3 and index with name 'secondary' are different")
-	}
+	assert.Equal(t, index0, index0n,
+		"index with id = 0 and index with name 'primary' are different")
+	assert.Equal(t, index3, index3n,
+		"index with id = 3 and index with name 'secondary' are different")
 	if index3.Id != 3 {
 		t.Errorf("index has incorrect Id")
 	}
@@ -2012,7 +2066,7 @@ func TestSchema(t *testing.T) {
 
 	ifield1 := index3.Fields[0]
 	ifield2 := index3.Fields[1]
-	if ifield1 == nil || ifield2 == nil {
+	if (ifield1 == IndexField{}) || (ifield2 == IndexField{}) {
 		t.Fatalf("index field is nil")
 	}
 	if ifield1.Id != 1 || ifield2.Id != 2 {
@@ -2028,18 +2082,21 @@ func TestSchema_IsNullable(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, server, opts)
 	defer conn.Close()
 
-	schema := conn.Schema
+	schema, err := GetSchema(conn)
+	if err != nil {
+		t.Errorf("unexpected error: %s", err.Error())
+	}
 	if schema.Spaces == nil {
 		t.Errorf("schema.Spaces is nil")
 	}
 
-	var space *Space
+	var space Space
 	var ok bool
 	if space, ok = schema.SpacesById[616]; !ok {
 		t.Errorf("space with id = 616 was not found in schema.SpacesById")
 	}
 
-	var field, field_nullable *Field
+	var field, field_nullable Field
 	for i := 0; i <= 5; i++ {
 		name := fmt.Sprintf("name%d", i)
 		if field, ok = space.Fields[name]; !ok {
