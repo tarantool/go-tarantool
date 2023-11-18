@@ -26,6 +26,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 - Support `IPROTO_FEATURE_SPACE_AND_INDEX_NAMES` for Tarantool
   version >= 3.0.0-alpha1 (#338). It allows to use space and index names 
   in requests instead of their IDs.
+- `GetSchema` function to get the actual schema (#7)
 
 ### Changed
 
@@ -51,6 +52,9 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
   instead of `crud.OptUint` (#342)
 - Change all `Upsert` and `Update` requests to accept `*tarantool.Operations` 
   as `ops` parameters instead of `interface{}` (#348)
+- Change `OverrideSchema(*Schema)` to `SetSchema(Schema)` (#7)
+- Change values, stored by pointers in the `Schema`, `Space`, `Index` structs, 
+  to be stored by their values (#7)
 
 ### Deprecated
 
@@ -70,6 +74,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 - UUID_extId (#158)
 - IPROTO constants (#158)
 - Code() method from the Request interface (#158)
+- `Schema` field from the `Connection` struct (#7)
 
 ### Fixed
 

@@ -248,6 +248,13 @@ now does not attempt to reconnect and tries to establish a connection only once.
 Function might be canceled via context. Context accepted as first argument, 
 and user may cancel it in process.
 
+#### Connection schema
+
+* Removed `Schema` field from the `Connection` struct. Instead, new 
+`GetSchema(Connector)` function was added to get the actual connection 
+schema on demand.
+* `OverrideSchema(*Schema)` method replaced with the `SetSchema(Schema)`.
+
 #### Protocol changes
 
 * `iproto.Feature` type used instead of `ProtocolFeature`.
@@ -260,6 +267,10 @@ and user may cancel it in process.
 interface to get information if the usage of space and index names in requests 
 is supported.
 * `Schema` structure no longer implements `SchemaResolver` interface.
+* `Spaces` and `SpacesById` fields of the `Schema` struct store spaces by value.
+* `Fields` and `FieldsById` fields of the `Space` struct store fields by value.
+`Index` and `IndexById` fields of the `Space` struct store indexes by value.
+* `Fields` field of the `Index` struct store `IndexField` by value.
 
 ## Contributing
 

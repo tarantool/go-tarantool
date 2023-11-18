@@ -160,8 +160,6 @@ type Connection struct {
 	c     Conn
 	mutex sync.Mutex
 	cond  *sync.Cond
-	// Schema contains schema loaded on connection.
-	Schema *Schema
 	// schemaResolver contains a SchemaResolver implementation.
 	schemaResolver SchemaResolver
 	// requestId contains the last request ID for requests with nil context.
@@ -436,12 +434,14 @@ func Connect(ctx context.Context, addr string, opts Opts) (conn *Connection, err
 
 	// TODO: reload schema after reconnect.
 	if !conn.opts.SkipSchema {
-		if err = conn.loadSchema(); err != nil {
+		schema, err := GetSchema(conn)
+		if err != nil {
 			conn.mutex.Lock()
 			defer conn.mutex.Unlock()
 			conn.closeConnection(err, true)
 			return nil, err
 		}
+		conn.SetSchema(schema)
 	}
 
 	return conn, err
@@ -1302,15 +1302,21 @@ func (conn *Connection) ConfiguredTimeout() time.Duration {
 	return conn.opts.Timeout
 }
 
-// OverrideSchema sets Schema for the connection.
-func (conn *Connection) OverrideSchema(s *Schema) {
-	if s != nil {
-		conn.mutex.Lock()
-		defer conn.mutex.Unlock()
-		conn.lockShards()
-		defer conn.unlockShards()
+// SetSchema sets Schema for the connection.
+func (conn *Connection) SetSchema(s Schema) {
+	sCopy := s.copy()
+	spaceAndIndexNamesSupported :=
+		isFeatureInSlice(iproto.IPROTO_FEATURE_SPACE_AND_INDEX_NAMES,
+			conn.serverProtocolInfo.Features)
 
-		conn.Schema = s
+	conn.mutex.Lock()
+	defer conn.mutex.Unlock()
+	conn.lockShards()
+	defer conn.unlockShards()
+
+	conn.schemaResolver = &loadedSchemaResolver{
+		Schema:                      sCopy,
+		SpaceAndIndexNamesSupported: spaceAndIndexNamesSupported,
 	}
 }
 

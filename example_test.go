@@ -1063,7 +1063,10 @@ func ExampleSchema() {
 	conn := exampleConnect(opts)
 	defer conn.Close()
 
-	schema := conn.Schema
+	schema, err := tarantool.GetSchema(conn)
+	if err != nil {
+		fmt.Printf("unexpected error: %s\n", err.Error())
+	}
 	if schema.SpacesById == nil {
 		fmt.Println("schema.SpacesById is nil")
 	}
@@ -1080,13 +1083,30 @@ func ExampleSchema() {
 	// Space 2 ID 616 schematest
 }
 
+// Example demonstrates how to update the connection schema.
+func ExampleConnection_SetSchema() {
+	conn := exampleConnect(opts)
+	defer conn.Close()
+
+	// Get the actual schema.
+	schema, err := tarantool.GetSchema(conn)
+	if err != nil {
+		fmt.Printf("unexpected error: %s\n", err.Error())
+	}
+	// Update the current schema to match the actual one.
+	conn.SetSchema(schema)
+}
+
 // Example demonstrates how to retrieve information with space schema.
 func ExampleSpace() {
 	conn := exampleConnect(opts)
 	defer conn.Close()
 
 	// Save Schema to a local variable to avoid races
-	schema := conn.Schema
+	schema, err := tarantool.GetSchema(conn)
+	if err != nil {
+		fmt.Printf("unexpected error: %s\n", err.Error())
+	}
 	if schema.SpacesById == nil {
 		fmt.Println("schema.SpacesById is nil")
 	}
@@ -1120,7 +1140,7 @@ func ExampleSpace() {
 	// Space 1 ID 617 test memtx
 	// Space 1 ID 0 false
 	// Index 0 primary
-	// &{0 unsigned} &{2 string}
+	// {0 unsigned} {2 string}
 	// SpaceField 1 name0 unsigned
 	// SpaceField 2 name3 unsigned
 }
