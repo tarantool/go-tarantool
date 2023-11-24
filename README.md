@@ -109,16 +109,22 @@ import (
 	"context"
 	"fmt"
 	"time"
-	
+
 	"github.com/tarantool/go-tarantool/v2"
 )
 
 func main() {
-	opts := tarantool.Opts{User: "guest"}
-	ctx, cancel := context.WithTimeout(context.Background(), 
+	ctx, cancel := context.WithTimeout(context.Background(),
 		500 * time.Millisecond)
 	defer cancel()
-	conn, err := tarantool.Connect(ctx, "127.0.0.1:3301", opts)
+	dialer := tarantool.NetDialer {
+		Address: "127.0.0.1:3301",
+		User: 	 "guest",
+	}
+	opts := tarantool.Opts{
+		Timeout: time.Second,
+	}
+	conn, err := tarantool.Connect(ctx, dialer, opts)
 	if err != nil {
 		fmt.Println("Connection refused:", err)
 	}
@@ -135,27 +141,30 @@ func main() {
 **Observation 1:** The line "`github.com/tarantool/go-tarantool/v2`" in the
 `import(...)` section brings in all Tarantool-related functions and structures.
 
-**Observation 2:** The line starting with "`Opts :=`" sets up the options for
+**Observation 2:** The line starting with "`dialer :=`" creates dialer for
+`Connect()`. This structure contains fields required to establish a connection.
+
+**Observation 3:** The line starting with "`opts :=`" sets up the options for
 `Connect()`. In this example, the structure contains only a single value, the
-username. The structure may also contain other settings, see more in
+timeout. The structure may also contain other settings, see more in
 [documentation][godoc-opts-url] for the "`Opts`" structure.
 
-**Observation 3:** The line containing "`tarantool.Connect`" is essential for
+**Observation 4:** The line containing "`tarantool.Connect`" is essential for
 starting a session. There are three parameters:
 
 * a context,
-* a string with `host:port` format,
+* the dialer that was set up earlier,
 * the option structure that was set up earlier.
 
-There will be only one attempt to connect. If multiple attempts needed, 
-"`tarantool.Connect`" could be placed inside the loop with some timeout 
-between each try. Example could be found in the [example_test](./example_test.go), 
+There will be only one attempt to connect. If multiple attempts needed,
+"`tarantool.Connect`" could be placed inside the loop with some timeout
+between each try. Example could be found in the [example_test](./example_test.go),
 name - `ExampleConnect_reconnects`.
 
-**Observation 4:** The `err` structure will be `nil` if there is no error,
+**Observation 5:** The `err` structure will be `nil` if there is no error,
 otherwise it will have a description which can be retrieved with `err.Error()`.
 
-**Observation 5:** The `Insert` request, like almost all requests, is preceded
+**Observation 6:** The `Insert` request, like almost all requests, is preceded
 by the method `Do` of object `conn` which is the object that was returned
 by `Connect()`.
 
@@ -182,11 +191,16 @@ The subpackage has been deleted. You could use `pool` instead.
 
 * The `connection_pool` subpackage has been renamed to `pool`.
 * The type `PoolOpts` has been renamed to `Opts`.
-* `pool.Connect` now accepts context as first argument, which user may cancel 
-  in process. If it is canceled in progress, an error will be returned. 
+* `pool.Connect` now accepts context as first argument, which user may cancel
+  in process. If it is canceled in progress, an error will be returned.
   All created connections will be closed.
-* `pool.Add` now accepts context as first argument, which user may cancel in 
+* `pool.Add` now accepts context as first argument, which user may cancel in
   process.
+* Now you need to pass `map[string]Dialer` to the `pool.Connect` as the second
+  argument, instead of a list of addresses. Each dialer is associated with a
+  unique string ID, which allows them to be distinguished.
+* `pool.GetPoolInfo` has been renamed to `pool.GetInfo`. Return type has been changed
+  to `map[string]ConnectionInfo`.
 
 #### crud package
 
@@ -235,7 +249,7 @@ IPROTO constants have been moved to a separate package [go-iproto](https://githu
 * `Op` struct for update operations made private.
 * Removed `OpSplice` struct.
 * `Operations.Splice` method now accepts 5 arguments instead of 3.
-* Requests `Update`, `UpdateAsync`, `UpdateTyped`, `Upsert`, `UpsertAsync` no 
+* Requests `Update`, `UpdateAsync`, `UpdateTyped`, `Upsert`, `UpsertAsync` no
 longer accept `ops` argument (operations) as an `interface{}`. `*Operations`
 needs to be passed instead.
 * `UpdateRequest` and `UpsertRequest` structs no longer accept `interface{}`
@@ -243,15 +257,20 @@ for an `ops` field. `*Operations` needs to be used instead.
 
 #### Connect function
 
-`connection.Connect` no longer return non-working connection objects. This function 
+`connection.Connect` no longer return non-working connection objects. This function
 now does not attempt to reconnect and tries to establish a connection only once.
-Function might be canceled via context. Context accepted as first argument, 
+Function might be canceled via context. Context accepted as first argument,
 and user may cancel it in process.
+
+Now you need to pass `Dialer` as the second argument instead of URI.
+If you were using a non-SSL connection, you need to create `NetDialer`.
+For SSL-enabled connections, use `OpenSslDialer`. Please note that the options
+for creating a connection are now stored in corresponding `Dialer`, not in `Opts`.
 
 #### Connection schema
 
-* Removed `Schema` field from the `Connection` struct. Instead, new 
-`GetSchema(Connector)` function was added to get the actual connection 
+* Removed `Schema` field from the `Connection` struct. Instead, new
+`GetSchema(Connector)` function was added to get the actual connection
 schema on demand.
 * `OverrideSchema(*Schema)` method replaced with the `SetSchema(Schema)`.
 
@@ -262,9 +281,9 @@ schema on demand.
 
 #### Schema changes
 
-* `ResolveSpaceIndex` function for `SchemaResolver` interface split into two: 
-`ResolveSpace` and `ResolveIndex`. `NamesUseSupported` function added into the 
-interface to get information if the usage of space and index names in requests 
+* `ResolveSpaceIndex` function for `SchemaResolver` interface split into two:
+`ResolveSpace` and `ResolveIndex`. `NamesUseSupported` function added into the
+interface to get information if the usage of space and index names in requests
 is supported.
 * `Schema` structure no longer implements `SchemaResolver` interface.
 * `Spaces` and `SpacesById` fields of the `Schema` struct store spaces by value.
