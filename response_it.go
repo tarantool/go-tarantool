@@ -5,6 +5,9 @@ import (
 )
 
 // ResponseIterator is an interface for iteration over a set of responses.
+//
+// Deprecated: the method will be removed in the next major version,
+// use Connector.NewWatcher() instead of box.session.push().
 type ResponseIterator interface {
 	// Next tries to switch to a next Response and returns true if it exists.
 	Next() bool
@@ -16,6 +19,9 @@ type ResponseIterator interface {
 
 // TimeoutResponseIterator is an interface that extends ResponseIterator
 // and adds the ability to change a timeout for the Next() call.
+//
+// Deprecated: the method will be removed in the next major version,
+// use Connector.NewWatcher() instead of box.session.push().
 type TimeoutResponseIterator interface {
 	ResponseIterator
 	// WithTimeout allows to set up a timeout for the Next() call.

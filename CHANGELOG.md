@@ -76,6 +76,8 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 - All ConnectionPool.<Request>, ConnectionPool.<Request>Typed and
   ConnectionPool.<Request>Async methods. Instead you should use requests
   objects + ConnectionPool.Do() (#241)
+- box.session.push() usage: Future.AppendPush() and Future.GetIterator()
+  methods, ResponseIterator and TimeoutResponseIterator types (#324)
 
 ### Removed
 
