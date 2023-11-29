@@ -128,6 +128,9 @@ func NewFuture() (fut *Future) {
 
 // AppendPush appends the push response to the future.
 // Note: it works only before SetResponse() or SetError()
+//
+// Deprecated: the method will be removed in the next major version,
+// use Connector.NewWatcher() instead of box.session.push().
 func (fut *Future) AppendPush(resp *Response) {
 	fut.mutex.Lock()
 	defer fut.mutex.Unlock()
@@ -208,6 +211,9 @@ func (fut *Future) GetTyped(result interface{}) error {
 //
 //   - box.session.push():
 //     https://www.tarantool.io/en/doc/latest/reference/reference_lua/box_session/push/
+//
+// Deprecated: the method will be removed in the next major version,
+// use Connector.NewWatcher() instead of box.session.push().
 func (fut *Future) GetIterator() (it TimeoutResponseIterator) {
 	futit := &asyncResponseIterator{
 		fut: fut,
