@@ -4,11 +4,17 @@
 package tarantool_test
 
 import (
+	"context"
 	"fmt"
+	"net"
 	"os"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
+	"github.com/tarantool/go-iproto"
+	"github.com/tarantool/go-openssl"
 
 	. "github.com/tarantool/go-tarantool/v2"
 	"github.com/tarantool/go-tarantool/v2/test_helpers"
@@ -591,4 +597,184 @@ func TestOpts_PapSha256Auth(t *testing.T) {
 	client.Auth = AutoAuth
 	conn = test_helpers.ConnectWithValidation(t, client, opts)
 	conn.Close()
+}
+
+func createSslListener(t *testing.T, opts SslTestOpts) net.Listener {
+	ctx, err := SslCreateContext(opts)
+	require.NoError(t, err)
+	l, err := openssl.Listen("tcp", "127.0.0.1:0", ctx.(*openssl.Ctx))
+	require.NoError(t, err)
+	return l
+}
+
+func TestOpenSslDialer_Dial_opts(t *testing.T) {
+	for _, test := range sslTests {
+		t.Run(test.name, func(t *testing.T) {
+			l := createSslListener(t, test.serverOpts)
+			defer l.Close()
+			addr := l.Addr().String()
+
+			dialer := OpenSslDialer{
+				Address:         addr,
+				User:            testDialUser,
+				Password:        testDialPass,
+				SslKeyFile:      test.clientOpts.KeyFile,
+				SslCertFile:     test.clientOpts.CertFile,
+				SslCaFile:       test.clientOpts.CaFile,
+				SslCiphers:      test.clientOpts.Ciphers,
+				SslPassword:     test.clientOpts.Password,
+				SslPasswordFile: test.clientOpts.PasswordFile,
+			}
+			testDialer(t, l, dialer, testDialOpts{
+				wantErr:              !test.ok,
+				expectedProtocolInfo: idResponseTyped.Clone(),
+			})
+		})
+	}
+}
+
+func TestOpenSslDialer_Dial_basic(t *testing.T) {
+	l := createSslListener(t, SslTestOpts{
+		KeyFile:  "testdata/localhost.key",
+		CertFile: "testdata/localhost.crt",
+	})
+
+	defer l.Close()
+	addr := l.Addr().String()
+
+	dialer := OpenSslDialer{
+		Address:  addr,
+		User:     testDialUser,
+		Password: testDialPass,
+	}
+
+	cases := []testDialOpts{
+		{
+			name:                 "all is ok",
+			expectedProtocolInfo: idResponseTyped.Clone(),
+		},
+		{
+			name: "id request unsupported",
+			// Dialer sets auth.
+			expectedProtocolInfo: ProtocolInfo{Auth: ChapSha1Auth},
+			isIdUnsupported:      true,
+		},
+		{
+			name:          "greeting response error",
+			wantErr:       true,
+			expectedErr:   "failed to read greeting",
+			isErrGreeting: true,
+		},
+		{
+			name:        "id response error",
+			wantErr:     true,
+			expectedErr: "failed to identify",
+			isErrId:     true,
+		},
+		{
+			name:        "auth response error",
+			wantErr:     true,
+			expectedErr: "failed to authenticate",
+			isErrAuth:   true,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			testDialer(t, l, dialer, tc)
+		})
+	}
+}
+
+func TestOpenSslDialer_Dial_requirements(t *testing.T) {
+	l := createSslListener(t, SslTestOpts{
+		KeyFile:  "testdata/localhost.key",
+		CertFile: "testdata/localhost.crt",
+	})
+
+	defer l.Close()
+	addr := l.Addr().String()
+
+	dialer := OpenSslDialer{
+		Address:  addr,
+		User:     testDialUser,
+		Password: testDialPass,
+		RequiredProtocolInfo: ProtocolInfo{
+			Features: []iproto.Feature{42},
+		},
+	}
+
+	testDialAccept(testDialOpts{}, l)
+	ctx, cancel := test_helpers.GetConnectContext()
+	defer cancel()
+	conn, err := dialer.Dial(ctx, DialOpts{})
+	if err == nil {
+		conn.Close()
+	}
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "invalid server protocol")
+}
+
+func TestOpenSslDialer_Dial_papSha256Auth(t *testing.T) {
+	l := createSslListener(t, SslTestOpts{
+		KeyFile:  "testdata/localhost.key",
+		CertFile: "testdata/localhost.crt",
+	})
+
+	defer l.Close()
+	addr := l.Addr().String()
+
+	dialer := OpenSslDialer{
+		Address:  addr,
+		User:     testDialUser,
+		Password: testDialPass,
+		Auth:     PapSha256Auth,
+	}
+
+	protocol := idResponseTyped.Clone()
+	protocol.Auth = PapSha256Auth
+
+	testDialer(t, l, dialer, testDialOpts{
+		expectedProtocolInfo: protocol,
+		isPapSha256Auth:      true,
+	})
+}
+
+func TestOpenSslDialer_Dial_ctx_cancel(t *testing.T) {
+	serverOpts := SslTestOpts{
+		KeyFile:  "testdata/localhost.key",
+		CertFile: "testdata/localhost.crt",
+		CaFile:   "testdata/ca.crt",
+		Ciphers:  "ECDHE-RSA-AES256-GCM-SHA384",
+	}
+	clientOpts := SslTestOpts{
+		KeyFile:  "testdata/localhost.key",
+		CertFile: "testdata/localhost.crt",
+		CaFile:   "testdata/ca.crt",
+		Ciphers:  "ECDHE-RSA-AES256-GCM-SHA384",
+	}
+
+	l := createSslListener(t, serverOpts)
+	defer l.Close()
+	addr := l.Addr().String()
+	testDialAccept(testDialOpts{}, l)
+
+	dialer := OpenSslDialer{
+		Address:         addr,
+		User:            testDialUser,
+		Password:        testDialPass,
+		SslKeyFile:      clientOpts.KeyFile,
+		SslCertFile:     clientOpts.CertFile,
+		SslCaFile:       clientOpts.CaFile,
+		SslCiphers:      clientOpts.Ciphers,
+		SslPassword:     clientOpts.Password,
+		SslPasswordFile: clientOpts.PasswordFile,
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	conn, err := dialer.Dial(ctx, DialOpts{})
+	if err == nil {
+		conn.Close()
+	}
+	require.Error(t, err)
 }

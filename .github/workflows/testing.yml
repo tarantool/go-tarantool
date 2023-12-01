@@ -103,6 +103,11 @@ jobs:
           make test
           make testrace
 
+      - name: Run regression tests with disabled SSL
+        run: |
+          make test TAGS="go_tarantool_ssl_disable"
+          make testrace TAGS="go_tarantool_ssl_disable"
+
       - name: Run fuzzing tests
         if: ${{ matrix.fuzzing }}
         run: make fuzzing TAGS="go_tarantool_decimal_fuzzing"
@@ -192,6 +197,12 @@ jobs:
           make testrace
         env:
           TEST_TNT_SSL: ${{matrix.ssl}}
+
+      - name: Run regression tests with disabled SSL
+        run: |
+          source tarantool-enterprise/env.sh
+          make test TAGS="go_tarantool_ssl_disable"
+          make testrace TAGS="go_tarantool_ssl_disable"
 
       - name: Run fuzzing tests
         if: ${{ matrix.fuzzing }}
@@ -358,6 +369,12 @@ jobs:
           cd "${SRCDIR}"
           make test
           make testrace
+
+      - name: Run regression tests with disabled SSL
+        run: |
+          cd "${SRCDIR}"
+          make test TAGS="go_tarantool_ssl_disable"
+          make testrace TAGS="go_tarantool_ssl_disable"
 
       - name: Run fuzzing tests
         if: ${{ matrix.fuzzing }}

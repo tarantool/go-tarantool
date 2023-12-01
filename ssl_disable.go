@@ -10,10 +10,10 @@ import (
 )
 
 func sslDialContext(ctx context.Context, network, address string,
-	opts SslOpts) (connection net.Conn, err error) {
+	opts sslOpts) (connection net.Conn, err error) {
 	return nil, errors.New("SSL support is disabled.")
 }
 
-func sslCreateContext(opts SslOpts) (ctx interface{}, err error) {
+func sslCreateContext(opts sslOpts) (ctx interface{}, err error) {
 	return nil, errors.New("SSL support is disabled.")
 }
