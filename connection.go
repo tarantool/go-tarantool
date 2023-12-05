@@ -1158,7 +1158,7 @@ func (conn *Connection) timeouts() {
 }
 
 func read(r io.Reader, lenbuf []byte) (response []byte, err error) {
-	var length int
+	var length uint64
 
 	if _, err = io.ReadFull(r, lenbuf); err != nil {
 		return
@@ -1167,15 +1167,20 @@ func read(r io.Reader, lenbuf []byte) (response []byte, err error) {
 		err = errors.New("wrong response header")
 		return
 	}
-	length = (int(lenbuf[1]) << 24) +
-		(int(lenbuf[2]) << 16) +
-		(int(lenbuf[3]) << 8) +
-		int(lenbuf[4])
+	length = (uint64(lenbuf[1]) << 24) +
+		(uint64(lenbuf[2]) << 16) +
+		(uint64(lenbuf[3]) << 8) +
+		uint64(lenbuf[4])
 
-	if length == 0 {
+	switch {
+	case length == 0:
 		err = errors.New("response should not be 0 length")
 		return
+	case length > math.MaxUint32:
+		err = errors.New("response is too big")
+		return
 	}
+
 	response = make([]byte, length)
 	_, err = io.ReadFull(r, response)
 
