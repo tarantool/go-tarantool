@@ -7,17 +7,33 @@ import (
 	"github.com/vmihailenco/msgpack/v5"
 )
 
-type Response struct {
-	RequestId uint32
-	Code      uint32
-	// Error contains an error message.
-	Error string
-	// Data contains deserialized data for untyped requests.
-	Data []interface{}
-	// Pos contains a position descriptor of last selected tuple.
-	Pos      []byte
-	MetaData []ColumnMetaData
-	SQLInfo  SQLInfo
+// Response is an interface with operations for the server responses.
+type Response interface {
+	// Header returns a response header.
+	Header() Header
+	// Decode decodes a response.
+	Decode() ([]interface{}, error)
+	// DecodeTyped decodes a response into a given container res.
+	DecodeTyped(res interface{}) error
+
+	// Pos returns a position descriptor of the last selected tuple.
+	Pos() []byte
+	// MetaData returns meta-data.
+	MetaData() []ColumnMetaData
+	// SQLInfo returns sql info.
+	SQLInfo() SQLInfo
+}
+
+// ConnResponse is a Response interface implementation.
+// It is used for all request types.
+type ConnResponse struct {
+	header Header
+	// data contains deserialized data for untyped requests.
+	data []interface{}
+	// pos contains a position descriptor of last selected tuple.
+	pos      []byte
+	metaData []ColumnMetaData
+	sqlInfo  SQLInfo
 	buf      smallBuf
 }
 
@@ -103,53 +119,58 @@ func (info *SQLInfo) DecodeMsgpack(d *msgpack.Decoder) error {
 	return nil
 }
 
-func (resp *Response) smallInt(d *msgpack.Decoder) (i int, err error) {
-	b, err := resp.buf.ReadByte()
+func smallInt(d *msgpack.Decoder, buf *smallBuf) (i int, err error) {
+	b, err := buf.ReadByte()
 	if err != nil {
 		return
 	}
 	if b <= 127 {
 		return int(b), nil
 	}
-	resp.buf.UnreadByte()
+	buf.UnreadByte()
 	return d.DecodeInt()
 }
 
-func (resp *Response) decodeHeader(d *msgpack.Decoder) (err error) {
+func decodeHeader(d *msgpack.Decoder, buf *smallBuf) (Header, error) {
 	var l int
-	d.Reset(&resp.buf)
+	var err error
+	d.Reset(buf)
 	if l, err = d.DecodeMapLen(); err != nil {
-		return
+		return Header{}, err
 	}
+	decodedHeader := Header{}
 	for ; l > 0; l-- {
 		var cd int
-		if cd, err = resp.smallInt(d); err != nil {
-			return
+		if cd, err = smallInt(d, buf); err != nil {
+			return Header{}, err
 		}
 		switch iproto.Key(cd) {
 		case iproto.IPROTO_SYNC:
 			var rid uint64
 			if rid, err = d.DecodeUint64(); err != nil {
-				return
+				return Header{}, err
 			}
-			resp.RequestId = uint32(rid)
+			decodedHeader.RequestId = uint32(rid)
 		case iproto.IPROTO_REQUEST_TYPE:
 			var rcode uint64
 			if rcode, err = d.DecodeUint64(); err != nil {
-				return
+				return Header{}, err
 			}
-			resp.Code = uint32(rcode)
+			decodedHeader.Code = uint32(rcode)
 		default:
 			if err = d.Skip(); err != nil {
-				return
+				return Header{}, err
 			}
 		}
 	}
-	return nil
+	return decodedHeader, nil
 }
 
-func (resp *Response) decodeBody() (err error) {
+func (resp *ConnResponse) Decode() ([]interface{}, error) {
+	var err error
 	if resp.buf.Len() > 2 {
+		var decodedError string
+
 		offset := resp.buf.Offset()
 		defer resp.buf.Seek(offset)
 
@@ -165,67 +186,67 @@ func (resp *Response) decodeBody() (err error) {
 		})
 
 		if l, err = d.DecodeMapLen(); err != nil {
-			return err
+			return nil, err
 		}
 		for ; l > 0; l-- {
 			var cd int
-			if cd, err = resp.smallInt(d); err != nil {
-				return err
+			if cd, err = smallInt(d, &resp.buf); err != nil {
+				return nil, err
 			}
 			switch iproto.Key(cd) {
 			case iproto.IPROTO_DATA:
 				var res interface{}
 				var ok bool
 				if res, err = d.DecodeInterface(); err != nil {
-					return err
+					return nil, err
 				}
-				if resp.Data, ok = res.([]interface{}); !ok {
-					return fmt.Errorf("result is not array: %v", res)
+				if resp.data, ok = res.([]interface{}); !ok {
+					return nil, fmt.Errorf("result is not array: %v", res)
 				}
 			case iproto.IPROTO_ERROR:
 				if errorExtendedInfo, err = decodeBoxError(d); err != nil {
-					return err
+					return nil, err
 				}
 			case iproto.IPROTO_ERROR_24:
-				if resp.Error, err = d.DecodeString(); err != nil {
-					return err
+				if decodedError, err = d.DecodeString(); err != nil {
+					return nil, err
 				}
 			case iproto.IPROTO_SQL_INFO:
-				if err = d.Decode(&resp.SQLInfo); err != nil {
-					return err
+				if err = d.Decode(&resp.sqlInfo); err != nil {
+					return nil, err
 				}
 			case iproto.IPROTO_METADATA:
-				if err = d.Decode(&resp.MetaData); err != nil {
-					return err
+				if err = d.Decode(&resp.metaData); err != nil {
+					return nil, err
 				}
 			case iproto.IPROTO_STMT_ID:
 				if stmtID, err = d.DecodeUint64(); err != nil {
-					return err
+					return nil, err
 				}
 			case iproto.IPROTO_BIND_COUNT:
 				if bindCount, err = d.DecodeUint64(); err != nil {
-					return err
+					return nil, err
 				}
 			case iproto.IPROTO_VERSION:
 				if err = d.Decode(&serverProtocolInfo.Version); err != nil {
-					return err
+					return nil, err
 				}
 			case iproto.IPROTO_FEATURES:
 				if larr, err = d.DecodeArrayLen(); err != nil {
-					return err
+					return nil, err
 				}
 
 				serverProtocolInfo.Features = make([]iproto.Feature, larr)
 				for i := 0; i < larr; i++ {
 					if err = d.Decode(&feature); err != nil {
-						return err
+						return nil, err
 					}
 					serverProtocolInfo.Features[i] = feature
 				}
 			case iproto.IPROTO_AUTH_TYPE:
 				var auth string
 				if auth, err = d.DecodeString(); err != nil {
-					return err
+					return nil, err
 				}
 				found := false
 				for _, a := range [...]Auth{ChapSha1Auth, PapSha256Auth} {
@@ -235,15 +256,15 @@ func (resp *Response) decodeBody() (err error) {
 					}
 				}
 				if !found {
-					return fmt.Errorf("unknown auth type %s", auth)
+					return nil, fmt.Errorf("unknown auth type %s", auth)
 				}
 			case iproto.IPROTO_POSITION:
-				if resp.Pos, err = d.DecodeBytes(); err != nil {
-					return fmt.Errorf("unable to decode a position: %w", err)
+				if resp.pos, err = d.DecodeBytes(); err != nil {
+					return nil, fmt.Errorf("unable to decode a position: %w", err)
 				}
 			default:
 				if err = d.Skip(); err != nil {
-					return err
+					return nil, err
 				}
 			}
 		}
@@ -251,31 +272,32 @@ func (resp *Response) decodeBody() (err error) {
 			stmt := &Prepared{
 				StatementID: PreparedID(stmtID),
 				ParamCount:  bindCount,
-				MetaData:    resp.MetaData,
+				MetaData:    resp.metaData,
 			}
-			resp.Data = []interface{}{stmt}
+			resp.data = []interface{}{stmt}
 		}
 
 		// Tarantool may send only version >= 1
 		if serverProtocolInfo.Version != ProtocolVersion(0) || serverProtocolInfo.Features != nil {
 			if serverProtocolInfo.Version == ProtocolVersion(0) {
-				return fmt.Errorf("no protocol version provided in Id response")
+				return nil, fmt.Errorf("no protocol version provided in Id response")
 			}
 			if serverProtocolInfo.Features == nil {
-				return fmt.Errorf("no features provided in Id response")
+				return nil, fmt.Errorf("no features provided in Id response")
 			}
-			resp.Data = []interface{}{serverProtocolInfo}
+			resp.data = []interface{}{serverProtocolInfo}
 		}
 
-		if resp.Code != OkCode && resp.Code != PushCode {
-			resp.Code &^= uint32(iproto.IPROTO_TYPE_ERROR)
-			err = Error{iproto.Error(resp.Code), resp.Error, errorExtendedInfo}
+		if decodedError != "" {
+			resp.header.Code &^= uint32(iproto.IPROTO_TYPE_ERROR)
+			err = Error{iproto.Error(resp.header.Code), decodedError, errorExtendedInfo}
 		}
 	}
-	return
+	return resp.data, err
 }
 
-func (resp *Response) decodeBodyTyped(res interface{}) (err error) {
+func (resp *ConnResponse) DecodeTyped(res interface{}) error {
+	var err error
 	if resp.buf.Len() > 0 {
 		offset := resp.buf.Offset()
 		defer resp.buf.Seek(offset)
@@ -292,9 +314,10 @@ func (resp *Response) decodeBodyTyped(res interface{}) (err error) {
 		if l, err = d.DecodeMapLen(); err != nil {
 			return err
 		}
+		var decodedError string
 		for ; l > 0; l-- {
 			var cd int
-			if cd, err = resp.smallInt(d); err != nil {
+			if cd, err = smallInt(d, &resp.buf); err != nil {
 				return err
 			}
 			switch iproto.Key(cd) {
@@ -307,19 +330,19 @@ func (resp *Response) decodeBodyTyped(res interface{}) (err error) {
 					return err
 				}
 			case iproto.IPROTO_ERROR_24:
-				if resp.Error, err = d.DecodeString(); err != nil {
+				if decodedError, err = d.DecodeString(); err != nil {
 					return err
 				}
 			case iproto.IPROTO_SQL_INFO:
-				if err = d.Decode(&resp.SQLInfo); err != nil {
+				if err = d.Decode(&resp.sqlInfo); err != nil {
 					return err
 				}
 			case iproto.IPROTO_METADATA:
-				if err = d.Decode(&resp.MetaData); err != nil {
+				if err = d.Decode(&resp.metaData); err != nil {
 					return err
 				}
 			case iproto.IPROTO_POSITION:
-				if resp.Pos, err = d.DecodeBytes(); err != nil {
+				if resp.pos, err = d.DecodeBytes(); err != nil {
 					return fmt.Errorf("unable to decode a position: %w", err)
 				}
 			default:
@@ -328,33 +351,34 @@ func (resp *Response) decodeBodyTyped(res interface{}) (err error) {
 				}
 			}
 		}
-		if resp.Code != OkCode && resp.Code != PushCode {
-			resp.Code &^= uint32(iproto.IPROTO_TYPE_ERROR)
-			err = Error{iproto.Error(resp.Code), resp.Error, errorExtendedInfo}
+		if decodedError != "" {
+			resp.header.Code &^= uint32(iproto.IPROTO_TYPE_ERROR)
+			err = Error{iproto.Error(resp.header.Code), decodedError, errorExtendedInfo}
 		}
 	}
-	return
+	return err
+}
+
+func (resp *ConnResponse) Header() Header {
+	return resp.header
+}
+
+func (resp *ConnResponse) Pos() []byte {
+	return resp.pos
+}
+
+func (resp *ConnResponse) MetaData() []ColumnMetaData {
+	return resp.metaData
+}
+
+func (resp *ConnResponse) SQLInfo() SQLInfo {
+	return resp.sqlInfo
 }
 
 // String implements Stringer interface.
-func (resp *Response) String() (str string) {
-	if resp.Code == OkCode {
-		return fmt.Sprintf("<%d OK %v>", resp.RequestId, resp.Data)
+func (resp *ConnResponse) String() (str string) {
+	if resp.header.Code == OkCode {
+		return fmt.Sprintf("<%d OK %v>", resp.header.RequestId, resp.data)
 	}
-	return fmt.Sprintf("<%d ERR 0x%x %s>", resp.RequestId, resp.Code, resp.Error)
-}
-
-// Tuples converts result of Eval and Call to same format
-// as other actions returns (i.e. array of arrays).
-func (resp *Response) Tuples() (res [][]interface{}) {
-	res = make([][]interface{}, len(resp.Data))
-	for i, t := range resp.Data {
-		switch t := t.(type) {
-		case []interface{}:
-			res[i] = t
-		default:
-			res[i] = []interface{}{t}
-		}
-	}
-	return res
+	return fmt.Sprintf("<%d ERR 0x%x>", resp.header.RequestId, resp.header.Code)
 }

@@ -84,18 +84,15 @@ func ProcessListenOnInstance(args interface{}) error {
 
 	for i := 0; i < listenArgs.ServersNumber; i++ {
 		req := tarantool.NewEvalRequest("return box.cfg.listen")
-		resp, err := listenArgs.ConnPool.Do(req, listenArgs.Mode).Get()
+		data, err := listenArgs.ConnPool.Do(req, listenArgs.Mode).Get()
 		if err != nil {
 			return fmt.Errorf("fail to Eval: %s", err.Error())
 		}
-		if resp == nil {
-			return fmt.Errorf("response is nil after Eval")
-		}
-		if len(resp.Data) < 1 {
+		if len(data) < 1 {
 			return fmt.Errorf("response.Data is empty after Eval")
 		}
 
-		port, ok := resp.Data[0].(string)
+		port, ok := data[0].(string)
 		if !ok {
 			return fmt.Errorf("response.Data is incorrect after Eval")
 		}
@@ -142,17 +139,14 @@ func InsertOnInstance(ctx context.Context, dialer tarantool.Dialer, connOpts tar
 	}
 	defer conn.Close()
 
-	resp, err := conn.Do(tarantool.NewInsertRequest(space).Tuple(tuple)).Get()
+	data, err := conn.Do(tarantool.NewInsertRequest(space).Tuple(tuple)).Get()
 	if err != nil {
 		return fmt.Errorf("failed to Insert: %s", err.Error())
 	}
-	if resp == nil {
-		return fmt.Errorf("response is nil after Insert")
-	}
-	if len(resp.Data) != 1 {
+	if len(data) != 1 {
 		return fmt.Errorf("response Body len != 1")
 	}
-	if tpl, ok := resp.Data[0].([]interface{}); !ok {
+	if tpl, ok := data[0].([]interface{}); !ok {
 		return fmt.Errorf("unexpected body of Insert")
 	} else {
 		expectedTpl, ok := tuple.([]interface{})

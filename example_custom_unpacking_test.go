@@ -97,13 +97,12 @@ func Example_customUnpacking() {
 	tuple := Tuple2{Cid: 777, Orig: "orig", Members: []Member{{"lol", "", 1}, {"wut", "", 3}}}
 	// Insert a structure itself.
 	initReq := tarantool.NewReplaceRequest(spaceNo).Tuple(&tuple)
-	resp, err := conn.Do(initReq).Get()
+	data, err := conn.Do(initReq).Get()
 	if err != nil {
 		log.Fatalf("Failed to insert: %s", err.Error())
 		return
 	}
-	fmt.Println("Data", resp.Data)
-	fmt.Println("Code", resp.Code)
+	fmt.Println("Data", data)
 
 	var tuples1 []Tuple2
 	selectReq := tarantool.NewSelectRequest(spaceNo).
@@ -139,7 +138,6 @@ func Example_customUnpacking() {
 
 	// Output:
 	// Data [[777 orig [[lol 1] [wut 3]]]]
-	// Code 0
 	// Tuples (tuples1) [{777 orig [{lol  1} {wut  3}]}]
 	// Tuples (tuples2): [{{} 777 orig [{lol  1} {wut  3}]}]
 	// Tuples (tuples3): [[{{} 221  [{Moscow  34} {Minsk  23} {Kiev  31}]}]]

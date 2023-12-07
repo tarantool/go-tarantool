@@ -157,7 +157,6 @@ func getTestTxnProtocol() tarantool.ProtocolInfo {
 
 func ExampleCommitRequest() {
 	var req tarantool.Request
-	var resp *tarantool.Response
 	var err error
 
 	// Tarantool supports streams and interactive transactions since version 2.10.0
@@ -182,22 +181,22 @@ func ExampleCommitRequest() {
 
 	// Begin transaction
 	req = tarantool.NewBeginRequest()
-	resp, err = stream.Do(req).Get()
+	data, err := stream.Do(req).Get()
 	if err != nil {
 		fmt.Printf("Failed to Begin: %s", err.Error())
 		return
 	}
-	fmt.Printf("Begin transaction: response is %#v\n", resp.Code)
+	fmt.Printf("Begin transaction: response is %#v\n", data)
 
 	// Insert in stream
 	req = tarantool.NewInsertRequest(spaceName).
 		Tuple([]interface{}{"example_commit_key", "example_commit_value"})
-	resp, err = stream.Do(req).Get()
+	data, err = stream.Do(req).Get()
 	if err != nil {
 		fmt.Printf("Failed to Insert: %s", err.Error())
 		return
 	}
-	fmt.Printf("Insert in stream: response is %#v\n", resp.Code)
+	fmt.Printf("Insert in stream: response is %#v\n", data)
 
 	// Select not related to the transaction
 	// while transaction is not committed
@@ -207,43 +206,42 @@ func ExampleCommitRequest() {
 		Limit(1).
 		Iterator(tarantool.IterEq).
 		Key([]interface{}{"example_commit_key"})
-	resp, err = connPool.Do(selectReq, pool.RW).Get()
+	data, err = connPool.Do(selectReq, pool.RW).Get()
 	if err != nil {
 		fmt.Printf("Failed to Select: %s", err.Error())
 		return
 	}
-	fmt.Printf("Select out of stream before commit: response is %#v\n", resp.Data)
+	fmt.Printf("Select out of stream before commit: response is %#v\n", data)
 
 	// Select in stream
-	resp, err = stream.Do(selectReq).Get()
+	data, err = stream.Do(selectReq).Get()
 	if err != nil {
 		fmt.Printf("Failed to Select: %s", err.Error())
 		return
 	}
-	fmt.Printf("Select in stream: response is %#v\n", resp.Data)
+	fmt.Printf("Select in stream: response is %#v\n", data)
 
 	// Commit transaction
 	req = tarantool.NewCommitRequest()
-	resp, err = stream.Do(req).Get()
+	data, err = stream.Do(req).Get()
 	if err != nil {
 		fmt.Printf("Failed to Commit: %s", err.Error())
 		return
 	}
-	fmt.Printf("Commit transaction: response is %#v\n", resp.Code)
+	fmt.Printf("Commit transaction: response is %#v\n", data)
 
 	// Select outside of transaction
 	// example pool has only one rw instance
-	resp, err = connPool.Do(selectReq, pool.RW).Get()
+	data, err = connPool.Do(selectReq, pool.RW).Get()
 	if err != nil {
 		fmt.Printf("Failed to Select: %s", err.Error())
 		return
 	}
-	fmt.Printf("Select after commit: response is %#v\n", resp.Data)
+	fmt.Printf("Select after commit: response is %#v\n", data)
 }
 
 func ExampleRollbackRequest() {
 	var req tarantool.Request
-	var resp *tarantool.Response
 	var err error
 
 	// Tarantool supports streams and interactive transactions since version 2.10.0
@@ -268,22 +266,22 @@ func ExampleRollbackRequest() {
 
 	// Begin transaction
 	req = tarantool.NewBeginRequest()
-	resp, err = stream.Do(req).Get()
+	data, err := stream.Do(req).Get()
 	if err != nil {
 		fmt.Printf("Failed to Begin: %s", err.Error())
 		return
 	}
-	fmt.Printf("Begin transaction: response is %#v\n", resp.Code)
+	fmt.Printf("Begin transaction: response is %#v\n", data)
 
 	// Insert in stream
 	req = tarantool.NewInsertRequest(spaceName).
 		Tuple([]interface{}{"example_rollback_key", "example_rollback_value"})
-	resp, err = stream.Do(req).Get()
+	data, err = stream.Do(req).Get()
 	if err != nil {
 		fmt.Printf("Failed to Insert: %s", err.Error())
 		return
 	}
-	fmt.Printf("Insert in stream: response is %#v\n", resp.Code)
+	fmt.Printf("Insert in stream: response is %#v\n", data)
 
 	// Select not related to the transaction
 	// while transaction is not committed
@@ -293,43 +291,42 @@ func ExampleRollbackRequest() {
 		Limit(1).
 		Iterator(tarantool.IterEq).
 		Key([]interface{}{"example_rollback_key"})
-	resp, err = connPool.Do(selectReq, pool.RW).Get()
+	data, err = connPool.Do(selectReq, pool.RW).Get()
 	if err != nil {
 		fmt.Printf("Failed to Select: %s", err.Error())
 		return
 	}
-	fmt.Printf("Select out of stream: response is %#v\n", resp.Data)
+	fmt.Printf("Select out of stream: response is %#v\n", data)
 
 	// Select in stream
-	resp, err = stream.Do(selectReq).Get()
+	data, err = stream.Do(selectReq).Get()
 	if err != nil {
 		fmt.Printf("Failed to Select: %s", err.Error())
 		return
 	}
-	fmt.Printf("Select in stream: response is %#v\n", resp.Data)
+	fmt.Printf("Select in stream: response is %#v\n", data)
 
 	// Rollback transaction
 	req = tarantool.NewRollbackRequest()
-	resp, err = stream.Do(req).Get()
+	data, err = stream.Do(req).Get()
 	if err != nil {
 		fmt.Printf("Failed to Rollback: %s", err.Error())
 		return
 	}
-	fmt.Printf("Rollback transaction: response is %#v\n", resp.Code)
+	fmt.Printf("Rollback transaction: response is %#v\n", data)
 
 	// Select outside of transaction
 	// example pool has only one rw instance
-	resp, err = connPool.Do(selectReq, pool.RW).Get()
+	data, err = connPool.Do(selectReq, pool.RW).Get()
 	if err != nil {
 		fmt.Printf("Failed to Select: %s", err.Error())
 		return
 	}
-	fmt.Printf("Select after Rollback: response is %#v\n", resp.Data)
+	fmt.Printf("Select after Rollback: response is %#v\n", data)
 }
 
 func ExampleBeginRequest_TxnIsolation() {
 	var req tarantool.Request
-	var resp *tarantool.Response
 	var err error
 
 	// Tarantool supports streams and interactive transactions since version 2.10.0
@@ -356,22 +353,22 @@ func ExampleBeginRequest_TxnIsolation() {
 	req = tarantool.NewBeginRequest().
 		TxnIsolation(tarantool.ReadConfirmedLevel).
 		Timeout(500 * time.Millisecond)
-	resp, err = stream.Do(req).Get()
+	data, err := stream.Do(req).Get()
 	if err != nil {
 		fmt.Printf("Failed to Begin: %s", err.Error())
 		return
 	}
-	fmt.Printf("Begin transaction: response is %#v\n", resp.Code)
+	fmt.Printf("Begin transaction: response is %#v\n", data)
 
 	// Insert in stream
 	req = tarantool.NewInsertRequest(spaceName).
 		Tuple([]interface{}{"isolation_level_key", "isolation_level_value"})
-	resp, err = stream.Do(req).Get()
+	data, err = stream.Do(req).Get()
 	if err != nil {
 		fmt.Printf("Failed to Insert: %s", err.Error())
 		return
 	}
-	fmt.Printf("Insert in stream: response is %#v\n", resp.Code)
+	fmt.Printf("Insert in stream: response is %#v\n", data)
 
 	// Select not related to the transaction
 	// while transaction is not committed
@@ -381,38 +378,38 @@ func ExampleBeginRequest_TxnIsolation() {
 		Limit(1).
 		Iterator(tarantool.IterEq).
 		Key([]interface{}{"isolation_level_key"})
-	resp, err = connPool.Do(selectReq, pool.RW).Get()
+	data, err = connPool.Do(selectReq, pool.RW).Get()
 	if err != nil {
 		fmt.Printf("Failed to Select: %s", err.Error())
 		return
 	}
-	fmt.Printf("Select out of stream: response is %#v\n", resp.Data)
+	fmt.Printf("Select out of stream: response is %#v\n", data)
 
 	// Select in stream
-	resp, err = stream.Do(selectReq).Get()
+	data, err = stream.Do(selectReq).Get()
 	if err != nil {
 		fmt.Printf("Failed to Select: %s", err.Error())
 		return
 	}
-	fmt.Printf("Select in stream: response is %#v\n", resp.Data)
+	fmt.Printf("Select in stream: response is %#v\n", data)
 
 	// Rollback transaction
 	req = tarantool.NewRollbackRequest()
-	resp, err = stream.Do(req).Get()
+	data, err = stream.Do(req).Get()
 	if err != nil {
 		fmt.Printf("Failed to Rollback: %s", err.Error())
 		return
 	}
-	fmt.Printf("Rollback transaction: response is %#v\n", resp.Code)
+	fmt.Printf("Rollback transaction: response is %#v\n", data)
 
 	// Select outside of transaction
 	// example pool has only one rw instance
-	resp, err = connPool.Do(selectReq, pool.RW).Get()
+	data, err = connPool.Do(selectReq, pool.RW).Get()
 	if err != nil {
 		fmt.Printf("Failed to Select: %s", err.Error())
 		return
 	}
-	fmt.Printf("Select after Rollback: response is %#v\n", resp.Data)
+	fmt.Printf("Select after Rollback: response is %#v\n", data)
 }
 
 func ExampleConnectorAdapter() {
@@ -426,12 +423,10 @@ func ExampleConnectorAdapter() {
 	var connector tarantool.Connector = adapter
 
 	// Ping an RW instance to check connection.
-	resp, err := connector.Do(tarantool.NewPingRequest()).Get()
-	fmt.Println("Ping Code", resp.Code)
-	fmt.Println("Ping Data", resp.Data)
+	data, err := connector.Do(tarantool.NewPingRequest()).Get()
+	fmt.Println("Ping Data", data)
 	fmt.Println("Ping Error", err)
 	// Output:
-	// Ping Code 0
 	// Ping Data []
 	// Ping Error <nil>
 }
@@ -473,5 +468,5 @@ func ExampleConnectionPool_CloseGraceful_force() {
 	// Force ConnectionPool.Close()!
 	// ConnectionPool.CloseGraceful() done!
 	// Result:
-	// <nil> connection closed by client (0x4001)
+	// [] connection closed by client (0x4001)
 }

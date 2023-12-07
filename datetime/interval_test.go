@@ -121,12 +121,12 @@ func TestIntervalTarantoolEncoding(t *testing.T) {
 		t.Run(fmt.Sprintf("%v", tc), func(t *testing.T) {
 			req := tarantool.NewCallRequest("call_interval_testdata").
 				Args([]interface{}{tc})
-			resp, err := conn.Do(req).Get()
+			data, err := conn.Do(req).Get()
 			if err != nil {
 				t.Fatalf("Unexpected error: %s", err.Error())
 			}
 
-			ret := resp.Data[0].(Interval)
+			ret := data[0].(Interval)
 			if !reflect.DeepEqual(ret, tc) {
 				t.Fatalf("Unexpected response: %v, expected %v", ret, tc)
 			}

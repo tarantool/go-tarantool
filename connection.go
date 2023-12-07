@@ -97,9 +97,9 @@ func (d defaultLogger) Report(event ConnLogKind, conn *Connection, v ...interfac
 		log.Printf("tarantool: last reconnect to %s failed: %s, giving it up",
 			conn.Addr(), err)
 	case LogUnexpectedResultId:
-		resp := v[0].(*Response)
+		header := v[0].(Header)
 		log.Printf("tarantool: connection %s got unexpected resultId (%d) in response",
-			conn.Addr(), resp.RequestId)
+			conn.Addr(), header.RequestId)
 	case LogWatchEventReadFailed:
 		err := v[0].(error)
 		log.Printf("tarantool: unable to parse watch event: %s", err)
@@ -807,8 +807,8 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 			conn.reconnect(err, c)
 			return
 		}
-		resp := &Response{buf: smallBuf{b: respBytes}}
-		err = resp.decodeHeader(conn.dec)
+		buf := smallBuf{b: respBytes}
+		header, err := decodeHeader(conn.dec, &buf)
 		if err != nil {
 			err = ClientError{
 				ErrProtocolError,
@@ -818,8 +818,9 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 			return
 		}
 
+		resp := &ConnResponse{header: header, buf: buf}
 		var fut *Future = nil
-		if iproto.Type(resp.Code) == iproto.IPROTO_EVENT {
+		if iproto.Type(header.Code) == iproto.IPROTO_EVENT {
 			if event, err := readWatchEvent(&resp.buf); err == nil {
 				events <- event
 			} else {
@@ -830,19 +831,19 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 				conn.opts.Logger.Report(LogWatchEventReadFailed, conn, err)
 			}
 			continue
-		} else if resp.Code == PushCode {
-			if fut = conn.peekFuture(resp.RequestId); fut != nil {
+		} else if header.Code == uint32(iproto.IPROTO_CHUNK) {
+			if fut = conn.peekFuture(header.RequestId); fut != nil {
 				fut.AppendPush(resp)
 			}
 		} else {
-			if fut = conn.fetchFuture(resp.RequestId); fut != nil {
+			if fut = conn.fetchFuture(header.RequestId); fut != nil {
 				fut.SetResponse(resp)
 				conn.markDone(fut)
 			}
 		}
 
 		if fut == nil {
-			conn.opts.Logger.Report(LogUnexpectedResultId, conn, resp)
+			conn.opts.Logger.Report(LogUnexpectedResultId, conn, header)
 		}
 	}
 }
@@ -1052,10 +1053,7 @@ func (conn *Connection) putFuture(fut *Future, req Request, streamId uint64) {
 
 	if req.Async() {
 		if fut = conn.fetchFuture(reqid); fut != nil {
-			resp := &Response{
-				RequestId: reqid,
-				Code:      OkCode,
-			}
+			resp := &ConnResponse{}
 			fut.SetResponse(resp)
 			conn.markDone(fut)
 		}
@@ -1236,7 +1234,7 @@ func (conn *Connection) SetSchema(s Schema) {
 // NewPrepared passes a sql statement to Tarantool for preparation synchronously.
 func (conn *Connection) NewPrepared(expr string) (*Prepared, error) {
 	req := NewPrepareRequest(expr)
-	resp, err := conn.Do(req).Get()
+	resp, err := conn.Do(req).GetResponse()
 	if err != nil {
 		return nil, err
 	}

@@ -31,7 +31,7 @@ func example_connect(dialer tarantool.Dialer, opts tarantool.Opts) *tarantool.Co
 }
 
 func Example_sqlFullColumnNames() {
-	var resp *tarantool.Response
+	var resp tarantool.Response
 	var err error
 	var isLess bool
 
@@ -74,8 +74,9 @@ func Example_sqlFullColumnNames() {
 		fmt.Printf("error on select: %v\n", err)
 		return
 	}
+	metaData := resp.MetaData()
 	// Show response metadata.
-	fmt.Printf("full column name: %v\n", resp.MetaData[0].FieldName)
+	fmt.Printf("full column name: %v\n", metaData[0].FieldName)
 
 	// Disable showing full column names in SQL responses.
 	_, err = conn.Do(settings.NewSQLFullColumnNamesSetRequest(false)).Get()
@@ -90,6 +91,7 @@ func Example_sqlFullColumnNames() {
 		fmt.Printf("error on select: %v\n", err)
 		return
 	}
+	metaData = resp.MetaData()
 	// Show response metadata.
-	fmt.Printf("short column name: %v\n", resp.MetaData[0].FieldName)
+	fmt.Printf("short column name: %v\n", metaData[0].FieldName)
 }

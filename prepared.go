@@ -42,17 +42,21 @@ func fillExecutePrepared(enc *msgpack.Encoder, stmt Prepared, args interface{}) 
 }
 
 // NewPreparedFromResponse constructs a Prepared object.
-func NewPreparedFromResponse(conn *Connection, resp *Response) (*Prepared, error) {
+func NewPreparedFromResponse(conn *Connection, resp Response) (*Prepared, error) {
 	if resp == nil {
 		return nil, fmt.Errorf("passed nil response")
 	}
-	if resp.Data == nil {
+	data, err := resp.Decode()
+	if err != nil {
+		return nil, fmt.Errorf("decode response body error: %s", err.Error())
+	}
+	if data == nil {
 		return nil, fmt.Errorf("response Data is nil")
 	}
-	if len(resp.Data) == 0 {
+	if len(data) == 0 {
 		return nil, fmt.Errorf("response Data format is wrong")
 	}
-	stmt, ok := resp.Data[0].(*Prepared)
+	stmt, ok := data[0].(*Prepared)
 	if !ok {
 		return nil, fmt.Errorf("response Data format is wrong")
 	}

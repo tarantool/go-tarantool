@@ -306,9 +306,11 @@ func TestErrorTypeEval(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			resp, err := conn.Eval("return ...", []interface{}{&testcase.tuple.val})
 			require.Nil(t, err)
-			require.NotNil(t, resp.Data)
-			require.Equal(t, len(resp.Data), 1)
-			actual, ok := resp.Data[0].(*BoxError)
+			data, err := resp.Decode()
+			require.Nil(t, err)
+			require.NotNil(t, data)
+			require.Equal(t, len(data), 1)
+			actual, ok := data[0].(*BoxError)
 			require.Truef(t, ok, "Response data has valid type")
 			require.Equal(t, testcase.tuple.val, *actual)
 		})
@@ -436,15 +438,17 @@ func TestErrorTypeSelect(t *testing.T) {
 			_, err := conn.Eval(insertEval, []interface{}{})
 			require.Nilf(t, err, "Tuple has been successfully inserted")
 
-			var resp *Response
+			var resp Response
 			var offset uint32 = 0
 			var limit uint32 = 1
 			resp, err = conn.Select(space, index, offset, limit, IterEq,
 				[]interface{}{testcase.tuple.pk})
 			require.Nil(t, err)
-			require.NotNil(t, resp.Data)
-			require.Equalf(t, len(resp.Data), 1, "Exactly one tuple had been found")
-			tpl, ok := resp.Data[0].([]interface{})
+			data, err := resp.Decode()
+			require.Nil(t, err)
+			require.NotNil(t, data)
+			require.Equalf(t, len(data), 1, "Exactly one tuple had been found")
+			tpl, ok := data[0].([]interface{})
 			require.Truef(t, ok, "Tuple has valid type")
 			require.Equal(t, testcase.tuple.pk, tpl[0])
 			actual, ok := tpl[1].(*BoxError)

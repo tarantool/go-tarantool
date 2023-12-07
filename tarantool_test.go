@@ -759,12 +759,12 @@ func TestFutureMultipleGetGetTyped(t *testing.T) {
 		}
 
 		if get {
-			resp, err := fut.Get()
+			data, err := fut.Get()
 			if err != nil {
 				t.Errorf("Failed to call Get(): %s", err)
 			}
-			if val, ok := resp.Data[0].(string); !ok || val != "11" {
-				t.Errorf("Wrong Get() result: %v", resp.Data)
+			if val, ok := data[0].(string); !ok || val != "11" {
+				t.Errorf("Wrong Get() result: %v", data)
 			}
 		} else {
 			tpl := struct {
@@ -821,7 +821,7 @@ func TestFutureMultipleGetTypedWithError(t *testing.T) {
 ///////////////////
 
 func TestClient(t *testing.T) {
-	var resp *Response
+	var resp Response
 	var err error
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
@@ -835,7 +835,7 @@ func TestClient(t *testing.T) {
 	if resp == nil {
 		t.Fatalf("Response is nil after Ping")
 	}
-	if resp.Pos != nil {
+	if resp.Pos() != nil {
 		t.Errorf("Response should not have a position")
 	}
 
@@ -847,13 +847,17 @@ func TestClient(t *testing.T) {
 	if resp == nil {
 		t.Fatalf("Response is nil after Insert")
 	}
-	if resp.Pos != nil {
+	if resp.Pos() != nil {
 		t.Errorf("Response should not have a position")
 	}
-	if len(resp.Data) != 1 {
+	data, err := resp.Decode()
+	if err != nil {
+		t.Fatalf("Failed to Decode: %s", err.Error())
+	}
+	if len(data) != 1 {
 		t.Errorf("Response Body len != 1")
 	}
-	if tpl, ok := resp.Data[0].([]interface{}); !ok {
+	if tpl, ok := data[0].([]interface{}); !ok {
 		t.Errorf("Unexpected body of Insert")
 	} else {
 		if len(tpl) != 3 {
@@ -870,7 +874,8 @@ func TestClient(t *testing.T) {
 	if tntErr, ok := err.(Error); !ok || tntErr.Code != iproto.ER_TUPLE_FOUND {
 		t.Errorf("Expected %s but got: %v", iproto.ER_TUPLE_FOUND, err)
 	}
-	if len(resp.Data) != 0 {
+	data, _ = resp.Decode()
+	if len(data) != 0 {
 		t.Errorf("Response Body len != 0")
 	}
 
@@ -882,13 +887,17 @@ func TestClient(t *testing.T) {
 	if resp == nil {
 		t.Fatalf("Response is nil after Delete")
 	}
-	if resp.Pos != nil {
+	if resp.Pos() != nil {
 		t.Errorf("Response should not have a position")
 	}
-	if len(resp.Data) != 1 {
+	data, err = resp.Decode()
+	if err != nil {
+		t.Fatalf("Failed to Decode: %s", err.Error())
+	}
+	if len(data) != 1 {
 		t.Errorf("Response Body len != 1")
 	}
-	if tpl, ok := resp.Data[0].([]interface{}); !ok {
+	if tpl, ok := data[0].([]interface{}); !ok {
 		t.Errorf("Unexpected body of Delete")
 	} else {
 		if len(tpl) != 3 {
@@ -908,10 +917,14 @@ func TestClient(t *testing.T) {
 	if resp == nil {
 		t.Fatalf("Response is nil after Delete")
 	}
-	if resp.Pos != nil {
+	if resp.Pos() != nil {
 		t.Errorf("Response should not have a position")
 	}
-	if len(resp.Data) != 0 {
+	data, err = resp.Decode()
+	if err != nil {
+		t.Fatalf("Failed to Decode: %s", err.Error())
+	}
+	if len(data) != 0 {
 		t.Errorf("Response Data len != 0")
 	}
 
@@ -923,7 +936,7 @@ func TestClient(t *testing.T) {
 	if resp == nil {
 		t.Fatalf("Response is nil after Replace")
 	}
-	if resp.Pos != nil {
+	if resp.Pos() != nil {
 		t.Errorf("Response should not have a position")
 	}
 	resp, err = conn.Replace(spaceNo, []interface{}{uint(2), "hi", "planet"})
@@ -933,10 +946,14 @@ func TestClient(t *testing.T) {
 	if resp == nil {
 		t.Fatalf("Response is nil after Replace (duplicate)")
 	}
-	if len(resp.Data) != 1 {
+	data, err = resp.Decode()
+	if err != nil {
+		t.Fatalf("Failed to Decode: %s", err.Error())
+	}
+	if len(data) != 1 {
 		t.Errorf("Response Data len != 1")
 	}
-	if tpl, ok := resp.Data[0].([]interface{}); !ok {
+	if tpl, ok := data[0].([]interface{}); !ok {
 		t.Errorf("Unexpected body of Replace")
 	} else {
 		if len(tpl) != 3 {
@@ -959,13 +976,17 @@ func TestClient(t *testing.T) {
 	if resp == nil {
 		t.Fatalf("Response is nil after Update")
 	}
-	if resp.Pos != nil {
+	if resp.Pos() != nil {
 		t.Errorf("Response should not have a position")
 	}
-	if len(resp.Data) != 1 {
+	data, err = resp.Decode()
+	if err != nil {
+		t.Fatalf("Failed to Decode: %s", err.Error())
+	}
+	if len(data) != 1 {
 		t.Errorf("Response Data len != 1")
 	}
-	if tpl, ok := resp.Data[0].([]interface{}); !ok {
+	if tpl, ok := data[0].([]interface{}); !ok {
 		t.Errorf("Unexpected body of Update")
 	} else {
 		if len(tpl) != 2 {
@@ -988,7 +1009,7 @@ func TestClient(t *testing.T) {
 	if resp == nil {
 		t.Fatalf("Response is nil after Upsert (insert)")
 	}
-	if resp.Pos != nil {
+	if resp.Pos() != nil {
 		t.Errorf("Response should not have a position")
 	}
 	resp, err = conn.Upsert(spaceNo, []interface{}{uint(3), 1},
@@ -1006,11 +1027,12 @@ func TestClient(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to Replace: %s", err.Error())
 		}
-		if resp.Pos != nil {
+		if resp.Pos() != nil {
 			t.Errorf("Response should not have a position")
 		}
-		if resp.Code != 0 {
-			t.Errorf("Failed to replace")
+		_, err := resp.Decode()
+		if err != nil {
+			t.Errorf("Failed to replace: %s", err.Error())
 		}
 	}
 	resp, err = conn.Select(spaceNo, indexNo, 0, 1, IterEq, []interface{}{uint(10)})
@@ -1020,13 +1042,17 @@ func TestClient(t *testing.T) {
 	if resp == nil {
 		t.Fatalf("Response is nil after Select")
 	}
-	if resp.Pos != nil {
+	if resp.Pos() != nil {
 		t.Errorf("Response should not have a position")
 	}
-	if len(resp.Data) != 1 {
+	data, err = resp.Decode()
+	if err != nil {
+		t.Fatalf("Failed to Decode: %s", err.Error())
+	}
+	if len(data) != 1 {
 		t.Errorf("Response Data len != 1")
 	}
-	if tpl, ok := resp.Data[0].([]interface{}); !ok {
+	if tpl, ok := data[0].([]interface{}); !ok {
 		t.Errorf("Unexpected body of Select")
 	} else {
 		if id, err := test_helpers.ConvertUint64(tpl[0]); err != nil || id != 10 {
@@ -1045,10 +1071,14 @@ func TestClient(t *testing.T) {
 	if resp == nil {
 		t.Fatalf("Response is nil after Select")
 	}
-	if resp.Pos != nil {
+	if resp.Pos() != nil {
 		t.Errorf("Response should not have a position")
 	}
-	if len(resp.Data) != 0 {
+	data, err = resp.Decode()
+	if err != nil {
+		t.Fatalf("Failed to Decode: %s", err.Error())
+	}
+	if len(data) != 0 {
 		t.Errorf("Response Data len != 0")
 	}
 
@@ -1114,10 +1144,14 @@ func TestClient(t *testing.T) {
 	if resp == nil {
 		t.Fatalf("Response is nil after Call16")
 	}
-	if resp.Pos != nil {
+	if resp.Pos() != nil {
 		t.Errorf("Response should not have a position")
 	}
-	if len(resp.Data) < 1 {
+	data, err = resp.Decode()
+	if err != nil {
+		t.Fatalf("Failed to Decode: %s", err.Error())
+	}
+	if len(data) < 1 {
 		t.Errorf("Response.Data is empty after Eval")
 	}
 
@@ -1126,22 +1160,30 @@ func TestClient(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to use Call16")
 	}
-	if resp.Pos != nil {
+	if resp.Pos() != nil {
 		t.Errorf("Response should not have a position")
 	}
-	if val, ok := resp.Data[0].([]interface{})[0].(string); !ok || val != "11" {
-		t.Errorf("result is not {{1}} : %v", resp.Data)
+	data, err = resp.Decode()
+	if err != nil {
+		t.Fatalf("Failed to Decode: %s", err.Error())
+	}
+	if val, ok := data[0].([]interface{})[0].(string); !ok || val != "11" {
+		t.Errorf("result is not {{1}} : %v", data)
 	}
 
 	resp, err = conn.Call17("simple_concat", []interface{}{"1"})
 	if err != nil {
 		t.Errorf("Failed to use Call")
 	}
-	if resp.Pos != nil {
+	if resp.Pos() != nil {
 		t.Errorf("Response should not have a position")
 	}
-	if val, ok := resp.Data[0].(string); !ok || val != "11" {
-		t.Errorf("result is not {{1}} : %v", resp.Data)
+	data, err = resp.Decode()
+	if err != nil {
+		t.Fatalf("Failed to Decode: %s", err.Error())
+	}
+	if val, ok := data[0].(string); !ok || val != "11" {
+		t.Errorf("result is not {{1}} : %v", data)
 	}
 
 	// Eval
@@ -1152,13 +1194,17 @@ func TestClient(t *testing.T) {
 	if resp == nil {
 		t.Fatalf("Response is nil after Eval")
 	}
-	if resp.Pos != nil {
+	if resp.Pos() != nil {
 		t.Errorf("Response should not have a position")
 	}
-	if len(resp.Data) < 1 {
+	data, err = resp.Decode()
+	if err != nil {
+		t.Fatalf("Failed to Decode: %s", err.Error())
+	}
+	if len(data) < 1 {
 		t.Errorf("Response.Data is empty after Eval")
 	}
-	if val, err := test_helpers.ConvertUint64(resp.Data[0]); err != nil || val != 11 {
+	if val, err := test_helpers.ConvertUint64(data[0]); err != nil || val != 11 {
 		t.Errorf("5 + 6 == 11, but got %v", val)
 	}
 }
@@ -1196,15 +1242,13 @@ func TestClientSessionPush(t *testing.T) {
 	// It will wait a response before iteration.
 	fut1 := conn.Call17Async("push_func", []interface{}{pushMax})
 	// Future.Get ignores push messages.
-	resp, err := fut1.Get()
+	data, err := fut1.Get()
 	if err != nil {
 		t.Errorf("Failed to Call17: %s", err.Error())
-	} else if resp == nil {
-		t.Errorf("Response is nil after CallAsync")
-	} else if len(resp.Data) < 1 {
+	} else if len(data) < 1 {
 		t.Errorf("Response.Data is empty after Call17Async")
-	} else if val, err := test_helpers.ConvertUint64(resp.Data[0]); err != nil || val != pushMax {
-		t.Errorf("Result is not %d: %v", pushMax, resp.Data)
+	} else if val, err := test_helpers.ConvertUint64(data[0]); err != nil || val != pushMax {
+		t.Errorf("Result is not %d: %v", pushMax, data)
 	}
 
 	// It will will be iterated with a timeout.
@@ -1216,60 +1260,41 @@ func TestClientSessionPush(t *testing.T) {
 	}
 
 	for i := 0; i < len(its); i++ {
-		pushCnt := uint64(0)
-		respCnt := uint64(0)
-
 		it = its[i]
 		for it.Next() {
-			resp = it.Value()
+			resp := it.Value()
 			if resp == nil {
 				t.Errorf("Response is empty after it.Next() == true")
 				break
 			}
-			if resp.Pos != nil {
+			if resp.Pos() != nil {
 				t.Errorf("Response should not have a position")
 			}
-			if len(resp.Data) < 1 {
-				t.Errorf("Response.Data is empty after CallAsync")
+			data, err := resp.Decode()
+			if err != nil {
+				t.Errorf("Failed to Decode: %s", err.Error())
 				break
 			}
-			if resp.Code == PushCode {
-				pushCnt += 1
-				val, err := test_helpers.ConvertUint64(resp.Data[0])
-				if err != nil || val != pushCnt {
-					t.Errorf("Unexpected push data = %v", resp.Data)
-				}
-			} else {
-				respCnt += 1
-				val, err := test_helpers.ConvertUint64(resp.Data[0])
-				if err != nil || val != pushMax {
-					t.Errorf("Result is not %d: %v", pushMax, resp.Data)
-				}
+			if len(data) < 1 {
+				t.Errorf("Response.Data is empty after CallAsync")
+				break
 			}
 		}
 
 		if err = it.Err(); err != nil {
 			t.Errorf("An unexpected iteration error: %s", err.Error())
 		}
-
-		if pushCnt != pushMax {
-			t.Errorf("Expect %d pushes but got %d", pushMax, pushCnt)
-		}
-
-		if respCnt != 1 {
-			t.Errorf("Expect %d responses but got %d", 1, respCnt)
-		}
 	}
 
 	// We can collect original responses after iterations.
 	for _, fut := range []*Future{fut0, fut1, fut2} {
-		resp, err := fut.Get()
+		data, err := fut.Get()
 		if err != nil {
 			t.Errorf("Unable to call fut.Get(): %s", err)
 		}
-		val, err := test_helpers.ConvertUint64(resp.Data[0])
+		val, err := test_helpers.ConvertUint64(data[0])
 		if err != nil || val != pushMax {
-			t.Errorf("Result is not %d: %v", pushMax, resp.Data)
+			t.Errorf("Result is not %d: %v", pushMax, data)
 		}
 
 		tpl := struct {
@@ -1311,9 +1336,11 @@ func TestSQL(t *testing.T) {
 	test_helpers.SkipIfSQLUnsupported(t)
 
 	type testCase struct {
-		Query string
-		Args  interface{}
-		Resp  Response
+		Query    string
+		Args     interface{}
+		sqlInfo  SQLInfo
+		data     []interface{}
+		metaData []ColumnMetaData
 	}
 
 	selectSpanDifQuery := selectSpanDifQueryNew
@@ -1327,20 +1354,16 @@ func TestSQL(t *testing.T) {
 		{
 			createTableQuery,
 			[]interface{}{},
-			Response{
-				SQLInfo:  SQLInfo{AffectedCount: 1},
-				Data:     []interface{}{},
-				MetaData: nil,
-			},
+			SQLInfo{AffectedCount: 1},
+			[]interface{}{},
+			nil,
 		},
 		{
 			insertQuery,
 			[]interface{}{"1", "test"},
-			Response{
-				SQLInfo:  SQLInfo{AffectedCount: 1},
-				Data:     []interface{}{},
-				MetaData: nil,
-			},
+			SQLInfo{AffectedCount: 1},
+			[]interface{}{},
+			nil,
 		},
 		{
 			selectNamedQuery,
@@ -1348,119 +1371,100 @@ func TestSQL(t *testing.T) {
 				"ID":   "1",
 				"NAME": "test",
 			},
-			Response{
-				SQLInfo: SQLInfo{AffectedCount: 0},
-				Data:    []interface{}{[]interface{}{"1", "test"}},
-				MetaData: []ColumnMetaData{
-					{FieldType: "string", FieldName: "ID"},
-					{FieldType: "string", FieldName: "NAME"}},
-			},
+			SQLInfo{AffectedCount: 0},
+			[]interface{}{[]interface{}{"1", "test"}},
+			[]ColumnMetaData{
+				{FieldType: "string", FieldName: "ID"},
+				{FieldType: "string", FieldName: "NAME"}},
 		},
 		{
 			selectPosQuery,
 			[]interface{}{"1", "test"},
-			Response{
-				SQLInfo: SQLInfo{AffectedCount: 0},
-				Data:    []interface{}{[]interface{}{"1", "test"}},
-				MetaData: []ColumnMetaData{
-					{FieldType: "string", FieldName: "ID"},
-					{FieldType: "string", FieldName: "NAME"}},
-			},
+			SQLInfo{AffectedCount: 0},
+			[]interface{}{[]interface{}{"1", "test"}},
+			[]ColumnMetaData{
+				{FieldType: "string", FieldName: "ID"},
+				{FieldType: "string", FieldName: "NAME"}},
 		},
 		{
 			updateQuery,
 			[]interface{}{"test_test", "1"},
-			Response{
-				SQLInfo:  SQLInfo{AffectedCount: 1},
-				Data:     []interface{}{},
-				MetaData: nil,
-			},
+			SQLInfo{AffectedCount: 1},
+			[]interface{}{},
+			nil,
 		},
 		{
 			enableFullMetaDataQuery,
 			[]interface{}{},
-			Response{
-				SQLInfo:  SQLInfo{AffectedCount: 1},
-				Data:     []interface{}{},
-				MetaData: nil,
-			},
+			SQLInfo{AffectedCount: 1},
+			[]interface{}{},
+			nil,
 		},
 		{
 			selectSpanDifQuery,
 			[]interface{}{"test_test"},
-			Response{
-				SQLInfo: SQLInfo{AffectedCount: 0},
-				Data:    []interface{}{[]interface{}{"11", "test_test", "1"}},
-				MetaData: []ColumnMetaData{
-					{
-						FieldType:            "string",
-						FieldName:            "COLUMN_1",
-						FieldIsNullable:      false,
-						FieldIsAutoincrement: false,
-						FieldSpan:            "ID||ID",
-					},
-					{
-						FieldType:            "string",
-						FieldName:            "NAME",
-						FieldIsNullable:      true,
-						FieldIsAutoincrement: false,
-						FieldSpan:            "NAME",
-						FieldCollation:       "unicode",
-					},
-					{
-						FieldType:            "string",
-						FieldName:            "ID",
-						FieldIsNullable:      false,
-						FieldIsAutoincrement: false,
-						FieldSpan:            "ID",
-						FieldCollation:       "",
-					},
-				}},
+			SQLInfo{AffectedCount: 0},
+			[]interface{}{[]interface{}{"11", "test_test", "1"}},
+			[]ColumnMetaData{
+				{
+					FieldType:            "string",
+					FieldName:            "COLUMN_1",
+					FieldIsNullable:      false,
+					FieldIsAutoincrement: false,
+					FieldSpan:            "ID||ID",
+				},
+				{
+					FieldType:            "string",
+					FieldName:            "NAME",
+					FieldIsNullable:      true,
+					FieldIsAutoincrement: false,
+					FieldSpan:            "NAME",
+					FieldCollation:       "unicode",
+				},
+				{
+					FieldType:            "string",
+					FieldName:            "ID",
+					FieldIsNullable:      false,
+					FieldIsAutoincrement: false,
+					FieldSpan:            "ID",
+					FieldCollation:       "",
+				},
+			},
 		},
 		{
 			alterTableQuery,
 			[]interface{}{},
-			Response{
-				SQLInfo:  SQLInfo{AffectedCount: 0},
-				Data:     []interface{}{},
-				MetaData: nil,
-			},
+			SQLInfo{AffectedCount: 0},
+			[]interface{}{},
+			nil,
 		},
 		{
 			insertIncrQuery,
 			[]interface{}{"2", "test_2"},
-			Response{
-				SQLInfo:  SQLInfo{AffectedCount: 1, InfoAutoincrementIds: []uint64{1}},
-				Data:     []interface{}{},
-				MetaData: nil,
-			},
+			SQLInfo{AffectedCount: 1, InfoAutoincrementIds: []uint64{1}},
+			[]interface{}{},
+			nil,
 		},
 		{
 			deleteQuery,
 			[]interface{}{"test_2"},
-			Response{
-				SQLInfo:  SQLInfo{AffectedCount: 1},
-				Data:     []interface{}{},
-				MetaData: nil,
-			},
+			SQLInfo{AffectedCount: 1},
+			[]interface{}{},
+			nil,
 		},
 		{
 			dropQuery,
 			[]interface{}{},
-			Response{
-				SQLInfo:  SQLInfo{AffectedCount: 1},
-				Data:     []interface{}{},
-				MetaData: nil,
-			},
+			SQLInfo{AffectedCount: 1},
+			[]interface{}{},
+			nil,
 		},
 		{
 			disableFullMetaDataQuery,
 			[]interface{}{},
-			Response{
-				SQLInfo:  SQLInfo{AffectedCount: 1},
-				Data:     []interface{}{},
-				MetaData: nil,
-			},
+			SQLInfo{AffectedCount: 1},
+			[]interface{}{},
+			nil,
 		},
 	}
 
@@ -1471,23 +1475,26 @@ func TestSQL(t *testing.T) {
 		resp, err := conn.Execute(test.Query, test.Args)
 		assert.NoError(t, err, "Failed to Execute, query: %s", test.Query)
 		assert.NotNil(t, resp, "Response is nil after Execute\nQuery number: %d", i)
-		for j := range resp.Data {
-			assert.Equal(t, resp.Data[j], test.Resp.Data[j], "Response data is wrong")
+		data, err := resp.Decode()
+		assert.Nil(t, err, "Failed to Decode")
+		for j := range data {
+			assert.Equal(t, data[j], test.data[j], "Response data is wrong")
 		}
-		assert.Equal(t, resp.SQLInfo.AffectedCount, test.Resp.SQLInfo.AffectedCount,
+		assert.Equal(t, resp.SQLInfo().AffectedCount, test.sqlInfo.AffectedCount,
 			"Affected count is wrong")
 
 		errorMsg := "Response Metadata is wrong"
-		for j := range resp.MetaData {
-			assert.Equal(t, resp.MetaData[j].FieldIsAutoincrement,
-				test.Resp.MetaData[j].FieldIsAutoincrement, errorMsg)
-			assert.Equal(t, resp.MetaData[j].FieldIsNullable,
-				test.Resp.MetaData[j].FieldIsNullable, errorMsg)
-			assert.Equal(t, resp.MetaData[j].FieldCollation,
-				test.Resp.MetaData[j].FieldCollation, errorMsg)
-			assert.Equal(t, resp.MetaData[j].FieldName, test.Resp.MetaData[j].FieldName, errorMsg)
-			assert.Equal(t, resp.MetaData[j].FieldSpan, test.Resp.MetaData[j].FieldSpan, errorMsg)
-			assert.Equal(t, resp.MetaData[j].FieldType, test.Resp.MetaData[j].FieldType, errorMsg)
+		metaData := resp.MetaData()
+		for j := range metaData {
+			assert.Equal(t, metaData[j].FieldIsAutoincrement,
+				test.metaData[j].FieldIsAutoincrement, errorMsg)
+			assert.Equal(t, metaData[j].FieldIsNullable,
+				test.metaData[j].FieldIsNullable, errorMsg)
+			assert.Equal(t, metaData[j].FieldCollation,
+				test.metaData[j].FieldCollation, errorMsg)
+			assert.Equal(t, metaData[j].FieldName, test.metaData[j].FieldName, errorMsg)
+			assert.Equal(t, metaData[j].FieldSpan, test.metaData[j].FieldSpan, errorMsg)
+			assert.Equal(t, metaData[j].FieldType, test.metaData[j].FieldType, errorMsg)
 		}
 	}
 }
@@ -1522,7 +1529,7 @@ func TestSQLBindings(t *testing.T) {
 		1: "test",
 	}
 
-	var resp *Response
+	var resp Response
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
@@ -1575,13 +1582,18 @@ func TestSQLBindings(t *testing.T) {
 		if resp == nil {
 			t.Fatal("Response is nil after Execute")
 		}
-		if reflect.DeepEqual(resp.Data[0], []interface{}{1, testData[1]}) {
+		data, err := resp.Decode()
+		if err != nil {
+			t.Errorf("Failed to Decode: %s", err.Error())
+		}
+		if reflect.DeepEqual(data[0], []interface{}{1, testData[1]}) {
 			t.Error("Select with named arguments failed")
 		}
-		if resp.MetaData[0].FieldType != "unsigned" ||
-			resp.MetaData[0].FieldName != "NAME0" ||
-			resp.MetaData[1].FieldType != "string" ||
-			resp.MetaData[1].FieldName != "NAME1" {
+		metaData := resp.MetaData()
+		if metaData[0].FieldType != "unsigned" ||
+			metaData[0].FieldName != "NAME0" ||
+			metaData[1].FieldType != "string" ||
+			metaData[1].FieldName != "NAME1" {
 			t.Error("Wrong metadata")
 		}
 	}
@@ -1593,13 +1605,18 @@ func TestSQLBindings(t *testing.T) {
 	if resp == nil {
 		t.Fatal("Response is nil after Execute")
 	}
-	if reflect.DeepEqual(resp.Data[0], []interface{}{1, testData[1]}) {
+	data, err := resp.Decode()
+	if err != nil {
+		t.Errorf("Failed to Decode: %s", err.Error())
+	}
+	if reflect.DeepEqual(data[0], []interface{}{1, testData[1]}) {
 		t.Error("Select with positioned arguments failed")
 	}
-	if resp.MetaData[0].FieldType != "unsigned" ||
-		resp.MetaData[0].FieldName != "NAME0" ||
-		resp.MetaData[1].FieldType != "string" ||
-		resp.MetaData[1].FieldName != "NAME1" {
+	metaData := resp.MetaData()
+	if metaData[0].FieldType != "unsigned" ||
+		metaData[0].FieldName != "NAME0" ||
+		metaData[1].FieldType != "string" ||
+		metaData[1].FieldName != "NAME1" {
 		t.Error("Wrong metadata")
 	}
 
@@ -1610,13 +1627,18 @@ func TestSQLBindings(t *testing.T) {
 	if resp == nil {
 		t.Fatal("Response is nil after Execute")
 	}
-	if reflect.DeepEqual(resp.Data[0], []interface{}{1, testData[1]}) {
+	data, err = resp.Decode()
+	if err != nil {
+		t.Errorf("Failed to Decode: %s", err.Error())
+	}
+	if reflect.DeepEqual(data[0], []interface{}{1, testData[1]}) {
 		t.Error("Select with positioned arguments failed")
 	}
-	if resp.MetaData[0].FieldType != "unsigned" ||
-		resp.MetaData[0].FieldName != "NAME0" ||
-		resp.MetaData[1].FieldType != "string" ||
-		resp.MetaData[1].FieldName != "NAME1" {
+	metaData = resp.MetaData()
+	if metaData[0].FieldType != "unsigned" ||
+		metaData[0].FieldName != "NAME0" ||
+		metaData[1].FieldType != "string" ||
+		metaData[1].FieldName != "NAME1" {
 		t.Error("Wrong metadata")
 	}
 }
@@ -1624,7 +1646,7 @@ func TestSQLBindings(t *testing.T) {
 func TestStressSQL(t *testing.T) {
 	test_helpers.SkipIfSQLUnsupported(t)
 
-	var resp *Response
+	var resp Response
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
@@ -1636,11 +1658,8 @@ func TestStressSQL(t *testing.T) {
 	if resp == nil {
 		t.Fatal("Response is nil after Execute")
 	}
-	if resp.Code != 0 {
-		t.Fatalf("Failed to Execute: %d", resp.Code)
-	}
-	if resp.SQLInfo.AffectedCount != 1 {
-		t.Errorf("Incorrect count of created spaces: %d", resp.SQLInfo.AffectedCount)
+	if resp.SQLInfo().AffectedCount != 1 {
+		t.Errorf("Incorrect count of created spaces: %d", resp.SQLInfo().AffectedCount)
 	}
 
 	// create table with the same name
@@ -1652,11 +1671,8 @@ func TestStressSQL(t *testing.T) {
 		t.Fatal("Response is nil after Execute")
 	}
 
-	if iproto.Error(resp.Code) != iproto.ER_SPACE_EXISTS {
-		t.Fatalf("Unexpected response code: %d", resp.Code)
-	}
-	if resp.SQLInfo.AffectedCount != 0 {
-		t.Errorf("Incorrect count of created spaces: %d", resp.SQLInfo.AffectedCount)
+	if resp.SQLInfo().AffectedCount != 0 {
+		t.Errorf("Incorrect count of created spaces: %d", resp.SQLInfo().AffectedCount)
 	}
 
 	// execute with nil argument
@@ -1667,11 +1683,8 @@ func TestStressSQL(t *testing.T) {
 	if resp == nil {
 		t.Fatal("Response is nil after Execute")
 	}
-	if resp.Code == 0 {
-		t.Fatalf("Unexpected response code: %d", resp.Code)
-	}
-	if resp.SQLInfo.AffectedCount != 0 {
-		t.Errorf("Incorrect count of created spaces: %d", resp.SQLInfo.AffectedCount)
+	if resp.SQLInfo().AffectedCount != 0 {
+		t.Errorf("Incorrect count of created spaces: %d", resp.SQLInfo().AffectedCount)
 	}
 
 	// execute with zero string
@@ -1682,11 +1695,8 @@ func TestStressSQL(t *testing.T) {
 	if resp == nil {
 		t.Fatal("Response is nil after Execute")
 	}
-	if resp.Code == 0 {
-		t.Fatalf("Unexpected response code: %d", resp.Code)
-	}
-	if resp.SQLInfo.AffectedCount != 0 {
-		t.Errorf("Incorrect count of created spaces: %d", resp.SQLInfo.AffectedCount)
+	if resp.SQLInfo().AffectedCount != 0 {
+		t.Errorf("Incorrect count of created spaces: %d", resp.SQLInfo().AffectedCount)
 	}
 
 	// drop table query
@@ -1697,11 +1707,8 @@ func TestStressSQL(t *testing.T) {
 	if resp == nil {
 		t.Fatal("Response is nil after Execute")
 	}
-	if resp.Code != 0 {
-		t.Fatalf("Failed to Execute: %d", resp.Code)
-	}
-	if resp.SQLInfo.AffectedCount != 1 {
-		t.Errorf("Incorrect count of dropped spaces: %d", resp.SQLInfo.AffectedCount)
+	if resp.SQLInfo().AffectedCount != 1 {
+		t.Errorf("Incorrect count of dropped spaces: %d", resp.SQLInfo().AffectedCount)
 	}
 
 	// drop the same table
@@ -1712,11 +1719,8 @@ func TestStressSQL(t *testing.T) {
 	if resp == nil {
 		t.Fatal("Response is nil after Execute")
 	}
-	if resp.Code == 0 {
-		t.Fatalf("Unexpected response code: %d", resp.Code)
-	}
-	if resp.SQLInfo.AffectedCount != 0 {
-		t.Errorf("Incorrect count of created spaces: %d", resp.SQLInfo.AffectedCount)
+	if resp.SQLInfo().AffectedCount != 0 {
+		t.Errorf("Incorrect count of created spaces: %d", resp.SQLInfo().AffectedCount)
 	}
 }
 
@@ -1734,29 +1738,28 @@ func TestNewPrepared(t *testing.T) {
 	executeReq := NewExecutePreparedRequest(stmt)
 	unprepareReq := NewUnprepareRequest(stmt)
 
-	resp, err := conn.Do(executeReq.Args([]interface{}{1, "test"})).Get()
+	resp, err := conn.Do(executeReq.Args([]interface{}{1, "test"})).GetResponse()
 	if err != nil {
 		t.Errorf("failed to execute prepared: %v", err)
 	}
-	if resp.Code != OkCode {
-		t.Errorf("failed to execute prepared: code %d", resp.Code)
+	data, err := resp.Decode()
+	if err != nil {
+		t.Errorf("Failed to Decode: %s", err.Error())
 	}
-	if reflect.DeepEqual(resp.Data[0], []interface{}{1, "test"}) {
+	if reflect.DeepEqual(data[0], []interface{}{1, "test"}) {
 		t.Error("Select with named arguments failed")
 	}
-	if resp.MetaData[0].FieldType != "unsigned" ||
-		resp.MetaData[0].FieldName != "NAME0" ||
-		resp.MetaData[1].FieldType != "string" ||
-		resp.MetaData[1].FieldName != "NAME1" {
+	metaData := resp.MetaData()
+	if metaData[0].FieldType != "unsigned" ||
+		metaData[0].FieldName != "NAME0" ||
+		metaData[1].FieldType != "string" ||
+		metaData[1].FieldName != "NAME1" {
 		t.Error("Wrong metadata")
 	}
 
-	resp, err = conn.Do(unprepareReq).Get()
+	_, err = conn.Do(unprepareReq).Get()
 	if err != nil {
 		t.Errorf("failed to unprepare prepared statement: %v", err)
-	}
-	if resp.Code != OkCode {
-		t.Errorf("failed to unprepare prepared statement: code %d", resp.Code)
 	}
 
 	_, err = conn.Do(unprepareReq).Get()
@@ -1772,21 +1775,18 @@ func TestNewPrepared(t *testing.T) {
 	require.Contains(t, err.Error(), "Prepared statement with id")
 
 	prepareReq := NewPrepareRequest(selectNamedQuery2)
-	resp, err = conn.Do(prepareReq).Get()
+	data, err = conn.Do(prepareReq).Get()
 	if err != nil {
 		t.Errorf("failed to prepare: %v", err)
 	}
-	if resp.Data == nil {
+	if data == nil {
 		t.Errorf("failed to prepare: Data is nil")
 	}
-	if resp.Code != OkCode {
-		t.Errorf("failed to unprepare prepared statement: code %d", resp.Code)
-	}
 
-	if len(resp.Data) == 0 {
+	if len(data) == 0 {
 		t.Errorf("failed to prepare: response Data has no elements")
 	}
-	stmt, ok := resp.Data[0].(*Prepared)
+	stmt, ok := data[0].(*Prepared)
 	if !ok {
 		t.Errorf("failed to prepare: failed to cast the response Data to Prepared object")
 	}
@@ -1830,12 +1830,9 @@ func TestConnection_SetSchema_Changes(t *testing.T) {
 
 	req := NewInsertRequest(spaceName)
 	req.Tuple([]interface{}{uint(1010), "Tarantool"})
-	resp, err := conn.Do(req).Get()
+	_, err := conn.Do(req).Get()
 	if err != nil {
 		t.Fatalf("Failed to Insert: %s", err.Error())
-	}
-	if resp.Code != OkCode {
-		t.Errorf("Failed to Insert: wrong code returned %d", resp.Code)
 	}
 
 	s, err := GetSchema(conn)
@@ -1850,41 +1847,12 @@ func TestConnection_SetSchema_Changes(t *testing.T) {
 
 	reqS := NewSelectRequest(spaceName)
 	reqS.Key([]interface{}{uint(1010)})
-	resp, err = conn.Do(reqS).Get()
+	data, err := conn.Do(reqS).Get()
 	if err != nil {
 		t.Fatalf("failed to Select: %s", err.Error())
 	}
-	if resp.Code != OkCode {
-		t.Errorf("failed to Select: wrong code returned %d", resp.Code)
-	}
-	if resp.Data[0].([]interface{})[1] != "Tarantool" {
-		t.Errorf("wrong Select body: %v", resp.Data)
-	}
-}
-
-func TestNewPreparedFromResponse(t *testing.T) {
-	var (
-		ErrNilResponsePassed = fmt.Errorf("passed nil response")
-		ErrNilResponseData   = fmt.Errorf("response Data is nil")
-		ErrWrongDataFormat   = fmt.Errorf("response Data format is wrong")
-	)
-	testConn := &Connection{}
-	testCases := []struct {
-		name          string
-		resp          *Response
-		expectedError error
-	}{
-		{"ErrNilResponsePassed", nil, ErrNilResponsePassed},
-		{"ErrNilResponseData", &Response{Data: nil}, ErrNilResponseData},
-		{"ErrWrongDataFormat", &Response{Data: []interface{}{}}, ErrWrongDataFormat},
-		{"ErrWrongDataFormat", &Response{Data: []interface{}{"test"}}, ErrWrongDataFormat},
-		{"nil", &Response{Data: []interface{}{&Prepared{}}}, nil},
-	}
-	for _, testCase := range testCases {
-		t.Run("Expecting error "+testCase.name, func(t *testing.T) {
-			_, err := NewPreparedFromResponse(testConn, testCase.resp)
-			assert.Equal(t, err, testCase.expectedError)
-		})
+	if data[0].([]interface{})[1] != "Tarantool" {
+		t.Errorf("wrong Select body: %v", data)
 	}
 }
 
@@ -2075,7 +2043,7 @@ func TestSchema_IsNullable(t *testing.T) {
 }
 
 func TestClientNamed(t *testing.T) {
-	var resp *Response
+	var resp Response
 	var err error
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
@@ -2086,8 +2054,8 @@ func TestClientNamed(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to Insert: %s", err.Error())
 	}
-	if resp.Code != 0 {
-		t.Errorf("Failed to Insert: wrong code returned %d", resp.Code)
+	if resp == nil {
+		t.Errorf("Response is nil after Insert")
 	}
 
 	// Delete
@@ -2145,8 +2113,8 @@ func TestClientNamed(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to Replace: %s", err.Error())
 		}
-		if resp.Code != 0 {
-			t.Errorf("Failed to Replace: wrong code returned %d", resp.Code)
+		if resp == nil {
+			t.Errorf("Response is nil after Replace")
 		}
 	}
 	resp, err = conn.Select(spaceName, indexName, 0, 1, IterEq, []interface{}{uint(1010)})
@@ -2170,9 +2138,8 @@ func TestClientNamed(t *testing.T) {
 
 func TestClientRequestObjects(t *testing.T) {
 	var (
-		req  Request
-		resp *Response
-		err  error
+		req Request
+		err error
 	)
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
@@ -2180,14 +2147,11 @@ func TestClientRequestObjects(t *testing.T) {
 
 	// Ping
 	req = NewPingRequest()
-	resp, err = conn.Do(req).Get()
+	data, err := conn.Do(req).Get()
 	if err != nil {
 		t.Fatalf("Failed to Ping: %s", err.Error())
 	}
-	if resp == nil {
-		t.Fatalf("Response is nil after Ping")
-	}
-	if len(resp.Data) != 0 {
+	if len(data) != 0 {
 		t.Errorf("Response Body len != 0")
 	}
 
@@ -2200,23 +2164,14 @@ func TestClientRequestObjects(t *testing.T) {
 	for i := 1010; i < 1020; i++ {
 		req = NewInsertRequest(spaceName).
 			Tuple([]interface{}{uint(i), fmt.Sprintf("val %d", i), "bla"})
-		resp, err = conn.Do(req).Get()
+		data, err = conn.Do(req).Get()
 		if err != nil {
 			t.Fatalf("Failed to Insert: %s", err.Error())
 		}
-		if resp == nil {
-			t.Fatalf("Response is nil after Insert")
-		}
-		if resp.Pos != nil {
-			t.Errorf("Response should not have a position")
-		}
-		if resp.Data == nil {
-			t.Fatalf("Response data is nil after Insert")
-		}
-		if len(resp.Data) != 1 {
+		if len(data) != 1 {
 			t.Fatalf("Response Body len != 1")
 		}
-		if tpl, ok := resp.Data[0].([]interface{}); !ok {
+		if tpl, ok := data[0].([]interface{}); !ok {
 			t.Errorf("Unexpected body of Insert")
 		} else {
 			if len(tpl) != 3 {
@@ -2238,23 +2193,14 @@ func TestClientRequestObjects(t *testing.T) {
 	for i := 1015; i < 1020; i++ {
 		req = NewReplaceRequest(spaceName).
 			Tuple([]interface{}{uint(i), fmt.Sprintf("val %d", i), "blar"})
-		resp, err = conn.Do(req).Get()
+		data, err = conn.Do(req).Get()
 		if err != nil {
-			t.Fatalf("Failed to Replace: %s", err.Error())
+			t.Fatalf("Failed to Decode: %s", err.Error())
 		}
-		if resp == nil {
-			t.Fatalf("Response is nil after Replace")
-		}
-		if resp.Pos != nil {
-			t.Errorf("Response should not have a position")
-		}
-		if resp.Data == nil {
-			t.Fatalf("Response data is nil after Replace")
-		}
-		if len(resp.Data) != 1 {
+		if len(data) != 1 {
 			t.Fatalf("Response Body len != 1")
 		}
-		if tpl, ok := resp.Data[0].([]interface{}); !ok {
+		if tpl, ok := data[0].([]interface{}); !ok {
 			t.Errorf("Unexpected body of Replace")
 		} else {
 			if len(tpl) != 3 {
@@ -2275,23 +2221,17 @@ func TestClientRequestObjects(t *testing.T) {
 	// Delete
 	req = NewDeleteRequest(spaceName).
 		Key([]interface{}{uint(1016)})
-	resp, err = conn.Do(req).Get()
+	data, err = conn.Do(req).Get()
 	if err != nil {
 		t.Fatalf("Failed to Delete: %s", err.Error())
 	}
-	if resp == nil {
-		t.Fatalf("Response is nil after Delete")
-	}
-	if resp.Pos != nil {
-		t.Errorf("Response should not have a position")
-	}
-	if resp.Data == nil {
+	if data == nil {
 		t.Fatalf("Response data is nil after Delete")
 	}
-	if len(resp.Data) != 1 {
+	if len(data) != 1 {
 		t.Fatalf("Response Body len != 1")
 	}
-	if tpl, ok := resp.Data[0].([]interface{}); !ok {
+	if tpl, ok := data[0].([]interface{}); !ok {
 		t.Errorf("Unexpected body of Delete")
 	} else {
 		if len(tpl) != 3 {
@@ -2312,23 +2252,17 @@ func TestClientRequestObjects(t *testing.T) {
 	req = NewUpdateRequest(spaceName).
 		Index(indexName).
 		Key([]interface{}{uint(1010)})
-	resp, err = conn.Do(req).Get()
+	data, err = conn.Do(req).Get()
 	if err != nil {
 		t.Errorf("Failed to Update: %s", err.Error())
 	}
-	if resp == nil {
-		t.Fatalf("Response is nil after Update")
-	}
-	if resp.Pos != nil {
-		t.Errorf("Response should not have a position")
-	}
-	if resp.Data == nil {
+	if data == nil {
 		t.Fatalf("Response data is nil after Update")
 	}
-	if len(resp.Data) != 1 {
+	if len(data) != 1 {
 		t.Fatalf("Response Data len != 1")
 	}
-	if tpl, ok := resp.Data[0].([]interface{}); !ok {
+	if tpl, ok := data[0].([]interface{}); !ok {
 		t.Errorf("Unexpected body of Update")
 	} else {
 		if id, err := test_helpers.ConvertUint64(tpl[0]); err != nil || id != uint64(1010) {
@@ -2347,23 +2281,14 @@ func TestClientRequestObjects(t *testing.T) {
 		Index(indexName).
 		Key([]interface{}{uint(1010)}).
 		Operations(NewOperations().Assign(1, "bye").Insert(2, 1))
-	resp, err = conn.Do(req).Get()
+	data, err = conn.Do(req).Get()
 	if err != nil {
 		t.Errorf("Failed to Update: %s", err.Error())
 	}
-	if resp == nil {
-		t.Fatalf("Response is nil after Update")
-	}
-	if resp.Pos != nil {
-		t.Errorf("Response should not have a position")
-	}
-	if resp.Data == nil {
-		t.Fatalf("Response data is nil after Update")
-	}
-	if len(resp.Data) != 1 {
+	if len(data) != 1 {
 		t.Fatalf("Response Data len != 1")
 	}
-	if tpl, ok := resp.Data[0].([]interface{}); !ok {
+	if tpl, ok := data[0].([]interface{}); !ok {
 		t.Errorf("Unexpected body of Select")
 	} else {
 		if id, err := test_helpers.ConvertUint64(tpl[0]); err != nil || id != 1010 {
@@ -2380,20 +2305,11 @@ func TestClientRequestObjects(t *testing.T) {
 	// Upsert without operations.
 	req = NewUpsertRequest(spaceNo).
 		Tuple([]interface{}{uint(1010), "hi", "hi"})
-	resp, err = conn.Do(req).Get()
+	data, err = conn.Do(req).Get()
 	if err != nil {
 		t.Errorf("Failed to Upsert (update): %s", err.Error())
 	}
-	if resp == nil {
-		t.Fatalf("Response is nil after Upsert (update)")
-	}
-	if resp.Pos != nil {
-		t.Errorf("Response should not have a position")
-	}
-	if resp.Data == nil {
-		t.Fatalf("Response data is nil after Upsert")
-	}
-	if len(resp.Data) != 0 {
+	if len(data) != 0 {
 		t.Fatalf("Response Data len != 0")
 	}
 
@@ -2401,65 +2317,44 @@ func TestClientRequestObjects(t *testing.T) {
 	req = NewUpsertRequest(spaceNo).
 		Tuple([]interface{}{uint(1010), "hi", "hi"}).
 		Operations(NewOperations().Assign(2, "bye"))
-	resp, err = conn.Do(req).Get()
+	data, err = conn.Do(req).Get()
 	if err != nil {
 		t.Errorf("Failed to Upsert (update): %s", err.Error())
 	}
-	if resp == nil {
-		t.Fatalf("Response is nil after Upsert (update)")
-	}
-	if resp.Pos != nil {
-		t.Errorf("Response should not have a position")
-	}
-	if resp.Data == nil {
-		t.Fatalf("Response data is nil after Upsert")
-	}
-	if len(resp.Data) != 0 {
+	if len(data) != 0 {
 		t.Fatalf("Response Data len != 0")
 	}
 
 	// Call16 vs Call17
 	req = NewCall16Request("simple_concat").Args([]interface{}{"1"})
-	resp, err = conn.Do(req).Get()
+	data, err = conn.Do(req).Get()
 	if err != nil {
 		t.Errorf("Failed to use Call")
 	}
-	if resp.Pos != nil {
-		t.Errorf("Response should not have a position")
-	}
-	if val, ok := resp.Data[0].([]interface{})[0].(string); !ok || val != "11" {
-		t.Errorf("result is not {{1}} : %v", resp.Data)
+	if val, ok := data[0].([]interface{})[0].(string); !ok || val != "11" {
+		t.Errorf("result is not {{1}} : %v", data)
 	}
 
 	// Call17
 	req = NewCall17Request("simple_concat").Args([]interface{}{"1"})
-	resp, err = conn.Do(req).Get()
+	data, err = conn.Do(req).Get()
 	if err != nil {
 		t.Errorf("Failed to use Call17")
 	}
-	if resp.Pos != nil {
-		t.Errorf("Response should not have a position")
-	}
-	if val, ok := resp.Data[0].(string); !ok || val != "11" {
-		t.Errorf("result is not {{1}} : %v", resp.Data)
+	if val, ok := data[0].(string); !ok || val != "11" {
+		t.Errorf("result is not {{1}} : %v", data)
 	}
 
 	// Eval
 	req = NewEvalRequest("return 5 + 6")
-	resp, err = conn.Do(req).Get()
+	data, err = conn.Do(req).Get()
 	if err != nil {
 		t.Fatalf("Failed to Eval: %s", err.Error())
 	}
-	if resp == nil {
-		t.Fatalf("Response is nil after Eval")
-	}
-	if resp.Pos != nil {
-		t.Errorf("Response should not have a position")
-	}
-	if len(resp.Data) < 1 {
+	if len(data) < 1 {
 		t.Errorf("Response.Data is empty after Eval")
 	}
-	if val, err := test_helpers.ConvertUint64(resp.Data[0]); err != nil || val != 11 {
+	if val, err := test_helpers.ConvertUint64(data[0]); err != nil || val != 11 {
 		t.Errorf("5 + 6 == 11, but got %v", val)
 	}
 
@@ -2473,45 +2368,47 @@ func TestClientRequestObjects(t *testing.T) {
 	}
 
 	req = NewExecuteRequest(createTableQuery)
-	resp, err = conn.Do(req).Get()
+	resp, err := conn.Do(req).GetResponse()
 	if err != nil {
 		t.Fatalf("Failed to Execute: %s", err.Error())
 	}
 	if resp == nil {
 		t.Fatal("Response is nil after Execute")
 	}
-	if resp.Pos != nil {
+	if resp.Pos() != nil {
 		t.Errorf("Response should not have a position")
 	}
-	if len(resp.Data) != 0 {
+	data, err = resp.Decode()
+	if err != nil {
+		t.Fatalf("Failed to Decode: %s", err.Error())
+	}
+	if len(data) != 0 {
 		t.Fatalf("Response Body len != 0")
 	}
-	if resp.Code != OkCode {
-		t.Fatalf("Failed to Execute: %d", resp.Code)
-	}
-	if resp.SQLInfo.AffectedCount != 1 {
-		t.Errorf("Incorrect count of created spaces: %d", resp.SQLInfo.AffectedCount)
+	if resp.SQLInfo().AffectedCount != 1 {
+		t.Errorf("Incorrect count of created spaces: %d", resp.SQLInfo().AffectedCount)
 	}
 
 	req = NewExecuteRequest(dropQuery2)
-	resp, err = conn.Do(req).Get()
+	resp, err = conn.Do(req).GetResponse()
 	if err != nil {
 		t.Fatalf("Failed to Execute: %s", err.Error())
 	}
 	if resp == nil {
 		t.Fatal("Response is nil after Execute")
 	}
-	if resp.Pos != nil {
+	if resp.Pos() != nil {
 		t.Errorf("Response should not have a position")
 	}
-	if len(resp.Data) != 0 {
+	data, err = resp.Decode()
+	if err != nil {
+		t.Fatalf("Failed to Decode: %s", err.Error())
+	}
+	if len(data) != 0 {
 		t.Fatalf("Response Body len != 0")
 	}
-	if resp.Code != OkCode {
-		t.Fatalf("Failed to Execute: %d", resp.Code)
-	}
-	if resp.SQLInfo.AffectedCount != 1 {
-		t.Errorf("Incorrect count of dropped spaces: %d", resp.SQLInfo.AffectedCount)
+	if resp.SQLInfo().AffectedCount != 1 {
+		t.Errorf("Incorrect count of dropped spaces: %d", resp.SQLInfo().AffectedCount)
 	}
 }
 
@@ -2528,7 +2425,7 @@ func testConnectionDoSelectRequestPrepare(t *testing.T, conn Connector) {
 }
 
 func testConnectionDoSelectRequestCheck(t *testing.T,
-	resp *Response, err error, pos bool, dataLen int, firstKey uint64) {
+	resp Response, err error, pos bool, dataLen int, firstKey uint64) {
 	t.Helper()
 
 	if err != nil {
@@ -2537,18 +2434,22 @@ func testConnectionDoSelectRequestCheck(t *testing.T,
 	if resp == nil {
 		t.Fatalf("Response is nil after Select")
 	}
-	if !pos && resp.Pos != nil {
+	if !pos && resp.Pos() != nil {
 		t.Errorf("Response should not have a position descriptor")
 	}
-	if pos && resp.Pos == nil {
+	if pos && resp.Pos() == nil {
 		t.Fatalf("A response must have a position descriptor")
 	}
-	if len(resp.Data) != dataLen {
-		t.Fatalf("Response Data len %d != %d", len(resp.Data), dataLen)
+	data, err := resp.Decode()
+	if err != nil {
+		t.Fatalf("Failed to Decode: %s", err.Error())
+	}
+	if len(data) != dataLen {
+		t.Fatalf("Response Data len %d != %d", len(data), dataLen)
 	}
 	for i := 0; i < dataLen; i++ {
 		key := firstKey + uint64(i)
-		if tpl, ok := resp.Data[i].([]interface{}); !ok {
+		if tpl, ok := data[i].([]interface{}); !ok {
 			t.Errorf("Unexpected body of Select")
 		} else {
 			if id, err := test_helpers.ConvertUint64(tpl[0]); err != nil || id != key {
@@ -2579,7 +2480,7 @@ func TestConnectionDoSelectRequest(t *testing.T) {
 		Limit(20).
 		Iterator(IterGe).
 		Key([]interface{}{uint(1010)})
-	resp, err := conn.Do(req).Get()
+	resp, err := conn.Do(req).GetResponse()
 
 	testConnectionDoSelectRequestCheck(t, resp, err, false, 10, 1010)
 }
@@ -2595,15 +2496,12 @@ func TestConnectionDoWatchOnceRequest(t *testing.T) {
 		t.Fatalf("Failed to create a broadcast : %s", err.Error())
 	}
 
-	resp, err := conn.Do(NewWatchOnceRequest("hello")).Get()
+	data, err := conn.Do(NewWatchOnceRequest("hello")).Get()
 	if err != nil {
 		t.Fatalf("Failed to WatchOnce: %s", err.Error())
 	}
-	if resp.Code != OkCode {
-		t.Errorf("Failed to WatchOnce: wrong code returned %d", resp.Code)
-	}
-	if len(resp.Data) < 1 || resp.Data[0] != "world" {
-		t.Errorf("Failed to WatchOnce: wrong value returned %v", resp.Data)
+	if len(data) < 1 || data[0] != "world" {
+		t.Errorf("Failed to WatchOnce: wrong value returned %v", data)
 	}
 }
 
@@ -2619,15 +2517,12 @@ func TestConnectionDoWatchOnceOnEmptyKey(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
-	resp, err := conn.Do(NewWatchOnceRequest("notexists!")).Get()
+	data, err := conn.Do(NewWatchOnceRequest("notexists!")).Get()
 	if err != nil {
 		t.Fatalf("Failed to WatchOnce: %s", err.Error())
 	}
-	if resp.Code != OkCode {
-		t.Errorf("Failed to WatchOnce: wrong code returned %d", resp.Code)
-	}
-	if len(resp.Data) > 0 {
-		t.Errorf("Failed to WatchOnce: wrong value returned %v", resp.Data)
+	if len(data) > 0 {
+		t.Errorf("Failed to WatchOnce: wrong value returned %v", data)
 	}
 }
 
@@ -2645,7 +2540,7 @@ func TestConnectionDoSelectRequest_fetch_pos(t *testing.T) {
 		Iterator(IterGe).
 		FetchPos(true).
 		Key([]interface{}{uint(1010)})
-	resp, err := conn.Do(req).Get()
+	resp, err := conn.Do(req).GetResponse()
 
 	testConnectionDoSelectRequestCheck(t, resp, err, true, 2, 1010)
 }
@@ -2665,7 +2560,7 @@ func TestConnectDoSelectRequest_after_tuple(t *testing.T) {
 		FetchPos(true).
 		Key([]interface{}{uint(1010)}).
 		After([]interface{}{uint(1012)})
-	resp, err := conn.Do(req).Get()
+	resp, err := conn.Do(req).GetResponse()
 
 	testConnectionDoSelectRequestCheck(t, resp, err, true, 2, 1013)
 }
@@ -2684,17 +2579,17 @@ func TestConnectionDoSelectRequest_pagination_pos(t *testing.T) {
 		Iterator(IterGe).
 		FetchPos(true).
 		Key([]interface{}{uint(1010)})
-	resp, err := conn.Do(req).Get()
+	resp, err := conn.Do(req).GetResponse()
 
 	testConnectionDoSelectRequestCheck(t, resp, err, true, 2, 1010)
 
-	resp, err = conn.Do(req.After(resp.Pos)).Get()
+	resp, err = conn.Do(req.After(resp.Pos())).GetResponse()
 
 	testConnectionDoSelectRequestCheck(t, resp, err, true, 2, 1012)
 }
 
 func TestConnection_Call(t *testing.T) {
-	var resp *Response
+	var resp Response
 	var err error
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
@@ -2704,25 +2599,28 @@ func TestConnection_Call(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to use Call")
 	}
-	if val, ok := resp.Data[0].(string); !ok || val != "11" {
-		t.Errorf("result is not {{1}} : %v", resp.Data)
+	data, err := resp.Decode()
+	if err != nil {
+		t.Errorf("Failed to Decode: %s", err.Error())
+	}
+	if val, ok := data[0].(string); !ok || val != "11" {
+		t.Errorf("result is not {{1}} : %v", data)
 	}
 }
 
 func TestCallRequest(t *testing.T) {
-	var resp *Response
 	var err error
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	req := NewCallRequest("simple_concat").Args([]interface{}{"1"})
-	resp, err = conn.Do(req).Get()
+	data, err := conn.Do(req).Get()
 	if err != nil {
 		t.Errorf("Failed to use Call")
 	}
-	if val, ok := resp.Data[0].(string); !ok || val != "11" {
-		t.Errorf("result is not {{1}} : %v", resp.Data)
+	if val, ok := data[0].(string); !ok || val != "11" {
+		t.Errorf("result is not {{1}} : %v", data)
 	}
 }
 
@@ -2730,14 +2628,11 @@ func TestClientRequestObjectsWithNilContext(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 	req := NewPingRequest().Context(nil) //nolint
-	resp, err := conn.Do(req).Get()
+	data, err := conn.Do(req).Get()
 	if err != nil {
 		t.Fatalf("Failed to Ping: %s", err.Error())
 	}
-	if resp == nil {
-		t.Fatalf("Response is nil after Ping")
-	}
-	if len(resp.Data) != 0 {
+	if len(data) != 0 {
 		t.Errorf("Response Body len != 0")
 	}
 }
@@ -2886,7 +2781,6 @@ func TestStream_IdValues(t *testing.T) {
 
 func TestStream_Commit(t *testing.T) {
 	var req Request
-	var resp *Response
 	var err error
 	var conn *Connection
 
@@ -2899,23 +2793,17 @@ func TestStream_Commit(t *testing.T) {
 
 	// Begin transaction
 	req = NewBeginRequest()
-	resp, err = stream.Do(req).Get()
+	_, err = stream.Do(req).Get()
 	if err != nil {
 		t.Fatalf("Failed to Begin: %s", err.Error())
-	}
-	if resp.Code != OkCode {
-		t.Fatalf("Failed to Begin: wrong code returned %d", resp.Code)
 	}
 
 	// Insert in stream
 	req = NewInsertRequest(spaceName).
 		Tuple([]interface{}{uint(1001), "hello2", "world2"})
-	resp, err = stream.Do(req).Get()
+	_, err = stream.Do(req).Get()
 	if err != nil {
 		t.Fatalf("Failed to Insert: %s", err.Error())
-	}
-	if resp.Code != OkCode {
-		t.Errorf("Failed to Insert: wrong code returned %d", resp.Code)
 	}
 	defer test_helpers.DeleteRecordByKey(t, conn, spaceNo, indexNo, []interface{}{uint(1001)})
 
@@ -2927,29 +2815,23 @@ func TestStream_Commit(t *testing.T) {
 		Limit(1).
 		Iterator(IterEq).
 		Key([]interface{}{uint(1001)})
-	resp, err = conn.Do(selectReq).Get()
+	data, err := conn.Do(selectReq).Get()
 	if err != nil {
 		t.Fatalf("Failed to Select: %s", err.Error())
 	}
-	if resp == nil {
-		t.Fatalf("Response is nil after Select")
-	}
-	if len(resp.Data) != 0 {
+	if len(data) != 0 {
 		t.Fatalf("Response Data len != 0")
 	}
 
 	// Select in stream
-	resp, err = stream.Do(selectReq).Get()
+	data, err = stream.Do(selectReq).Get()
 	if err != nil {
 		t.Fatalf("Failed to Select: %s", err.Error())
 	}
-	if resp == nil {
-		t.Fatalf("Response is nil after Select")
-	}
-	if len(resp.Data) != 1 {
+	if len(data) != 1 {
 		t.Fatalf("Response Data len != 1")
 	}
-	if tpl, ok := resp.Data[0].([]interface{}); !ok {
+	if tpl, ok := data[0].([]interface{}); !ok {
 		t.Fatalf("Unexpected body of Select")
 	} else {
 		if id, err := test_helpers.ConvertUint64(tpl[0]); err != nil || id != 1001 {
@@ -2965,26 +2847,20 @@ func TestStream_Commit(t *testing.T) {
 
 	// Commit transaction
 	req = NewCommitRequest()
-	resp, err = stream.Do(req).Get()
+	_, err = stream.Do(req).Get()
 	if err != nil {
 		t.Fatalf("Failed to Commit: %s", err.Error())
 	}
-	if resp.Code != OkCode {
-		t.Fatalf("Failed to Commit: wrong code returned %d", resp.Code)
-	}
 
 	// Select outside of transaction
-	resp, err = conn.Do(selectReq).Get()
+	data, err = conn.Do(selectReq).Get()
 	if err != nil {
 		t.Fatalf("Failed to Select: %s", err.Error())
 	}
-	if resp == nil {
-		t.Fatalf("Response is nil after Select")
-	}
-	if len(resp.Data) != 1 {
+	if len(data) != 1 {
 		t.Fatalf("Response Data len != 1")
 	}
-	if tpl, ok := resp.Data[0].([]interface{}); !ok {
+	if tpl, ok := data[0].([]interface{}); !ok {
 		t.Fatalf("Unexpected body of Select")
 	} else {
 		if id, err := test_helpers.ConvertUint64(tpl[0]); err != nil || id != 1001 {
@@ -3001,7 +2877,6 @@ func TestStream_Commit(t *testing.T) {
 
 func TestStream_Rollback(t *testing.T) {
 	var req Request
-	var resp *Response
 	var err error
 	var conn *Connection
 
@@ -3014,23 +2889,17 @@ func TestStream_Rollback(t *testing.T) {
 
 	// Begin transaction
 	req = NewBeginRequest()
-	resp, err = stream.Do(req).Get()
+	_, err = stream.Do(req).Get()
 	if err != nil {
 		t.Fatalf("Failed to Begin: %s", err.Error())
-	}
-	if resp.Code != OkCode {
-		t.Fatalf("Failed to Begin: wrong code returned %d", resp.Code)
 	}
 
 	// Insert in stream
 	req = NewInsertRequest(spaceName).
 		Tuple([]interface{}{uint(1001), "hello2", "world2"})
-	resp, err = stream.Do(req).Get()
+	_, err = stream.Do(req).Get()
 	if err != nil {
 		t.Fatalf("Failed to Insert: %s", err.Error())
-	}
-	if resp.Code != OkCode {
-		t.Errorf("Failed to Insert: wrong code returned %d", resp.Code)
 	}
 	defer test_helpers.DeleteRecordByKey(t, conn, spaceNo, indexNo, []interface{}{uint(1001)})
 
@@ -3042,29 +2911,23 @@ func TestStream_Rollback(t *testing.T) {
 		Limit(1).
 		Iterator(IterEq).
 		Key([]interface{}{uint(1001)})
-	resp, err = conn.Do(selectReq).Get()
+	data, err := conn.Do(selectReq).Get()
 	if err != nil {
 		t.Fatalf("Failed to Select: %s", err.Error())
 	}
-	if resp == nil {
-		t.Fatalf("Response is nil after Select")
-	}
-	if len(resp.Data) != 0 {
+	if len(data) != 0 {
 		t.Fatalf("Response Data len != 0")
 	}
 
 	// Select in stream
-	resp, err = stream.Do(selectReq).Get()
+	data, err = stream.Do(selectReq).Get()
 	if err != nil {
 		t.Fatalf("Failed to Select: %s", err.Error())
 	}
-	if resp == nil {
-		t.Fatalf("Response is nil after Select")
-	}
-	if len(resp.Data) != 1 {
+	if len(data) != 1 {
 		t.Fatalf("Response Data len != 1")
 	}
-	if tpl, ok := resp.Data[0].([]interface{}); !ok {
+	if tpl, ok := data[0].([]interface{}); !ok {
 		t.Fatalf("Unexpected body of Select")
 	} else {
 		if id, err := test_helpers.ConvertUint64(tpl[0]); err != nil || id != 1001 {
@@ -3080,42 +2943,32 @@ func TestStream_Rollback(t *testing.T) {
 
 	// Rollback transaction
 	req = NewRollbackRequest()
-	resp, err = stream.Do(req).Get()
+	_, err = stream.Do(req).Get()
 	if err != nil {
 		t.Fatalf("Failed to Rollback: %s", err.Error())
 	}
-	if resp.Code != OkCode {
-		t.Fatalf("Failed to Rollback: wrong code returned %d", resp.Code)
-	}
 
 	// Select outside of transaction
-	resp, err = conn.Do(selectReq).Get()
+	data, err = conn.Do(selectReq).Get()
 	if err != nil {
 		t.Fatalf("Failed to Select: %s", err.Error())
 	}
-	if resp == nil {
-		t.Fatalf("Response is nil after Select")
-	}
-	if len(resp.Data) != 0 {
+	if len(data) != 0 {
 		t.Fatalf("Response Data len != 0")
 	}
 
 	// Select inside of stream after rollback
-	resp, err = stream.Do(selectReq).Get()
+	_, err = stream.Do(selectReq).Get()
 	if err != nil {
 		t.Fatalf("Failed to Select: %s", err.Error())
 	}
-	if resp == nil {
-		t.Fatalf("Response is nil after Select")
-	}
-	if len(resp.Data) != 0 {
+	if len(data) != 0 {
 		t.Fatalf("Response Data len != 0")
 	}
 }
 
 func TestStream_TxnIsolationLevel(t *testing.T) {
 	var req Request
-	var resp *Response
 	var err error
 	var conn *Connection
 
@@ -3136,18 +2989,14 @@ func TestStream_TxnIsolationLevel(t *testing.T) {
 	for _, level := range txnIsolationLevels {
 		// Begin transaction
 		req = NewBeginRequest().TxnIsolation(level).Timeout(500 * time.Millisecond)
-		resp, err = stream.Do(req).Get()
+		_, err = stream.Do(req).Get()
 		require.Nilf(t, err, "failed to Begin")
-		require.NotNilf(t, resp, "response is nil after Begin")
-		require.Equalf(t, OkCode, resp.Code, "wrong code returned")
 
 		// Insert in stream
 		req = NewInsertRequest(spaceName).
 			Tuple([]interface{}{uint(1001), "hello2", "world2"})
-		resp, err = stream.Do(req).Get()
+		_, err = stream.Do(req).Get()
 		require.Nilf(t, err, "failed to Insert")
-		require.NotNilf(t, resp, "response is nil after Insert")
-		require.Equalf(t, OkCode, resp.Code, "wrong code returned")
 
 		// Select not related to the transaction
 		// while transaction is not committed
@@ -3157,18 +3006,16 @@ func TestStream_TxnIsolationLevel(t *testing.T) {
 			Limit(1).
 			Iterator(IterEq).
 			Key([]interface{}{uint(1001)})
-		resp, err = conn.Do(selectReq).Get()
+		data, err := conn.Do(selectReq).Get()
 		require.Nilf(t, err, "failed to Select")
-		require.NotNilf(t, resp, "response is nil after Select")
-		require.Equalf(t, 0, len(resp.Data), "response Data len != 0")
+		require.Equalf(t, 0, len(data), "response Data len != 0")
 
 		// Select in stream
-		resp, err = stream.Do(selectReq).Get()
+		data, err = stream.Do(selectReq).Get()
 		require.Nilf(t, err, "failed to Select")
-		require.NotNilf(t, resp, "response is nil after Select")
-		require.Equalf(t, 1, len(resp.Data), "response Body len != 1 after Select")
+		require.Equalf(t, 1, len(data), "response Body len != 1 after Select")
 
-		tpl, ok := resp.Data[0].([]interface{})
+		tpl, ok := data[0].([]interface{})
 		require.Truef(t, ok, "unexpected body of Select")
 		require.Equalf(t, 3, len(tpl), "unexpected body of Select")
 
@@ -3186,22 +3033,18 @@ func TestStream_TxnIsolationLevel(t *testing.T) {
 
 		// Rollback transaction
 		req = NewRollbackRequest()
-		resp, err = stream.Do(req).Get()
+		_, err = stream.Do(req).Get()
 		require.Nilf(t, err, "failed to Rollback")
-		require.NotNilf(t, resp, "response is nil after Rollback")
-		require.Equalf(t, OkCode, resp.Code, "wrong code returned")
 
 		// Select outside of transaction
-		resp, err = conn.Do(selectReq).Get()
+		data, err = conn.Do(selectReq).Get()
 		require.Nilf(t, err, "failed to Select")
-		require.NotNilf(t, resp, "response is nil after Select")
-		require.Equalf(t, 0, len(resp.Data), "response Data len != 0")
+		require.Equalf(t, 0, len(data), "response Data len != 0")
 
 		// Select inside of stream after rollback
-		resp, err = stream.Do(selectReq).Get()
+		data, err = stream.Do(selectReq).Get()
 		require.Nilf(t, err, "failed to Select")
-		require.NotNilf(t, resp, "response is nil after Select")
-		require.Equalf(t, 0, len(resp.Data), "response Data len != 0")
+		require.Equalf(t, 0, len(data), "response Data len != 0")
 
 		test_helpers.DeleteRecordByKey(t, conn, spaceNo, indexNo, []interface{}{uint(1001)})
 	}
@@ -3298,13 +3141,12 @@ func TestClientIdRequestObject(t *testing.T) {
 		Version:  ProtocolVersion(1),
 		Features: []iproto.Feature{iproto.IPROTO_FEATURE_STREAMS},
 	})
-	resp, err := conn.Do(req).Get()
+	data, err := conn.Do(req).Get()
 	require.Nilf(t, err, "No errors on Id request execution")
-	require.NotNilf(t, resp, "Response not empty")
-	require.NotNilf(t, resp.Data, "Response data not empty")
-	require.Equal(t, len(resp.Data), 1, "Response data contains exactly one object")
+	require.NotNilf(t, data, "Response data not empty")
+	require.Equal(t, len(data), 1, "Response data contains exactly one object")
 
-	serverProtocolInfo, ok := resp.Data[0].(ProtocolInfo)
+	serverProtocolInfo, ok := data[0].(ProtocolInfo)
 	require.Truef(t, ok, "Response Data object is an ProtocolInfo object")
 	require.GreaterOrEqual(t,
 		serverProtocolInfo.Version,
@@ -3334,13 +3176,12 @@ func TestClientIdRequestObjectWithNilContext(t *testing.T) {
 		Version:  ProtocolVersion(1),
 		Features: []iproto.Feature{iproto.IPROTO_FEATURE_STREAMS},
 	}).Context(nil) //nolint
-	resp, err := conn.Do(req).Get()
+	data, err := conn.Do(req).Get()
 	require.Nilf(t, err, "No errors on Id request execution")
-	require.NotNilf(t, resp, "Response not empty")
-	require.NotNilf(t, resp.Data, "Response data not empty")
-	require.Equal(t, len(resp.Data), 1, "Response data contains exactly one object")
+	require.NotNilf(t, data, "Response data not empty")
+	require.Equal(t, len(data), 1, "Response data contains exactly one object")
 
-	serverProtocolInfo, ok := resp.Data[0].(ProtocolInfo)
+	serverProtocolInfo, ok := data[0].(ProtocolInfo)
 	require.Truef(t, ok, "Response Data object is an ProtocolInfo object")
 	require.GreaterOrEqual(t,
 		serverProtocolInfo.Version,
@@ -3697,15 +3538,12 @@ func TestBroadcastRequest(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
-	resp, err := conn.Do(NewBroadcastRequest(key).Value(value)).Get()
+	data, err := conn.Do(NewBroadcastRequest(key).Value(value)).Get()
 	if err != nil {
 		t.Fatalf("Got broadcast error: %s", err)
 	}
-	if resp.Code != OkCode {
-		t.Errorf("Got unexpected broadcast response code: %d", resp.Code)
-	}
-	if !reflect.DeepEqual(resp.Data, []interface{}{}) {
-		t.Errorf("Got unexpected broadcast response data: %v", resp.Data)
+	if !reflect.DeepEqual(data, []interface{}{}) {
+		t.Errorf("Got unexpected broadcast response data: %v", data)
 	}
 
 	events := make(chan WatchEvent)

@@ -44,18 +44,14 @@ func Example() {
 		log.Fatalf("Failed to prepare test decimal: %s", err)
 	}
 
-	resp, err := client.Do(tarantool.NewReplaceRequest(spaceNo).
+	data, err := client.Do(tarantool.NewReplaceRequest(spaceNo).
 		Tuple([]interface{}{number}),
 	).Get()
 	if err != nil {
 		log.Fatalf("Decimal replace failed: %s", err)
 	}
-	if resp == nil {
-		log.Fatalf("Response is nil after Replace")
-	}
 
 	log.Println("Decimal tuple replace")
 	log.Println("Error", err)
-	log.Println("Code", resp.Code)
-	log.Println("Data", resp.Data)
+	log.Println("Data", data)
 }

@@ -128,12 +128,13 @@ func main() {
 	if err != nil {
 		fmt.Println("Connection refused:", err)
 	}
-	resp, err := conn.Do(tarantool.NewInsertRequest(999).
+	data, err := conn.Do(tarantool.NewInsertRequest(999).
 		Tuple([]interface{}{99999, "BB"}),
 	).Get()
 	if err != nil {
 		fmt.Println("Error", err)
-		fmt.Println("Code", resp.Code)
+	} else {
+		fmt.Printf("Data: %v", data)
 	}
 }
 ```
@@ -241,7 +242,9 @@ of the requests is an array instead of array of arrays.
 
 #### IPROTO constants
 
-IPROTO constants have been moved to a separate package [go-iproto](https://github.com/tarantool/go-iproto).
+* IPROTO constants have been moved to a separate package [go-iproto](https://github.com/tarantool/go-iproto).
+* `PushCode` constant is removed. To check whether the current response is
+  a push response, use `IsPush()` method of the response iterator instead.
 
 #### Request changes
 
@@ -254,6 +257,19 @@ longer accept `ops` argument (operations) as an `interface{}`. `*Operations`
 needs to be passed instead.
 * `UpdateRequest` and `UpsertRequest` structs no longer accept `interface{}`
 for an `ops` field. `*Operations` needs to be used instead.
+
+#### Response changes
+
+* `Response` is now an interface.
+* Response header stored in a new `Header` struct. It could be accessed via
+  `Header()` method.
+* `ResponseIterator` interface now has `IsPush()` method.
+  It returns true if the current response is a push response.
+
+#### Future changes
+
+* Method `Get` now returns response data instead of the actual response.
+* New method `GetResponse` added to get an actual response.
 
 #### Connect function
 
