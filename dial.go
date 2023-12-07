@@ -400,19 +400,27 @@ func identify(w writeFlusher, r io.Reader) (ProtocolInfo, error) {
 
 	resp, err := readResponse(r)
 	if err != nil {
-		if iproto.Error(resp.Code) == iproto.ER_UNKNOWN_REQUEST_TYPE {
-			// IPROTO_ID requests are not supported by server.
-			return info, nil
-		}
-
 		return info, err
 	}
+	data, err := resp.Decode()
+	if err != nil {
+		switch err := err.(type) {
+		case Error:
+			if err.Code == iproto.ER_UNKNOWN_REQUEST_TYPE {
+				// IPROTO_ID requests are not supported by server.
+				return info, nil
+			}
+			return info, err
+		default:
+			return info, fmt.Errorf("decode response body error: %w", err)
+		}
+	}
 
-	if len(resp.Data) == 0 {
+	if len(data) == 0 {
 		return info, errors.New("unexpected response: no data")
 	}
 
-	info, ok := resp.Data[0].(ProtocolInfo)
+	info, ok := data[0].(ProtocolInfo)
 	if !ok {
 		return info, errors.New("unexpected response: wrong data")
 	}
@@ -503,23 +511,14 @@ func readResponse(r io.Reader) (Response, error) {
 
 	respBytes, err := read(r, lenbuf[:])
 	if err != nil {
-		return Response{}, fmt.Errorf("read error: %w", err)
+		return &ConnResponse{}, fmt.Errorf("read error: %w", err)
 	}
 
-	resp := Response{buf: smallBuf{b: respBytes}}
-	err = resp.decodeHeader(msgpack.NewDecoder(&smallBuf{}))
+	buf := smallBuf{b: respBytes}
+	header, err := decodeHeader(msgpack.NewDecoder(&smallBuf{}), &buf)
+	resp := &ConnResponse{header: header, buf: buf}
 	if err != nil {
 		return resp, fmt.Errorf("decode response header error: %w", err)
-	}
-
-	err = resp.decodeBody()
-	if err != nil {
-		switch err.(type) {
-		case Error:
-			return resp, err
-		default:
-			return resp, fmt.Errorf("decode response body error: %w", err)
-		}
 	}
 	return resp, nil
 }

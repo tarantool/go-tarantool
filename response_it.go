@@ -12,7 +12,9 @@ type ResponseIterator interface {
 	// Next tries to switch to a next Response and returns true if it exists.
 	Next() bool
 	// Value returns a current Response if it exists, nil otherwise.
-	Value() *Response
+	Value() Response
+	// IsPush returns true if the current response is a push response.
+	IsPush() bool
 	// Err returns error if it happens.
 	Err() error
 }

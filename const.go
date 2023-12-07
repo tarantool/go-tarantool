@@ -9,6 +9,5 @@ const (
 )
 
 const (
-	OkCode   = uint32(iproto.IPROTO_OK)
-	PushCode = uint32(iproto.IPROTO_CHUNK)
+	OkCode = uint32(iproto.IPROTO_OK)
 )

@@ -89,14 +89,11 @@ func TestSelect(t *testing.T) {
 		Limit(1).
 		Iterator(IterEq).
 		Key([]interface{}{id})
-	resp, errSel := conn.Do(sel).Get()
+	data, errSel := conn.Do(sel).Get()
 	if errSel != nil {
 		t.Fatalf("UUID select failed: %s", errSel.Error())
 	}
-	if resp == nil {
-		t.Fatalf("Response is nil after Select")
-	}
-	tupleValueIsId(t, resp.Data, id)
+	tupleValueIsId(t, data, id)
 
 	var tuples []TupleUUID
 	errTyp := conn.Do(sel).GetTyped(&tuples)
@@ -125,28 +122,22 @@ func TestReplace(t *testing.T) {
 	}
 
 	rep := NewReplaceRequest(space).Tuple([]interface{}{id})
-	respRep, errRep := conn.Do(rep).Get()
+	dataRep, errRep := conn.Do(rep).Get()
 	if errRep != nil {
 		t.Errorf("UUID replace failed: %s", errRep)
 	}
-	if respRep == nil {
-		t.Fatalf("Response is nil after Replace")
-	}
-	tupleValueIsId(t, respRep.Data, id)
+	tupleValueIsId(t, dataRep, id)
 
 	sel := NewSelectRequest(space).
 		Index(index).
 		Limit(1).
 		Iterator(IterEq).
 		Key([]interface{}{id})
-	respSel, errSel := conn.Do(sel).Get()
+	dataSel, errSel := conn.Do(sel).Get()
 	if errSel != nil {
 		t.Errorf("UUID select failed: %s", errSel)
 	}
-	if respSel == nil {
-		t.Fatalf("Response is nil after Select")
-	}
-	tupleValueIsId(t, respSel.Data, id)
+	tupleValueIsId(t, dataSel, id)
 }
 
 // runTestMain is a body of TestMain function

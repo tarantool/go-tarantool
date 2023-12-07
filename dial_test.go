@@ -303,9 +303,8 @@ func TestConn_ReadWrite(t *testing.T) {
 		0x80, // Empty map.
 	}, dialer.conn.writebuf.Bytes())
 
-	resp, err := fut.Get()
+	_, err := fut.Get()
 	assert.Nil(t, err)
-	assert.NotNil(t, resp)
 }
 
 func TestConn_ContextCancel(t *testing.T) {

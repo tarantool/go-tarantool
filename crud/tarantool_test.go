@@ -517,39 +517,32 @@ func testSelectGeneratedData(t *testing.T, conn tarantool.Connector,
 		Limit(20).
 		Iterator(tarantool.IterGe).
 		Key([]interface{}{uint(1010)})
-	resp, err := conn.Do(req).Get()
+	data, err := conn.Do(req).Get()
 	if err != nil {
 		t.Fatalf("Failed to Select: %s", err.Error())
 	}
-	if resp == nil {
-		t.Fatalf("Response is nil after Select")
-	}
-	if len(resp.Data) != expectedTuplesCount {
-		t.Fatalf("Response Data len %d != %d", len(resp.Data), expectedTuplesCount)
+	if len(data) != expectedTuplesCount {
+		t.Fatalf("Response Data len %d != %d", len(data), expectedTuplesCount)
 	}
 }
 
 func testCrudRequestCheck(t *testing.T, req tarantool.Request,
-	resp *tarantool.Response, err error, expectedLen int) {
+	data []interface{}, err error, expectedLen int) {
 	t.Helper()
 
 	if err != nil {
 		t.Fatalf("Failed to Do CRUD request: %s", err.Error())
 	}
 
-	if resp == nil {
-		t.Fatalf("Response is nil after Do CRUD request")
-	}
-
-	if len(resp.Data) < expectedLen {
+	if len(data) < expectedLen {
 		t.Fatalf("Response Body len < %#v, actual len %#v",
-			expectedLen, len(resp.Data))
+			expectedLen, len(data))
 	}
 
 	// resp.Data[0] - CRUD res.
 	// resp.Data[1] - CRUD err.
-	if expectedLen >= 2 && resp.Data[1] != nil {
-		if crudErr, err := getCrudError(req, resp.Data[1]); err != nil {
+	if expectedLen >= 2 && data[1] != nil {
+		if crudErr, err := getCrudError(req, data[1]); err != nil {
 			t.Fatalf("Failed to get CRUD error: %#v", err)
 		} else if crudErr != nil {
 			t.Fatalf("Failed to perform CRUD request on CRUD side: %#v", crudErr)
@@ -569,8 +562,8 @@ func TestCrudGenerateData(t *testing.T) {
 				conn.Do(req).Get()
 			}
 
-			resp, err := conn.Do(testCase.req).Get()
-			testCrudRequestCheck(t, testCase.req, resp,
+			data, err := conn.Do(testCase.req).Get()
+			testCrudRequestCheck(t, testCase.req, data,
 				err, testCase.expectedRespLen)
 
 			testSelectGeneratedData(t, conn, testCase.expectedTuplesCount)
@@ -591,8 +584,8 @@ func TestCrudProcessData(t *testing.T) {
 	for _, testCase := range testProcessDataCases {
 		t.Run(testCase.name, func(t *testing.T) {
 			testCrudRequestPrepareData(t, conn)
-			resp, err := conn.Do(testCase.req).Get()
-			testCrudRequestCheck(t, testCase.req, resp,
+			data, err := conn.Do(testCase.req).Get()
+			testCrudRequestCheck(t, testCase.req, data,
 				err, testCase.expectedRespLen)
 			for i := 1010; i < 1020; i++ {
 				req := tarantool.NewDeleteRequest(spaceName).
@@ -623,8 +616,8 @@ func TestCrudUpdateSplice(t *testing.T) {
 		Opts(simpleOperationOpts)
 
 	testCrudRequestPrepareData(t, conn)
-	resp, err := conn.Do(req).Get()
-	testCrudRequestCheck(t, req, resp,
+	data, err := conn.Do(req).Get()
+	testCrudRequestCheck(t, req, data,
 		err, 2)
 }
 
@@ -648,8 +641,8 @@ func TestCrudUpsertSplice(t *testing.T) {
 		Opts(simpleOperationOpts)
 
 	testCrudRequestPrepareData(t, conn)
-	resp, err := conn.Do(req).Get()
-	testCrudRequestCheck(t, req, resp,
+	data, err := conn.Do(req).Get()
+	testCrudRequestCheck(t, req, data,
 		err, 2)
 }
 
@@ -673,8 +666,8 @@ func TestCrudUpsertObjectSplice(t *testing.T) {
 		Opts(simpleOperationOpts)
 
 	testCrudRequestPrepareData(t, conn)
-	resp, err := conn.Do(req).Get()
-	testCrudRequestCheck(t, req, resp,
+	data, err := conn.Do(req).Get()
+	testCrudRequestCheck(t, req, data,
 		err, 2)
 }
 
@@ -719,11 +712,11 @@ func TestUnflattenRows(t *testing.T) {
 	req := crud.MakeReplaceRequest(spaceName).
 		Tuple(tuple).
 		Opts(simpleOperationOpts)
-	resp, err := conn.Do(req).Get()
-	testCrudRequestCheck(t, req, resp, err, 2)
+	data, err := conn.Do(req).Get()
+	testCrudRequestCheck(t, req, data, err, 2)
 
-	if res, ok = resp.Data[0].(map[interface{}]interface{}); !ok {
-		t.Fatalf("Unexpected CRUD result: %#v", resp.Data[0])
+	if res, ok = data[0].(map[interface{}]interface{}); !ok {
+		t.Fatalf("Unexpected CRUD result: %#v", data[0])
 	}
 
 	if rawMetadata, ok := res["metadata"]; !ok {
@@ -1293,21 +1286,21 @@ func TestNoreturnOption(t *testing.T) {
 				conn.Do(req).Get()
 			}
 
-			resp, err := conn.Do(testCase.req).Get()
+			data, err := conn.Do(testCase.req).Get()
 			if err != nil {
 				t.Fatalf("Failed to Do CRUD request: %s", err)
 			}
 
-			if len(resp.Data) == 0 {
+			if len(data) == 0 {
 				t.Fatalf("Expected explicit nil")
 			}
 
-			if resp.Data[0] != nil {
-				t.Fatalf("Expected nil result, got %v", resp.Data[0])
+			if data[0] != nil {
+				t.Fatalf("Expected nil result, got %v", data[0])
 			}
 
-			if len(resp.Data) >= 2 && resp.Data[1] != nil {
-				t.Fatalf("Expected no returned errors, got %v", resp.Data[1])
+			if len(data) >= 2 && data[1] != nil {
+				t.Fatalf("Expected no returned errors, got %v", data[1])
 			}
 
 			for i := 1010; i < 1020; i++ {

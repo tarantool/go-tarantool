@@ -52,48 +52,41 @@ func skipIfSQLDeferForeignKeysSettingUnsupported(t *testing.T) {
 func TestErrorMarshalingEnabledSetting(t *testing.T) {
 	skipIfErrorMarshalingEnabledSettingUnsupported(t)
 
-	var resp *tarantool.Response
 	var err error
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	// Disable receiving box.error as MP_EXT 3.
-	resp, err = conn.Do(NewErrorMarshalingEnabledSetRequest(false)).Get()
+	data, err := conn.Do(NewErrorMarshalingEnabledSetRequest(false)).Get()
 	require.Nil(t, err)
-	require.NotNil(t, resp)
-	require.Equal(t, []interface{}{[]interface{}{"error_marshaling_enabled", false}}, resp.Data)
+	require.Equal(t, []interface{}{[]interface{}{"error_marshaling_enabled", false}}, data)
 
 	// Fetch current setting value.
-	resp, err = conn.Do(NewErrorMarshalingEnabledGetRequest()).Get()
+	data, err = conn.Do(NewErrorMarshalingEnabledGetRequest()).Get()
 	require.Nil(t, err)
-	require.NotNil(t, resp)
-	require.Equal(t, []interface{}{[]interface{}{"error_marshaling_enabled", false}}, resp.Data)
+	require.Equal(t, []interface{}{[]interface{}{"error_marshaling_enabled", false}}, data)
 
 	// Get a box.Error value.
 	eval := tarantool.NewEvalRequest("return box.error.new(box.error.UNKNOWN)")
-	resp, err = conn.Do(eval).Get()
+	data, err = conn.Do(eval).Get()
 	require.Nil(t, err)
-	require.NotNil(t, resp)
-	require.IsType(t, "string", resp.Data[0])
+	require.IsType(t, "string", data[0])
 
 	// Enable receiving box.error as MP_EXT 3.
-	resp, err = conn.Do(NewErrorMarshalingEnabledSetRequest(true)).Get()
+	data, err = conn.Do(NewErrorMarshalingEnabledSetRequest(true)).Get()
 	require.Nil(t, err)
-	require.NotNil(t, resp)
-	require.Equal(t, []interface{}{[]interface{}{"error_marshaling_enabled", true}}, resp.Data)
+	require.Equal(t, []interface{}{[]interface{}{"error_marshaling_enabled", true}}, data)
 
 	// Fetch current setting value.
-	resp, err = conn.Do(NewErrorMarshalingEnabledGetRequest()).Get()
+	data, err = conn.Do(NewErrorMarshalingEnabledGetRequest()).Get()
 	require.Nil(t, err)
-	require.NotNil(t, resp)
-	require.Equal(t, []interface{}{[]interface{}{"error_marshaling_enabled", true}}, resp.Data)
+	require.Equal(t, []interface{}{[]interface{}{"error_marshaling_enabled", true}}, data)
 
 	// Get a box.Error value.
-	resp, err = conn.Do(eval).Get()
+	data, err = conn.Do(eval).Get()
 	require.Nil(t, err)
-	require.NotNil(t, resp)
-	_, ok := resp.Data[0].(*tarantool.BoxError)
+	_, ok := data[0].(*tarantool.BoxError)
 	require.True(t, ok)
 }
 
@@ -101,70 +94,63 @@ func TestSQLDefaultEngineSetting(t *testing.T) {
 	// https://github.com/tarantool/tarantool/blob/680990a082374e4790539215f69d9e9ee39c3307/test/sql/engine.test.lua
 	skipIfSettingsUnsupported(t)
 
-	var resp *tarantool.Response
 	var err error
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	// Set default SQL "CREATE TABLE" engine to "vinyl".
-	resp, err = conn.Do(NewSQLDefaultEngineSetRequest("vinyl")).Get()
+	data, err := conn.Do(NewSQLDefaultEngineSetRequest("vinyl")).Get()
 	require.Nil(t, err)
-	require.NotNil(t, resp)
-	require.EqualValues(t, []interface{}{[]interface{}{"sql_default_engine", "vinyl"}}, resp.Data)
+	require.EqualValues(t, []interface{}{[]interface{}{"sql_default_engine", "vinyl"}}, data)
 
 	// Fetch current setting value.
-	resp, err = conn.Do(NewSQLDefaultEngineGetRequest()).Get()
+	data, err = conn.Do(NewSQLDefaultEngineGetRequest()).Get()
 	require.Nil(t, err)
-	require.NotNil(t, resp)
-	require.Equal(t, []interface{}{[]interface{}{"sql_default_engine", "vinyl"}}, resp.Data)
+	require.Equal(t, []interface{}{[]interface{}{"sql_default_engine", "vinyl"}}, data)
 
 	// Create a space with "CREATE TABLE".
 	exec := tarantool.NewExecuteRequest("CREATE TABLE T1_VINYL(a INT PRIMARY KEY, b INT, c INT);")
-	resp, err = conn.Do(exec).Get()
+	resp, err := conn.Do(exec).GetResponse()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
-	require.Equal(t, uint64(1), resp.SQLInfo.AffectedCount)
+	require.Equal(t, uint64(1), resp.SQLInfo().AffectedCount)
 
 	// Check new space engine.
 	eval := tarantool.NewEvalRequest("return box.space['T1_VINYL'].engine")
-	resp, err = conn.Do(eval).Get()
+	data, err = conn.Do(eval).Get()
 	require.Nil(t, err)
-	require.NotNil(t, resp)
-	require.Equal(t, "vinyl", resp.Data[0])
+	require.Equal(t, "vinyl", data[0])
 
 	// Set default SQL "CREATE TABLE" engine to "memtx".
-	resp, err = conn.Do(NewSQLDefaultEngineSetRequest("memtx")).Get()
+	data, err = conn.Do(NewSQLDefaultEngineSetRequest("memtx")).Get()
 	require.Nil(t, err)
-	require.NotNil(t, resp)
-	require.Equal(t, []interface{}{[]interface{}{"sql_default_engine", "memtx"}}, resp.Data)
+	require.Equal(t, []interface{}{[]interface{}{"sql_default_engine", "memtx"}}, data)
 
 	// Fetch current setting value.
-	resp, err = conn.Do(NewSQLDefaultEngineGetRequest()).Get()
+	data, err = conn.Do(NewSQLDefaultEngineGetRequest()).Get()
 	require.Nil(t, err)
-	require.NotNil(t, resp)
-	require.Equal(t, []interface{}{[]interface{}{"sql_default_engine", "memtx"}}, resp.Data)
+	require.Equal(t, []interface{}{[]interface{}{"sql_default_engine", "memtx"}}, data)
 
 	// Create a space with "CREATE TABLE".
 	exec = tarantool.NewExecuteRequest("CREATE TABLE T2_MEMTX(a INT PRIMARY KEY, b INT, c INT);")
-	resp, err = conn.Do(exec).Get()
+	resp, err = conn.Do(exec).GetResponse()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
-	require.Equal(t, uint64(1), resp.SQLInfo.AffectedCount)
+	require.Equal(t, uint64(1), resp.SQLInfo().AffectedCount)
 
 	// Check new space engine.
 	eval = tarantool.NewEvalRequest("return box.space['T2_MEMTX'].engine")
-	resp, err = conn.Do(eval).Get()
+	data, err = conn.Do(eval).Get()
 	require.Nil(t, err)
-	require.NotNil(t, resp)
-	require.Equal(t, "memtx", resp.Data[0])
+	require.Equal(t, "memtx", data[0])
 }
 
 func TestSQLDeferForeignKeysSetting(t *testing.T) {
 	// https://github.com/tarantool/tarantool/blob/eafadc13425f14446d7aaa49dea67dfc1d5f45e9/test/sql/transitive-transactions.result
 	skipIfSQLDeferForeignKeysSettingUnsupported(t)
 
-	var resp *tarantool.Response
+	var resp tarantool.Response
 	var err error
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
@@ -172,18 +158,18 @@ func TestSQLDeferForeignKeysSetting(t *testing.T) {
 
 	// Create a parent space.
 	exec := tarantool.NewExecuteRequest("CREATE TABLE parent(id INT PRIMARY KEY, y INT UNIQUE);")
-	resp, err = conn.Do(exec).Get()
+	resp, err = conn.Do(exec).GetResponse()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
-	require.Equal(t, uint64(1), resp.SQLInfo.AffectedCount)
+	require.Equal(t, uint64(1), resp.SQLInfo().AffectedCount)
 
 	// Create a space with reference to the parent space.
 	exec = tarantool.NewExecuteRequest(
 		"CREATE TABLE child(id INT PRIMARY KEY, x INT REFERENCES parent(y));")
-	resp, err = conn.Do(exec).Get()
+	resp, err = conn.Do(exec).GetResponse()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
-	require.Equal(t, uint64(1), resp.SQLInfo.AffectedCount)
+	require.Equal(t, uint64(1), resp.SQLInfo().AffectedCount)
 
 	deferEval := `
 	    box.begin()
@@ -198,16 +184,14 @@ func TestSQLDeferForeignKeysSetting(t *testing.T) {
 	`
 
 	// Disable foreign key constraint checks before commit.
-	resp, err = conn.Do(NewSQLDeferForeignKeysSetRequest(false)).Get()
+	data, err := conn.Do(NewSQLDeferForeignKeysSetRequest(false)).Get()
 	require.Nil(t, err)
-	require.NotNil(t, resp)
-	require.Equal(t, []interface{}{[]interface{}{"sql_defer_foreign_keys", false}}, resp.Data)
+	require.Equal(t, []interface{}{[]interface{}{"sql_defer_foreign_keys", false}}, data)
 
 	// Fetch current setting value.
-	resp, err = conn.Do(NewSQLDeferForeignKeysGetRequest()).Get()
+	data, err = conn.Do(NewSQLDeferForeignKeysGetRequest()).Get()
 	require.Nil(t, err)
-	require.NotNil(t, resp)
-	require.Equal(t, []interface{}{[]interface{}{"sql_defer_foreign_keys", false}}, resp.Data)
+	require.Equal(t, []interface{}{[]interface{}{"sql_defer_foreign_keys", false}}, data)
 
 	// Evaluate a scenario when foreign key not exists
 	// on INSERT, but exists on commit.
@@ -215,29 +199,26 @@ func TestSQLDeferForeignKeysSetting(t *testing.T) {
 	require.NotNil(t, err)
 	require.ErrorContains(t, err, "Failed to execute SQL statement: FOREIGN KEY constraint failed")
 
-	resp, err = conn.Do(NewSQLDeferForeignKeysSetRequest(true)).Get()
+	data, err = conn.Do(NewSQLDeferForeignKeysSetRequest(true)).Get()
 	require.Nil(t, err)
-	require.NotNil(t, resp)
-	require.Equal(t, []interface{}{[]interface{}{"sql_defer_foreign_keys", true}}, resp.Data)
+	require.Equal(t, []interface{}{[]interface{}{"sql_defer_foreign_keys", true}}, data)
 
 	// Fetch current setting value.
-	resp, err = conn.Do(NewSQLDeferForeignKeysGetRequest()).Get()
+	data, err = conn.Do(NewSQLDeferForeignKeysGetRequest()).Get()
 	require.Nil(t, err)
-	require.NotNil(t, resp)
-	require.Equal(t, []interface{}{[]interface{}{"sql_defer_foreign_keys", true}}, resp.Data)
+	require.Equal(t, []interface{}{[]interface{}{"sql_defer_foreign_keys", true}}, data)
 
 	// Evaluate a scenario when foreign key not exists
 	// on INSERT, but exists on commit.
-	resp, err = conn.Do(tarantool.NewEvalRequest(deferEval)).Get()
+	data, err = conn.Do(tarantool.NewEvalRequest(deferEval)).Get()
 	require.Nil(t, err)
-	require.NotNil(t, resp)
-	require.Equal(t, true, resp.Data[0])
+	require.Equal(t, true, data[0])
 }
 
 func TestSQLFullColumnNamesSetting(t *testing.T) {
 	skipIfSettingsUnsupported(t)
 
-	var resp *tarantool.Response
+	var resp tarantool.Response
 	var err error
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
@@ -245,61 +226,57 @@ func TestSQLFullColumnNamesSetting(t *testing.T) {
 
 	// Create a space.
 	exec := tarantool.NewExecuteRequest("CREATE TABLE FKNAME(ID INT PRIMARY KEY, X INT);")
-	resp, err = conn.Do(exec).Get()
+	resp, err = conn.Do(exec).GetResponse()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
-	require.Equal(t, uint64(1), resp.SQLInfo.AffectedCount)
+	require.Equal(t, uint64(1), resp.SQLInfo().AffectedCount)
 
 	// Fill it with some data.
 	exec = tarantool.NewExecuteRequest("INSERT INTO FKNAME VALUES (1, 1);")
-	resp, err = conn.Do(exec).Get()
+	resp, err = conn.Do(exec).GetResponse()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
-	require.Equal(t, uint64(1), resp.SQLInfo.AffectedCount)
+	require.Equal(t, uint64(1), resp.SQLInfo().AffectedCount)
 
 	// Disable displaying full column names in metadata.
-	resp, err = conn.Do(NewSQLFullColumnNamesSetRequest(false)).Get()
+	data, err := conn.Do(NewSQLFullColumnNamesSetRequest(false)).Get()
 	require.Nil(t, err)
-	require.NotNil(t, resp)
-	require.Equal(t, []interface{}{[]interface{}{"sql_full_column_names", false}}, resp.Data)
+	require.Equal(t, []interface{}{[]interface{}{"sql_full_column_names", false}}, data)
 
 	// Fetch current setting value.
-	resp, err = conn.Do(NewSQLFullColumnNamesGetRequest()).Get()
+	data, err = conn.Do(NewSQLFullColumnNamesGetRequest()).Get()
 	require.Nil(t, err)
-	require.NotNil(t, resp)
-	require.Equal(t, []interface{}{[]interface{}{"sql_full_column_names", false}}, resp.Data)
+	require.Equal(t, []interface{}{[]interface{}{"sql_full_column_names", false}}, data)
 
 	// Get a data with short column names in metadata.
 	exec = tarantool.NewExecuteRequest("SELECT X FROM FKNAME WHERE ID = 1;")
-	resp, err = conn.Do(exec).Get()
+	resp, err = conn.Do(exec).GetResponse()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
-	require.Equal(t, "X", resp.MetaData[0].FieldName)
+	require.Equal(t, "X", resp.MetaData()[0].FieldName)
 
 	// Enable displaying full column names in metadata.
-	resp, err = conn.Do(NewSQLFullColumnNamesSetRequest(true)).Get()
+	data, err = conn.Do(NewSQLFullColumnNamesSetRequest(true)).Get()
 	require.Nil(t, err)
-	require.NotNil(t, resp)
-	require.Equal(t, []interface{}{[]interface{}{"sql_full_column_names", true}}, resp.Data)
+	require.Equal(t, []interface{}{[]interface{}{"sql_full_column_names", true}}, data)
 
 	// Fetch current setting value.
-	resp, err = conn.Do(NewSQLFullColumnNamesGetRequest()).Get()
+	data, err = conn.Do(NewSQLFullColumnNamesGetRequest()).Get()
 	require.Nil(t, err)
-	require.NotNil(t, resp)
-	require.Equal(t, []interface{}{[]interface{}{"sql_full_column_names", true}}, resp.Data)
+	require.Equal(t, []interface{}{[]interface{}{"sql_full_column_names", true}}, data)
 
 	// Get a data with full column names in metadata.
 	exec = tarantool.NewExecuteRequest("SELECT X FROM FKNAME WHERE ID = 1;")
-	resp, err = conn.Do(exec).Get()
+	resp, err = conn.Do(exec).GetResponse()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
-	require.Equal(t, "FKNAME.X", resp.MetaData[0].FieldName)
+	require.Equal(t, "FKNAME.X", resp.MetaData()[0].FieldName)
 }
 
 func TestSQLFullMetadataSetting(t *testing.T) {
 	skipIfSettingsUnsupported(t)
 
-	var resp *tarantool.Response
+	var resp tarantool.Response
 	var err error
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
@@ -307,88 +284,80 @@ func TestSQLFullMetadataSetting(t *testing.T) {
 
 	// Create a space.
 	exec := tarantool.NewExecuteRequest("CREATE TABLE fmt(id INT PRIMARY KEY, x INT);")
-	resp, err = conn.Do(exec).Get()
+	resp, err = conn.Do(exec).GetResponse()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
-	require.Equal(t, uint64(1), resp.SQLInfo.AffectedCount)
+	require.Equal(t, uint64(1), resp.SQLInfo().AffectedCount)
 
 	// Fill it with some data.
 	exec = tarantool.NewExecuteRequest("INSERT INTO fmt VALUES (1, 1);")
-	resp, err = conn.Do(exec).Get()
+	resp, err = conn.Do(exec).GetResponse()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
-	require.Equal(t, uint64(1), resp.SQLInfo.AffectedCount)
+	require.Equal(t, uint64(1), resp.SQLInfo().AffectedCount)
 
 	// Disable displaying additional fields in metadata.
-	resp, err = conn.Do(NewSQLFullMetadataSetRequest(false)).Get()
+	data, err := conn.Do(NewSQLFullMetadataSetRequest(false)).Get()
 	require.Nil(t, err)
-	require.Equal(t, []interface{}{[]interface{}{"sql_full_metadata", false}}, resp.Data)
+	require.Equal(t, []interface{}{[]interface{}{"sql_full_metadata", false}}, data)
 
 	// Fetch current setting value.
-	resp, err = conn.Do(NewSQLFullMetadataGetRequest()).Get()
+	data, err = conn.Do(NewSQLFullMetadataGetRequest()).Get()
 	require.Nil(t, err)
-	require.NotNil(t, resp)
-	require.Equal(t, []interface{}{[]interface{}{"sql_full_metadata", false}}, resp.Data)
+	require.Equal(t, []interface{}{[]interface{}{"sql_full_metadata", false}}, data)
 
 	// Get a data without additional fields in metadata.
 	exec = tarantool.NewExecuteRequest("SELECT x FROM fmt WHERE id = 1;")
-	resp, err = conn.Do(exec).Get()
+	resp, err = conn.Do(exec).GetResponse()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
-	require.Equal(t, "", resp.MetaData[0].FieldSpan)
+	require.Equal(t, "", resp.MetaData()[0].FieldSpan)
 
 	// Enable displaying full column names in metadata.
-	resp, err = conn.Do(NewSQLFullMetadataSetRequest(true)).Get()
+	data, err = conn.Do(NewSQLFullMetadataSetRequest(true)).Get()
 	require.Nil(t, err)
-	require.NotNil(t, resp)
-	require.Equal(t, []interface{}{[]interface{}{"sql_full_metadata", true}}, resp.Data)
+	require.Equal(t, []interface{}{[]interface{}{"sql_full_metadata", true}}, data)
 
 	// Fetch current setting value.
-	resp, err = conn.Do(NewSQLFullMetadataGetRequest()).Get()
+	data, err = conn.Do(NewSQLFullMetadataGetRequest()).Get()
 	require.Nil(t, err)
-	require.NotNil(t, resp)
-	require.Equal(t, []interface{}{[]interface{}{"sql_full_metadata", true}}, resp.Data)
+	require.Equal(t, []interface{}{[]interface{}{"sql_full_metadata", true}}, data)
 
 	// Get a data with additional fields in metadata.
 	exec = tarantool.NewExecuteRequest("SELECT x FROM fmt WHERE id = 1;")
-	resp, err = conn.Do(exec).Get()
+	resp, err = conn.Do(exec).GetResponse()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
-	require.Equal(t, "x", resp.MetaData[0].FieldSpan)
+	require.Equal(t, "x", resp.MetaData()[0].FieldSpan)
 }
 
 func TestSQLParserDebugSetting(t *testing.T) {
 	skipIfSettingsUnsupported(t)
 
-	var resp *tarantool.Response
 	var err error
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	// Disable parser debug mode.
-	resp, err = conn.Do(NewSQLParserDebugSetRequest(false)).Get()
+	data, err := conn.Do(NewSQLParserDebugSetRequest(false)).Get()
 	require.Nil(t, err)
-	require.NotNil(t, resp)
-	require.Equal(t, []interface{}{[]interface{}{"sql_parser_debug", false}}, resp.Data)
+	require.Equal(t, []interface{}{[]interface{}{"sql_parser_debug", false}}, data)
 
 	// Fetch current setting value.
-	resp, err = conn.Do(NewSQLParserDebugGetRequest()).Get()
+	data, err = conn.Do(NewSQLParserDebugGetRequest()).Get()
 	require.Nil(t, err)
-	require.NotNil(t, resp)
-	require.Equal(t, []interface{}{[]interface{}{"sql_parser_debug", false}}, resp.Data)
+	require.Equal(t, []interface{}{[]interface{}{"sql_parser_debug", false}}, data)
 
 	// Enable parser debug mode.
-	resp, err = conn.Do(NewSQLParserDebugSetRequest(true)).Get()
+	data, err = conn.Do(NewSQLParserDebugSetRequest(true)).Get()
 	require.Nil(t, err)
-	require.NotNil(t, resp)
-	require.Equal(t, []interface{}{[]interface{}{"sql_parser_debug", true}}, resp.Data)
+	require.Equal(t, []interface{}{[]interface{}{"sql_parser_debug", true}}, data)
 
 	// Fetch current setting value.
-	resp, err = conn.Do(NewSQLParserDebugGetRequest()).Get()
+	data, err = conn.Do(NewSQLParserDebugGetRequest()).Get()
 	require.Nil(t, err)
-	require.NotNil(t, resp)
-	require.Equal(t, []interface{}{[]interface{}{"sql_parser_debug", true}}, resp.Data)
+	require.Equal(t, []interface{}{[]interface{}{"sql_parser_debug", true}}, data)
 
 	// To test real effect we need a Tarantool instance built with
 	// `-DCMAKE_BUILD_TYPE=Debug`.
@@ -398,7 +367,7 @@ func TestSQLRecursiveTriggersSetting(t *testing.T) {
 	// https://github.com/tarantool/tarantool/blob/d11fb3061e15faf4e0eb5375fb8056b4e64348ae/test/sql-tap/triggerC.test.lua
 	skipIfSettingsUnsupported(t)
 
-	var resp *tarantool.Response
+	var resp tarantool.Response
 	var err error
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
@@ -406,39 +375,37 @@ func TestSQLRecursiveTriggersSetting(t *testing.T) {
 
 	// Create a space.
 	exec := tarantool.NewExecuteRequest("CREATE TABLE rec(id INTEGER PRIMARY KEY, a INT, b INT);")
-	resp, err = conn.Do(exec).Get()
+	resp, err = conn.Do(exec).GetResponse()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
-	require.Equal(t, uint64(1), resp.SQLInfo.AffectedCount)
+	require.Equal(t, uint64(1), resp.SQLInfo().AffectedCount)
 
 	// Fill it with some data.
 	exec = tarantool.NewExecuteRequest("INSERT INTO rec VALUES(1, 1, 2);")
-	resp, err = conn.Do(exec).Get()
+	resp, err = conn.Do(exec).GetResponse()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
-	require.Equal(t, uint64(1), resp.SQLInfo.AffectedCount)
+	require.Equal(t, uint64(1), resp.SQLInfo().AffectedCount)
 
 	// Create a recursive trigger (with infinite depth).
 	exec = tarantool.NewExecuteRequest(`
 		CREATE TRIGGER tr12 AFTER UPDATE ON rec FOR EACH ROW BEGIN
           UPDATE rec SET a=new.a+1, b=new.b+1;
         END;`)
-	resp, err = conn.Do(exec).Get()
+	resp, err = conn.Do(exec).GetResponse()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
-	require.Equal(t, uint64(1), resp.SQLInfo.AffectedCount)
+	require.Equal(t, uint64(1), resp.SQLInfo().AffectedCount)
 
 	// Enable SQL recursive triggers.
-	resp, err = conn.Do(NewSQLRecursiveTriggersSetRequest(true)).Get()
+	data, err := conn.Do(NewSQLRecursiveTriggersSetRequest(true)).Get()
 	require.Nil(t, err)
-	require.NotNil(t, resp)
-	require.Equal(t, []interface{}{[]interface{}{"sql_recursive_triggers", true}}, resp.Data)
+	require.Equal(t, []interface{}{[]interface{}{"sql_recursive_triggers", true}}, data)
 
 	// Fetch current setting value.
-	resp, err = conn.Do(NewSQLRecursiveTriggersGetRequest()).Get()
+	data, err = conn.Do(NewSQLRecursiveTriggersGetRequest()).Get()
 	require.Nil(t, err)
-	require.NotNil(t, resp)
-	require.Equal(t, []interface{}{[]interface{}{"sql_recursive_triggers", true}}, resp.Data)
+	require.Equal(t, []interface{}{[]interface{}{"sql_recursive_triggers", true}}, data)
 
 	// Trigger the recursion.
 	exec = tarantool.NewExecuteRequest("UPDATE rec SET a=a+1, b=b+1;")
@@ -448,29 +415,27 @@ func TestSQLRecursiveTriggersSetting(t *testing.T) {
 		"Failed to execute SQL statement: too many levels of trigger recursion")
 
 	// Disable SQL recursive triggers.
-	resp, err = conn.Do(NewSQLRecursiveTriggersSetRequest(false)).Get()
+	data, err = conn.Do(NewSQLRecursiveTriggersSetRequest(false)).Get()
 	require.Nil(t, err)
-	require.NotNil(t, resp)
-	require.Equal(t, []interface{}{[]interface{}{"sql_recursive_triggers", false}}, resp.Data)
+	require.Equal(t, []interface{}{[]interface{}{"sql_recursive_triggers", false}}, data)
 
 	// Fetch current setting value.
-	resp, err = conn.Do(NewSQLRecursiveTriggersGetRequest()).Get()
+	data, err = conn.Do(NewSQLRecursiveTriggersGetRequest()).Get()
 	require.Nil(t, err)
-	require.NotNil(t, resp)
-	require.Equal(t, []interface{}{[]interface{}{"sql_recursive_triggers", false}}, resp.Data)
+	require.Equal(t, []interface{}{[]interface{}{"sql_recursive_triggers", false}}, data)
 
 	// Trigger the recursion.
 	exec = tarantool.NewExecuteRequest("UPDATE rec SET a=a+1, b=b+1;")
-	resp, err = conn.Do(exec).Get()
+	resp, err = conn.Do(exec).GetResponse()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
-	require.Equal(t, uint64(1), resp.SQLInfo.AffectedCount)
+	require.Equal(t, uint64(1), resp.SQLInfo().AffectedCount)
 }
 
 func TestSQLReverseUnorderedSelectsSetting(t *testing.T) {
 	skipIfSettingsUnsupported(t)
 
-	var resp *tarantool.Response
+	var resp tarantool.Response
 	var err error
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
@@ -478,37 +443,35 @@ func TestSQLReverseUnorderedSelectsSetting(t *testing.T) {
 
 	// Create a space.
 	exec := tarantool.NewExecuteRequest("CREATE TABLE data(id STRING PRIMARY KEY);")
-	resp, err = conn.Do(exec).Get()
+	resp, err = conn.Do(exec).GetResponse()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
-	require.Equal(t, uint64(1), resp.SQLInfo.AffectedCount)
+	require.Equal(t, uint64(1), resp.SQLInfo().AffectedCount)
 
 	// Fill it with some data.
 	exec = tarantool.NewExecuteRequest("INSERT INTO data VALUES('1');")
-	resp, err = conn.Do(exec).Get()
+	resp, err = conn.Do(exec).GetResponse()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
-	require.Equal(t, uint64(1), resp.SQLInfo.AffectedCount)
+	require.Equal(t, uint64(1), resp.SQLInfo().AffectedCount)
 
 	exec = tarantool.NewExecuteRequest("INSERT INTO data VALUES('2');")
-	resp, err = conn.Do(exec).Get()
+	resp, err = conn.Do(exec).GetResponse()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
-	require.Equal(t, uint64(1), resp.SQLInfo.AffectedCount)
+	require.Equal(t, uint64(1), resp.SQLInfo().AffectedCount)
 
 	// Disable reverse order in unordered selects.
-	resp, err = conn.Do(NewSQLReverseUnorderedSelectsSetRequest(false)).Get()
+	data, err := conn.Do(NewSQLReverseUnorderedSelectsSetRequest(false)).Get()
 	require.Nil(t, err)
-	require.NotNil(t, resp)
 	require.Equal(t, []interface{}{[]interface{}{"sql_reverse_unordered_selects", false}},
-		resp.Data)
+		data)
 
 	// Fetch current setting value.
-	resp, err = conn.Do(NewSQLReverseUnorderedSelectsGetRequest()).Get()
+	data, err = conn.Do(NewSQLReverseUnorderedSelectsGetRequest()).Get()
 	require.Nil(t, err)
-	require.NotNil(t, resp)
 	require.Equal(t, []interface{}{[]interface{}{"sql_reverse_unordered_selects", false}},
-		resp.Data)
+		data)
 
 	// Select multiple records.
 	query := "SELECT * FROM seqscan data;"
@@ -518,66 +481,57 @@ func TestSQLReverseUnorderedSelectsSetting(t *testing.T) {
 		query = "SELECT * FROM data;"
 	}
 
-	resp, err = conn.Do(tarantool.NewExecuteRequest(query)).Get()
+	data, err = conn.Do(tarantool.NewExecuteRequest(query)).Get()
 	require.Nil(t, err)
-	require.NotNil(t, resp)
-	require.EqualValues(t, []interface{}{"1"}, resp.Data[0])
-	require.EqualValues(t, []interface{}{"2"}, resp.Data[1])
+	require.EqualValues(t, []interface{}{"1"}, data[0])
+	require.EqualValues(t, []interface{}{"2"}, data[1])
 
 	// Enable reverse order in unordered selects.
-	resp, err = conn.Do(NewSQLReverseUnorderedSelectsSetRequest(true)).Get()
+	data, err = conn.Do(NewSQLReverseUnorderedSelectsSetRequest(true)).Get()
 	require.Nil(t, err)
-	require.NotNil(t, resp)
 	require.Equal(t, []interface{}{[]interface{}{"sql_reverse_unordered_selects", true}},
-		resp.Data)
+		data)
 
 	// Fetch current setting value.
-	resp, err = conn.Do(NewSQLReverseUnorderedSelectsGetRequest()).Get()
+	data, err = conn.Do(NewSQLReverseUnorderedSelectsGetRequest()).Get()
 	require.Nil(t, err)
-	require.NotNil(t, resp)
 	require.Equal(t, []interface{}{[]interface{}{"sql_reverse_unordered_selects", true}},
-		resp.Data)
+		data)
 
 	// Select multiple records.
-	resp, err = conn.Do(tarantool.NewExecuteRequest(query)).Get()
+	data, err = conn.Do(tarantool.NewExecuteRequest(query)).Get()
 	require.Nil(t, err)
-	require.NotNil(t, resp)
-	require.EqualValues(t, []interface{}{"2"}, resp.Data[0])
-	require.EqualValues(t, []interface{}{"1"}, resp.Data[1])
+	require.EqualValues(t, []interface{}{"2"}, data[0])
+	require.EqualValues(t, []interface{}{"1"}, data[1])
 }
 
 func TestSQLSelectDebugSetting(t *testing.T) {
 	skipIfSettingsUnsupported(t)
 
-	var resp *tarantool.Response
 	var err error
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	// Disable select debug mode.
-	resp, err = conn.Do(NewSQLSelectDebugSetRequest(false)).Get()
+	data, err := conn.Do(NewSQLSelectDebugSetRequest(false)).Get()
 	require.Nil(t, err)
-	require.NotNil(t, resp)
-	require.Equal(t, []interface{}{[]interface{}{"sql_select_debug", false}}, resp.Data)
+	require.Equal(t, []interface{}{[]interface{}{"sql_select_debug", false}}, data)
 
 	// Fetch current setting value.
-	resp, err = conn.Do(NewSQLSelectDebugGetRequest()).Get()
+	data, err = conn.Do(NewSQLSelectDebugGetRequest()).Get()
 	require.Nil(t, err)
-	require.NotNil(t, resp)
-	require.Equal(t, []interface{}{[]interface{}{"sql_select_debug", false}}, resp.Data)
+	require.Equal(t, []interface{}{[]interface{}{"sql_select_debug", false}}, data)
 
 	// Enable select debug mode.
-	resp, err = conn.Do(NewSQLSelectDebugSetRequest(true)).Get()
+	data, err = conn.Do(NewSQLSelectDebugSetRequest(true)).Get()
 	require.Nil(t, err)
-	require.NotNil(t, resp)
-	require.Equal(t, []interface{}{[]interface{}{"sql_select_debug", true}}, resp.Data)
+	require.Equal(t, []interface{}{[]interface{}{"sql_select_debug", true}}, data)
 
 	// Fetch current setting value.
-	resp, err = conn.Do(NewSQLSelectDebugGetRequest()).Get()
+	data, err = conn.Do(NewSQLSelectDebugGetRequest()).Get()
 	require.Nil(t, err)
-	require.NotNil(t, resp)
-	require.Equal(t, []interface{}{[]interface{}{"sql_select_debug", true}}, resp.Data)
+	require.Equal(t, []interface{}{[]interface{}{"sql_select_debug", true}}, data)
 
 	// To test real effect we need a Tarantool instance built with
 	// `-DCMAKE_BUILD_TYPE=Debug`.
@@ -586,35 +540,30 @@ func TestSQLSelectDebugSetting(t *testing.T) {
 func TestSQLVDBEDebugSetting(t *testing.T) {
 	skipIfSettingsUnsupported(t)
 
-	var resp *tarantool.Response
 	var err error
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	// Disable VDBE debug mode.
-	resp, err = conn.Do(NewSQLVDBEDebugSetRequest(false)).Get()
+	data, err := conn.Do(NewSQLVDBEDebugSetRequest(false)).Get()
 	require.Nil(t, err)
-	require.NotNil(t, resp)
-	require.Equal(t, []interface{}{[]interface{}{"sql_vdbe_debug", false}}, resp.Data)
+	require.Equal(t, []interface{}{[]interface{}{"sql_vdbe_debug", false}}, data)
 
 	// Fetch current setting value.
-	resp, err = conn.Do(NewSQLVDBEDebugGetRequest()).Get()
+	data, err = conn.Do(NewSQLVDBEDebugGetRequest()).Get()
 	require.Nil(t, err)
-	require.NotNil(t, resp)
-	require.Equal(t, []interface{}{[]interface{}{"sql_vdbe_debug", false}}, resp.Data)
+	require.Equal(t, []interface{}{[]interface{}{"sql_vdbe_debug", false}}, data)
 
 	// Enable VDBE debug mode.
-	resp, err = conn.Do(NewSQLVDBEDebugSetRequest(true)).Get()
+	data, err = conn.Do(NewSQLVDBEDebugSetRequest(true)).Get()
 	require.Nil(t, err)
-	require.NotNil(t, resp)
-	require.Equal(t, []interface{}{[]interface{}{"sql_vdbe_debug", true}}, resp.Data)
+	require.Equal(t, []interface{}{[]interface{}{"sql_vdbe_debug", true}}, data)
 
 	// Fetch current setting value.
-	resp, err = conn.Do(NewSQLVDBEDebugGetRequest()).Get()
+	data, err = conn.Do(NewSQLVDBEDebugGetRequest()).Get()
 	require.Nil(t, err)
-	require.NotNil(t, resp)
-	require.Equal(t, []interface{}{[]interface{}{"sql_vdbe_debug", true}}, resp.Data)
+	require.Equal(t, []interface{}{[]interface{}{"sql_vdbe_debug", true}}, data)
 
 	// To test real effect we need a Tarantool instance built with
 	// `-DCMAKE_BUILD_TYPE=Debug`.
@@ -623,28 +572,24 @@ func TestSQLVDBEDebugSetting(t *testing.T) {
 func TestSessionSettings(t *testing.T) {
 	skipIfSettingsUnsupported(t)
 
-	var resp *tarantool.Response
 	var err error
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
 	// Set some settings values.
-	resp, err = conn.Do(NewSQLDefaultEngineSetRequest("memtx")).Get()
+	data, err := conn.Do(NewSQLDefaultEngineSetRequest("memtx")).Get()
 	require.Nil(t, err)
-	require.NotNil(t, resp)
-	require.Equal(t, []interface{}{[]interface{}{"sql_default_engine", "memtx"}}, resp.Data)
+	require.Equal(t, []interface{}{[]interface{}{"sql_default_engine", "memtx"}}, data)
 
-	resp, err = conn.Do(NewSQLFullColumnNamesSetRequest(true)).Get()
+	data, err = conn.Do(NewSQLFullColumnNamesSetRequest(true)).Get()
 	require.Nil(t, err)
-	require.NotNil(t, resp)
-	require.Equal(t, []interface{}{[]interface{}{"sql_full_column_names", true}}, resp.Data)
+	require.Equal(t, []interface{}{[]interface{}{"sql_full_column_names", true}}, data)
 
 	// Fetch current settings values.
-	resp, err = conn.Do(NewSessionSettingsGetRequest()).Get()
+	data, err = conn.Do(NewSessionSettingsGetRequest()).Get()
 	require.Nil(t, err)
-	require.NotNil(t, resp)
-	require.Subset(t, resp.Data,
+	require.Subset(t, data,
 		[]interface{}{
 			[]interface{}{"sql_default_engine", "memtx"},
 			[]interface{}{"sql_full_column_names", true},

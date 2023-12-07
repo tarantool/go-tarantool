@@ -83,7 +83,7 @@ type TarantoolInstance struct {
 func isReady(dialer tarantool.Dialer, opts *tarantool.Opts) error {
 	var err error
 	var conn *tarantool.Connection
-	var resp *tarantool.Response
+	var resp tarantool.Response
 
 	ctx, cancel := GetConnectContext()
 	defer cancel()
@@ -96,7 +96,7 @@ func isReady(dialer tarantool.Dialer, opts *tarantool.Opts) error {
 	}
 	defer conn.Close()
 
-	resp, err = conn.Do(tarantool.NewPingRequest()).Get()
+	resp, err = conn.Do(tarantool.NewPingRequest()).GetResponse()
 	if err != nil {
 		return err
 	}

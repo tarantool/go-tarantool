@@ -213,14 +213,14 @@ func (q *queue) Cfg(opts CfgOpts) error {
 // Exists checks existence of a tube.
 func (q *queue) Exists() (bool, error) {
 	cmd := "local name = ... ; return queue.tube[name] ~= nil"
-	resp, err := q.conn.Do(tarantool.NewEvalRequest(cmd).
+	data, err := q.conn.Do(tarantool.NewEvalRequest(cmd).
 		Args([]string{q.name}),
 	).Get()
 	if err != nil {
 		return false, err
 	}
 
-	exist := len(resp.Data) != 0 && resp.Data[0].(bool)
+	exist := len(data) != 0 && data[0].(bool)
 	return exist, nil
 }
 
@@ -244,11 +244,11 @@ func (q *queue) Identify(u *uuid.UUID) (uuid.UUID, error) {
 	}
 
 	req := tarantool.NewCallRequest(q.cmds.identify).Args(args)
-	if resp, err := q.conn.Do(req).Get(); err == nil {
-		if us, ok := resp.Data[0].(string); ok {
+	if data, err := q.conn.Do(req).Get(); err == nil {
+		if us, ok := data[0].(string); ok {
 			return uuid.FromBytes([]byte(us))
 		} else {
-			return uuid.UUID{}, fmt.Errorf("unexpected response: %v", resp.Data)
+			return uuid.UUID{}, fmt.Errorf("unexpected response: %v", data)
 		}
 	} else {
 		return uuid.UUID{}, err
@@ -411,31 +411,31 @@ func (q *queue) Delete(taskId uint64) error {
 
 // State returns a current queue state.
 func (q *queue) State() (State, error) {
-	resp, err := q.conn.Do(tarantool.NewCallRequest(q.cmds.state)).Get()
+	data, err := q.conn.Do(tarantool.NewCallRequest(q.cmds.state)).Get()
 	if err != nil {
 		return UnknownState, err
 	}
 
-	if respState, ok := resp.Data[0].(string); ok {
+	if respState, ok := data[0].(string); ok {
 		if state, ok := strToState[respState]; ok {
 			return state, nil
 		}
-		return UnknownState, fmt.Errorf("unknown state: %v", resp.Data[0])
+		return UnknownState, fmt.Errorf("unknown state: %v", data[0])
 	}
-	return UnknownState, fmt.Errorf("unexpected response: %v", resp.Data)
+	return UnknownState, fmt.Errorf("unexpected response: %v", data)
 }
 
 // Return the number of tasks in a queue broken down by task_state, and the
 // number of requests broken down by the type of request.
 func (q *queue) Statistic() (interface{}, error) {
 	req := tarantool.NewCallRequest(q.cmds.statistics).Args([]interface{}{q.name})
-	resp, err := q.conn.Do(req).Get()
+	data, err := q.conn.Do(req).Get()
 	if err != nil {
 		return nil, err
 	}
 
-	if len(resp.Data) != 0 {
-		return resp.Data[0], nil
+	if len(data) != 0 {
+		return data[0], nil
 	}
 
 	return nil, nil

@@ -149,12 +149,10 @@ func ExamplePingRequest() {
 	defer conn.Close()
 
 	// Ping a Tarantool instance to check connection.
-	resp, err := conn.Do(tarantool.NewPingRequest()).Get()
-	fmt.Println("Ping Code", resp.Code)
-	fmt.Println("Ping Data", resp.Data)
+	data, err := conn.Do(tarantool.NewPingRequest()).Get()
+	fmt.Println("Ping Data", data)
 	fmt.Println("Ping Error", err)
 	// Output:
-	// Ping Code 0
 	// Ping Data []
 	// Ping Error <nil>
 }
@@ -181,11 +179,11 @@ func ExamplePingRequest_Context() {
 	req := tarantool.NewPingRequest().Context(ctx)
 
 	// Ping a Tarantool instance to check connection.
-	resp, err := conn.Do(req).Get()
-	fmt.Println("Ping Resp", resp)
+	data, err := conn.Do(req).Get()
+	fmt.Println("Ping Resp data", data)
 	fmt.Println("Ping Error", err)
 	// Output:
-	// Ping Resp <nil>
+	// Ping Resp data []
 	// Ping Error context is done
 }
 
@@ -200,7 +198,7 @@ func ExampleSelectRequest() {
 	}
 
 	key := []interface{}{uint(1111)}
-	resp, err := conn.Do(tarantool.NewSelectRequest(617).
+	data, err := conn.Do(tarantool.NewSelectRequest(617).
 		Limit(100).
 		Iterator(tarantool.IterEq).
 		Key(key),
@@ -210,7 +208,7 @@ func ExampleSelectRequest() {
 		fmt.Printf("error in select is %v", err)
 		return
 	}
-	fmt.Printf("response is %#v\n", resp.Data)
+	fmt.Printf("response is %#v\n", data)
 
 	var res []Tuple
 	err = conn.Do(tarantool.NewSelectRequest("test").
@@ -236,12 +234,12 @@ func ExampleSelectRequest_spaceAndIndexNames() {
 
 	req := tarantool.NewSelectRequest(spaceName)
 	req.Index(indexName)
-	resp, err := conn.Do(req).Get()
+	data, err := conn.Do(req).Get()
 
 	if err != nil {
 		fmt.Printf("Failed to execute the request: %s\n", err)
 	} else {
-		fmt.Println(resp.Data)
+		fmt.Println(data)
 	}
 }
 
@@ -250,21 +248,19 @@ func ExampleInsertRequest() {
 	defer conn.Close()
 
 	// Insert a new tuple { 31, 1 }.
-	resp, err := conn.Do(tarantool.NewInsertRequest(spaceNo).
+	data, err := conn.Do(tarantool.NewInsertRequest(spaceNo).
 		Tuple([]interface{}{uint(31), "test", "one"}),
 	).Get()
 	fmt.Println("Insert 31")
 	fmt.Println("Error", err)
-	fmt.Println("Code", resp.Code)
-	fmt.Println("Data", resp.Data)
+	fmt.Println("Data", data)
 	// Insert a new tuple { 32, 1 }.
-	resp, err = conn.Do(tarantool.NewInsertRequest("test").
+	data, err = conn.Do(tarantool.NewInsertRequest("test").
 		Tuple(&Tuple{Id: 32, Msg: "test", Name: "one"}),
 	).Get()
 	fmt.Println("Insert 32")
 	fmt.Println("Error", err)
-	fmt.Println("Code", resp.Code)
-	fmt.Println("Data", resp.Data)
+	fmt.Println("Data", data)
 
 	// Delete tuple with primary key { 31 }.
 	conn.Do(tarantool.NewDeleteRequest("test").
@@ -279,11 +275,9 @@ func ExampleInsertRequest() {
 	// Output:
 	// Insert 31
 	// Error <nil>
-	// Code 0
 	// Data [[31 test one]]
 	// Insert 32
 	// Error <nil>
-	// Code 0
 	// Data [[32 test one]]
 }
 
@@ -292,12 +286,12 @@ func ExampleInsertRequest_spaceAndIndexNames() {
 	defer conn.Close()
 
 	req := tarantool.NewInsertRequest(spaceName)
-	resp, err := conn.Do(req).Get()
+	data, err := conn.Do(req).Get()
 
 	if err != nil {
 		fmt.Printf("Failed to execute the request: %s\n", err)
 	} else {
-		fmt.Println(resp.Data)
+		fmt.Println(data)
 	}
 }
 
@@ -315,32 +309,28 @@ func ExampleDeleteRequest() {
 	).Get()
 
 	// Delete tuple with primary key { 35 }.
-	resp, err := conn.Do(tarantool.NewDeleteRequest(spaceNo).
+	data, err := conn.Do(tarantool.NewDeleteRequest(spaceNo).
 		Index(indexNo).
 		Key([]interface{}{uint(35)}),
 	).Get()
 	fmt.Println("Delete 35")
 	fmt.Println("Error", err)
-	fmt.Println("Code", resp.Code)
-	fmt.Println("Data", resp.Data)
+	fmt.Println("Data", data)
 
 	// Delete tuple with primary key { 36 }.
-	resp, err = conn.Do(tarantool.NewDeleteRequest("test").
+	data, err = conn.Do(tarantool.NewDeleteRequest("test").
 		Index("primary").
 		Key([]interface{}{uint(36)}),
 	).Get()
 	fmt.Println("Delete 36")
 	fmt.Println("Error", err)
-	fmt.Println("Code", resp.Code)
-	fmt.Println("Data", resp.Data)
+	fmt.Println("Data", data)
 	// Output:
 	// Delete 35
 	// Error <nil>
-	// Code 0
 	// Data [[35 test one]]
 	// Delete 36
 	// Error <nil>
-	// Code 0
 	// Data [[36 test one]]
 }
 
@@ -350,12 +340,12 @@ func ExampleDeleteRequest_spaceAndIndexNames() {
 
 	req := tarantool.NewDeleteRequest(spaceName)
 	req.Index(indexName)
-	resp, err := conn.Do(req).Get()
+	data, err := conn.Do(req).Get()
 
 	if err != nil {
 		fmt.Printf("Failed to execute the request: %s\n", err)
 	} else {
-		fmt.Println(resp.Data)
+		fmt.Println(data)
 	}
 }
 
@@ -371,50 +361,42 @@ func ExampleReplaceRequest() {
 	// Replace a tuple with primary key 13.
 	// Note, Tuple is defined within tests, and has EncdodeMsgpack and
 	// DecodeMsgpack methods.
-	resp, err := conn.Do(tarantool.NewReplaceRequest(spaceNo).
+	data, err := conn.Do(tarantool.NewReplaceRequest(spaceNo).
 		Tuple([]interface{}{uint(13), 1}),
 	).Get()
 	fmt.Println("Replace 13")
 	fmt.Println("Error", err)
-	fmt.Println("Code", resp.Code)
-	fmt.Println("Data", resp.Data)
-	resp, err = conn.Do(tarantool.NewReplaceRequest("test").
+	fmt.Println("Data", data)
+	data, err = conn.Do(tarantool.NewReplaceRequest("test").
 		Tuple([]interface{}{uint(13), 1}),
 	).Get()
 	fmt.Println("Replace 13")
 	fmt.Println("Error", err)
-	fmt.Println("Code", resp.Code)
-	fmt.Println("Data", resp.Data)
-	resp, err = conn.Do(tarantool.NewReplaceRequest("test").
+	fmt.Println("Data", data)
+	data, err = conn.Do(tarantool.NewReplaceRequest("test").
 		Tuple(&Tuple{Id: 13, Msg: "test", Name: "eleven"}),
 	).Get()
 	fmt.Println("Replace 13")
 	fmt.Println("Error", err)
-	fmt.Println("Code", resp.Code)
-	fmt.Println("Data", resp.Data)
-	resp, err = conn.Do(tarantool.NewReplaceRequest("test").
+	fmt.Println("Data", data)
+	data, err = conn.Do(tarantool.NewReplaceRequest("test").
 		Tuple(&Tuple{Id: 13, Msg: "test", Name: "twelve"}),
 	).Get()
 	fmt.Println("Replace 13")
 	fmt.Println("Error", err)
-	fmt.Println("Code", resp.Code)
-	fmt.Println("Data", resp.Data)
+	fmt.Println("Data", data)
 	// Output:
 	// Replace 13
 	// Error <nil>
-	// Code 0
 	// Data [[13 1]]
 	// Replace 13
 	// Error <nil>
-	// Code 0
 	// Data [[13 1]]
 	// Replace 13
 	// Error <nil>
-	// Code 0
 	// Data [[13 test eleven]]
 	// Replace 13
 	// Error <nil>
-	// Code 0
 	// Data [[13 test twelve]]
 }
 
@@ -423,12 +405,12 @@ func ExampleReplaceRequest_spaceAndIndexNames() {
 	defer conn.Close()
 
 	req := tarantool.NewReplaceRequest(spaceName)
-	resp, err := conn.Do(req).Get()
+	data, err := conn.Do(req).Get()
 
 	if err != nil {
 		fmt.Printf("Failed to execute the request: %s\n", err)
 	} else {
-		fmt.Println(resp.Data)
+		fmt.Println(data)
 	}
 }
 
@@ -453,12 +435,12 @@ func ExampleUpdateRequest() {
 			Splice(1, 1, 2, "!!").
 			Insert(7, "new").
 			Assign(7, "updated"))
-	resp, err := conn.Do(req).Get()
+	data, err := conn.Do(req).Get()
 	if err != nil {
 		fmt.Printf("error in do update request is %v", err)
 		return
 	}
-	fmt.Printf("response is %#v\n", resp.Data)
+	fmt.Printf("response is %#v\n", data)
 	// Output:
 	// response is []interface {}{[]interface {}{0x457, "t!!t", 2, 0, 1, 1, 0, "updated"}}
 }
@@ -469,12 +451,12 @@ func ExampleUpdateRequest_spaceAndIndexNames() {
 
 	req := tarantool.NewUpdateRequest(spaceName)
 	req.Index(indexName)
-	resp, err := conn.Do(req).Get()
+	data, err := conn.Do(req).Get()
 
 	if err != nil {
 		fmt.Printf("Failed to execute the request: %s\n", err)
 	} else {
-		fmt.Println(resp.Data)
+		fmt.Println(data)
 	}
 }
 
@@ -486,33 +468,33 @@ func ExampleUpsertRequest() {
 	req = tarantool.NewUpsertRequest(617).
 		Tuple([]interface{}{uint(1113), "first", "first"}).
 		Operations(tarantool.NewOperations().Assign(1, "updated"))
-	resp, err := conn.Do(req).Get()
+	data, err := conn.Do(req).Get()
 	if err != nil {
 		fmt.Printf("error in do select upsert is %v", err)
 		return
 	}
-	fmt.Printf("response is %#v\n", resp.Data)
+	fmt.Printf("response is %#v\n", data)
 
 	req = tarantool.NewUpsertRequest("test").
 		Tuple([]interface{}{uint(1113), "second", "second"}).
 		Operations(tarantool.NewOperations().Assign(2, "updated"))
 	fut := conn.Do(req)
-	resp, err = fut.Get()
+	data, err = fut.Get()
 	if err != nil {
 		fmt.Printf("error in do async upsert request is %v", err)
 		return
 	}
-	fmt.Printf("response is %#v\n", resp.Data)
+	fmt.Printf("response is %#v\n", data)
 
 	req = tarantool.NewSelectRequest(617).
 		Limit(100).
 		Key(tarantool.IntKey{1113})
-	resp, err = conn.Do(req).Get()
+	data, err = conn.Do(req).Get()
 	if err != nil {
 		fmt.Printf("error in do select request is %v", err)
 		return
 	}
-	fmt.Printf("response is %#v\n", resp.Data)
+	fmt.Printf("response is %#v\n", data)
 	// Output:
 	// response is []interface {}{}
 	// response is []interface {}{}
@@ -524,12 +506,12 @@ func ExampleUpsertRequest_spaceAndIndexNames() {
 	defer conn.Close()
 
 	req := tarantool.NewUpsertRequest(spaceName)
-	resp, err := conn.Do(req).Get()
+	data, err := conn.Do(req).Get()
 
 	if err != nil {
 		fmt.Printf("Failed to execute the request: %s\n", err)
 	} else {
-		fmt.Println(resp.Data)
+		fmt.Println(data)
 	}
 }
 
@@ -538,17 +520,15 @@ func ExampleCallRequest() {
 	defer conn.Close()
 
 	// Call a function 'simple_concat' with arguments.
-	resp, err := conn.Do(tarantool.NewCallRequest("simple_concat").
+	data, err := conn.Do(tarantool.NewCallRequest("simple_concat").
 		Args([]interface{}{"1"}),
 	).Get()
 	fmt.Println("Call simple_concat()")
 	fmt.Println("Error", err)
-	fmt.Println("Code", resp.Code)
-	fmt.Println("Data", resp.Data)
+	fmt.Println("Data", data)
 	// Output:
 	// Call simple_concat()
 	// Error <nil>
-	// Code 0
 	// Data [11]
 }
 
@@ -557,15 +537,13 @@ func ExampleEvalRequest() {
 	defer conn.Close()
 
 	// Run raw Lua code.
-	resp, err := conn.Do(tarantool.NewEvalRequest("return 1 + 2")).Get()
+	data, err := conn.Do(tarantool.NewEvalRequest("return 1 + 2")).Get()
 	fmt.Println("Eval 'return 1 + 2'")
 	fmt.Println("Error", err)
-	fmt.Println("Code", resp.Code)
-	fmt.Println("Data", resp.Data)
+	fmt.Println("Data", data)
 	// Output:
 	// Eval 'return 1 + 2'
 	// Error <nil>
-	// Code 0
 	// Data [3]
 }
 
@@ -586,13 +564,14 @@ func ExampleExecuteRequest() {
 
 	req := tarantool.NewExecuteRequest(
 		"CREATE TABLE SQL_TEST (id INTEGER PRIMARY KEY, name STRING)")
-	resp, err := conn.Do(req).Get()
+	resp, err := conn.Do(req).GetResponse()
 	fmt.Println("Execute")
 	fmt.Println("Error", err)
-	fmt.Println("Code", resp.Code)
-	fmt.Println("Data", resp.Data)
-	fmt.Println("MetaData", resp.MetaData)
-	fmt.Println("SQL Info", resp.SQLInfo)
+	data, err := resp.Decode()
+	fmt.Println("Error", err)
+	fmt.Println("Data", data)
+	fmt.Println("MetaData", resp.MetaData())
+	fmt.Println("SQL Info", resp.SQLInfo())
 
 	// There are 4 options to pass named parameters to an SQL query:
 	// 1) The simple map;
@@ -623,55 +602,60 @@ func ExampleExecuteRequest() {
 	req = tarantool.NewExecuteRequest(
 		"CREATE TABLE SQL_TEST (id INTEGER PRIMARY KEY, name STRING)")
 	req = req.Args(sqlBind1)
-	resp, err = conn.Do(req).Get()
+	resp, err = conn.Do(req).GetResponse()
 	fmt.Println("Execute")
 	fmt.Println("Error", err)
-	fmt.Println("Code", resp.Code)
-	fmt.Println("Data", resp.Data)
-	fmt.Println("MetaData", resp.MetaData)
-	fmt.Println("SQL Info", resp.SQLInfo)
+	data, err = resp.Decode()
+	fmt.Println("Error", err)
+	fmt.Println("Data", data)
+	fmt.Println("MetaData", resp.MetaData())
+	fmt.Println("SQL Info", resp.SQLInfo())
 
 	// 2)
 	req = req.Args(sqlBind2)
-	resp, err = conn.Do(req).Get()
+	resp, err = conn.Do(req).GetResponse()
 	fmt.Println("Execute")
 	fmt.Println("Error", err)
-	fmt.Println("Code", resp.Code)
-	fmt.Println("Data", resp.Data)
-	fmt.Println("MetaData", resp.MetaData)
-	fmt.Println("SQL Info", resp.SQLInfo)
+	data, err = resp.Decode()
+	fmt.Println("Error", err)
+	fmt.Println("Data", data)
+	fmt.Println("MetaData", resp.MetaData())
+	fmt.Println("SQL Info", resp.SQLInfo())
 
 	// 3)
 	req = req.Args(sqlBind3)
-	resp, err = conn.Do(req).Get()
+	resp, err = conn.Do(req).GetResponse()
 	fmt.Println("Execute")
 	fmt.Println("Error", err)
-	fmt.Println("Code", resp.Code)
-	fmt.Println("Data", resp.Data)
-	fmt.Println("MetaData", resp.MetaData)
-	fmt.Println("SQL Info", resp.SQLInfo)
+	data, err = resp.Decode()
+	fmt.Println("Error", err)
+	fmt.Println("Data", data)
+	fmt.Println("MetaData", resp.MetaData())
+	fmt.Println("SQL Info", resp.SQLInfo())
 
 	// 4)
 	req = req.Args(sqlBind4)
-	resp, err = conn.Do(req).Get()
+	resp, err = conn.Do(req).GetResponse()
 	fmt.Println("Execute")
 	fmt.Println("Error", err)
-	fmt.Println("Code", resp.Code)
-	fmt.Println("Data", resp.Data)
-	fmt.Println("MetaData", resp.MetaData)
-	fmt.Println("SQL Info", resp.SQLInfo)
+	data, err = resp.Decode()
+	fmt.Println("Error", err)
+	fmt.Println("Data", data)
+	fmt.Println("MetaData", resp.MetaData())
+	fmt.Println("SQL Info", resp.SQLInfo())
 
 	// The way to pass positional arguments to an SQL query.
 	req = tarantool.NewExecuteRequest(
 		"SELECT id FROM SQL_TEST WHERE id=? AND name=?").
 		Args([]interface{}{2, "test"})
-	resp, err = conn.Do(req).Get()
+	resp, err = conn.Do(req).GetResponse()
 	fmt.Println("Execute")
 	fmt.Println("Error", err)
-	fmt.Println("Code", resp.Code)
-	fmt.Println("Data", resp.Data)
-	fmt.Println("MetaData", resp.MetaData)
-	fmt.Println("SQL Info", resp.SQLInfo)
+	data, err = resp.Decode()
+	fmt.Println("Error", err)
+	fmt.Println("Data", data)
+	fmt.Println("MetaData", resp.MetaData())
+	fmt.Println("SQL Info", resp.SQLInfo())
 
 	// The way to pass SQL expression with using custom packing/unpacking for
 	// a type.
@@ -690,13 +674,14 @@ func ExampleExecuteRequest() {
 	req = tarantool.NewExecuteRequest(
 		"SELECT id FROM SQL_TEST WHERE id=? AND name=?").
 		Args([]interface{}{tarantool.KeyValueBind{"id", 1}, "test"})
-	resp, err = conn.Do(req).Get()
+	resp, err = conn.Do(req).GetResponse()
 	fmt.Println("Execute")
 	fmt.Println("Error", err)
-	fmt.Println("Code", resp.Code)
-	fmt.Println("Data", resp.Data)
-	fmt.Println("MetaData", resp.MetaData)
-	fmt.Println("SQL Info", resp.SQLInfo)
+	data, err = resp.Decode()
+	fmt.Println("Error", err)
+	fmt.Println("Data", data)
+	fmt.Println("MetaData", resp.MetaData())
+	fmt.Println("SQL Info", resp.SQLInfo())
 }
 
 func getTestTxnDialer() tarantool.Dialer {
@@ -716,7 +701,6 @@ func getTestTxnDialer() tarantool.Dialer {
 
 func ExampleCommitRequest() {
 	var req tarantool.Request
-	var resp *tarantool.Response
 	var err error
 
 	// Tarantool supports streams and interactive transactions since version 2.10.0
@@ -733,22 +717,22 @@ func ExampleCommitRequest() {
 
 	// Begin transaction
 	req = tarantool.NewBeginRequest()
-	resp, err = stream.Do(req).Get()
+	data, err := stream.Do(req).Get()
 	if err != nil {
 		fmt.Printf("Failed to Begin: %s", err.Error())
 		return
 	}
-	fmt.Printf("Begin transaction: response is %#v\n", resp.Code)
+	fmt.Printf("Begin transaction: response is %#v\n", data)
 
 	// Insert in stream
 	req = tarantool.NewInsertRequest(spaceName).
 		Tuple([]interface{}{uint(1001), "commit_hello", "commit_world"})
-	resp, err = stream.Do(req).Get()
+	data, err = stream.Do(req).Get()
 	if err != nil {
 		fmt.Printf("Failed to Insert: %s", err.Error())
 		return
 	}
-	fmt.Printf("Insert in stream: response is %#v\n", resp.Code)
+	fmt.Printf("Insert in stream: response is %#v\n", data)
 
 	// Select not related to the transaction
 	// while transaction is not committed
@@ -758,42 +742,41 @@ func ExampleCommitRequest() {
 		Limit(1).
 		Iterator(tarantool.IterEq).
 		Key([]interface{}{uint(1001)})
-	resp, err = conn.Do(selectReq).Get()
+	data, err = conn.Do(selectReq).Get()
 	if err != nil {
 		fmt.Printf("Failed to Select: %s", err.Error())
 		return
 	}
-	fmt.Printf("Select out of stream before commit: response is %#v\n", resp.Data)
+	fmt.Printf("Select out of stream before commit: response is %#v\n", data)
 
 	// Select in stream
-	resp, err = stream.Do(selectReq).Get()
+	data, err = stream.Do(selectReq).Get()
 	if err != nil {
 		fmt.Printf("Failed to Select: %s", err.Error())
 		return
 	}
-	fmt.Printf("Select in stream: response is %#v\n", resp.Data)
+	fmt.Printf("Select in stream: response is %#v\n", data)
 
 	// Commit transaction
 	req = tarantool.NewCommitRequest()
-	resp, err = stream.Do(req).Get()
+	data, err = stream.Do(req).Get()
 	if err != nil {
 		fmt.Printf("Failed to Commit: %s", err.Error())
 		return
 	}
-	fmt.Printf("Commit transaction: response is %#v\n", resp.Code)
+	fmt.Printf("Commit transaction: response is %#v\n", data)
 
 	// Select outside of transaction
-	resp, err = conn.Do(selectReq).Get()
+	data, err = conn.Do(selectReq).Get()
 	if err != nil {
 		fmt.Printf("Failed to Select: %s", err.Error())
 		return
 	}
-	fmt.Printf("Select after commit: response is %#v\n", resp.Data)
+	fmt.Printf("Select after commit: response is %#v\n", data)
 }
 
 func ExampleRollbackRequest() {
 	var req tarantool.Request
-	var resp *tarantool.Response
 	var err error
 
 	// Tarantool supports streams and interactive transactions since version 2.10.0
@@ -810,22 +793,22 @@ func ExampleRollbackRequest() {
 
 	// Begin transaction
 	req = tarantool.NewBeginRequest()
-	resp, err = stream.Do(req).Get()
+	data, err := stream.Do(req).Get()
 	if err != nil {
 		fmt.Printf("Failed to Begin: %s", err.Error())
 		return
 	}
-	fmt.Printf("Begin transaction: response is %#v\n", resp.Code)
+	fmt.Printf("Begin transaction: response is %#v\n", data)
 
 	// Insert in stream
 	req = tarantool.NewInsertRequest(spaceName).
 		Tuple([]interface{}{uint(2001), "rollback_hello", "rollback_world"})
-	resp, err = stream.Do(req).Get()
+	data, err = stream.Do(req).Get()
 	if err != nil {
 		fmt.Printf("Failed to Insert: %s", err.Error())
 		return
 	}
-	fmt.Printf("Insert in stream: response is %#v\n", resp.Code)
+	fmt.Printf("Insert in stream: response is %#v\n", data)
 
 	// Select not related to the transaction
 	// while transaction is not committed
@@ -835,42 +818,41 @@ func ExampleRollbackRequest() {
 		Limit(1).
 		Iterator(tarantool.IterEq).
 		Key([]interface{}{uint(2001)})
-	resp, err = conn.Do(selectReq).Get()
+	data, err = conn.Do(selectReq).Get()
 	if err != nil {
 		fmt.Printf("Failed to Select: %s", err.Error())
 		return
 	}
-	fmt.Printf("Select out of stream: response is %#v\n", resp.Data)
+	fmt.Printf("Select out of stream: response is %#v\n", data)
 
 	// Select in stream
-	resp, err = stream.Do(selectReq).Get()
+	data, err = stream.Do(selectReq).Get()
 	if err != nil {
 		fmt.Printf("Failed to Select: %s", err.Error())
 		return
 	}
-	fmt.Printf("Select in stream: response is %#v\n", resp.Data)
+	fmt.Printf("Select in stream: response is %#v\n", data)
 
 	// Rollback transaction
 	req = tarantool.NewRollbackRequest()
-	resp, err = stream.Do(req).Get()
+	data, err = stream.Do(req).Get()
 	if err != nil {
 		fmt.Printf("Failed to Rollback: %s", err.Error())
 		return
 	}
-	fmt.Printf("Rollback transaction: response is %#v\n", resp.Code)
+	fmt.Printf("Rollback transaction: response is %#v\n", data)
 
 	// Select outside of transaction
-	resp, err = conn.Do(selectReq).Get()
+	data, err = conn.Do(selectReq).Get()
 	if err != nil {
 		fmt.Printf("Failed to Select: %s", err.Error())
 		return
 	}
-	fmt.Printf("Select after Rollback: response is %#v\n", resp.Data)
+	fmt.Printf("Select after Rollback: response is %#v\n", data)
 }
 
 func ExampleBeginRequest_TxnIsolation() {
 	var req tarantool.Request
-	var resp *tarantool.Response
 	var err error
 
 	// Tarantool supports streams and interactive transactions since version 2.10.0
@@ -889,22 +871,22 @@ func ExampleBeginRequest_TxnIsolation() {
 	req = tarantool.NewBeginRequest().
 		TxnIsolation(tarantool.ReadConfirmedLevel).
 		Timeout(500 * time.Millisecond)
-	resp, err = stream.Do(req).Get()
+	data, err := stream.Do(req).Get()
 	if err != nil {
 		fmt.Printf("Failed to Begin: %s", err.Error())
 		return
 	}
-	fmt.Printf("Begin transaction: response is %#v\n", resp.Code)
+	fmt.Printf("Begin transaction: response is %#v\n", data)
 
 	// Insert in stream
 	req = tarantool.NewInsertRequest(spaceName).
 		Tuple([]interface{}{uint(2001), "rollback_hello", "rollback_world"})
-	resp, err = stream.Do(req).Get()
+	data, err = stream.Do(req).Get()
 	if err != nil {
 		fmt.Printf("Failed to Insert: %s", err.Error())
 		return
 	}
-	fmt.Printf("Insert in stream: response is %#v\n", resp.Code)
+	fmt.Printf("Insert in stream: response is %#v\n", data)
 
 	// Select not related to the transaction
 	// while transaction is not committed
@@ -914,37 +896,37 @@ func ExampleBeginRequest_TxnIsolation() {
 		Limit(1).
 		Iterator(tarantool.IterEq).
 		Key([]interface{}{uint(2001)})
-	resp, err = conn.Do(selectReq).Get()
+	data, err = conn.Do(selectReq).Get()
 	if err != nil {
 		fmt.Printf("Failed to Select: %s", err.Error())
 		return
 	}
-	fmt.Printf("Select out of stream: response is %#v\n", resp.Data)
+	fmt.Printf("Select out of stream: response is %#v\n", data)
 
 	// Select in stream
-	resp, err = stream.Do(selectReq).Get()
+	data, err = stream.Do(selectReq).Get()
 	if err != nil {
 		fmt.Printf("Failed to Select: %s", err.Error())
 		return
 	}
-	fmt.Printf("Select in stream: response is %#v\n", resp.Data)
+	fmt.Printf("Select in stream: response is %#v\n", data)
 
 	// Rollback transaction
 	req = tarantool.NewRollbackRequest()
-	resp, err = stream.Do(req).Get()
+	data, err = stream.Do(req).Get()
 	if err != nil {
 		fmt.Printf("Failed to Rollback: %s", err.Error())
 		return
 	}
-	fmt.Printf("Rollback transaction: response is %#v\n", resp.Code)
+	fmt.Printf("Rollback transaction: response is %#v\n", data)
 
 	// Select outside of transaction
-	resp, err = conn.Do(selectReq).Get()
+	data, err = conn.Do(selectReq).Get()
 	if err != nil {
 		fmt.Printf("Failed to Select: %s", err.Error())
 		return
 	}
-	fmt.Printf("Select after Rollback: response is %#v\n", resp.Data)
+	fmt.Printf("Select after Rollback: response is %#v\n", data)
 }
 
 func ExampleFuture_GetIterator() {
@@ -959,14 +941,15 @@ func ExampleFuture_GetIterator() {
 	var it tarantool.ResponseIterator
 	for it = fut.GetIterator().WithTimeout(timeout); it.Next(); {
 		resp := it.Value()
-		if resp.Code == tarantool.PushCode {
+		data, _ := resp.Decode()
+		if it.IsPush() {
 			// It is a push message.
-			fmt.Printf("push message: %v\n", resp.Data[0])
-		} else if resp.Code == tarantool.OkCode {
+			fmt.Printf("push message: %v\n", data[0])
+		} else if resp.Header().Code == tarantool.OkCode {
 			// It is a regular response.
-			fmt.Printf("response: %v", resp.Data[0])
+			fmt.Printf("response: %v", data[0])
 		} else {
-			fmt.Printf("an unexpected response code %d", resp.Code)
+			fmt.Printf("an unexpected response code %d", resp.Header().Code)
 		}
 	}
 	if err := it.Err(); err != nil {
@@ -1148,11 +1131,11 @@ func ExampleConnection_Do() {
 	// When the future receives the response, the result of the Future is set
 	// and becomes available. We could wait for that moment with Future.Get()
 	// or Future.GetTyped() methods.
-	resp, err := future.Get()
+	data, err := future.Get()
 	if err != nil {
 		fmt.Printf("Failed to execute the request: %s\n", err)
 	} else {
-		fmt.Println(resp.Data)
+		fmt.Println(data)
 	}
 
 	// Output:
@@ -1172,9 +1155,9 @@ func ExampleConnection_Do_failure() {
 	future := conn.Do(req)
 
 	// When the future receives the response, the result of the Future is set
-	// and becomes available. We could wait for that moment with Future.Get()
-	// or Future.GetTyped() methods.
-	resp, err := future.Get()
+	// and becomes available. We could wait for that moment with Future.Get(),
+	// Future.GetResponse() or Future.GetTyped() methods.
+	resp, err := future.GetResponse()
 	if err != nil {
 		// We don't print the error here to keep the example reproducible.
 		// fmt.Printf("Failed to execute the request: %s\n", err)
@@ -1184,8 +1167,8 @@ func ExampleConnection_Do_failure() {
 		} else {
 			// Response exist. So it could be a Tarantool error or a decode
 			// error. We need to check the error code.
-			fmt.Printf("Error code from the response: %d\n", resp.Code)
-			if resp.Code == tarantool.OkCode {
+			fmt.Printf("Error code from the response: %d\n", resp.Header().Code)
+			if resp.Header().Code == tarantool.OkCode {
 				fmt.Printf("Decode error: %s\n", err)
 			} else {
 				code := err.(tarantool.Error).Code
@@ -1326,7 +1309,7 @@ func ExampleConnection_CloseGraceful_force() {
 	// Force Connection.Close()!
 	// Connection.CloseGraceful() done!
 	// Result:
-	// <nil> connection closed by client (0x4001)
+	// [] connection closed by client (0x4001)
 }
 
 func ExampleWatchOnceRequest() {
@@ -1344,11 +1327,11 @@ func ExampleWatchOnceRequest() {
 
 	conn.Do(tarantool.NewBroadcastRequest(key).Value(value)).Get()
 
-	resp, err := conn.Do(tarantool.NewWatchOnceRequest(key)).Get()
+	data, err := conn.Do(tarantool.NewWatchOnceRequest(key)).Get()
 	if err != nil {
 		fmt.Printf("Failed to execute the request: %s\n", err)
 	} else {
-		fmt.Println(resp.Data)
+		fmt.Println(data)
 	}
 }
 
@@ -1377,8 +1360,8 @@ func ExampleFdDialer() {
 		fmt.Printf("connect error: %v\n", err)
 		return
 	}
-	resp, err := conn.Do(tarantool.NewPingRequest()).Get()
-	fmt.Println(resp.Code, err)
+	_, err = conn.Do(tarantool.NewPingRequest()).Get()
+	fmt.Println(err)
 	// Output:
-	// 0 <nil>
+	// <nil>
 }

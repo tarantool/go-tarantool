@@ -135,7 +135,7 @@ type baseRequestMock struct {
 	mode                  Mode
 }
 
-var reqResp *tarantool.Response = &tarantool.Response{}
+var reqResp tarantool.Response = &tarantool.ConnResponse{}
 var errReq error = errors.New("response error")
 var reqFuture *tarantool.Future = &tarantool.Future{}
 
@@ -190,7 +190,7 @@ type selectMock struct {
 
 func (m *selectMock) Select(space, index interface{},
 	offset, limit uint32, iterator tarantool.Iter, key interface{},
-	mode ...Mode) (*tarantool.Response, error) {
+	mode ...Mode) (tarantool.Response, error) {
 	m.called++
 	m.space = space
 	m.index = index
@@ -299,7 +299,7 @@ type insertMock struct {
 }
 
 func (m *insertMock) Insert(space, tuple interface{},
-	mode ...Mode) (*tarantool.Response, error) {
+	mode ...Mode) (tarantool.Response, error) {
 	m.called++
 	m.space = space
 	m.tuple = tuple
@@ -380,7 +380,7 @@ type replaceMock struct {
 }
 
 func (m *replaceMock) Replace(space, tuple interface{},
-	mode ...Mode) (*tarantool.Response, error) {
+	mode ...Mode) (tarantool.Response, error) {
 	m.called++
 	m.space = space
 	m.tuple = tuple
@@ -461,7 +461,7 @@ type deleteMock struct {
 }
 
 func (m *deleteMock) Delete(space, index, key interface{},
-	mode ...Mode) (*tarantool.Response, error) {
+	mode ...Mode) (tarantool.Response, error) {
 	m.called++
 	m.space = space
 	m.index = index
@@ -548,7 +548,7 @@ type updateMock struct {
 }
 
 func (m *updateMock) Update(space, index, key interface{},
-	ops *tarantool.Operations, mode ...Mode) (*tarantool.Response, error) {
+	ops *tarantool.Operations, mode ...Mode) (tarantool.Response, error) {
 	m.called++
 	m.space = space
 	m.index = index
@@ -641,7 +641,7 @@ type upsertMock struct {
 }
 
 func (m *upsertMock) Upsert(space, tuple interface{}, ops *tarantool.Operations,
-	mode ...Mode) (*tarantool.Response, error) {
+	mode ...Mode) (tarantool.Response, error) {
 	m.called++
 	m.space = space
 	m.tuple = tuple
@@ -698,7 +698,7 @@ type baseCallMock struct {
 }
 
 func (m *baseCallMock) call(functionName string, args interface{},
-	mode Mode) (*tarantool.Response, error) {
+	mode Mode) (tarantool.Response, error) {
 	m.called++
 	m.functionName = functionName
 	m.args = args
@@ -730,7 +730,7 @@ type callMock struct {
 }
 
 func (m *callMock) Call(functionName string, args interface{},
-	mode Mode) (*tarantool.Response, error) {
+	mode Mode) (tarantool.Response, error) {
 	return m.call(functionName, args, mode)
 }
 
@@ -801,7 +801,7 @@ type call16Mock struct {
 }
 
 func (m *call16Mock) Call16(functionName string, args interface{},
-	mode Mode) (*tarantool.Response, error) {
+	mode Mode) (tarantool.Response, error) {
 	return m.call(functionName, args, mode)
 }
 
@@ -872,7 +872,7 @@ type call17Mock struct {
 }
 
 func (m *call17Mock) Call17(functionName string, args interface{},
-	mode Mode) (*tarantool.Response, error) {
+	mode Mode) (tarantool.Response, error) {
 	return m.call(functionName, args, mode)
 }
 
@@ -943,7 +943,7 @@ type evalMock struct {
 }
 
 func (m *evalMock) Eval(functionName string, args interface{},
-	mode Mode) (*tarantool.Response, error) {
+	mode Mode) (tarantool.Response, error) {
 	return m.call(functionName, args, mode)
 }
 
@@ -1014,7 +1014,7 @@ type executeMock struct {
 }
 
 func (m *executeMock) Execute(functionName string, args interface{},
-	mode Mode) (*tarantool.Response, error) {
+	mode Mode) (tarantool.Response, error) {
 	return m.call(functionName, args, mode)
 }
 

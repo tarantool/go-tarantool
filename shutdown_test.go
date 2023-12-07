@@ -47,7 +47,6 @@ var evalBody = `
 `
 
 func testGracefulShutdown(t *testing.T, conn *Connection, inst *test_helpers.TarantoolInstance) {
-	var resp *Response
 	var err error
 
 	// Set a big timeout so it would be easy to differ
@@ -102,10 +101,9 @@ func testGracefulShutdown(t *testing.T, conn *Connection, inst *test_helpers.Tar
 	require.Nil(t, err)
 
 	// Check that requests started before the shutdown finish successfully.
-	resp, err = fut.Get()
+	data, err := fut.Get()
 	require.Nil(t, err)
-	require.NotNil(t, resp)
-	require.Equal(t, resp.Data, []interface{}{evalMsg})
+	require.Equal(t, data, []interface{}{evalMsg})
 
 	// Wait until server go down.
 	// Server will go down only when it process all requests from our connection

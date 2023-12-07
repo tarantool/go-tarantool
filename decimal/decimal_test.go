@@ -538,14 +538,11 @@ func TestSelect(t *testing.T) {
 	}
 
 	ins := NewInsertRequest(space).Tuple([]interface{}{MakeDecimal(number)})
-	resp, err := conn.Do(ins).Get()
+	data, err := conn.Do(ins).Get()
 	if err != nil {
 		t.Fatalf("Decimal insert failed: %s", err)
 	}
-	if resp == nil {
-		t.Fatalf("Response is nil after Replace")
-	}
-	tupleValueIsDecimal(t, resp.Data, number)
+	tupleValueIsDecimal(t, data, number)
 
 	var offset uint32 = 0
 	var limit uint32 = 1
@@ -555,21 +552,18 @@ func TestSelect(t *testing.T) {
 		Limit(limit).
 		Iterator(IterEq).
 		Key([]interface{}{MakeDecimal(number)})
-	resp, err = conn.Do(sel).Get()
+	data, err = conn.Do(sel).Get()
 	if err != nil {
 		t.Fatalf("Decimal select failed: %s", err.Error())
 	}
-	if resp == nil {
-		t.Fatalf("Response is nil after Select")
-	}
-	tupleValueIsDecimal(t, resp.Data, number)
+	tupleValueIsDecimal(t, data, number)
 
 	del := NewDeleteRequest(space).Index(index).Key([]interface{}{MakeDecimal(number)})
-	resp, err = conn.Do(del).Get()
+	data, err = conn.Do(del).Get()
 	if err != nil {
 		t.Fatalf("Decimal delete failed: %s", err)
 	}
-	tupleValueIsDecimal(t, resp.Data, number)
+	tupleValueIsDecimal(t, data, number)
 }
 
 func TestUnmarshal_from_decimal_new(t *testing.T) {
@@ -591,14 +585,11 @@ func TestUnmarshal_from_decimal_new(t *testing.T) {
 
 			call := NewEvalRequest("return require('decimal').new(...)").
 				Args([]interface{}{str})
-			resp, err := conn.Do(call).Get()
+			data, err := conn.Do(call).Get()
 			if err != nil {
 				t.Fatalf("Decimal create failed: %s", err)
 			}
-			if resp == nil {
-				t.Fatalf("Response is nil after Call")
-			}
-			tupleValueIsDecimal(t, []interface{}{resp.Data}, number)
+			tupleValueIsDecimal(t, []interface{}{data}, number)
 		})
 	}
 }
@@ -610,21 +601,18 @@ func assertInsert(t *testing.T, conn *Connection, numString string) {
 	}
 
 	ins := NewInsertRequest(space).Tuple([]interface{}{MakeDecimal(number)})
-	resp, err := conn.Do(ins).Get()
+	data, err := conn.Do(ins).Get()
 	if err != nil {
 		t.Fatalf("Decimal insert failed: %s", err)
 	}
-	if resp == nil {
-		t.Fatalf("Response is nil after Replace")
-	}
-	tupleValueIsDecimal(t, resp.Data, number)
+	tupleValueIsDecimal(t, data, number)
 
 	del := NewDeleteRequest(space).Index(index).Key([]interface{}{MakeDecimal(number)})
-	resp, err = conn.Do(del).Get()
+	data, err = conn.Do(del).Get()
 	if err != nil {
 		t.Fatalf("Decimal delete failed: %s", err)
 	}
-	tupleValueIsDecimal(t, resp.Data, number)
+	tupleValueIsDecimal(t, data, number)
 }
 
 func TestInsert(t *testing.T) {
@@ -654,28 +642,22 @@ func TestReplace(t *testing.T) {
 	}
 
 	rep := NewReplaceRequest(space).Tuple([]interface{}{MakeDecimal(number)})
-	respRep, errRep := conn.Do(rep).Get()
+	dataRep, errRep := conn.Do(rep).Get()
 	if errRep != nil {
 		t.Fatalf("Decimal replace failed: %s", errRep)
 	}
-	if respRep == nil {
-		t.Fatalf("Response is nil after Replace")
-	}
-	tupleValueIsDecimal(t, respRep.Data, number)
+	tupleValueIsDecimal(t, dataRep, number)
 
 	sel := NewSelectRequest(space).
 		Index(index).
 		Limit(1).
 		Iterator(IterEq).
 		Key([]interface{}{MakeDecimal(number)})
-	respSel, errSel := conn.Do(sel).Get()
+	dataSel, errSel := conn.Do(sel).Get()
 	if errSel != nil {
 		t.Fatalf("Decimal select failed: %s", errSel)
 	}
-	if respSel == nil {
-		t.Fatalf("Response is nil after Select")
-	}
-	tupleValueIsDecimal(t, respSel.Data, number)
+	tupleValueIsDecimal(t, dataSel, number)
 }
 
 // runTestMain is a body of TestMain function

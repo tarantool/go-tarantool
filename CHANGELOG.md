@@ -28,6 +28,8 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
   in requests instead of their IDs.
 - `GetSchema` function to get the actual schema (#7)
 - Support connection via an existing socket fd (#321)
+- `Header` struct for the response header (#237). It can be accessed via
+  `Header()` method of the `Response` interface.
 
 ### Changed
 
@@ -67,6 +69,13 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
   it (#321)
 - Rename `pool.GetPoolInfo` to `pool.GetInfo`. Change return type to
   `map[string]ConnectionInfo` (#321)
+- `Response` is now an interface (#237)
+- All responses are now implementations of the `Response` interface (#237)
+- `IsPush()` method is added to the response iterator (#237). It returns
+  the information if the current response is a `PushResponse`.
+  `PushCode` constant is removed.
+- Method `Get` for `Future` now returns response data (#237). To get the actual
+  response new `GetResponse` method has been added.
 
 ### Deprecated
 
@@ -89,6 +98,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 - IPROTO constants (#158)
 - Code() method from the Request interface (#158)
 - `Schema` field from the `Connection` struct (#7)
+- `PushCode` constant (#237)
 
 ### Fixed
 
