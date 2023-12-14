@@ -54,9 +54,10 @@ func TestFutureGetIteratorNoItems(t *testing.T) {
 }
 
 func TestFutureGetIteratorNoResponse(t *testing.T) {
-	push := &ConnResponse{}
+	pushHeader := Header{}
+	push := &PushResponse{}
 	fut := NewFuture()
-	fut.AppendPush(push)
+	fut.AppendPush(pushHeader, nil)
 
 	if it := fut.GetIterator(); it.Next() {
 		assertResponseIteratorValue(t, it, true, push)
@@ -70,9 +71,10 @@ func TestFutureGetIteratorNoResponse(t *testing.T) {
 }
 
 func TestFutureGetIteratorNoResponseTimeout(t *testing.T) {
-	push := &ConnResponse{}
+	pushHeader := Header{}
+	push := &PushResponse{}
 	fut := NewFuture()
-	fut.AppendPush(push)
+	fut.AppendPush(pushHeader, nil)
 
 	if it := fut.GetIterator().WithTimeout(1 * time.Nanosecond); it.Next() {
 		assertResponseIteratorValue(t, it, true, push)
@@ -86,10 +88,12 @@ func TestFutureGetIteratorNoResponseTimeout(t *testing.T) {
 }
 
 func TestFutureGetIteratorResponseOnTimeout(t *testing.T) {
-	push := &ConnResponse{}
-	resp := &ConnResponse{}
+	pushHeader := Header{}
+	respHeader := Header{}
+	push := &PushResponse{}
+	resp := &BaseResponse{}
 	fut := NewFuture()
-	fut.AppendPush(push)
+	fut.AppendPush(pushHeader, nil)
 
 	var done sync.WaitGroup
 	var wait sync.WaitGroup
@@ -123,19 +127,21 @@ func TestFutureGetIteratorResponseOnTimeout(t *testing.T) {
 	}()
 
 	wait.Wait()
-	fut.SetResponse(resp)
+
+	fut.SetRequest(&InsertRequest{})
+	fut.SetResponse(respHeader, nil)
 	done.Wait()
 }
 
 func TestFutureGetIteratorFirstResponse(t *testing.T) {
-	resp1 := &ConnResponse{}
-	resp2 := &ConnResponse{}
+	resp := &BaseResponse{}
 	fut := NewFuture()
-	fut.SetResponse(resp1)
-	fut.SetResponse(resp2)
+	fut.SetRequest(&InsertRequest{})
+	fut.SetResponse(Header{}, nil)
+	fut.SetResponse(Header{}, nil)
 
 	if it := fut.GetIterator(); it.Next() {
-		assertResponseIteratorValue(t, it, false, resp1)
+		assertResponseIteratorValue(t, it, false, resp)
 		if it.Next() == true {
 			t.Errorf("An unexpected next value.")
 		}
@@ -164,17 +170,19 @@ func TestFutureGetIteratorFirstError(t *testing.T) {
 }
 
 func TestFutureGetIteratorResponse(t *testing.T) {
-	responses := []*ConnResponse{
-		{},
-		{},
-		{},
+	responses := []Response{
+		&PushResponse{},
+		&PushResponse{},
+		&BaseResponse{},
 	}
+	header := Header{}
 	fut := NewFuture()
-	for i, resp := range responses {
+	fut.SetRequest(&InsertRequest{})
+	for i := range responses {
 		if i == len(responses)-1 {
-			fut.SetResponse(resp)
+			fut.SetResponse(header, nil)
 		} else {
-			fut.AppendPush(resp)
+			fut.AppendPush(header, nil)
 		}
 	}
 
@@ -202,14 +210,14 @@ func TestFutureGetIteratorResponse(t *testing.T) {
 
 func TestFutureGetIteratorError(t *testing.T) {
 	const errMsg = "error message"
-	responses := []*ConnResponse{
+	responses := []*PushResponse{
 		{},
 		{},
 	}
 	err := errors.New(errMsg)
 	fut := NewFuture()
-	for _, resp := range responses {
-		fut.AppendPush(resp)
+	for range responses {
+		fut.AppendPush(Header{}, nil)
 	}
 	fut.SetError(err)
 
@@ -239,19 +247,18 @@ func TestFutureGetIteratorError(t *testing.T) {
 
 func TestFutureSetStateRaceCondition(t *testing.T) {
 	err := errors.New("any error")
-	resp := &ConnResponse{}
 
 	for i := 0; i < 1000; i++ {
 		fut := NewFuture()
+		fut.SetRequest(&InsertRequest{})
 		for j := 0; j < 9; j++ {
 			go func(opt int) {
 				if opt%3 == 0 {
-					respAppend := &ConnResponse{}
-					fut.AppendPush(respAppend)
+					fut.AppendPush(Header{}, nil)
 				} else if opt%3 == 1 {
 					fut.SetError(err)
 				} else {
-					fut.SetResponse(resp)
+					fut.SetResponse(Header{}, nil)
 				}
 			}(j)
 		}

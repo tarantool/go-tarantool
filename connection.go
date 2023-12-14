@@ -61,6 +61,8 @@ const (
 	LogUnexpectedResultId
 	// LogWatchEventReadFailed is logged when failed to read a watch event.
 	LogWatchEventReadFailed
+	// LogAppendPushFailed is logged when failed to append a push response.
+	LogAppendPushFailed
 )
 
 // ConnEvent is sent throw Notify channel specified in Opts.
@@ -103,6 +105,9 @@ func (d defaultLogger) Report(event ConnLogKind, conn *Connection, v ...interfac
 	case LogWatchEventReadFailed:
 		err := v[0].(error)
 		log.Printf("tarantool: unable to parse watch event: %s", err)
+	case LogAppendPushFailed:
+		err := v[0].(error)
+		log.Printf("tarantool: unable to append a push response: %s", err)
 	default:
 		args := append([]interface{}{"tarantool: unexpected event ", event, conn}, v...)
 		log.Print(args...)
@@ -818,10 +823,9 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 			return
 		}
 
-		resp := &ConnResponse{header: header, buf: buf}
 		var fut *Future = nil
 		if iproto.Type(header.Code) == iproto.IPROTO_EVENT {
-			if event, err := readWatchEvent(&resp.buf); err == nil {
+			if event, err := readWatchEvent(&buf); err == nil {
 				events <- event
 			} else {
 				err = ClientError{
@@ -833,11 +837,19 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 			continue
 		} else if header.Code == uint32(iproto.IPROTO_CHUNK) {
 			if fut = conn.peekFuture(header.RequestId); fut != nil {
-				fut.AppendPush(resp)
+				if err := fut.AppendPush(header, &buf); err != nil {
+					err = ClientError{
+						ErrProtocolError,
+						fmt.Sprintf("failed to append push response: %s", err),
+					}
+					conn.opts.Logger.Report(LogAppendPushFailed, conn, err)
+				}
 			}
 		} else {
 			if fut = conn.fetchFuture(header.RequestId); fut != nil {
-				fut.SetResponse(resp)
+				if err := fut.SetResponse(header, &buf); err != nil {
+					fut.SetError(fmt.Errorf("failed to set response: %w", err))
+				}
 				conn.markDone(fut)
 			}
 		}
@@ -873,8 +885,10 @@ func (conn *Connection) eventer(events <-chan connWatchEvent) {
 	}
 }
 
-func (conn *Connection) newFuture(ctx context.Context) (fut *Future) {
+func (conn *Connection) newFuture(req Request) (fut *Future) {
+	ctx := req.Ctx()
 	fut = NewFuture()
+	fut.SetRequest(req)
 	if conn.rlimit != nil && conn.opts.RLimitAction == RLimitDrop {
 		select {
 		case conn.rlimit <- struct{}{}:
@@ -984,7 +998,7 @@ func (conn *Connection) decrementRequestCnt() {
 func (conn *Connection) send(req Request, streamId uint64) *Future {
 	conn.incrementRequestCnt()
 
-	fut := conn.newFuture(req.Ctx())
+	fut := conn.newFuture(req)
 	if fut.ready == nil {
 		conn.decrementRequestCnt()
 		return fut
@@ -1053,8 +1067,11 @@ func (conn *Connection) putFuture(fut *Future, req Request, streamId uint64) {
 
 	if req.Async() {
 		if fut = conn.fetchFuture(reqid); fut != nil {
-			resp := &ConnResponse{}
-			fut.SetResponse(resp)
+			header := Header{
+				RequestId: reqid,
+				Code:      OkCode,
+			}
+			fut.SetResponse(header, nil)
 			conn.markDone(fut)
 		}
 	}

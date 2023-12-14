@@ -19,51 +19,51 @@ type Pooler interface {
 
 	// Deprecated: the method will be removed in the next major version,
 	// use a PingRequest object + Do() instead.
-	Ping(mode Mode) (tarantool.Response, error)
+	Ping(mode Mode) ([]interface{}, error)
 	// Deprecated: the method will be removed in the next major version,
 	// use a SelectRequest object + Do() instead.
 	Select(space, index interface{}, offset, limit uint32, iterator tarantool.Iter,
-		key interface{}, mode ...Mode) (tarantool.Response, error)
+		key interface{}, mode ...Mode) ([]interface{}, error)
 	// Deprecated: the method will be removed in the next major version,
 	// use an InsertRequest object + Do() instead.
 	Insert(space interface{}, tuple interface{},
-		mode ...Mode) (tarantool.Response, error)
+		mode ...Mode) ([]interface{}, error)
 	// Deprecated: the method will be removed in the next major version,
 	// use a ReplaceRequest object + Do() instead.
 	Replace(space interface{}, tuple interface{},
-		mode ...Mode) (tarantool.Response, error)
+		mode ...Mode) ([]interface{}, error)
 	// Deprecated: the method will be removed in the next major version,
 	// use a DeleteRequest object + Do() instead.
 	Delete(space, index interface{}, key interface{},
-		mode ...Mode) (tarantool.Response, error)
+		mode ...Mode) ([]interface{}, error)
 	// Deprecated: the method will be removed in the next major version,
 	// use a UpdateRequest object + Do() instead.
 	Update(space, index interface{}, key interface{}, ops *tarantool.Operations,
-		mode ...Mode) (tarantool.Response, error)
+		mode ...Mode) ([]interface{}, error)
 	// Deprecated: the method will be removed in the next major version,
 	// use a UpsertRequest object + Do() instead.
 	Upsert(space interface{}, tuple interface{}, ops *tarantool.Operations,
-		mode ...Mode) (tarantool.Response, error)
+		mode ...Mode) ([]interface{}, error)
 	// Deprecated: the method will be removed in the next major version,
 	// use a CallRequest object + Do() instead.
 	Call(functionName string, args interface{},
-		mode Mode) (tarantool.Response, error)
+		mode Mode) ([]interface{}, error)
 	// Deprecated: the method will be removed in the next major version,
 	// use a Call16Request object + Do() instead.
 	Call16(functionName string, args interface{},
-		mode Mode) (tarantool.Response, error)
+		mode Mode) ([]interface{}, error)
 	// Deprecated: the method will be removed in the next major version,
 	// use a Call17Request object + Do() instead.
 	Call17(functionName string, args interface{},
-		mode Mode) (tarantool.Response, error)
+		mode Mode) ([]interface{}, error)
 	// Deprecated: the method will be removed in the next major version,
 	// use an EvalRequest object + Do() instead.
 	Eval(expr string, args interface{},
-		mode Mode) (tarantool.Response, error)
+		mode Mode) ([]interface{}, error)
 	// Deprecated: the method will be removed in the next major version,
 	// use an ExecuteRequest object + Do() instead.
 	Execute(expr string, args interface{},
-		mode Mode) (tarantool.Response, error)
+		mode Mode) ([]interface{}, error)
 
 	// Deprecated: the method will be removed in the next major version,
 	// use a SelectRequest object + Do() instead.

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"reflect"
 	"strings"
 	"sync"
@@ -260,8 +261,8 @@ func fillWatchOnce(enc *msgpack.Encoder, key string) error {
 //
 // Deprecated: the method will be removed in the next major version,
 // use a PingRequest object + Do() instead.
-func (conn *Connection) Ping() (Response, error) {
-	return conn.Do(NewPingRequest()).GetResponse()
+func (conn *Connection) Ping() ([]interface{}, error) {
+	return conn.Do(NewPingRequest()).Get()
 }
 
 // Select performs select to box space.
@@ -271,8 +272,8 @@ func (conn *Connection) Ping() (Response, error) {
 // Deprecated: the method will be removed in the next major version,
 // use a SelectRequest object + Do() instead.
 func (conn *Connection) Select(space, index interface{}, offset, limit uint32, iterator Iter,
-	key interface{}) (Response, error) {
-	return conn.SelectAsync(space, index, offset, limit, iterator, key).GetResponse()
+	key interface{}) ([]interface{}, error) {
+	return conn.SelectAsync(space, index, offset, limit, iterator, key).Get()
 }
 
 // Insert performs insertion to box space.
@@ -282,8 +283,8 @@ func (conn *Connection) Select(space, index interface{}, offset, limit uint32, i
 //
 // Deprecated: the method will be removed in the next major version,
 // use an InsertRequest object + Do() instead.
-func (conn *Connection) Insert(space interface{}, tuple interface{}) (Response, error) {
-	return conn.InsertAsync(space, tuple).GetResponse()
+func (conn *Connection) Insert(space interface{}, tuple interface{}) ([]interface{}, error) {
+	return conn.InsertAsync(space, tuple).Get()
 }
 
 // Replace performs "insert or replace" action to box space.
@@ -293,8 +294,8 @@ func (conn *Connection) Insert(space interface{}, tuple interface{}) (Response, 
 //
 // Deprecated: the method will be removed in the next major version,
 // use a ReplaceRequest object + Do() instead.
-func (conn *Connection) Replace(space interface{}, tuple interface{}) (Response, error) {
-	return conn.ReplaceAsync(space, tuple).GetResponse()
+func (conn *Connection) Replace(space interface{}, tuple interface{}) ([]interface{}, error) {
+	return conn.ReplaceAsync(space, tuple).Get()
 }
 
 // Delete performs deletion of a tuple by key.
@@ -304,8 +305,8 @@ func (conn *Connection) Replace(space interface{}, tuple interface{}) (Response,
 //
 // Deprecated: the method will be removed in the next major version,
 // use a DeleteRequest object + Do() instead.
-func (conn *Connection) Delete(space, index interface{}, key interface{}) (Response, error) {
-	return conn.DeleteAsync(space, index, key).GetResponse()
+func (conn *Connection) Delete(space, index interface{}, key interface{}) ([]interface{}, error) {
+	return conn.DeleteAsync(space, index, key).Get()
 }
 
 // Update performs update of a tuple by key.
@@ -315,8 +316,9 @@ func (conn *Connection) Delete(space, index interface{}, key interface{}) (Respo
 //
 // Deprecated: the method will be removed in the next major version,
 // use a UpdateRequest object + Do() instead.
-func (conn *Connection) Update(space, index, key interface{}, ops *Operations) (Response, error) {
-	return conn.UpdateAsync(space, index, key, ops).GetResponse()
+func (conn *Connection) Update(space, index, key interface{},
+	ops *Operations) ([]interface{}, error) {
+	return conn.UpdateAsync(space, index, key, ops).Get()
 }
 
 // Upsert performs "update or insert" action of a tuple by key.
@@ -326,8 +328,8 @@ func (conn *Connection) Update(space, index, key interface{}, ops *Operations) (
 //
 // Deprecated: the method will be removed in the next major version,
 // use a UpsertRequest object + Do() instead.
-func (conn *Connection) Upsert(space, tuple interface{}, ops *Operations) (Response, error) {
-	return conn.UpsertAsync(space, tuple, ops).GetResponse()
+func (conn *Connection) Upsert(space, tuple interface{}, ops *Operations) ([]interface{}, error) {
+	return conn.UpsertAsync(space, tuple, ops).Get()
 }
 
 // Call calls registered Tarantool function.
@@ -337,8 +339,8 @@ func (conn *Connection) Upsert(space, tuple interface{}, ops *Operations) (Respo
 //
 // Deprecated: the method will be removed in the next major version,
 // use a CallRequest object + Do() instead.
-func (conn *Connection) Call(functionName string, args interface{}) (Response, error) {
-	return conn.CallAsync(functionName, args).GetResponse()
+func (conn *Connection) Call(functionName string, args interface{}) ([]interface{}, error) {
+	return conn.CallAsync(functionName, args).Get()
 }
 
 // Call16 calls registered Tarantool function.
@@ -349,8 +351,8 @@ func (conn *Connection) Call(functionName string, args interface{}) (Response, e
 //
 // Deprecated: the method will be removed in the next major version,
 // use a Call16Request object + Do() instead.
-func (conn *Connection) Call16(functionName string, args interface{}) (Response, error) {
-	return conn.Call16Async(functionName, args).GetResponse()
+func (conn *Connection) Call16(functionName string, args interface{}) ([]interface{}, error) {
+	return conn.Call16Async(functionName, args).Get()
 }
 
 // Call17 calls registered Tarantool function.
@@ -360,8 +362,8 @@ func (conn *Connection) Call16(functionName string, args interface{}) (Response,
 //
 // Deprecated: the method will be removed in the next major version,
 // use a Call17Request object + Do() instead.
-func (conn *Connection) Call17(functionName string, args interface{}) (Response, error) {
-	return conn.Call17Async(functionName, args).GetResponse()
+func (conn *Connection) Call17(functionName string, args interface{}) ([]interface{}, error) {
+	return conn.Call17Async(functionName, args).Get()
 }
 
 // Eval passes Lua expression for evaluation.
@@ -370,8 +372,8 @@ func (conn *Connection) Call17(functionName string, args interface{}) (Response,
 //
 // Deprecated: the method will be removed in the next major version,
 // use an EvalRequest object + Do() instead.
-func (conn *Connection) Eval(expr string, args interface{}) (Response, error) {
-	return conn.EvalAsync(expr, args).GetResponse()
+func (conn *Connection) Eval(expr string, args interface{}) ([]interface{}, error) {
+	return conn.EvalAsync(expr, args).Get()
 }
 
 // Execute passes sql expression to Tarantool for execution.
@@ -381,8 +383,8 @@ func (conn *Connection) Eval(expr string, args interface{}) (Response, error) {
 //
 // Deprecated: the method will be removed in the next major version,
 // use an ExecuteRequest object + Do() instead.
-func (conn *Connection) Execute(expr string, args interface{}) (Response, error) {
-	return conn.ExecuteAsync(expr, args).GetResponse()
+func (conn *Connection) Execute(expr string, args interface{}) ([]interface{}, error) {
+	return conn.ExecuteAsync(expr, args).Get()
 }
 
 // single used for conn.GetTyped for decode one tuple.
@@ -532,9 +534,20 @@ func (conn *Connection) EvalTyped(expr string, args interface{}, result interfac
 // use an ExecuteRequest object + Do() instead.
 func (conn *Connection) ExecuteTyped(expr string, args interface{},
 	result interface{}) (SQLInfo, []ColumnMetaData, error) {
+	var (
+		sqlInfo  SQLInfo
+		metaData []ColumnMetaData
+	)
+
 	fut := conn.ExecuteAsync(expr, args)
 	err := fut.GetTyped(&result)
-	return fut.resp.SQLInfo(), fut.resp.MetaData(), err
+	if resp, ok := fut.resp.(*ExecuteResponse); ok {
+		sqlInfo = resp.sqlInfo
+		metaData = resp.metaData
+	} else if err == nil {
+		err = fmt.Errorf("unexpected response type %T, want: *ExecuteResponse", fut.resp)
+	}
+	return sqlInfo, metaData, err
 }
 
 // SelectAsync sends select request to Tarantool and returns Future.
@@ -807,6 +820,8 @@ type Request interface {
 	Ctx() context.Context
 	// Async returns true if the request does not expect response.
 	Async() bool
+	// Response creates a response for current request type.
+	Response(header Header, body io.Reader) (Response, error)
 }
 
 // ConnectedRequest is an interface that provides the info about a Connection
@@ -836,6 +851,15 @@ func (req *baseRequest) Async() bool {
 // Ctx returns a context of the request.
 func (req *baseRequest) Ctx() context.Context {
 	return req.ctx
+}
+
+// Response creates a response for the baseRequest.
+func (req *baseRequest) Response(header Header, body io.Reader) (Response, error) {
+	resp, err := createBaseResponse(header, body)
+	if err != nil {
+		return nil, err
+	}
+	return &resp, nil
 }
 
 type spaceRequest struct {
@@ -926,6 +950,15 @@ func (req authRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 		return err
 	}
 	return nil
+}
+
+// Response creates a response for the authRequest.
+func (req authRequest) Response(header Header, body io.Reader) (Response, error) {
+	resp, err := createBaseResponse(header, body)
+	if err != nil {
+		return nil, err
+	}
+	return &resp, nil
 }
 
 // PingRequest helps you to create an execute request object for execution
@@ -1068,6 +1101,15 @@ func (req *SelectRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 func (req *SelectRequest) Context(ctx context.Context) *SelectRequest {
 	req.ctx = ctx
 	return req
+}
+
+// Response creates a response for the SelectRequest.
+func (req *SelectRequest) Response(header Header, body io.Reader) (Response, error) {
+	baseResp, err := createBaseResponse(header, body)
+	if err != nil {
+		return nil, err
+	}
+	return &SelectResponse{BaseResponse: baseResp}, nil
 }
 
 // InsertRequest helps you to create an insert request object for execution
@@ -1467,6 +1509,15 @@ func (req *ExecuteRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error 
 func (req *ExecuteRequest) Context(ctx context.Context) *ExecuteRequest {
 	req.ctx = ctx
 	return req
+}
+
+// Response creates a response for the ExecuteRequest.
+func (req *ExecuteRequest) Response(header Header, body io.Reader) (Response, error) {
+	baseResp, err := createBaseResponse(header, body)
+	if err != nil {
+		return nil, err
+	}
+	return &ExecuteResponse{BaseResponse: baseResp}, nil
 }
 
 // WatchOnceRequest synchronously fetches the value currently associated with a

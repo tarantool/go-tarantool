@@ -373,7 +373,7 @@ func (p *ConnectionPool) GetInfo() map[string]ConnectionInfo {
 //
 // Deprecated: the method will be removed in the next major version,
 // use a PingRequest object + Do() instead.
-func (p *ConnectionPool) Ping(userMode Mode) (tarantool.Response, error) {
+func (p *ConnectionPool) Ping(userMode Mode) ([]interface{}, error) {
 	conn, err := p.getNextConnection(userMode)
 	if err != nil {
 		return nil, err
@@ -388,7 +388,7 @@ func (p *ConnectionPool) Ping(userMode Mode) (tarantool.Response, error) {
 // use a SelectRequest object + Do() instead.
 func (p *ConnectionPool) Select(space, index interface{},
 	offset, limit uint32,
-	iterator tarantool.Iter, key interface{}, userMode ...Mode) (tarantool.Response, error) {
+	iterator tarantool.Iter, key interface{}, userMode ...Mode) ([]interface{}, error) {
 	conn, err := p.getConnByMode(ANY, userMode)
 	if err != nil {
 		return nil, err
@@ -403,7 +403,7 @@ func (p *ConnectionPool) Select(space, index interface{},
 // Deprecated: the method will be removed in the next major version,
 // use an InsertRequest object + Do() instead.
 func (p *ConnectionPool) Insert(space interface{}, tuple interface{},
-	userMode ...Mode) (tarantool.Response, error) {
+	userMode ...Mode) ([]interface{}, error) {
 	conn, err := p.getConnByMode(RW, userMode)
 	if err != nil {
 		return nil, err
@@ -418,7 +418,7 @@ func (p *ConnectionPool) Insert(space interface{}, tuple interface{},
 // Deprecated: the method will be removed in the next major version,
 // use a ReplaceRequest object + Do() instead.
 func (p *ConnectionPool) Replace(space interface{}, tuple interface{},
-	userMode ...Mode) (tarantool.Response, error) {
+	userMode ...Mode) ([]interface{}, error) {
 	conn, err := p.getConnByMode(RW, userMode)
 	if err != nil {
 		return nil, err
@@ -433,7 +433,7 @@ func (p *ConnectionPool) Replace(space interface{}, tuple interface{},
 // Deprecated: the method will be removed in the next major version,
 // use a DeleteRequest object + Do() instead.
 func (p *ConnectionPool) Delete(space, index interface{}, key interface{},
-	userMode ...Mode) (tarantool.Response, error) {
+	userMode ...Mode) ([]interface{}, error) {
 	conn, err := p.getConnByMode(RW, userMode)
 	if err != nil {
 		return nil, err
@@ -448,7 +448,7 @@ func (p *ConnectionPool) Delete(space, index interface{}, key interface{},
 // Deprecated: the method will be removed in the next major version,
 // use a UpdateRequest object + Do() instead.
 func (p *ConnectionPool) Update(space, index interface{}, key interface{},
-	ops *tarantool.Operations, userMode ...Mode) (tarantool.Response, error) {
+	ops *tarantool.Operations, userMode ...Mode) ([]interface{}, error) {
 	conn, err := p.getConnByMode(RW, userMode)
 	if err != nil {
 		return nil, err
@@ -463,7 +463,7 @@ func (p *ConnectionPool) Update(space, index interface{}, key interface{},
 // Deprecated: the method will be removed in the next major version,
 // use a UpsertRequest object + Do() instead.
 func (p *ConnectionPool) Upsert(space interface{}, tuple interface{},
-	ops *tarantool.Operations, userMode ...Mode) (tarantool.Response, error) {
+	ops *tarantool.Operations, userMode ...Mode) ([]interface{}, error) {
 	conn, err := p.getConnByMode(RW, userMode)
 	if err != nil {
 		return nil, err
@@ -478,7 +478,7 @@ func (p *ConnectionPool) Upsert(space interface{}, tuple interface{},
 // Deprecated: the method will be removed in the next major version,
 // use a CallRequest object + Do() instead.
 func (p *ConnectionPool) Call(functionName string, args interface{},
-	userMode Mode) (tarantool.Response, error) {
+	userMode Mode) ([]interface{}, error) {
 	conn, err := p.getNextConnection(userMode)
 	if err != nil {
 		return nil, err
@@ -494,7 +494,7 @@ func (p *ConnectionPool) Call(functionName string, args interface{},
 // Deprecated: the method will be removed in the next major version,
 // use a Call16Request object + Do() instead.
 func (p *ConnectionPool) Call16(functionName string, args interface{},
-	userMode Mode) (tarantool.Response, error) {
+	userMode Mode) ([]interface{}, error) {
 	conn, err := p.getNextConnection(userMode)
 	if err != nil {
 		return nil, err
@@ -509,7 +509,7 @@ func (p *ConnectionPool) Call16(functionName string, args interface{},
 // Deprecated: the method will be removed in the next major version,
 // use a Call17Request object + Do() instead.
 func (p *ConnectionPool) Call17(functionName string, args interface{},
-	userMode Mode) (tarantool.Response, error) {
+	userMode Mode) ([]interface{}, error) {
 	conn, err := p.getNextConnection(userMode)
 	if err != nil {
 		return nil, err
@@ -523,7 +523,7 @@ func (p *ConnectionPool) Call17(functionName string, args interface{},
 // Deprecated: the method will be removed in the next major version,
 // use an EvalRequest object + Do() instead.
 func (p *ConnectionPool) Eval(expr string, args interface{},
-	userMode Mode) (tarantool.Response, error) {
+	userMode Mode) ([]interface{}, error) {
 	conn, err := p.getNextConnection(userMode)
 	if err != nil {
 		return nil, err
@@ -537,7 +537,7 @@ func (p *ConnectionPool) Eval(expr string, args interface{},
 // Deprecated: the method will be removed in the next major version,
 // use an ExecuteRequest object + Do() instead.
 func (p *ConnectionPool) Execute(expr string, args interface{},
-	userMode Mode) (tarantool.Response, error) {
+	userMode Mode) ([]interface{}, error) {
 	conn, err := p.getNextConnection(userMode)
 	if err != nil {
 		return nil, err

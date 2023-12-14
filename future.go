@@ -1,6 +1,7 @@
 package tarantool
 
 import (
+	"io"
 	"sync"
 	"time"
 )
@@ -8,6 +9,7 @@ import (
 // Future is a handle for asynchronous request.
 type Future struct {
 	requestId uint32
+	req       Request
 	next      *Future
 	timeout   time.Duration
 	mutex     sync.Mutex
@@ -117,6 +119,19 @@ func (it *asyncResponseIterator) nextResponse() (resp Response) {
 	return resp
 }
 
+// PushResponse is used for push requests for the Future.
+type PushResponse struct {
+	BaseResponse
+}
+
+func createPushResponse(header Header, body io.Reader) (Response, error) {
+	resp, err := createBaseResponse(header, body)
+	if err != nil {
+		return nil, err
+	}
+	return &PushResponse{resp}, nil
+}
+
 // NewFuture creates a new empty Future.
 func NewFuture() (fut *Future) {
 	fut = &Future{}
@@ -131,30 +146,46 @@ func NewFuture() (fut *Future) {
 //
 // Deprecated: the method will be removed in the next major version,
 // use Connector.NewWatcher() instead of box.session.push().
-func (fut *Future) AppendPush(resp Response) {
+func (fut *Future) AppendPush(header Header, body io.Reader) error {
 	fut.mutex.Lock()
 	defer fut.mutex.Unlock()
 
 	if fut.isDone() {
-		return
+		return nil
+	}
+	resp, err := createPushResponse(header, body)
+	if err != nil {
+		return err
 	}
 	fut.pushes = append(fut.pushes, resp)
 
 	fut.ready <- struct{}{}
+	return nil
+}
+
+// SetRequest sets a request, for which the future was created.
+func (fut *Future) SetRequest(req Request) {
+	fut.req = req
 }
 
 // SetResponse sets a response for the future and finishes the future.
-func (fut *Future) SetResponse(resp Response) {
+func (fut *Future) SetResponse(header Header, body io.Reader) error {
 	fut.mutex.Lock()
 	defer fut.mutex.Unlock()
 
 	if fut.isDone() {
-		return
+		return nil
+	}
+
+	resp, err := fut.req.Response(header, body)
+	if err != nil {
+		return err
 	}
 	fut.resp = resp
 
 	close(fut.ready)
 	close(fut.done)
+	return nil
 }
 
 // SetError sets an error for the future and finishes the future.
@@ -179,11 +210,7 @@ func (fut *Future) SetError(err error) {
 // or ClientError, if something bad happens in a client process.
 func (fut *Future) GetResponse() (Response, error) {
 	fut.wait()
-	if fut.err != nil {
-		return fut.resp, fut.err
-	}
-	_, err := fut.resp.Decode()
-	return fut.resp, err
+	return fut.resp, fut.err
 }
 
 // Get waits for Future to be filled and returns the data of the Response and error.

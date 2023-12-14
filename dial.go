@@ -404,16 +404,11 @@ func identify(w writeFlusher, r io.Reader) (ProtocolInfo, error) {
 	}
 	data, err := resp.Decode()
 	if err != nil {
-		switch err := err.(type) {
-		case Error:
-			if err.Code == iproto.ER_UNKNOWN_REQUEST_TYPE {
-				// IPROTO_ID requests are not supported by server.
-				return info, nil
-			}
-			return info, err
-		default:
-			return info, fmt.Errorf("decode response body error: %w", err)
+		if iproto.Error(resp.Header().Code) == iproto.ER_UNKNOWN_REQUEST_TYPE {
+			// IPROTO_ID requests are not supported by server.
+			return info, nil
 		}
+		return info, err
 	}
 
 	if len(data) == 0 {
@@ -511,12 +506,12 @@ func readResponse(r io.Reader) (Response, error) {
 
 	respBytes, err := read(r, lenbuf[:])
 	if err != nil {
-		return &ConnResponse{}, fmt.Errorf("read error: %w", err)
+		return &BaseResponse{}, fmt.Errorf("read error: %w", err)
 	}
 
 	buf := smallBuf{b: respBytes}
 	header, err := decodeHeader(msgpack.NewDecoder(&smallBuf{}), &buf)
-	resp := &ConnResponse{header: header, buf: buf}
+	resp := &BaseResponse{header: header, buf: buf}
 	if err != nil {
 		return resp, fmt.Errorf("decode response header error: %w", err)
 	}

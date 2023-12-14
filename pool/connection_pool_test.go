@@ -1140,11 +1140,9 @@ func TestCall(t *testing.T) {
 	defer connPool.Close()
 
 	// PreferRO
-	resp, err := connPool.Call("box.info", []interface{}{}, pool.PreferRO)
+	data, err := connPool.Call("box.info", []interface{}{}, pool.PreferRO)
 	require.Nilf(t, err, "failed to Call")
-	require.NotNilf(t, resp, "response is nil after Call")
-	data, err := resp.Decode()
-	require.Nilf(t, err, "failed to Decode")
+	require.NotNilf(t, data, "response is nil after Call")
 	require.GreaterOrEqualf(t, len(data), 1, "response.Data is empty after Call")
 
 	val := data[0].(map[interface{}]interface{})["ro"]
@@ -1153,11 +1151,9 @@ func TestCall(t *testing.T) {
 	require.Truef(t, ro, "expected `true` with mode `PreferRO`")
 
 	// PreferRW
-	resp, err = connPool.Call("box.info", []interface{}{}, pool.PreferRW)
+	data, err = connPool.Call("box.info", []interface{}{}, pool.PreferRW)
 	require.Nilf(t, err, "failed to Call")
-	require.NotNilf(t, resp, "response is nil after Call")
-	data, err = resp.Decode()
-	require.Nilf(t, err, "failed to Decode")
+	require.NotNilf(t, data, "response is nil after Call")
 	require.GreaterOrEqualf(t, len(data), 1, "response.Data is empty after Call")
 
 	val = data[0].(map[interface{}]interface{})["ro"]
@@ -1166,11 +1162,9 @@ func TestCall(t *testing.T) {
 	require.Falsef(t, ro, "expected `false` with mode `PreferRW`")
 
 	// RO
-	resp, err = connPool.Call("box.info", []interface{}{}, pool.RO)
+	data, err = connPool.Call("box.info", []interface{}{}, pool.RO)
 	require.Nilf(t, err, "failed to Call")
-	require.NotNilf(t, resp, "response is nil after Call")
-	data, err = resp.Decode()
-	require.Nilf(t, err, "failed to Decode")
+	require.NotNilf(t, data, "response is nil after Call")
 	require.GreaterOrEqualf(t, len(data), 1, "response.Data is empty after Call")
 
 	val = data[0].(map[interface{}]interface{})["ro"]
@@ -1179,11 +1173,9 @@ func TestCall(t *testing.T) {
 	require.Truef(t, ro, "expected `true` with mode `RO`")
 
 	// RW
-	resp, err = connPool.Call("box.info", []interface{}{}, pool.RW)
+	data, err = connPool.Call("box.info", []interface{}{}, pool.RW)
 	require.Nilf(t, err, "failed to Call")
-	require.NotNilf(t, resp, "response is nil after Call")
-	data, err = resp.Decode()
-	require.Nilf(t, err, "failed to Decode")
+	require.NotNilf(t, data, "response is nil after Call")
 	require.GreaterOrEqualf(t, len(data), 1, "response.Data is empty after Call")
 
 	val = data[0].(map[interface{}]interface{})["ro"]
@@ -1207,11 +1199,9 @@ func TestCall16(t *testing.T) {
 	defer connPool.Close()
 
 	// PreferRO
-	resp, err := connPool.Call16("box.info", []interface{}{}, pool.PreferRO)
+	data, err := connPool.Call16("box.info", []interface{}{}, pool.PreferRO)
 	require.Nilf(t, err, "failed to Call")
-	require.NotNilf(t, resp, "response is nil after Call")
-	data, err := resp.Decode()
-	require.Nilf(t, err, "failed to Decode")
+	require.NotNilf(t, data, "response is nil after Call")
 	require.GreaterOrEqualf(t, len(data), 1, "response.Data is empty after Call")
 
 	val := data[0].([]interface{})[0].(map[interface{}]interface{})["ro"]
@@ -1220,11 +1210,9 @@ func TestCall16(t *testing.T) {
 	require.Truef(t, ro, "expected `true` with mode `PreferRO`")
 
 	// PreferRW
-	resp, err = connPool.Call16("box.info", []interface{}{}, pool.PreferRW)
+	data, err = connPool.Call16("box.info", []interface{}{}, pool.PreferRW)
 	require.Nilf(t, err, "failed to Call")
-	require.NotNilf(t, resp, "response is nil after Call")
-	data, err = resp.Decode()
-	require.Nilf(t, err, "failed to Decode")
+	require.NotNilf(t, data, "response is nil after Call")
 	require.GreaterOrEqualf(t, len(data), 1, "response.Data is empty after Call")
 
 	val = data[0].([]interface{})[0].(map[interface{}]interface{})["ro"]
@@ -1233,11 +1221,9 @@ func TestCall16(t *testing.T) {
 	require.Falsef(t, ro, "expected `false` with mode `PreferRW`")
 
 	// RO
-	resp, err = connPool.Call16("box.info", []interface{}{}, pool.RO)
+	data, err = connPool.Call16("box.info", []interface{}{}, pool.RO)
 	require.Nilf(t, err, "failed to Call")
-	require.NotNilf(t, resp, "response is nil after Call")
-	data, err = resp.Decode()
-	require.Nilf(t, err, "failed to Decode")
+	require.NotNilf(t, data, "response is nil after Call")
 	require.GreaterOrEqualf(t, len(data), 1, "response.Data is empty after Call")
 
 	val = data[0].([]interface{})[0].(map[interface{}]interface{})["ro"]
@@ -1246,11 +1232,9 @@ func TestCall16(t *testing.T) {
 	require.Truef(t, ro, "expected `true` with mode `RO`")
 
 	// RW
-	resp, err = connPool.Call16("box.info", []interface{}{}, pool.RW)
+	data, err = connPool.Call16("box.info", []interface{}{}, pool.RW)
 	require.Nilf(t, err, "failed to Call")
-	require.NotNilf(t, resp, "response is nil after Call")
-	data, err = resp.Decode()
-	require.Nilf(t, err, "failed to Decode")
+	require.NotNilf(t, data, "response is nil after Call")
 	require.GreaterOrEqualf(t, len(data), 1, "response.Data is empty after Call")
 
 	val = data[0].([]interface{})[0].(map[interface{}]interface{})["ro"]
@@ -1274,11 +1258,9 @@ func TestCall17(t *testing.T) {
 	defer connPool.Close()
 
 	// PreferRO
-	resp, err := connPool.Call17("box.info", []interface{}{}, pool.PreferRO)
+	data, err := connPool.Call17("box.info", []interface{}{}, pool.PreferRO)
 	require.Nilf(t, err, "failed to Call")
-	require.NotNilf(t, resp, "response is nil after Call")
-	data, err := resp.Decode()
-	require.Nilf(t, err, "failed to Decode")
+	require.NotNilf(t, data, "response is nil after Call")
 	require.GreaterOrEqualf(t, len(data), 1, "response.Data is empty after Call")
 
 	val := data[0].(map[interface{}]interface{})["ro"]
@@ -1287,11 +1269,9 @@ func TestCall17(t *testing.T) {
 	require.Truef(t, ro, "expected `true` with mode `PreferRO`")
 
 	// PreferRW
-	resp, err = connPool.Call17("box.info", []interface{}{}, pool.PreferRW)
+	data, err = connPool.Call17("box.info", []interface{}{}, pool.PreferRW)
 	require.Nilf(t, err, "failed to Call")
-	require.NotNilf(t, resp, "response is nil after Call")
-	data, err = resp.Decode()
-	require.Nilf(t, err, "failed to Decode")
+	require.NotNilf(t, data, "response is nil after Call")
 	require.GreaterOrEqualf(t, len(data), 1, "response.Data is empty after Call")
 
 	val = data[0].(map[interface{}]interface{})["ro"]
@@ -1300,11 +1280,9 @@ func TestCall17(t *testing.T) {
 	require.Falsef(t, ro, "expected `false` with mode `PreferRW`")
 
 	// RO
-	resp, err = connPool.Call17("box.info", []interface{}{}, pool.RO)
+	data, err = connPool.Call17("box.info", []interface{}{}, pool.RO)
 	require.Nilf(t, err, "failed to Call")
-	require.NotNilf(t, resp, "response is nil after Call")
-	data, err = resp.Decode()
-	require.Nilf(t, err, "failed to Decode")
+	require.NotNilf(t, data, "response is nil after Call")
 	require.GreaterOrEqualf(t, len(data), 1, "response.Data is empty after Call")
 
 	val = data[0].(map[interface{}]interface{})["ro"]
@@ -1313,11 +1291,9 @@ func TestCall17(t *testing.T) {
 	require.Truef(t, ro, "expected `true` with mode `RO`")
 
 	// RW
-	resp, err = connPool.Call17("box.info", []interface{}{}, pool.RW)
+	data, err = connPool.Call17("box.info", []interface{}{}, pool.RW)
 	require.Nilf(t, err, "failed to Call")
-	require.NotNilf(t, resp, "response is nil after Call")
-	data, err = resp.Decode()
-	require.Nilf(t, err, "failed to Decode")
+	require.NotNilf(t, data, "response is nil after Call")
 	require.GreaterOrEqualf(t, len(data), 1, "response.Data is empty after Call")
 
 	val = data[0].(map[interface{}]interface{})["ro"]
@@ -1341,11 +1317,9 @@ func TestEval(t *testing.T) {
 	defer connPool.Close()
 
 	// PreferRO
-	resp, err := connPool.Eval("return box.info().ro", []interface{}{}, pool.PreferRO)
+	data, err := connPool.Eval("return box.info().ro", []interface{}{}, pool.PreferRO)
 	require.Nilf(t, err, "failed to Eval")
-	require.NotNilf(t, resp, "response is nil after Eval")
-	data, err := resp.Decode()
-	require.Nilf(t, err, "failed to Decode")
+	require.NotNilf(t, data, "response is nil after Eval")
 	require.GreaterOrEqualf(t, len(data), 1, "response.Data is empty after Eval")
 
 	val, ok := data[0].(bool)
@@ -1353,11 +1327,9 @@ func TestEval(t *testing.T) {
 	require.Truef(t, val, "expected `true` with mode `PreferRO`")
 
 	// PreferRW
-	resp, err = connPool.Eval("return box.info().ro", []interface{}{}, pool.PreferRW)
+	data, err = connPool.Eval("return box.info().ro", []interface{}{}, pool.PreferRW)
 	require.Nilf(t, err, "failed to Eval")
-	require.NotNilf(t, resp, "response is nil after Eval")
-	data, err = resp.Decode()
-	require.Nilf(t, err, "failed to Decode")
+	require.NotNilf(t, data, "response is nil after Eval")
 	require.GreaterOrEqualf(t, len(data), 1, "response.Data is empty after Eval")
 
 	val, ok = data[0].(bool)
@@ -1365,11 +1337,9 @@ func TestEval(t *testing.T) {
 	require.Falsef(t, val, "expected `false` with mode `PreferRW`")
 
 	// RO
-	resp, err = connPool.Eval("return box.info().ro", []interface{}{}, pool.RO)
+	data, err = connPool.Eval("return box.info().ro", []interface{}{}, pool.RO)
 	require.Nilf(t, err, "failed to Eval")
-	require.NotNilf(t, resp, "response is nil after Eval")
-	data, err = resp.Decode()
-	require.Nilf(t, err, "failed to Decode")
+	require.NotNilf(t, data, "response is nil after Eval")
 	require.GreaterOrEqualf(t, len(data), 1, "response.Data is empty after Eval")
 
 	val, ok = data[0].(bool)
@@ -1377,11 +1347,9 @@ func TestEval(t *testing.T) {
 	require.Truef(t, val, "expected `true` with mode `RO`")
 
 	// RW
-	resp, err = connPool.Eval("return box.info().ro", []interface{}{}, pool.RW)
+	data, err = connPool.Eval("return box.info().ro", []interface{}{}, pool.RW)
 	require.Nilf(t, err, "failed to Eval")
-	require.NotNilf(t, resp, "response is nil after Eval")
-	data, err = resp.Decode()
-	require.Nilf(t, err, "failed to Decode")
+	require.NotNilf(t, data, "response is nil after Eval")
 	require.GreaterOrEqualf(t, len(data), 1, "response.Data is empty after Eval")
 
 	val, ok = data[0].(bool)
@@ -1430,11 +1398,9 @@ func TestExecute(t *testing.T) {
 
 	request := "SELECT NAME0, NAME1 FROM SQL_TEST WHERE NAME0 == 1;"
 	// Execute
-	resp, err := connPool.Execute(request, []interface{}{}, pool.ANY)
+	data, err := connPool.Execute(request, []interface{}{}, pool.ANY)
 	require.Nilf(t, err, "failed to Execute")
-	require.NotNilf(t, resp, "response is nil after Execute")
-	data, err := resp.Decode()
-	require.Nilf(t, err, "failed to Decode")
+	require.NotNilf(t, data, "response is nil after Execute")
 	require.GreaterOrEqualf(t, len(data), 1, "response.Data is empty after Execute")
 	require.Equalf(t, len(data[0].([]interface{})), 2, "unexpected response")
 
@@ -1872,11 +1838,9 @@ func TestInsert(t *testing.T) {
 	defer connPool.Close()
 
 	// Mode is `RW` by default, we have only one RW instance (servers[2])
-	resp, err := connPool.Insert(spaceName, []interface{}{"rw_insert_key", "rw_insert_value"})
+	data, err := connPool.Insert(spaceName, []interface{}{"rw_insert_key", "rw_insert_value"})
 	require.Nilf(t, err, "failed to Insert")
-	require.NotNilf(t, resp, "response is nil after Insert")
-	data, err := resp.Decode()
-	require.Nilf(t, err, "failed to Decode")
+	require.NotNilf(t, data, "response is nil after Insert")
 	require.Equalf(t, len(data), 1, "response Body len != 1 after Insert")
 
 	tpl, ok := data[0].([]interface{})
@@ -1918,12 +1882,10 @@ func TestInsert(t *testing.T) {
 	require.Equalf(t, "rw_insert_value", value, "unexpected body of Select (1)")
 
 	// PreferRW
-	resp, err = connPool.Insert(spaceName,
+	data, err = connPool.Insert(spaceName,
 		[]interface{}{"preferRW_insert_key", "preferRW_insert_value"})
 	require.Nilf(t, err, "failed to Insert")
-	require.NotNilf(t, resp, "response is nil after Insert")
-	data, err = resp.Decode()
-	require.Nilf(t, err, "failed to Decode")
+	require.NotNilf(t, data, "response is nil after Insert")
 	require.Equalf(t, len(data), 1, "response Body len != 1 after Insert")
 
 	tpl, ok = data[0].([]interface{})
@@ -1997,11 +1959,9 @@ func TestDelete(t *testing.T) {
 	require.Equalf(t, "delete_value", value, "unexpected body of Insert (1)")
 
 	// Mode is `RW` by default, we have only one RW instance (servers[2])
-	resp, err := connPool.Delete(spaceName, indexNo, []interface{}{"delete_key"})
+	data, err = connPool.Delete(spaceName, indexNo, []interface{}{"delete_key"})
 	require.Nilf(t, err, "failed to Delete")
-	require.NotNilf(t, resp, "response is nil after Delete")
-	data, err = resp.Decode()
-	require.Nilf(t, err, "failed to Decode")
+	require.NotNilf(t, data, "response is nil after Delete")
 	require.Equalf(t, len(data), 1, "response Body len != 1 after Delete")
 
 	tpl, ok = data[0].([]interface{})
@@ -2046,18 +2006,18 @@ func TestUpsert(t *testing.T) {
 	defer conn.Close()
 
 	// Mode is `RW` by default, we have only one RW instance (servers[2])
-	resp, err := connPool.Upsert(spaceName,
+	data, err := connPool.Upsert(spaceName,
 		[]interface{}{"upsert_key", "upsert_value"},
 		tarantool.NewOperations().Assign(1, "new_value"))
 	require.Nilf(t, err, "failed to Upsert")
-	require.NotNilf(t, resp, "response is nil after Upsert")
+	require.NotNilf(t, data, "response is nil after Upsert")
 
 	sel := tarantool.NewSelectRequest(spaceNo).
 		Index(indexNo).
 		Limit(1).
 		Iterator(tarantool.IterEq).
 		Key([]interface{}{"upsert_key"})
-	data, err := conn.Do(sel).Get()
+	data, err = conn.Do(sel).Get()
 	require.Nilf(t, err, "failed to Select")
 	require.Equalf(t, len(data), 1, "response Body len != 1 after Select")
 
@@ -2074,12 +2034,12 @@ func TestUpsert(t *testing.T) {
 	require.Equalf(t, "upsert_value", value, "unexpected body of Select (1)")
 
 	// PreferRW
-	resp, err = connPool.Upsert(
+	data, err = connPool.Upsert(
 		spaceName, []interface{}{"upsert_key", "upsert_value"},
 		tarantool.NewOperations().Assign(1, "new_value"), pool.PreferRW)
 
 	require.Nilf(t, err, "failed to Upsert")
-	require.NotNilf(t, resp, "response is nil after Upsert")
+	require.NotNilf(t, data, "response is nil after Upsert")
 
 	data, err = conn.Do(sel).Get()
 	require.Nilf(t, err, "failed to Select")
@@ -2308,11 +2268,9 @@ func TestSelect(t *testing.T) {
 	require.Nil(t, err)
 
 	//default: ANY
-	resp, err := connPool.Select(spaceNo, indexNo, 0, 1, tarantool.IterEq, anyKey)
+	data, err := connPool.Select(spaceNo, indexNo, 0, 1, tarantool.IterEq, anyKey)
 	require.Nilf(t, err, "failed to Select")
-	require.NotNilf(t, resp, "response is nil after Select")
-	data, err := resp.Decode()
-	require.Nilf(t, err, "failed to Decode")
+	require.NotNilf(t, data, "response is nil after Select")
 	require.Equalf(t, len(data), 1, "response Body len != 1 after Select")
 
 	tpl, ok := data[0].([]interface{})
@@ -2328,11 +2286,9 @@ func TestSelect(t *testing.T) {
 	require.Equalf(t, "any_select_value", value, "unexpected body of Select (1)")
 
 	// PreferRO
-	resp, err = connPool.Select(spaceNo, indexNo, 0, 1, tarantool.IterEq, roKey, pool.PreferRO)
+	data, err = connPool.Select(spaceNo, indexNo, 0, 1, tarantool.IterEq, roKey, pool.PreferRO)
 	require.Nilf(t, err, "failed to Select")
-	require.NotNilf(t, resp, "response is nil after Select")
-	data, err = resp.Decode()
-	require.Nilf(t, err, "failed to Decode")
+	require.NotNilf(t, data, "response is nil after Select")
 	require.Equalf(t, len(data), 1, "response Body len != 1 after Select")
 
 	tpl, ok = data[0].([]interface{})
@@ -2344,11 +2300,9 @@ func TestSelect(t *testing.T) {
 	require.Equalf(t, "ro_select_key", key, "unexpected body of Select (0)")
 
 	// PreferRW
-	resp, err = connPool.Select(spaceNo, indexNo, 0, 1, tarantool.IterEq, rwKey, pool.PreferRW)
+	data, err = connPool.Select(spaceNo, indexNo, 0, 1, tarantool.IterEq, rwKey, pool.PreferRW)
 	require.Nilf(t, err, "failed to Select")
-	require.NotNilf(t, resp, "response is nil after Select")
-	data, err = resp.Decode()
-	require.Nilf(t, err, "failed to Decode")
+	require.NotNilf(t, data, "response is nil after Select")
 	require.Equalf(t, len(data), 1, "response Body len != 1 after Select")
 
 	tpl, ok = data[0].([]interface{})
@@ -2364,11 +2318,9 @@ func TestSelect(t *testing.T) {
 	require.Equalf(t, "rw_select_value", value, "unexpected body of Select (1)")
 
 	// RO
-	resp, err = connPool.Select(spaceNo, indexNo, 0, 1, tarantool.IterEq, roKey, pool.RO)
+	data, err = connPool.Select(spaceNo, indexNo, 0, 1, tarantool.IterEq, roKey, pool.RO)
 	require.Nilf(t, err, "failed to Select")
-	require.NotNilf(t, resp, "response is nil after Select")
-	data, err = resp.Decode()
-	require.Nilf(t, err, "failed to Decode")
+	require.NotNilf(t, data, "response is nil after Select")
 	require.Equalf(t, len(data), 1, "response Body len != 1 after Select")
 
 	tpl, ok = data[0].([]interface{})
@@ -2384,11 +2336,9 @@ func TestSelect(t *testing.T) {
 	require.Equalf(t, "ro_select_value", value, "unexpected body of Select (1)")
 
 	// RW
-	resp, err = connPool.Select(spaceNo, indexNo, 0, 1, tarantool.IterEq, rwKey, pool.RW)
+	data, err = connPool.Select(spaceNo, indexNo, 0, 1, tarantool.IterEq, rwKey, pool.RW)
 	require.Nilf(t, err, "failed to Select")
-	require.NotNilf(t, resp, "response is nil after Select")
-	data, err = resp.Decode()
-	require.Nilf(t, err, "failed to Decode")
+	require.NotNilf(t, data, "response is nil after Select")
 	require.Equalf(t, len(data), 1, "response Body len != 1 after Select")
 
 	tpl, ok = data[0].([]interface{})
@@ -2419,29 +2369,29 @@ func TestPing(t *testing.T) {
 	defer connPool.Close()
 
 	// ANY
-	resp, err := connPool.Ping(pool.ANY)
+	data, err := connPool.Ping(pool.ANY)
 	require.Nilf(t, err, "failed to Ping")
-	require.NotNilf(t, resp, "response is nil after Ping")
+	require.Nilf(t, data, "response data is not nil after Ping")
 
 	// RW
-	resp, err = connPool.Ping(pool.RW)
+	data, err = connPool.Ping(pool.RW)
 	require.Nilf(t, err, "failed to Ping")
-	require.NotNilf(t, resp, "response is nil after Ping")
+	require.Nilf(t, data, "response data is not nil after Ping")
 
 	// RO
-	resp, err = connPool.Ping(pool.RO)
+	data, err = connPool.Ping(pool.RO)
 	require.Nilf(t, err, "failed to Ping")
-	require.NotNilf(t, resp, "response is nil after Ping")
+	require.Nilf(t, data, "response data is not nil after Ping")
 
 	// PreferRW
-	resp, err = connPool.Ping(pool.PreferRW)
+	data, err = connPool.Ping(pool.PreferRW)
 	require.Nilf(t, err, "failed to Ping")
-	require.NotNilf(t, resp, "response is nil after Ping")
+	require.Nilf(t, data, "response data is not nil after Ping")
 
 	// PreferRO
-	resp, err = connPool.Ping(pool.PreferRO)
+	data, err = connPool.Ping(pool.PreferRO)
 	require.Nilf(t, err, "failed to Ping")
-	require.NotNilf(t, resp, "response is nil after Ping")
+	require.Nilf(t, data, "response data is not nil after Ping")
 }
 
 func TestDo(t *testing.T) {
@@ -2548,7 +2498,14 @@ func TestNewPrepared(t *testing.T) {
 	if reflect.DeepEqual(data[0], []interface{}{1, "test"}) {
 		t.Error("Select with named arguments failed")
 	}
-	metaData := resp.MetaData()
+	prepResp, ok := resp.(*tarantool.ExecuteResponse)
+	if !ok {
+		t.Fatalf("Not a Prepare response")
+	}
+	metaData, err := prepResp.MetaData()
+	if err != nil {
+		t.Errorf("Error while getting MetaData: %s", err.Error())
+	}
 	if metaData[0].FieldType != "unsigned" ||
 		metaData[0].FieldName != "NAME0" ||
 		metaData[1].FieldType != "string" ||

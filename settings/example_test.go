@@ -69,12 +69,23 @@ func Example_sqlFullColumnNames() {
 
 	// Get some data with SQL query.
 	req = tarantool.NewExecuteRequest("SELECT x FROM example WHERE id = 1;")
-	_, err = conn.Do(req).Get()
+	resp, err = conn.Do(req).GetResponse()
 	if err != nil {
 		fmt.Printf("error on select: %v\n", err)
 		return
 	}
-	metaData := resp.MetaData()
+
+	exResp, ok := resp.(*tarantool.ExecuteResponse)
+	if !ok {
+		fmt.Printf("wrong response type")
+		return
+	}
+
+	metaData, err := exResp.MetaData()
+	if err != nil {
+		fmt.Printf("error on getting MetaData: %v\n", err)
+		return
+	}
 	// Show response metadata.
 	fmt.Printf("full column name: %v\n", metaData[0].FieldName)
 
@@ -86,12 +97,21 @@ func Example_sqlFullColumnNames() {
 	}
 
 	// Get some data with SQL query.
-	_, err = conn.Do(req).Get()
+	resp, err = conn.Do(req).GetResponse()
 	if err != nil {
 		fmt.Printf("error on select: %v\n", err)
 		return
 	}
-	metaData = resp.MetaData()
+	exResp, ok = resp.(*tarantool.ExecuteResponse)
+	if !ok {
+		fmt.Printf("wrong response type")
+		return
+	}
+	metaData, err = exResp.MetaData()
+	if err != nil {
+		fmt.Printf("error on getting MetaData: %v\n", err)
+		return
+	}
 	// Show response metadata.
 	fmt.Printf("short column name: %v\n", metaData[0].FieldName)
 }

@@ -3,6 +3,7 @@ package tarantool
 import (
 	"context"
 	"fmt"
+	"io"
 
 	"github.com/tarantool/go-iproto"
 	"github.com/vmihailenco/msgpack/v5"
@@ -95,6 +96,15 @@ func (req *PrepareRequest) Context(ctx context.Context) *PrepareRequest {
 	return req
 }
 
+// Response creates a response for the PrepareRequest.
+func (req *PrepareRequest) Response(header Header, body io.Reader) (Response, error) {
+	baseResp, err := createBaseResponse(header, body)
+	if err != nil {
+		return nil, err
+	}
+	return &PrepareResponse{BaseResponse: baseResp}, nil
+}
+
 // UnprepareRequest helps you to create an unprepare request object for
 // execution by a Connection.
 type UnprepareRequest struct {
@@ -174,4 +184,13 @@ func (req *ExecutePreparedRequest) Body(res SchemaResolver, enc *msgpack.Encoder
 func (req *ExecutePreparedRequest) Context(ctx context.Context) *ExecutePreparedRequest {
 	req.ctx = ctx
 	return req
+}
+
+// Response creates a response for the ExecutePreparedRequest.
+func (req *ExecutePreparedRequest) Response(header Header, body io.Reader) (Response, error) {
+	baseResp, err := createBaseResponse(header, body)
+	if err != nil {
+		return nil, err
+	}
+	return &ExecuteResponse{BaseResponse: baseResp}, nil
 }

@@ -60,6 +60,7 @@ package settings
 
 import (
 	"context"
+	"io"
 
 	"github.com/tarantool/go-iproto"
 	"github.com/vmihailenco/msgpack/v5"
@@ -107,6 +108,12 @@ func (req *SetRequest) Async() bool {
 	return req.impl.Async()
 }
 
+// Response creates a response for the SetRequest.
+func (req *SetRequest) Response(header tarantool.Header,
+	body io.Reader) (tarantool.Response, error) {
+	return req.impl.Response(header, body)
+}
+
 // GetRequest helps to get session settings.
 type GetRequest struct {
 	impl *tarantool.SelectRequest
@@ -145,6 +152,12 @@ func (req *GetRequest) Ctx() context.Context {
 // Async returns is get session settings request expects a response.
 func (req *GetRequest) Async() bool {
 	return req.impl.Async()
+}
+
+// Response creates a response for the GetRequest.
+func (req *GetRequest) Response(header tarantool.Header,
+	body io.Reader) (tarantool.Response, error) {
+	return req.impl.Response(header, body)
 }
 
 // NewErrorMarshalingEnabledSetRequest creates a request to

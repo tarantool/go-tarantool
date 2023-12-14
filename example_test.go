@@ -570,8 +570,17 @@ func ExampleExecuteRequest() {
 	data, err := resp.Decode()
 	fmt.Println("Error", err)
 	fmt.Println("Data", data)
-	fmt.Println("MetaData", resp.MetaData())
-	fmt.Println("SQL Info", resp.SQLInfo())
+	exResp, ok := resp.(*tarantool.ExecuteResponse)
+	if !ok {
+		fmt.Printf("wrong response type")
+		return
+	}
+	metaData, err := exResp.MetaData()
+	fmt.Println("MetaData", metaData)
+	fmt.Println("Error", err)
+	sqlInfo, err := exResp.SQLInfo()
+	fmt.Println("SQL Info", sqlInfo)
+	fmt.Println("Error", err)
 
 	// There are 4 options to pass named parameters to an SQL query:
 	// 1) The simple map;
@@ -608,8 +617,17 @@ func ExampleExecuteRequest() {
 	data, err = resp.Decode()
 	fmt.Println("Error", err)
 	fmt.Println("Data", data)
-	fmt.Println("MetaData", resp.MetaData())
-	fmt.Println("SQL Info", resp.SQLInfo())
+	exResp, ok = resp.(*tarantool.ExecuteResponse)
+	if !ok {
+		fmt.Printf("wrong response type")
+		return
+	}
+	metaData, err = exResp.MetaData()
+	fmt.Println("MetaData", metaData)
+	fmt.Println("Error", err)
+	sqlInfo, err = exResp.SQLInfo()
+	fmt.Println("SQL Info", sqlInfo)
+	fmt.Println("Error", err)
 
 	// 2)
 	req = req.Args(sqlBind2)
@@ -619,8 +637,17 @@ func ExampleExecuteRequest() {
 	data, err = resp.Decode()
 	fmt.Println("Error", err)
 	fmt.Println("Data", data)
-	fmt.Println("MetaData", resp.MetaData())
-	fmt.Println("SQL Info", resp.SQLInfo())
+	exResp, ok = resp.(*tarantool.ExecuteResponse)
+	if !ok {
+		fmt.Printf("wrong response type")
+		return
+	}
+	metaData, err = exResp.MetaData()
+	fmt.Println("MetaData", metaData)
+	fmt.Println("Error", err)
+	sqlInfo, err = exResp.SQLInfo()
+	fmt.Println("SQL Info", sqlInfo)
+	fmt.Println("Error", err)
 
 	// 3)
 	req = req.Args(sqlBind3)
@@ -630,8 +657,17 @@ func ExampleExecuteRequest() {
 	data, err = resp.Decode()
 	fmt.Println("Error", err)
 	fmt.Println("Data", data)
-	fmt.Println("MetaData", resp.MetaData())
-	fmt.Println("SQL Info", resp.SQLInfo())
+	exResp, ok = resp.(*tarantool.ExecuteResponse)
+	if !ok {
+		fmt.Printf("wrong response type")
+		return
+	}
+	metaData, err = exResp.MetaData()
+	fmt.Println("MetaData", metaData)
+	fmt.Println("Error", err)
+	sqlInfo, err = exResp.SQLInfo()
+	fmt.Println("SQL Info", sqlInfo)
+	fmt.Println("Error", err)
 
 	// 4)
 	req = req.Args(sqlBind4)
@@ -641,8 +677,17 @@ func ExampleExecuteRequest() {
 	data, err = resp.Decode()
 	fmt.Println("Error", err)
 	fmt.Println("Data", data)
-	fmt.Println("MetaData", resp.MetaData())
-	fmt.Println("SQL Info", resp.SQLInfo())
+	exResp, ok = resp.(*tarantool.ExecuteResponse)
+	if !ok {
+		fmt.Printf("wrong response type")
+		return
+	}
+	metaData, err = exResp.MetaData()
+	fmt.Println("MetaData", metaData)
+	fmt.Println("Error", err)
+	sqlInfo, err = exResp.SQLInfo()
+	fmt.Println("SQL Info", sqlInfo)
+	fmt.Println("Error", err)
 
 	// The way to pass positional arguments to an SQL query.
 	req = tarantool.NewExecuteRequest(
@@ -654,8 +699,17 @@ func ExampleExecuteRequest() {
 	data, err = resp.Decode()
 	fmt.Println("Error", err)
 	fmt.Println("Data", data)
-	fmt.Println("MetaData", resp.MetaData())
-	fmt.Println("SQL Info", resp.SQLInfo())
+	exResp, ok = resp.(*tarantool.ExecuteResponse)
+	if !ok {
+		fmt.Printf("wrong response type")
+		return
+	}
+	metaData, err = exResp.MetaData()
+	fmt.Println("MetaData", metaData)
+	fmt.Println("Error", err)
+	sqlInfo, err = exResp.SQLInfo()
+	fmt.Println("SQL Info", sqlInfo)
+	fmt.Println("Error", err)
 
 	// The way to pass SQL expression with using custom packing/unpacking for
 	// a type.
@@ -680,8 +734,17 @@ func ExampleExecuteRequest() {
 	data, err = resp.Decode()
 	fmt.Println("Error", err)
 	fmt.Println("Data", data)
-	fmt.Println("MetaData", resp.MetaData())
-	fmt.Println("SQL Info", resp.SQLInfo())
+	exResp, ok = resp.(*tarantool.ExecuteResponse)
+	if !ok {
+		fmt.Printf("wrong response type")
+		return
+	}
+	metaData, err = exResp.MetaData()
+	fmt.Println("MetaData", metaData)
+	fmt.Println("Error", err)
+	sqlInfo, err = exResp.SQLInfo()
+	fmt.Println("SQL Info", sqlInfo)
+	fmt.Println("Error", err)
 }
 
 func getTestTxnDialer() tarantool.Dialer {
@@ -1159,6 +1222,15 @@ func ExampleConnection_Do_failure() {
 	// Future.GetResponse() or Future.GetTyped() methods.
 	resp, err := future.GetResponse()
 	if err != nil {
+		fmt.Printf("Error in the future: %s\n", err)
+	}
+
+	data, err := future.Get()
+	if err != nil {
+		fmt.Printf("Data: %v\n", data)
+	}
+
+	if err != nil {
 		// We don't print the error here to keep the example reproducible.
 		// fmt.Printf("Failed to execute the request: %s\n", err)
 		if resp == nil {
@@ -1179,6 +1251,7 @@ func ExampleConnection_Do_failure() {
 	}
 
 	// Output:
+	// Data: []
 	// Error code from the response: 33
 	// Error code from the error: 33
 	// Error short from the error: ER_NO_SUCH_PROC
