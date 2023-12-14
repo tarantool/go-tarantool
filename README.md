@@ -202,6 +202,9 @@ The subpackage has been deleted. You could use `pool` instead.
   unique string ID, which allows them to be distinguished.
 * `pool.GetPoolInfo` has been renamed to `pool.GetInfo`. Return type has been changed
   to `map[string]ConnectionInfo`.
+* Operations `Ping`, `Select`, `Insert`, `Replace`, `Delete`, `Update`, `Upsert`,
+  `Call`, `Call16`, `Call17`, `Eval`, `Execute` of a `Pooler` return
+  response data instead of an actual responses.
 
 #### crud package
 
@@ -257,6 +260,7 @@ longer accept `ops` argument (operations) as an `interface{}`. `*Operations`
 needs to be passed instead.
 * `UpdateRequest` and `UpsertRequest` structs no longer accept `interface{}`
 for an `ops` field. `*Operations` needs to be used instead.
+* `Response` method added to the `Request` interface.
 
 #### Response changes
 
@@ -265,11 +269,25 @@ for an `ops` field. `*Operations` needs to be used instead.
   `Header()` method.
 * `ResponseIterator` interface now has `IsPush()` method.
   It returns true if the current response is a push response.
+* For each request type, a different response type is created. They all
+  implement a `Response` interface. `SelectResponse`, `PrepareResponse`,
+  `ExecuteResponse`, `PushResponse` are a part of a public API.
+  `Pos()`, `MetaData()`, `SQLInfo()` methods created for them to get specific info.
+  Special types of responses are used with special requests.
 
 #### Future changes
 
 * Method `Get` now returns response data instead of the actual response.
 * New method `GetResponse` added to get an actual response.
+* `Future` constructors now accept `Request` as their argument.
+* Methods `AppendPush` and `SetResponse` accepts response `Header` and data
+  as their arguments.
+
+#### Connector changes
+
+Operations `Ping`, `Select`, `Insert`, `Replace`, `Delete`, `Update`, `Upsert`, 
+`Call`, `Call16`, `Call17`, `Eval`, `Execute` of a `Connector` return 
+response data instead of an actual responses.
 
 #### Connect function
 

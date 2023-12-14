@@ -114,7 +114,11 @@ func TestSQLDefaultEngineSetting(t *testing.T) {
 	resp, err := conn.Do(exec).GetResponse()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
-	require.Equal(t, uint64(1), resp.SQLInfo().AffectedCount)
+	exResp, ok := resp.(*tarantool.ExecuteResponse)
+	require.True(t, ok, "wrong response type")
+	sqlInfo, err := exResp.SQLInfo()
+	require.Nil(t, err)
+	require.Equal(t, uint64(1), sqlInfo.AffectedCount)
 
 	// Check new space engine.
 	eval := tarantool.NewEvalRequest("return box.space['T1_VINYL'].engine")
@@ -137,7 +141,11 @@ func TestSQLDefaultEngineSetting(t *testing.T) {
 	resp, err = conn.Do(exec).GetResponse()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
-	require.Equal(t, uint64(1), resp.SQLInfo().AffectedCount)
+	exResp, ok = resp.(*tarantool.ExecuteResponse)
+	sqlInfo, err = exResp.SQLInfo()
+	require.Nil(t, err)
+	require.True(t, ok, "wrong response type")
+	require.Equal(t, uint64(1), sqlInfo.AffectedCount)
 
 	// Check new space engine.
 	eval = tarantool.NewEvalRequest("return box.space['T2_MEMTX'].engine")
@@ -161,7 +169,11 @@ func TestSQLDeferForeignKeysSetting(t *testing.T) {
 	resp, err = conn.Do(exec).GetResponse()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
-	require.Equal(t, uint64(1), resp.SQLInfo().AffectedCount)
+	exResp, ok := resp.(*tarantool.ExecuteResponse)
+	require.True(t, ok, "wrong response type")
+	sqlInfo, err := exResp.SQLInfo()
+	require.Nil(t, err)
+	require.Equal(t, uint64(1), sqlInfo.AffectedCount)
 
 	// Create a space with reference to the parent space.
 	exec = tarantool.NewExecuteRequest(
@@ -169,7 +181,11 @@ func TestSQLDeferForeignKeysSetting(t *testing.T) {
 	resp, err = conn.Do(exec).GetResponse()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
-	require.Equal(t, uint64(1), resp.SQLInfo().AffectedCount)
+	exResp, ok = resp.(*tarantool.ExecuteResponse)
+	require.True(t, ok, "wrong response type")
+	sqlInfo, err = exResp.SQLInfo()
+	require.Nil(t, err)
+	require.Equal(t, uint64(1), sqlInfo.AffectedCount)
 
 	deferEval := `
 	    box.begin()
@@ -229,14 +245,22 @@ func TestSQLFullColumnNamesSetting(t *testing.T) {
 	resp, err = conn.Do(exec).GetResponse()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
-	require.Equal(t, uint64(1), resp.SQLInfo().AffectedCount)
+	exResp, ok := resp.(*tarantool.ExecuteResponse)
+	require.True(t, ok, "wrong response type")
+	sqlInfo, err := exResp.SQLInfo()
+	require.Nil(t, err)
+	require.Equal(t, uint64(1), sqlInfo.AffectedCount)
 
 	// Fill it with some data.
 	exec = tarantool.NewExecuteRequest("INSERT INTO FKNAME VALUES (1, 1);")
 	resp, err = conn.Do(exec).GetResponse()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
-	require.Equal(t, uint64(1), resp.SQLInfo().AffectedCount)
+	exResp, ok = resp.(*tarantool.ExecuteResponse)
+	require.True(t, ok, "wrong response type")
+	sqlInfo, err = exResp.SQLInfo()
+	require.Nil(t, err)
+	require.Equal(t, uint64(1), sqlInfo.AffectedCount)
 
 	// Disable displaying full column names in metadata.
 	data, err := conn.Do(NewSQLFullColumnNamesSetRequest(false)).Get()
@@ -253,7 +277,11 @@ func TestSQLFullColumnNamesSetting(t *testing.T) {
 	resp, err = conn.Do(exec).GetResponse()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
-	require.Equal(t, "X", resp.MetaData()[0].FieldName)
+	exResp, ok = resp.(*tarantool.ExecuteResponse)
+	require.True(t, ok, "wrong response type")
+	metaData, err := exResp.MetaData()
+	require.Nil(t, err)
+	require.Equal(t, "X", metaData[0].FieldName)
 
 	// Enable displaying full column names in metadata.
 	data, err = conn.Do(NewSQLFullColumnNamesSetRequest(true)).Get()
@@ -270,7 +298,11 @@ func TestSQLFullColumnNamesSetting(t *testing.T) {
 	resp, err = conn.Do(exec).GetResponse()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
-	require.Equal(t, "FKNAME.X", resp.MetaData()[0].FieldName)
+	exResp, ok = resp.(*tarantool.ExecuteResponse)
+	require.True(t, ok, "wrong response type")
+	metaData, err = exResp.MetaData()
+	require.Nil(t, err)
+	require.Equal(t, "FKNAME.X", metaData[0].FieldName)
 }
 
 func TestSQLFullMetadataSetting(t *testing.T) {
@@ -287,14 +319,22 @@ func TestSQLFullMetadataSetting(t *testing.T) {
 	resp, err = conn.Do(exec).GetResponse()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
-	require.Equal(t, uint64(1), resp.SQLInfo().AffectedCount)
+	exResp, ok := resp.(*tarantool.ExecuteResponse)
+	require.True(t, ok, "wrong response type")
+	sqlInfo, err := exResp.SQLInfo()
+	require.Nil(t, err)
+	require.Equal(t, uint64(1), sqlInfo.AffectedCount)
 
 	// Fill it with some data.
 	exec = tarantool.NewExecuteRequest("INSERT INTO fmt VALUES (1, 1);")
 	resp, err = conn.Do(exec).GetResponse()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
-	require.Equal(t, uint64(1), resp.SQLInfo().AffectedCount)
+	exResp, ok = resp.(*tarantool.ExecuteResponse)
+	require.True(t, ok, "wrong response type")
+	sqlInfo, err = exResp.SQLInfo()
+	require.Nil(t, err)
+	require.Equal(t, uint64(1), sqlInfo.AffectedCount)
 
 	// Disable displaying additional fields in metadata.
 	data, err := conn.Do(NewSQLFullMetadataSetRequest(false)).Get()
@@ -311,7 +351,11 @@ func TestSQLFullMetadataSetting(t *testing.T) {
 	resp, err = conn.Do(exec).GetResponse()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
-	require.Equal(t, "", resp.MetaData()[0].FieldSpan)
+	exResp, ok = resp.(*tarantool.ExecuteResponse)
+	require.True(t, ok, "wrong response type")
+	metaData, err := exResp.MetaData()
+	require.Nil(t, err)
+	require.Equal(t, "", metaData[0].FieldSpan)
 
 	// Enable displaying full column names in metadata.
 	data, err = conn.Do(NewSQLFullMetadataSetRequest(true)).Get()
@@ -328,7 +372,11 @@ func TestSQLFullMetadataSetting(t *testing.T) {
 	resp, err = conn.Do(exec).GetResponse()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
-	require.Equal(t, "x", resp.MetaData()[0].FieldSpan)
+	exResp, ok = resp.(*tarantool.ExecuteResponse)
+	require.True(t, ok, "wrong response type")
+	metaData, err = exResp.MetaData()
+	require.Nil(t, err)
+	require.Equal(t, "x", metaData[0].FieldSpan)
 }
 
 func TestSQLParserDebugSetting(t *testing.T) {
@@ -378,14 +426,22 @@ func TestSQLRecursiveTriggersSetting(t *testing.T) {
 	resp, err = conn.Do(exec).GetResponse()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
-	require.Equal(t, uint64(1), resp.SQLInfo().AffectedCount)
+	exResp, ok := resp.(*tarantool.ExecuteResponse)
+	require.True(t, ok, "wrong response type")
+	sqlInfo, err := exResp.SQLInfo()
+	require.Nil(t, err)
+	require.Equal(t, uint64(1), sqlInfo.AffectedCount)
 
 	// Fill it with some data.
 	exec = tarantool.NewExecuteRequest("INSERT INTO rec VALUES(1, 1, 2);")
 	resp, err = conn.Do(exec).GetResponse()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
-	require.Equal(t, uint64(1), resp.SQLInfo().AffectedCount)
+	exResp, ok = resp.(*tarantool.ExecuteResponse)
+	require.True(t, ok, "wrong response type")
+	sqlInfo, err = exResp.SQLInfo()
+	require.Nil(t, err)
+	require.Equal(t, uint64(1), sqlInfo.AffectedCount)
 
 	// Create a recursive trigger (with infinite depth).
 	exec = tarantool.NewExecuteRequest(`
@@ -395,7 +451,11 @@ func TestSQLRecursiveTriggersSetting(t *testing.T) {
 	resp, err = conn.Do(exec).GetResponse()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
-	require.Equal(t, uint64(1), resp.SQLInfo().AffectedCount)
+	exResp, ok = resp.(*tarantool.ExecuteResponse)
+	require.True(t, ok, "wrong response type")
+	sqlInfo, err = exResp.SQLInfo()
+	require.Nil(t, err)
+	require.Equal(t, uint64(1), sqlInfo.AffectedCount)
 
 	// Enable SQL recursive triggers.
 	data, err := conn.Do(NewSQLRecursiveTriggersSetRequest(true)).Get()
@@ -429,7 +489,11 @@ func TestSQLRecursiveTriggersSetting(t *testing.T) {
 	resp, err = conn.Do(exec).GetResponse()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
-	require.Equal(t, uint64(1), resp.SQLInfo().AffectedCount)
+	exResp, ok = resp.(*tarantool.ExecuteResponse)
+	require.True(t, ok, "wrong response type")
+	sqlInfo, err = exResp.SQLInfo()
+	require.Nil(t, err)
+	require.Equal(t, uint64(1), sqlInfo.AffectedCount)
 }
 
 func TestSQLReverseUnorderedSelectsSetting(t *testing.T) {
@@ -446,20 +510,32 @@ func TestSQLReverseUnorderedSelectsSetting(t *testing.T) {
 	resp, err = conn.Do(exec).GetResponse()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
-	require.Equal(t, uint64(1), resp.SQLInfo().AffectedCount)
+	exResp, ok := resp.(*tarantool.ExecuteResponse)
+	require.True(t, ok, "wrong response type")
+	sqlInfo, err := exResp.SQLInfo()
+	require.Nil(t, err)
+	require.Equal(t, uint64(1), sqlInfo.AffectedCount)
 
 	// Fill it with some data.
 	exec = tarantool.NewExecuteRequest("INSERT INTO data VALUES('1');")
 	resp, err = conn.Do(exec).GetResponse()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
-	require.Equal(t, uint64(1), resp.SQLInfo().AffectedCount)
+	exResp, ok = resp.(*tarantool.ExecuteResponse)
+	require.True(t, ok, "wrong response type")
+	sqlInfo, err = exResp.SQLInfo()
+	require.Nil(t, err)
+	require.Equal(t, uint64(1), sqlInfo.AffectedCount)
 
 	exec = tarantool.NewExecuteRequest("INSERT INTO data VALUES('2');")
 	resp, err = conn.Do(exec).GetResponse()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
-	require.Equal(t, uint64(1), resp.SQLInfo().AffectedCount)
+	exResp, ok = resp.(*tarantool.ExecuteResponse)
+	require.True(t, ok, "wrong response type")
+	sqlInfo, err = exResp.SQLInfo()
+	require.Nil(t, err)
+	require.Equal(t, uint64(1), sqlInfo.AffectedCount)
 
 	// Disable reverse order in unordered selects.
 	data, err := conn.Do(NewSQLReverseUnorderedSelectsSetRequest(false)).Get()

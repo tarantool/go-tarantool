@@ -30,6 +30,9 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 - Support connection via an existing socket fd (#321)
 - `Header` struct for the response header (#237). It can be accessed via
   `Header()` method of the `Response` interface.
+- `Response` method added to the `Request` interface (#237)
+- New `LogAppendPushFailed` connection log constant (#237).
+  It is logged when connection fails to append a push response.
 
 ### Changed
 
@@ -70,12 +73,21 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 - Rename `pool.GetPoolInfo` to `pool.GetInfo`. Change return type to
   `map[string]ConnectionInfo` (#321)
 - `Response` is now an interface (#237)
-- All responses are now implementations of the `Response` interface (#237)
+- All responses are now implementations of the `Response` interface (#237).
+  `SelectResponse`, `ExecuteResponse`, `PrepareResponse`, `PushResponse` are part
+  of a public API. `Pos()`, `MetaData()`, `SQLInfo()` methods created for them
+  to get specific info.
+  Special types of responses are used with special requests.
 - `IsPush()` method is added to the response iterator (#237). It returns
   the information if the current response is a `PushResponse`.
   `PushCode` constant is removed.
 - Method `Get` for `Future` now returns response data (#237). To get the actual
-  response new `GetResponse` method has been added.
+  response new `GetResponse` method has been added. Methods `AppendPush` and
+  `SetResponse` accept response `Header` and data as their arguments.
+- `Future` constructors now accept `Request` as their argument (#237)
+- Operations `Ping`, `Select`, `Insert`, `Replace`, `Delete`, `Update`, `Upsert`,
+  `Call`, `Call16`, `Call17`, `Eval`, `Execute` of a `Connector` and `Pooler`
+  return response data instead of an actual responses (#237)
 
 ### Deprecated
 

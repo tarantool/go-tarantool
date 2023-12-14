@@ -55,6 +55,7 @@ package crud
 
 import (
 	"context"
+	"io"
 
 	"github.com/tarantool/go-iproto"
 
@@ -82,6 +83,12 @@ func (req baseRequest) Ctx() context.Context {
 // Async returns is CRUD request expects a response.
 func (req baseRequest) Async() bool {
 	return req.impl.Async()
+}
+
+// Response creates a response for the baseRequest.
+func (req baseRequest) Response(header tarantool.Header,
+	body io.Reader) (tarantool.Response, error) {
+	return req.impl.Response(header, body)
 }
 
 type spaceRequest struct {

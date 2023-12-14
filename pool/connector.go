@@ -60,7 +60,7 @@ func (c *ConnectorAdapter) ConfiguredTimeout() time.Duration {
 //
 // Deprecated: the method will be removed in the next major version,
 // use a PingRequest object + Do() instead.
-func (c *ConnectorAdapter) Ping() (tarantool.Response, error) {
+func (c *ConnectorAdapter) Ping() ([]interface{}, error) {
 	return c.pool.Ping(c.mode)
 }
 
@@ -70,7 +70,7 @@ func (c *ConnectorAdapter) Ping() (tarantool.Response, error) {
 // use a SelectRequest object + Do() instead.
 func (c *ConnectorAdapter) Select(space, index interface{},
 	offset, limit uint32, iterator tarantool.Iter,
-	key interface{}) (tarantool.Response, error) {
+	key interface{}) ([]interface{}, error) {
 	return c.pool.Select(space, index, offset, limit, iterator, key, c.mode)
 }
 
@@ -79,7 +79,7 @@ func (c *ConnectorAdapter) Select(space, index interface{},
 // Deprecated: the method will be removed in the next major version,
 // use an InsertRequest object + Do() instead.
 func (c *ConnectorAdapter) Insert(space interface{},
-	tuple interface{}) (tarantool.Response, error) {
+	tuple interface{}) ([]interface{}, error) {
 	return c.pool.Insert(space, tuple, c.mode)
 }
 
@@ -88,7 +88,7 @@ func (c *ConnectorAdapter) Insert(space interface{},
 // Deprecated: the method will be removed in the next major version,
 // use a ReplaceRequest object + Do() instead.
 func (c *ConnectorAdapter) Replace(space interface{},
-	tuple interface{}) (tarantool.Response, error) {
+	tuple interface{}) ([]interface{}, error) {
 	return c.pool.Replace(space, tuple, c.mode)
 }
 
@@ -97,7 +97,7 @@ func (c *ConnectorAdapter) Replace(space interface{},
 // Deprecated: the method will be removed in the next major version,
 // use a DeleteRequest object + Do() instead.
 func (c *ConnectorAdapter) Delete(space, index interface{},
-	key interface{}) (tarantool.Response, error) {
+	key interface{}) ([]interface{}, error) {
 	return c.pool.Delete(space, index, key, c.mode)
 }
 
@@ -106,7 +106,7 @@ func (c *ConnectorAdapter) Delete(space, index interface{},
 // Deprecated: the method will be removed in the next major version,
 // use a UpdateRequest object + Do() instead.
 func (c *ConnectorAdapter) Update(space, index interface{},
-	key interface{}, ops *tarantool.Operations) (tarantool.Response, error) {
+	key interface{}, ops *tarantool.Operations) ([]interface{}, error) {
 	return c.pool.Update(space, index, key, ops, c.mode)
 }
 
@@ -115,7 +115,7 @@ func (c *ConnectorAdapter) Update(space, index interface{},
 // Deprecated: the method will be removed in the next major version,
 // use a UpsertRequest object + Do() instead.
 func (c *ConnectorAdapter) Upsert(space, tuple interface{},
-	ops *tarantool.Operations) (tarantool.Response, error) {
+	ops *tarantool.Operations) ([]interface{}, error) {
 	return c.pool.Upsert(space, tuple, ops, c.mode)
 }
 
@@ -125,7 +125,7 @@ func (c *ConnectorAdapter) Upsert(space, tuple interface{},
 // Deprecated: the method will be removed in the next major version,
 // use a CallRequest object + Do() instead.
 func (c *ConnectorAdapter) Call(functionName string,
-	args interface{}) (tarantool.Response, error) {
+	args interface{}) ([]interface{}, error) {
 	return c.pool.Call(functionName, args, c.mode)
 }
 
@@ -136,7 +136,7 @@ func (c *ConnectorAdapter) Call(functionName string,
 // Deprecated: the method will be removed in the next major version,
 // use a Call16Request object + Do() instead.
 func (c *ConnectorAdapter) Call16(functionName string,
-	args interface{}) (tarantool.Response, error) {
+	args interface{}) ([]interface{}, error) {
 	return c.pool.Call16(functionName, args, c.mode)
 }
 
@@ -146,7 +146,7 @@ func (c *ConnectorAdapter) Call16(functionName string,
 // Deprecated: the method will be removed in the next major version,
 // use a Call17Request object + Do() instead.
 func (c *ConnectorAdapter) Call17(functionName string,
-	args interface{}) (tarantool.Response, error) {
+	args interface{}) ([]interface{}, error) {
 	return c.pool.Call17(functionName, args, c.mode)
 }
 
@@ -155,7 +155,7 @@ func (c *ConnectorAdapter) Call17(functionName string,
 // Deprecated: the method will be removed in the next major version,
 // use an EvalRequest object + Do() instead.
 func (c *ConnectorAdapter) Eval(expr string,
-	args interface{}) (tarantool.Response, error) {
+	args interface{}) ([]interface{}, error) {
 	return c.pool.Eval(expr, args, c.mode)
 }
 
@@ -164,7 +164,7 @@ func (c *ConnectorAdapter) Eval(expr string,
 // Deprecated: the method will be removed in the next major version,
 // use an ExecuteRequest object + Do() instead.
 func (c *ConnectorAdapter) Execute(expr string,
-	args interface{}) (tarantool.Response, error) {
+	args interface{}) ([]interface{}, error) {
 	return c.pool.Execute(expr, args, c.mode)
 }
 

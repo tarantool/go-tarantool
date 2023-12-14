@@ -304,9 +304,7 @@ func TestErrorTypeEval(t *testing.T) {
 
 	for name, testcase := range tupleCases {
 		t.Run(name, func(t *testing.T) {
-			resp, err := conn.Eval("return ...", []interface{}{&testcase.tuple.val})
-			require.Nil(t, err)
-			data, err := resp.Decode()
+			data, err := conn.Eval("return ...", []interface{}{&testcase.tuple.val})
 			require.Nil(t, err)
 			require.NotNil(t, data)
 			require.Equal(t, len(data), 1)
@@ -438,13 +436,10 @@ func TestErrorTypeSelect(t *testing.T) {
 			_, err := conn.Eval(insertEval, []interface{}{})
 			require.Nilf(t, err, "Tuple has been successfully inserted")
 
-			var resp Response
 			var offset uint32 = 0
 			var limit uint32 = 1
-			resp, err = conn.Select(space, index, offset, limit, IterEq,
+			data, err := conn.Select(space, index, offset, limit, IterEq,
 				[]interface{}{testcase.tuple.pk})
-			require.Nil(t, err)
-			data, err := resp.Decode()
 			require.Nil(t, err)
 			require.NotNil(t, data)
 			require.Equalf(t, len(data), 1, "Exactly one tuple had been found")

@@ -2,6 +2,7 @@ package tarantool
 
 import (
 	"context"
+	"io"
 
 	"github.com/tarantool/go-iproto"
 	"github.com/vmihailenco/msgpack/v5"
@@ -53,6 +54,15 @@ func (req *BroadcastRequest) Ctx() context.Context {
 // Async returns is the broadcast request expects a response.
 func (req *BroadcastRequest) Async() bool {
 	return req.call.Async()
+}
+
+// Response creates a response for a BroadcastRequest.
+func (req *BroadcastRequest) Response(header Header, body io.Reader) (Response, error) {
+	resp, err := createBaseResponse(header, body)
+	if err != nil {
+		return nil, err
+	}
+	return &resp, nil
 }
 
 // watchRequest subscribes to the updates of a specified key defined on the
