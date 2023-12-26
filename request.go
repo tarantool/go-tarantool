@@ -1109,7 +1109,7 @@ func (req *SelectRequest) Response(header Header, body io.Reader) (Response, err
 	if err != nil {
 		return nil, err
 	}
-	return &SelectResponse{BaseResponse: baseResp}, nil
+	return &SelectResponse{baseResponse: baseResp}, nil
 }
 
 // InsertRequest helps you to create an insert request object for execution
@@ -1517,7 +1517,7 @@ func (req *ExecuteRequest) Response(header Header, body io.Reader) (Response, er
 	if err != nil {
 		return nil, err
 	}
-	return &ExecuteResponse{BaseResponse: baseResp}, nil
+	return &ExecuteResponse{baseResponse: baseResp}, nil
 }
 
 // WatchOnceRequest synchronously fetches the value currently associated with a

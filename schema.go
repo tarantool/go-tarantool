@@ -380,15 +380,18 @@ func (indexField *IndexField) DecodeMsgpack(d *msgpack.Decoder) error {
 	return errors.New("unexpected schema format (index fields)")
 }
 
-// GetSchema returns the actual schema for the connection.
-func GetSchema(conn Connector) (Schema, error) {
+// GetSchema returns the actual schema for the Doer.
+func GetSchema(doer Doer) (Schema, error) {
 	schema := Schema{}
 	schema.SpacesById = make(map[uint32]Space)
 	schema.Spaces = make(map[string]Space)
 
 	// Reload spaces.
 	var spaces []Space
-	err := conn.SelectTyped(vspaceSpId, 0, 0, maxSchemas, IterAll, []interface{}{}, &spaces)
+	req := NewSelectRequest(vspaceSpId).
+		Index(0).
+		Limit(maxSchemas)
+	err := doer.Do(req).GetTyped(&spaces)
 	if err != nil {
 		return Schema{}, err
 	}
@@ -399,7 +402,10 @@ func GetSchema(conn Connector) (Schema, error) {
 
 	// Reload indexes.
 	var indexes []Index
-	err = conn.SelectTyped(vindexSpId, 0, 0, maxSchemas, IterAll, []interface{}{}, &indexes)
+	req = NewSelectRequest(vindexSpId).
+		Index(0).
+		Limit(maxSchemas)
+	err = doer.Do(req).GetTyped(&indexes)
 	if err != nil {
 		return Schema{}, err
 	}

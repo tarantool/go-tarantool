@@ -9,5 +9,7 @@ const (
 )
 
 const (
-	OkCode = uint32(iproto.IPROTO_OK)
+	// ErrorNo indicates that no error has occurred. It could be used to
+	// check that a response has an error without the response body decoding.
+	ErrorNo = iproto.ER_UNKNOWN
 )

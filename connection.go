@@ -813,7 +813,7 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 			return
 		}
 		buf := smallBuf{b: respBytes}
-		header, err := decodeHeader(conn.dec, &buf)
+		header, code, err := decodeHeader(conn.dec, &buf)
 		if err != nil {
 			err = ClientError{
 				ErrProtocolError,
@@ -824,7 +824,7 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 		}
 
 		var fut *Future = nil
-		if iproto.Type(header.Code) == iproto.IPROTO_EVENT {
+		if code == iproto.IPROTO_EVENT {
 			if event, err := readWatchEvent(&buf); err == nil {
 				events <- event
 			} else {
@@ -835,7 +835,7 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 				conn.opts.Logger.Report(LogWatchEventReadFailed, conn, err)
 			}
 			continue
-		} else if header.Code == uint32(iproto.IPROTO_CHUNK) {
+		} else if code == iproto.IPROTO_CHUNK {
 			if fut = conn.peekFuture(header.RequestId); fut != nil {
 				if err := fut.AppendPush(header, &buf); err != nil {
 					err = ClientError{
@@ -887,8 +887,7 @@ func (conn *Connection) eventer(events <-chan connWatchEvent) {
 
 func (conn *Connection) newFuture(req Request) (fut *Future) {
 	ctx := req.Ctx()
-	fut = NewFuture()
-	fut.SetRequest(req)
+	fut = NewFuture(req)
 	if conn.rlimit != nil && conn.opts.RLimitAction == RLimitDrop {
 		select {
 		case conn.rlimit <- struct{}{}:
@@ -1069,7 +1068,7 @@ func (conn *Connection) putFuture(fut *Future, req Request, streamId uint64) {
 		if fut = conn.fetchFuture(reqid); fut != nil {
 			header := Header{
 				RequestId: reqid,
-				Code:      OkCode,
+				Error:     ErrorNo,
 			}
 			fut.SetResponse(header, nil)
 			conn.markDone(fut)
@@ -1217,7 +1216,7 @@ func (conn *Connection) nextRequestId(context bool) (requestId uint32) {
 func (conn *Connection) Do(req Request) *Future {
 	if connectedReq, ok := req.(ConnectedRequest); ok {
 		if connectedReq.Conn() != conn {
-			fut := NewFuture()
+			fut := NewFuture(req)
 			fut.SetError(errUnknownRequest)
 			return fut
 		}

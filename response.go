@@ -19,32 +19,31 @@ type Response interface {
 	DecodeTyped(res interface{}) error
 }
 
-// BaseResponse is a base Response interface implementation.
-type BaseResponse struct {
+type baseResponse struct {
+	// header is a response header.
 	header Header
 	// data contains deserialized data for untyped requests.
-	data         []interface{}
-	buf          smallBuf
-	decoded      bool
+	data []interface{}
+	buf  smallBuf
+	// Was the Decode() func called for this response.
+	decoded bool
+	// Was the DecodeTyped() func called for this response.
 	decodedTyped bool
+	err          error
 }
 
-func createBaseResponse(header Header, body io.Reader) (BaseResponse, error) {
+func createBaseResponse(header Header, body io.Reader) (baseResponse, error) {
 	if body == nil {
-		return BaseResponse{header: header}, nil
+		return baseResponse{header: header}, nil
 	}
 	if buf, ok := body.(*smallBuf); ok {
-		return BaseResponse{header: header, buf: *buf}, nil
+		return baseResponse{header: header, buf: *buf}, nil
 	}
 	data, err := ioutil.ReadAll(body)
 	if err != nil {
-		return BaseResponse{}, err
+		return baseResponse{}, err
 	}
-	return BaseResponse{header: header, buf: smallBuf{b: data}}, nil
-}
-
-func (resp *BaseResponse) SetHeader(header Header) {
-	resp.header = header
+	return baseResponse{header: header, buf: smallBuf{b: data}}, nil
 }
 
 // SelectResponse is used for the select requests.
@@ -52,7 +51,7 @@ func (resp *BaseResponse) SetHeader(header Header) {
 //
 // You need to cast to SelectResponse a response from SelectRequest.
 type SelectResponse struct {
-	BaseResponse
+	baseResponse
 	// pos contains a position descriptor of last selected tuple.
 	pos []byte
 }
@@ -70,7 +69,7 @@ type PrepareResponse ExecuteResponse
 //
 // You need to cast to ExecuteResponse a response from ExecuteRequest.
 type ExecuteResponse struct {
-	BaseResponse
+	baseResponse
 	metaData []ColumnMetaData
 	sqlInfo  SQLInfo
 }
@@ -169,39 +168,43 @@ func smallInt(d *msgpack.Decoder, buf *smallBuf) (i int, err error) {
 	return d.DecodeInt()
 }
 
-func decodeHeader(d *msgpack.Decoder, buf *smallBuf) (Header, error) {
+func decodeHeader(d *msgpack.Decoder, buf *smallBuf) (Header, iproto.Type, error) {
 	var l int
+	var code int
 	var err error
 	d.Reset(buf)
 	if l, err = d.DecodeMapLen(); err != nil {
-		return Header{}, err
+		return Header{}, 0, err
 	}
-	decodedHeader := Header{}
+	decodedHeader := Header{Error: ErrorNo}
 	for ; l > 0; l-- {
 		var cd int
 		if cd, err = smallInt(d, buf); err != nil {
-			return Header{}, err
+			return Header{}, 0, err
 		}
 		switch iproto.Key(cd) {
 		case iproto.IPROTO_SYNC:
 			var rid uint64
 			if rid, err = d.DecodeUint64(); err != nil {
-				return Header{}, err
+				return Header{}, 0, err
 			}
 			decodedHeader.RequestId = uint32(rid)
 		case iproto.IPROTO_REQUEST_TYPE:
-			var rcode uint64
-			if rcode, err = d.DecodeUint64(); err != nil {
-				return Header{}, err
+			if code, err = d.DecodeInt(); err != nil {
+				return Header{}, 0, err
 			}
-			decodedHeader.Code = uint32(rcode)
+			if code&int(iproto.IPROTO_TYPE_ERROR) != 0 {
+				decodedHeader.Error = iproto.Error(code &^ int(iproto.IPROTO_TYPE_ERROR))
+			} else {
+				decodedHeader.Error = ErrorNo
+			}
 		default:
 			if err = d.Skip(); err != nil {
-				return Header{}, err
+				return Header{}, 0, err
 			}
 		}
 	}
-	return decodedHeader, nil
+	return decodedHeader, iproto.Type(code), nil
 }
 
 type decodeInfo struct {
@@ -213,7 +216,7 @@ type decodeInfo struct {
 	decodedError string
 }
 
-func (info *decodeInfo) parseData(resp *BaseResponse) error {
+func (info *decodeInfo) parseData(resp *baseResponse) error {
 	if info.stmtID != 0 {
 		stmt := &Prepared{
 			StatementID: PreparedID(info.stmtID),
@@ -307,7 +310,11 @@ func decodeCommonField(d *msgpack.Decoder, cd int, data *[]interface{},
 	return true, nil
 }
 
-func (resp *BaseResponse) Decode() ([]interface{}, error) {
+func (resp *baseResponse) Decode() ([]interface{}, error) {
+	if resp.decoded {
+		return resp.data, resp.err
+	}
+
 	resp.decoded = true
 	var err error
 	if resp.buf.Len() > 2 {
@@ -323,37 +330,46 @@ func (resp *BaseResponse) Decode() ([]interface{}, error) {
 		})
 
 		if l, err = d.DecodeMapLen(); err != nil {
-			return nil, err
+			resp.err = err
+			return nil, resp.err
 		}
 		for ; l > 0; l-- {
 			var cd int
 			if cd, err = smallInt(d, &resp.buf); err != nil {
-				return nil, err
+				resp.err = err
+				return nil, resp.err
 			}
 			decoded, err := decodeCommonField(d, cd, &resp.data, info)
 			if err != nil {
-				return nil, err
+				resp.err = err
+				return nil, resp.err
 			}
 			if !decoded {
 				if err = d.Skip(); err != nil {
-					return nil, err
+					resp.err = err
+					return nil, resp.err
 				}
 			}
 		}
 		err = info.parseData(resp)
 		if err != nil {
-			return nil, err
+			resp.err = err
+			return nil, resp.err
 		}
 
 		if info.decodedError != "" {
-			resp.header.Code &^= uint32(iproto.IPROTO_TYPE_ERROR)
-			err = Error{iproto.Error(resp.header.Code), info.decodedError, info.errorExtendedInfo}
+			resp.err = Error{resp.header.Error, info.decodedError,
+				info.errorExtendedInfo}
 		}
 	}
-	return resp.data, err
+	return resp.data, resp.err
 }
 
 func (resp *SelectResponse) Decode() ([]interface{}, error) {
+	if resp.decoded {
+		return resp.data, resp.err
+	}
+
 	resp.decoded = true
 	var err error
 	if resp.buf.Len() > 2 {
@@ -369,44 +385,54 @@ func (resp *SelectResponse) Decode() ([]interface{}, error) {
 		})
 
 		if l, err = d.DecodeMapLen(); err != nil {
-			return nil, err
+			resp.err = err
+			return nil, resp.err
 		}
 		for ; l > 0; l-- {
 			var cd int
 			if cd, err = smallInt(d, &resp.buf); err != nil {
-				return nil, err
+				resp.err = err
+				return nil, resp.err
 			}
 			decoded, err := decodeCommonField(d, cd, &resp.data, info)
 			if err != nil {
+				resp.err = err
 				return nil, err
 			}
 			if !decoded {
 				switch iproto.Key(cd) {
 				case iproto.IPROTO_POSITION:
 					if resp.pos, err = d.DecodeBytes(); err != nil {
-						return nil, fmt.Errorf("unable to decode a position: %w", err)
+						resp.err = err
+						return nil, fmt.Errorf("unable to decode a position: %w", resp.err)
 					}
 				default:
 					if err = d.Skip(); err != nil {
-						return nil, err
+						resp.err = err
+						return nil, resp.err
 					}
 				}
 			}
 		}
-		err = info.parseData(&resp.BaseResponse)
+		err = info.parseData(&resp.baseResponse)
 		if err != nil {
-			return nil, err
+			resp.err = err
+			return nil, resp.err
 		}
 
 		if info.decodedError != "" {
-			resp.header.Code &^= uint32(iproto.IPROTO_TYPE_ERROR)
-			err = Error{iproto.Error(resp.header.Code), info.decodedError, info.errorExtendedInfo}
+			resp.err = Error{resp.header.Error, info.decodedError,
+				info.errorExtendedInfo}
 		}
 	}
-	return resp.data, err
+	return resp.data, resp.err
 }
 
 func (resp *ExecuteResponse) Decode() ([]interface{}, error) {
+	if resp.decoded {
+		return resp.data, resp.err
+	}
+
 	resp.decoded = true
 	var err error
 	if resp.buf.Len() > 2 {
@@ -422,45 +448,52 @@ func (resp *ExecuteResponse) Decode() ([]interface{}, error) {
 		})
 
 		if l, err = d.DecodeMapLen(); err != nil {
-			return nil, err
+			resp.err = err
+			return nil, resp.err
 		}
 		for ; l > 0; l-- {
 			var cd int
 			if cd, err = smallInt(d, &resp.buf); err != nil {
-				return nil, err
+				resp.err = err
+				return nil, resp.err
 			}
 			decoded, err := decodeCommonField(d, cd, &resp.data, info)
 			if err != nil {
-				return nil, err
+				resp.err = err
+				return nil, resp.err
 			}
 			if !decoded {
 				switch iproto.Key(cd) {
 				case iproto.IPROTO_SQL_INFO:
 					if err = d.Decode(&resp.sqlInfo); err != nil {
-						return nil, err
+						resp.err = err
+						return nil, resp.err
 					}
 				case iproto.IPROTO_METADATA:
 					if err = d.Decode(&resp.metaData); err != nil {
-						return nil, err
+						resp.err = err
+						return nil, resp.err
 					}
 				default:
 					if err = d.Skip(); err != nil {
-						return nil, err
+						resp.err = err
+						return nil, resp.err
 					}
 				}
 			}
 		}
-		err = info.parseData(&resp.BaseResponse)
+		err = info.parseData(&resp.baseResponse)
 		if err != nil {
-			return nil, err
+			resp.err = err
+			return nil, resp.err
 		}
 
 		if info.decodedError != "" {
-			resp.header.Code &^= uint32(iproto.IPROTO_TYPE_ERROR)
-			err = Error{iproto.Error(resp.header.Code), info.decodedError, info.errorExtendedInfo}
+			resp.err = Error{resp.header.Error, info.decodedError,
+				info.errorExtendedInfo}
 		}
 	}
-	return resp.data, err
+	return resp.data, resp.err
 }
 
 func decodeTypedCommonField(d *msgpack.Decoder, res interface{}, cd int,
@@ -486,7 +519,7 @@ func decodeTypedCommonField(d *msgpack.Decoder, res interface{}, cd int,
 	return true, nil
 }
 
-func (resp *BaseResponse) DecodeTyped(res interface{}) error {
+func (resp *baseResponse) DecodeTyped(res interface{}) error {
 	resp.decodedTyped = true
 
 	var err error
@@ -521,8 +554,7 @@ func (resp *BaseResponse) DecodeTyped(res interface{}) error {
 			}
 		}
 		if info.decodedError != "" {
-			resp.header.Code &^= uint32(iproto.IPROTO_TYPE_ERROR)
-			err = Error{iproto.Error(resp.header.Code), info.decodedError, info.errorExtendedInfo}
+			err = Error{resp.header.Error, info.decodedError, info.errorExtendedInfo}
 		}
 	}
 	return err
@@ -570,8 +602,7 @@ func (resp *SelectResponse) DecodeTyped(res interface{}) error {
 			}
 		}
 		if info.decodedError != "" {
-			resp.header.Code &^= uint32(iproto.IPROTO_TYPE_ERROR)
-			err = Error{iproto.Error(resp.header.Code), info.decodedError, info.errorExtendedInfo}
+			err = Error{resp.header.Error, info.decodedError, info.errorExtendedInfo}
 		}
 	}
 	return err
@@ -623,51 +654,47 @@ func (resp *ExecuteResponse) DecodeTyped(res interface{}) error {
 			}
 		}
 		if info.decodedError != "" {
-			resp.header.Code &^= uint32(iproto.IPROTO_TYPE_ERROR)
-			err = Error{iproto.Error(resp.header.Code), info.decodedError, info.errorExtendedInfo}
+			err = Error{resp.header.Error, info.decodedError, info.errorExtendedInfo}
 		}
 	}
 	return err
 }
 
-func (resp *BaseResponse) Header() Header {
+func (resp *baseResponse) Header() Header {
 	return resp.header
 }
 
 // Pos returns a position descriptor of the last selected tuple for the SelectResponse.
 // If the response was not decoded, this method will call Decode().
 func (resp *SelectResponse) Pos() ([]byte, error) {
-	var err error
 	if !resp.decoded && !resp.decodedTyped {
-		_, err = resp.Decode()
+		resp.Decode()
 	}
-	return resp.pos, err
+	return resp.pos, resp.err
 }
 
 // MetaData returns ExecuteResponse meta-data.
 // If the response was not decoded, this method will call Decode().
 func (resp *ExecuteResponse) MetaData() ([]ColumnMetaData, error) {
-	var err error
 	if !resp.decoded && !resp.decodedTyped {
-		_, err = resp.Decode()
+		resp.Decode()
 	}
-	return resp.metaData, err
+	return resp.metaData, resp.err
 }
 
 // SQLInfo returns ExecuteResponse sql info.
 // If the response was not decoded, this method will call Decode().
 func (resp *ExecuteResponse) SQLInfo() (SQLInfo, error) {
-	var err error
 	if !resp.decoded && !resp.decodedTyped {
-		_, err = resp.Decode()
+		resp.Decode()
 	}
-	return resp.sqlInfo, err
+	return resp.sqlInfo, resp.err
 }
 
 // String implements Stringer interface.
-func (resp *BaseResponse) String() (str string) {
-	if resp.header.Code == OkCode {
+func (resp *baseResponse) String() (str string) {
+	if resp.header.Error == ErrorNo {
 		return fmt.Sprintf("<%d OK %v>", resp.header.RequestId, resp.data)
 	}
-	return fmt.Sprintf("<%d ERR 0x%x>", resp.header.RequestId, resp.header.Code)
+	return fmt.Sprintf("<%d ERR %s %v>", resp.header.RequestId, resp.header.Error, resp.err)
 }

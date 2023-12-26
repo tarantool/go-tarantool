@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -314,58 +315,6 @@ func TestRequestsCtx_setter(t *testing.T) {
 		if ctx := test.req.Ctx(); ctx != test.expected {
 			t.Errorf("An invalid ctx %t, expected %t", ctx, test.expected)
 		}
-	}
-}
-
-func TestResolverCalledWithoutNameSupport(t *testing.T) {
-	resolver.nameUseSupported = false
-	resolver.spaceResolverCalls = 0
-	resolver.indexResolverCalls = 0
-
-	req := NewSelectRequest("valid")
-	req.Index("valid")
-
-	var reqBuf bytes.Buffer
-	reqEnc := msgpack.NewEncoder(&reqBuf)
-
-	err := req.Body(&resolver, reqEnc)
-	if err != nil {
-		t.Errorf("An unexpected Response.Body() error: %q", err.Error())
-	}
-
-	if resolver.spaceResolverCalls != 1 {
-		t.Errorf("ResolveSpace was called %d times instead of 1.",
-			resolver.spaceResolverCalls)
-	}
-	if resolver.indexResolverCalls != 1 {
-		t.Errorf("ResolveIndex was called %d times instead of 1.",
-			resolver.indexResolverCalls)
-	}
-}
-
-func TestResolverNotCalledWithNameSupport(t *testing.T) {
-	resolver.nameUseSupported = true
-	resolver.spaceResolverCalls = 0
-	resolver.indexResolverCalls = 0
-
-	req := NewSelectRequest("valid")
-	req.Index("valid")
-
-	var reqBuf bytes.Buffer
-	reqEnc := msgpack.NewEncoder(&reqBuf)
-
-	err := req.Body(&resolver, reqEnc)
-	if err != nil {
-		t.Errorf("An unexpected Response.Body() error: %q", err.Error())
-	}
-
-	if resolver.spaceResolverCalls != 0 {
-		t.Errorf("ResolveSpace was called %d times instead of 0.",
-			resolver.spaceResolverCalls)
-	}
-	if resolver.indexResolverCalls != 0 {
-		t.Errorf("ResolveIndex was called %d times instead of 0.",
-			resolver.indexResolverCalls)
 	}
 }
 
@@ -1006,4 +955,111 @@ func TestWatchOnceRequestDefaultValues(t *testing.T) {
 
 	req := NewWatchOnceRequest(validKey)
 	assertBodyEqual(t, refBuf.Bytes(), req)
+}
+
+func TestResponseDecode(t *testing.T) {
+	header := Header{}
+	data := bytes.NewBuffer([]byte{'v', '2'})
+	baseExample, err := NewPingRequest().Response(header, data)
+	assert.NoError(t, err)
+
+	tests := []struct {
+		req      Request
+		expected Response
+	}{
+		{req: NewSelectRequest(validSpace), expected: &SelectResponse{}},
+		{req: NewUpdateRequest(validSpace), expected: baseExample},
+		{req: NewUpsertRequest(validSpace), expected: baseExample},
+		{req: NewInsertRequest(validSpace), expected: baseExample},
+		{req: NewReplaceRequest(validSpace), expected: baseExample},
+		{req: NewDeleteRequest(validSpace), expected: baseExample},
+		{req: NewCallRequest(validExpr), expected: baseExample},
+		{req: NewCall16Request(validExpr), expected: baseExample},
+		{req: NewCall17Request(validExpr), expected: baseExample},
+		{req: NewEvalRequest(validExpr), expected: baseExample},
+		{req: NewExecuteRequest(validExpr), expected: &ExecuteResponse{}},
+		{req: NewPingRequest(), expected: baseExample},
+		{req: NewPrepareRequest(validExpr), expected: &PrepareResponse{}},
+		{req: NewUnprepareRequest(validStmt), expected: baseExample},
+		{req: NewExecutePreparedRequest(validStmt), expected: &ExecuteResponse{}},
+		{req: NewBeginRequest(), expected: baseExample},
+		{req: NewCommitRequest(), expected: baseExample},
+		{req: NewRollbackRequest(), expected: baseExample},
+		{req: NewIdRequest(validProtocolInfo), expected: baseExample},
+		{req: NewBroadcastRequest(validKey), expected: baseExample},
+		{req: NewWatchOnceRequest(validKey), expected: baseExample},
+	}
+
+	for _, test := range tests {
+		buf := bytes.NewBuffer([]byte{})
+		enc := msgpack.NewEncoder(buf)
+
+		enc.EncodeMapLen(1)
+		enc.EncodeUint8(uint8(iproto.IPROTO_DATA))
+		enc.Encode([]interface{}{'v', '2'})
+
+		resp, err := test.req.Response(header, bytes.NewBuffer(buf.Bytes()))
+		assert.NoError(t, err)
+		assert.True(t, fmt.Sprintf("%T", resp) ==
+			fmt.Sprintf("%T", test.expected))
+		assert.Equal(t, header, resp.Header())
+
+		decodedInterface, err := resp.Decode()
+		assert.NoError(t, err)
+		assert.Equal(t, []interface{}{'v', '2'}, decodedInterface)
+	}
+}
+
+func TestResponseDecodeTyped(t *testing.T) {
+	header := Header{}
+	data := bytes.NewBuffer([]byte{'v', '2'})
+	baseExample, err := NewPingRequest().Response(header, data)
+	assert.NoError(t, err)
+
+	tests := []struct {
+		req      Request
+		expected Response
+	}{
+		{req: NewSelectRequest(validSpace), expected: &SelectResponse{}},
+		{req: NewUpdateRequest(validSpace), expected: baseExample},
+		{req: NewUpsertRequest(validSpace), expected: baseExample},
+		{req: NewInsertRequest(validSpace), expected: baseExample},
+		{req: NewReplaceRequest(validSpace), expected: baseExample},
+		{req: NewDeleteRequest(validSpace), expected: baseExample},
+		{req: NewCallRequest(validExpr), expected: baseExample},
+		{req: NewCall16Request(validExpr), expected: baseExample},
+		{req: NewCall17Request(validExpr), expected: baseExample},
+		{req: NewEvalRequest(validExpr), expected: baseExample},
+		{req: NewExecuteRequest(validExpr), expected: &ExecuteResponse{}},
+		{req: NewPingRequest(), expected: baseExample},
+		{req: NewPrepareRequest(validExpr), expected: &PrepareResponse{}},
+		{req: NewUnprepareRequest(validStmt), expected: baseExample},
+		{req: NewExecutePreparedRequest(validStmt), expected: &ExecuteResponse{}},
+		{req: NewBeginRequest(), expected: baseExample},
+		{req: NewCommitRequest(), expected: baseExample},
+		{req: NewRollbackRequest(), expected: baseExample},
+		{req: NewIdRequest(validProtocolInfo), expected: baseExample},
+		{req: NewBroadcastRequest(validKey), expected: baseExample},
+		{req: NewWatchOnceRequest(validKey), expected: baseExample},
+	}
+
+	for _, test := range tests {
+		buf := bytes.NewBuffer([]byte{})
+		enc := msgpack.NewEncoder(buf)
+
+		enc.EncodeMapLen(1)
+		enc.EncodeUint8(uint8(iproto.IPROTO_DATA))
+		enc.EncodeBytes([]byte{'v', '2'})
+
+		resp, err := test.req.Response(header, bytes.NewBuffer(buf.Bytes()))
+		assert.NoError(t, err)
+		assert.True(t, fmt.Sprintf("%T", resp) ==
+			fmt.Sprintf("%T", test.expected))
+		assert.Equal(t, header, resp.Header())
+
+		var decoded []byte
+		err = resp.DecodeTyped(&decoded)
+		assert.NoError(t, err)
+		assert.Equal(t, []byte{'v', '2'}, decoded)
+	}
 }

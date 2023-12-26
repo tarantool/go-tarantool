@@ -199,7 +199,7 @@ func (req *RollbackRequest) Context(ctx context.Context) *RollbackRequest {
 func (s *Stream) Do(req Request) *Future {
 	if connectedReq, ok := req.(ConnectedRequest); ok {
 		if connectedReq.Conn() != s.Conn {
-			fut := NewFuture()
+			fut := NewFuture(req)
 			fut.SetError(errUnknownStreamRequest)
 			return fut
 		}

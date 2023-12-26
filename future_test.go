@@ -1,14 +1,85 @@
 package tarantool_test
 
 import (
+	"bytes"
+	"context"
 	"errors"
+	"io"
+	"io/ioutil"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/tarantool/go-iproto"
 	. "github.com/tarantool/go-tarantool/v2"
+	"github.com/tarantool/go-tarantool/v2/test_helpers"
+	"github.com/vmihailenco/msgpack/v5"
 )
+
+type futureMockRequest struct {
+}
+
+func (req *futureMockRequest) Type() iproto.Type {
+	return iproto.Type(0)
+}
+
+func (req *futureMockRequest) Async() bool {
+	return false
+}
+
+func (req *futureMockRequest) Body(resolver SchemaResolver, enc *msgpack.Encoder) error {
+	return nil
+}
+
+func (req *futureMockRequest) Conn() *Connection {
+	return &Connection{}
+}
+
+func (req *futureMockRequest) Ctx() context.Context {
+	return nil
+}
+
+func (req *futureMockRequest) Response(header Header,
+	body io.Reader) (Response, error) {
+	resp, err := createFutureMockResponse(header, body)
+	return resp, err
+}
+
+type futureMockResponse struct {
+	header Header
+	data   []byte
+
+	decodeCnt      int
+	decodeTypedCnt int
+}
+
+func (resp *futureMockResponse) Header() Header {
+	return resp.header
+}
+
+func (resp *futureMockResponse) Decode() ([]interface{}, error) {
+	resp.decodeCnt++
+
+	dataInt := make([]interface{}, len(resp.data))
+	for i := range resp.data {
+		dataInt[i] = resp.data[i]
+	}
+	return dataInt, nil
+}
+
+func (resp *futureMockResponse) DecodeTyped(res interface{}) error {
+	resp.decodeTypedCnt++
+	return nil
+}
+
+func createFutureMockResponse(header Header, body io.Reader) (Response, error) {
+	data, err := ioutil.ReadAll(body)
+	if err != nil {
+		return nil, err
+	}
+	return &futureMockResponse{header: header, data: data}, nil
+}
 
 func assertResponseIteratorValue(t testing.TB, it ResponseIterator,
 	isPush bool, resp Response) {
@@ -43,7 +114,7 @@ func assertResponseIteratorFinished(t testing.TB, it ResponseIterator) {
 }
 
 func TestFutureGetIteratorNoItems(t *testing.T) {
-	fut := NewFuture()
+	fut := NewFuture(test_helpers.NewMockRequest())
 
 	it := fut.GetIterator()
 	if it.Next() {
@@ -56,7 +127,7 @@ func TestFutureGetIteratorNoItems(t *testing.T) {
 func TestFutureGetIteratorNoResponse(t *testing.T) {
 	pushHeader := Header{}
 	push := &PushResponse{}
-	fut := NewFuture()
+	fut := NewFuture(test_helpers.NewMockRequest())
 	fut.AppendPush(pushHeader, nil)
 
 	if it := fut.GetIterator(); it.Next() {
@@ -73,7 +144,7 @@ func TestFutureGetIteratorNoResponse(t *testing.T) {
 func TestFutureGetIteratorNoResponseTimeout(t *testing.T) {
 	pushHeader := Header{}
 	push := &PushResponse{}
-	fut := NewFuture()
+	fut := NewFuture(test_helpers.NewMockRequest())
 	fut.AppendPush(pushHeader, nil)
 
 	if it := fut.GetIterator().WithTimeout(1 * time.Nanosecond); it.Next() {
@@ -91,8 +162,8 @@ func TestFutureGetIteratorResponseOnTimeout(t *testing.T) {
 	pushHeader := Header{}
 	respHeader := Header{}
 	push := &PushResponse{}
-	resp := &BaseResponse{}
-	fut := NewFuture()
+	resp := &test_helpers.MockResponse{}
+	fut := NewFuture(test_helpers.NewMockRequest())
 	fut.AppendPush(pushHeader, nil)
 
 	var done sync.WaitGroup
@@ -128,15 +199,13 @@ func TestFutureGetIteratorResponseOnTimeout(t *testing.T) {
 
 	wait.Wait()
 
-	fut.SetRequest(&InsertRequest{})
 	fut.SetResponse(respHeader, nil)
 	done.Wait()
 }
 
 func TestFutureGetIteratorFirstResponse(t *testing.T) {
-	resp := &BaseResponse{}
-	fut := NewFuture()
-	fut.SetRequest(&InsertRequest{})
+	resp := &test_helpers.MockResponse{}
+	fut := NewFuture(test_helpers.NewMockRequest())
 	fut.SetResponse(Header{}, nil)
 	fut.SetResponse(Header{}, nil)
 
@@ -155,7 +224,7 @@ func TestFutureGetIteratorFirstError(t *testing.T) {
 	const errMsg1 = "error1"
 	const errMsg2 = "error2"
 
-	fut := NewFuture()
+	fut := NewFuture(test_helpers.NewMockRequest())
 	fut.SetError(errors.New(errMsg1))
 	fut.SetError(errors.New(errMsg2))
 
@@ -173,11 +242,10 @@ func TestFutureGetIteratorResponse(t *testing.T) {
 	responses := []Response{
 		&PushResponse{},
 		&PushResponse{},
-		&BaseResponse{},
+		&test_helpers.MockResponse{},
 	}
 	header := Header{}
-	fut := NewFuture()
-	fut.SetRequest(&InsertRequest{})
+	fut := NewFuture(test_helpers.NewMockRequest())
 	for i := range responses {
 		if i == len(responses)-1 {
 			fut.SetResponse(header, nil)
@@ -215,7 +283,7 @@ func TestFutureGetIteratorError(t *testing.T) {
 		{},
 	}
 	err := errors.New(errMsg)
-	fut := NewFuture()
+	fut := NewFuture(test_helpers.NewMockRequest())
 	for range responses {
 		fut.AppendPush(Header{}, nil)
 	}
@@ -249,8 +317,7 @@ func TestFutureSetStateRaceCondition(t *testing.T) {
 	err := errors.New("any error")
 
 	for i := 0; i < 1000; i++ {
-		fut := NewFuture()
-		fut.SetRequest(&InsertRequest{})
+		fut := NewFuture(test_helpers.NewMockRequest())
 		for j := 0; j < 9; j++ {
 			go func(opt int) {
 				if opt%3 == 0 {
@@ -265,4 +332,68 @@ func TestFutureSetStateRaceCondition(t *testing.T) {
 	}
 	// It may be false-positive, but very rarely - it's ok for such very
 	// simple race conditions tests.
+}
+
+func TestFutureGetIteratorIsPush(t *testing.T) {
+	fut := NewFuture(test_helpers.NewMockRequest())
+	fut.AppendPush(Header{}, nil)
+	fut.SetResponse(Header{}, nil)
+	it := fut.GetIterator()
+
+	it.Next()
+	assert.True(t, it.IsPush())
+	it.Next()
+	assert.False(t, it.IsPush())
+}
+
+func TestFuture_Get(t *testing.T) {
+	fut := NewFuture(&futureMockRequest{})
+	fut.SetResponse(Header{}, bytes.NewReader([]byte{'v', '2'}))
+
+	resp, err := fut.GetResponse()
+	assert.NoError(t, err)
+	mockResp, ok := resp.(*futureMockResponse)
+	assert.True(t, ok)
+
+	data, err := fut.Get()
+	assert.NoError(t, err)
+	assert.Equal(t, []interface{}{uint8('v'), uint8('2')}, data)
+	assert.Equal(t, 1, mockResp.decodeCnt)
+	assert.Equal(t, 0, mockResp.decodeTypedCnt)
+}
+
+func TestFuture_GetTyped(t *testing.T) {
+	fut := NewFuture(&futureMockRequest{})
+	fut.SetResponse(Header{}, bytes.NewReader([]byte{'v', '2'}))
+
+	resp, err := fut.GetResponse()
+	assert.NoError(t, err)
+	mockResp, ok := resp.(*futureMockResponse)
+	assert.True(t, ok)
+
+	var data []byte
+
+	err = fut.GetTyped(&data)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, mockResp.decodeCnt)
+	assert.Equal(t, 1, mockResp.decodeTypedCnt)
+}
+
+func TestFuture_GetResponse(t *testing.T) {
+	mockResp, err := createFutureMockResponse(Header{},
+		bytes.NewReader([]byte{'v', '2'}))
+	assert.NoError(t, err)
+
+	fut := NewFuture(&futureMockRequest{})
+	fut.SetResponse(Header{}, bytes.NewReader([]byte{'v', '2'}))
+
+	resp, err := fut.GetResponse()
+	assert.NoError(t, err)
+	respConv, ok := resp.(*futureMockResponse)
+	assert.True(t, ok)
+	assert.Equal(t, mockResp, respConv)
+
+	data, err := resp.Decode()
+	assert.NoError(t, err)
+	assert.Equal(t, []interface{}{uint8('v'), uint8('2')}, data)
 }
