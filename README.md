@@ -211,6 +211,10 @@ The subpackage has been deleted. You could use `pool` instead.
 * `crud` operations `Timeout` option has `crud.OptFloat64` type
   instead of `crud.OptUint`.
 
+#### test_helpers package
+
+Renamed `StrangerResponse` to `MockResponse`.
+
 #### msgpack.v5
 
 Most function names and argument types in `msgpack.v5` and `msgpack.v2`
@@ -248,6 +252,8 @@ of the requests is an array instead of array of arrays.
 * IPROTO constants have been moved to a separate package [go-iproto](https://github.com/tarantool/go-iproto).
 * `PushCode` constant is removed. To check whether the current response is
   a push response, use `IsPush()` method of the response iterator instead.
+* `ErrorNo` constant is added to indicate that no error has occurred while
+  getting the response. It should be used instead of the removed `OkCode`.
 
 #### Request changes
 
@@ -285,9 +291,10 @@ for an `ops` field. `*Operations` needs to be used instead.
 
 #### Connector changes
 
-Operations `Ping`, `Select`, `Insert`, `Replace`, `Delete`, `Update`, `Upsert`, 
-`Call`, `Call16`, `Call17`, `Eval`, `Execute` of a `Connector` return 
-response data instead of an actual responses.
+* Operations `Ping`, `Select`, `Insert`, `Replace`, `Delete`, `Update`, `Upsert`, 
+  `Call`, `Call16`, `Call17`, `Eval`, `Execute` of a `Connector` return 
+  response data instead of an actual responses.
+* New interface `Doer` is added as a child-interface instead of a `Do` method.
 
 #### Connect function
 
@@ -304,8 +311,8 @@ for creating a connection are now stored in corresponding `Dialer`, not in `Opts
 #### Connection schema
 
 * Removed `Schema` field from the `Connection` struct. Instead, new
-`GetSchema(Connector)` function was added to get the actual connection
-schema on demand.
+  `GetSchema(Doer)` function was added to get the actual connection
+  schema on demand.
 * `OverrideSchema(*Schema)` method replaced with the `SetSchema(Schema)`.
 
 #### Protocol changes

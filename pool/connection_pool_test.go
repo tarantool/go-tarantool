@@ -2379,9 +2379,8 @@ func TestPing(t *testing.T) {
 	require.Nilf(t, data, "response data is not nil after Ping")
 
 	// RO
-	data, err = connPool.Ping(pool.RO)
+	_, err = connPool.Ping(pool.RO)
 	require.Nilf(t, err, "failed to Ping")
-	require.Nilf(t, data, "response data is not nil after Ping")
 
 	// PreferRW
 	data, err = connPool.Ping(pool.PreferRW)
@@ -2549,7 +2548,7 @@ func TestDoWithStrangerConn(t *testing.T) {
 
 	defer connPool.Close()
 
-	req := test_helpers.NewStrangerRequest()
+	req := test_helpers.NewMockRequest()
 
 	_, err = connPool.Do(req, pool.ANY).Get()
 	if err == nil {

@@ -1460,7 +1460,7 @@ func (p *ConnectionPool) getConnByMode(defaultMode Mode,
 }
 
 func newErrorFuture(err error) *tarantool.Future {
-	fut := tarantool.NewFuture()
+	fut := tarantool.NewFuture(nil)
 	fut.SetError(err)
 	return fut
 }

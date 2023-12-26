@@ -398,16 +398,17 @@ func identify(w writeFlusher, r io.Reader) (ProtocolInfo, error) {
 		return info, err
 	}
 
-	resp, err := readResponse(r)
+	resp, err := readResponse(r, req)
 	if err != nil {
+		if resp != nil &&
+			resp.Header().Error == iproto.ER_UNKNOWN_REQUEST_TYPE {
+			// IPROTO_ID requests are not supported by server.
+			return info, nil
+		}
 		return info, err
 	}
 	data, err := resp.Decode()
 	if err != nil {
-		if iproto.Error(resp.Header().Code) == iproto.ER_UNKNOWN_REQUEST_TYPE {
-			// IPROTO_ID requests are not supported by server.
-			return info, nil
-		}
 		return info, err
 	}
 
@@ -477,7 +478,7 @@ func authenticate(c Conn, auth Auth, user string, pass string, salt string) erro
 	if err = writeRequest(c, req); err != nil {
 		return err
 	}
-	if _, err = readResponse(c); err != nil {
+	if _, err = readResponse(c, req); err != nil {
 		return err
 	}
 	return nil
@@ -501,19 +502,31 @@ func writeRequest(w writeFlusher, req Request) error {
 }
 
 // readResponse reads a response from the reader.
-func readResponse(r io.Reader) (Response, error) {
+func readResponse(r io.Reader, req Request) (Response, error) {
 	var lenbuf [packetLengthBytes]byte
 
 	respBytes, err := read(r, lenbuf[:])
 	if err != nil {
-		return &BaseResponse{}, fmt.Errorf("read error: %w", err)
+		return nil, fmt.Errorf("read error: %w", err)
 	}
 
 	buf := smallBuf{b: respBytes}
-	header, err := decodeHeader(msgpack.NewDecoder(&smallBuf{}), &buf)
-	resp := &BaseResponse{header: header, buf: buf}
+	header, _, err := decodeHeader(msgpack.NewDecoder(&smallBuf{}), &buf)
 	if err != nil {
-		return resp, fmt.Errorf("decode response header error: %w", err)
+		return nil, fmt.Errorf("decode response header error: %w", err)
+	}
+	resp, err := req.Response(header, &buf)
+	if err != nil {
+		return nil, fmt.Errorf("creating response error: %w", err)
+	}
+	_, err = resp.Decode()
+	if err != nil {
+		switch err.(type) {
+		case Error:
+			return resp, err
+		default:
+			return resp, fmt.Errorf("decode response body error: %w", err)
+		}
 	}
 	return resp, nil
 }

@@ -33,6 +33,10 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 - `Response` method added to the `Request` interface (#237)
 - New `LogAppendPushFailed` connection log constant (#237).
   It is logged when connection fails to append a push response.
+- `ErrorNo` constant that indicates that no error has occurred while getting
+  the response (#237)
+- Ability to mock connections for tests (#237). Added new types `MockDoer`,
+  `MockRequest` to `test_helpers`.
 
 ### Changed
 
@@ -88,6 +92,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 - Operations `Ping`, `Select`, `Insert`, `Replace`, `Delete`, `Update`, `Upsert`,
   `Call`, `Call16`, `Call17`, `Eval`, `Execute` of a `Connector` and `Pooler`
   return response data instead of an actual responses (#237)
+- Renamed `StrangerResponse` to `MockResponse` (#237)
 
 ### Deprecated
 
@@ -110,7 +115,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 - IPROTO constants (#158)
 - Code() method from the Request interface (#158)
 - `Schema` field from the `Connection` struct (#7)
-- `PushCode` constant (#237)
+- `OkCode` and `PushCode` constants (#237)
 
 ### Fixed
 

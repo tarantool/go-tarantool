@@ -121,7 +121,7 @@ func (it *asyncResponseIterator) nextResponse() (resp Response) {
 
 // PushResponse is used for push requests for the Future.
 type PushResponse struct {
-	BaseResponse
+	baseResponse
 }
 
 func createPushResponse(header Header, body io.Reader) (Response, error) {
@@ -132,12 +132,13 @@ func createPushResponse(header Header, body io.Reader) (Response, error) {
 	return &PushResponse{resp}, nil
 }
 
-// NewFuture creates a new empty Future.
-func NewFuture() (fut *Future) {
+// NewFuture creates a new empty Future for a given Request.
+func NewFuture(req Request) (fut *Future) {
 	fut = &Future{}
 	fut.ready = make(chan struct{}, 1000000000)
 	fut.done = make(chan struct{})
 	fut.pushes = make([]Response, 0)
+	fut.req = req
 	return fut
 }
 
@@ -161,11 +162,6 @@ func (fut *Future) AppendPush(header Header, body io.Reader) error {
 
 	fut.ready <- struct{}{}
 	return nil
-}
-
-// SetRequest sets a request, for which the future was created.
-func (fut *Future) SetRequest(req Request) {
-	fut.req = req
 }
 
 // SetResponse sets a response for the future and finishes the future.

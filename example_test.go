@@ -198,14 +198,32 @@ func ExampleSelectRequest() {
 	}
 
 	key := []interface{}{uint(1111)}
-	data, err := conn.Do(tarantool.NewSelectRequest(617).
+	resp, err := conn.Do(tarantool.NewSelectRequest(617).
 		Limit(100).
 		Iterator(tarantool.IterEq).
 		Key(key),
-	).Get()
+	).GetResponse()
 
 	if err != nil {
 		fmt.Printf("error in select is %v", err)
+		return
+	}
+	selResp, ok := resp.(*tarantool.SelectResponse)
+	if !ok {
+		fmt.Print("wrong response type")
+		return
+	}
+
+	pos, err := selResp.Pos()
+	if err != nil {
+		fmt.Printf("error in Pos: %v", err)
+		return
+	}
+	fmt.Printf("pos for Select is %v\n", pos)
+
+	data, err := resp.Decode()
+	if err != nil {
+		fmt.Printf("error while decoding: %v", err)
 		return
 	}
 	fmt.Printf("response is %#v\n", data)
@@ -224,6 +242,7 @@ func ExampleSelectRequest() {
 	fmt.Printf("response is %v\n", res)
 
 	// Output:
+	// pos for Select is []
 	// response is []interface {}{[]interface {}{0x457, "hello", "world"}}
 	// response is [{{} 1111 hello world}]
 }
@@ -567,17 +586,21 @@ func ExampleExecuteRequest() {
 	resp, err := conn.Do(req).GetResponse()
 	fmt.Println("Execute")
 	fmt.Println("Error", err)
+
 	data, err := resp.Decode()
 	fmt.Println("Error", err)
 	fmt.Println("Data", data)
+
 	exResp, ok := resp.(*tarantool.ExecuteResponse)
 	if !ok {
 		fmt.Printf("wrong response type")
 		return
 	}
+
 	metaData, err := exResp.MetaData()
 	fmt.Println("MetaData", metaData)
 	fmt.Println("Error", err)
+
 	sqlInfo, err := exResp.SQLInfo()
 	fmt.Println("SQL Info", sqlInfo)
 	fmt.Println("Error", err)
@@ -992,6 +1015,26 @@ func ExampleBeginRequest_TxnIsolation() {
 	fmt.Printf("Select after Rollback: response is %#v\n", data)
 }
 
+func ExampleErrorNo() {
+	conn := exampleConnect(dialer, opts)
+	defer conn.Close()
+
+	req := tarantool.NewPingRequest()
+	resp, err := conn.Do(req).GetResponse()
+	if err != nil {
+		fmt.Printf("error getting the response: %s\n", err)
+		return
+	}
+
+	if resp.Header().Error != tarantool.ErrorNo {
+		fmt.Printf("response error code: %s\n", resp.Header().Error)
+	} else {
+		fmt.Println("Success.")
+	}
+	// Output:
+	// Success.
+}
+
 func ExampleFuture_GetIterator() {
 	conn := exampleConnect(dialer, opts)
 	defer conn.Close()
@@ -1008,11 +1051,11 @@ func ExampleFuture_GetIterator() {
 		if it.IsPush() {
 			// It is a push message.
 			fmt.Printf("push message: %v\n", data[0])
-		} else if resp.Header().Code == tarantool.OkCode {
+		} else if resp.Header().Error == tarantool.ErrorNo {
 			// It is a regular response.
 			fmt.Printf("response: %v", data[0])
 		} else {
-			fmt.Printf("an unexpected response code %d", resp.Header().Code)
+			fmt.Printf("an unexpected response code %d", resp.Header().Error)
 		}
 	}
 	if err := it.Err(); err != nil {
@@ -1224,6 +1267,11 @@ func ExampleConnection_Do_failure() {
 	if err != nil {
 		fmt.Printf("Error in the future: %s\n", err)
 	}
+	// Optional step: check a response error.
+	// It allows checking that response has or hasn't an error without decoding.
+	if resp.Header().Error != tarantool.ErrorNo {
+		fmt.Printf("Response error: %s\n", resp.Header().Error)
+	}
 
 	data, err := future.Get()
 	if err != nil {
@@ -1239,8 +1287,8 @@ func ExampleConnection_Do_failure() {
 		} else {
 			// Response exist. So it could be a Tarantool error or a decode
 			// error. We need to check the error code.
-			fmt.Printf("Error code from the response: %d\n", resp.Header().Code)
-			if resp.Header().Code == tarantool.OkCode {
+			fmt.Printf("Error code from the response: %d\n", resp.Header().Error)
+			if resp.Header().Error == tarantool.ErrorNo {
 				fmt.Printf("Decode error: %s\n", err)
 			} else {
 				code := err.(tarantool.Error).Code
@@ -1251,6 +1299,7 @@ func ExampleConnection_Do_failure() {
 	}
 
 	// Output:
+	// Response error: ER_NO_SUCH_PROC
 	// Data: []
 	// Error code from the response: 33
 	// Error code from the error: 33
