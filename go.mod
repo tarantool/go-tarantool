@@ -7,7 +7,7 @@ require (
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/shopspring/decimal v1.3.1
 	github.com/stretchr/testify v1.7.1
-	github.com/tarantool/go-iproto v0.1.1-0.20231025103136-cb7894473931
+	github.com/tarantool/go-iproto v1.0.0
 	github.com/tarantool/go-openssl v0.0.8-0.20231004103608-336ca939d2ca
 	github.com/vmihailenco/msgpack/v5 v5.3.5
 	golang.org/x/sys v0.0.0-20210119212857-b64e53b001e4 // indirect
