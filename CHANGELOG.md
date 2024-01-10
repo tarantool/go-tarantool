@@ -14,8 +14,15 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Fixed
 
+## [1.12.2] - 2024-01-11
+
+The patch release with fixes from the master branch.
+
+### Fixed
+
 - Tests with crud 1.4.0 (#336)
 - Tests with case sensitive SQL (#341)
+- Potentially packet length overflow when reading (#361)
 
 ## [1.12.1] - 2023-08-03
 
