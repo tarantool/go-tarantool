@@ -37,6 +37,11 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
   the response (#237)
 - Ability to mock connections for tests (#237). Added new types `MockDoer`,
   `MockRequest` to `test_helpers`.
+- `AuthDialer` type for creating a dialer with authentication (#301)
+- `ProtocolDialer` type for creating a dialer with `ProtocolInfo` receiving and 
+  check (#301)
+- `GreetingDialer` type for creating a dialer, that fills `Greeting` of a
+  connection (#301)
 
 ### Changed
 

@@ -3,6 +3,7 @@ package tarantool_test
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"net"
@@ -235,6 +236,7 @@ func TestConn_Addr(t *testing.T) {
 func TestConn_Greeting(t *testing.T) {
 	greeting := tarantool.Greeting{
 		Version: "any",
+		Salt:    "salt",
 	}
 	conn, dialer := dialIo(t, func(conn *mockIoConn) {
 		conn.greeting = greeting
@@ -522,6 +524,7 @@ func testDialer(t *testing.T, l net.Listener, dialer tarantool.Dialer,
 	require.NoError(t, err)
 	require.Equal(t, opts.expectedProtocolInfo, conn.ProtocolInfo())
 	require.Equal(t, testDialVersion[:], []byte(conn.Greeting().Version))
+	require.Equal(t, testDialSalt[:44], []byte(conn.Greeting().Salt))
 
 	actual := <-ch
 	require.Equal(t, idRequestExpected, actual.IdRequest)
@@ -551,9 +554,8 @@ func TestNetDialer_Dial(t *testing.T) {
 			expectedProtocolInfo: idResponseTyped.Clone(),
 		},
 		{
-			name: "id request unsupported",
-			// Dialer sets auth.
-			expectedProtocolInfo: tarantool.ProtocolInfo{Auth: tarantool.ChapSha1Auth},
+			name:                 "id request unsupported",
+			expectedProtocolInfo: tarantool.ProtocolInfo{},
 			isIdUnsupported:      true,
 		},
 		{
@@ -677,4 +679,242 @@ func TestFdDialer_Dial_requirements(t *testing.T) {
 	}
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "invalid server protocol")
+}
+
+func TestAuthDialer_Dial_DialerError(t *testing.T) {
+	dialer := tarantool.AuthDialer{
+		Dialer: mockErrorDialer{
+			err: fmt.Errorf("some error"),
+		},
+	}
+
+	ctx, cancel := test_helpers.GetConnectContext()
+	defer cancel()
+	conn, err := dialer.Dial(ctx, tarantool.DialOpts{})
+	if conn != nil {
+		conn.Close()
+	}
+
+	assert.NotNil(t, err)
+	assert.EqualError(t, err, "some error")
+}
+
+func TestAuthDialer_Dial_NoSalt(t *testing.T) {
+	dialer := tarantool.AuthDialer{
+		Dialer: &mockIoDialer{
+			init: func(conn *mockIoConn) {
+				conn.greeting = tarantool.Greeting{
+					Salt: "",
+				}
+			},
+		},
+	}
+
+	ctx, cancel := test_helpers.GetConnectContext()
+	defer cancel()
+	conn, err := dialer.Dial(ctx, tarantool.DialOpts{})
+
+	assert.NotNil(t, err)
+	assert.ErrorContains(t, err, "an invalid connection without salt")
+	if conn != nil {
+		conn.Close()
+		t.Errorf("connection is not nil")
+	}
+}
+
+func TestAuthDialer_Dial(t *testing.T) {
+	salt := fmt.Sprintf("%s", testDialSalt)
+	salt = base64.StdEncoding.EncodeToString([]byte(salt))
+	dialer := mockIoDialer{
+		init: func(conn *mockIoConn) {
+			conn.greeting.Salt = salt
+			conn.writeWgDelay = 1
+			conn.readWgDelay = 2
+			conn.readbuf.Write(okResponse)
+		},
+	}
+	defer func() {
+		dialer.conn.writeWg.Done()
+	}()
+
+	authDialer := tarantool.AuthDialer{
+		Dialer:   &dialer,
+		Username: "test",
+		Password: "test",
+	}
+	ctx, cancel := test_helpers.GetConnectContext()
+	defer cancel()
+	conn, err := authDialer.Dial(ctx, tarantool.DialOpts{})
+	if conn != nil {
+		conn.Close()
+	}
+
+	assert.Nil(t, err)
+	assert.NotNil(t, conn)
+	assert.Equal(t, authRequestExpectedChapSha1[:41], dialer.conn.writebuf.Bytes()[:41])
+}
+
+func TestProtocolDialer_Dial_DialerError(t *testing.T) {
+	dialer := tarantool.ProtocolDialer{
+		Dialer: mockErrorDialer{
+			err: fmt.Errorf("some error"),
+		},
+	}
+
+	ctx, cancel := test_helpers.GetConnectContext()
+	defer cancel()
+	conn, err := dialer.Dial(ctx, tarantool.DialOpts{})
+	if conn != nil {
+		conn.Close()
+	}
+
+	assert.NotNil(t, err)
+	assert.EqualError(t, err, "some error")
+}
+
+func TestProtocolDialer_Dial_IdentifyFailed(t *testing.T) {
+	dialer := tarantool.ProtocolDialer{
+		Dialer: &mockIoDialer{
+			init: func(conn *mockIoConn) {
+				conn.info = tarantool.ProtocolInfo{Version: 1}
+				conn.writeWgDelay = 1
+				conn.readWgDelay = 2
+				conn.readbuf.Write(errResponse)
+			},
+		},
+	}
+
+	ctx, cancel := test_helpers.GetConnectContext()
+	defer cancel()
+	conn, err := dialer.Dial(ctx, tarantool.DialOpts{})
+
+	assert.NotNil(t, err)
+	assert.ErrorContains(t, err, "failed to identify")
+	if conn != nil {
+		conn.Close()
+		t.Errorf("connection is not nil")
+	}
+}
+
+func TestProtocolDialer_Dial_WrongInfo(t *testing.T) {
+	dialer := tarantool.ProtocolDialer{
+		Dialer: &mockIoDialer{
+			init: func(conn *mockIoConn) {
+				conn.info = tarantool.ProtocolInfo{Version: 1}
+				conn.writeWgDelay = 1
+				conn.readWgDelay = 2
+				conn.readbuf.Write(idResponse)
+			},
+		},
+		RequiredProtocolInfo: validProtocolInfo,
+	}
+
+	ctx, cancel := test_helpers.GetConnectContext()
+	defer cancel()
+	conn, err := dialer.Dial(ctx, tarantool.DialOpts{})
+
+	assert.NotNil(t, err)
+	assert.ErrorContains(t, err, "invalid server protocol")
+	if conn != nil {
+		conn.Close()
+		t.Errorf("connection is not nil")
+	}
+}
+
+func TestProtocolDialer_Dial(t *testing.T) {
+	protoInfo := tarantool.ProtocolInfo{
+		Auth:     tarantool.ChapSha1Auth,
+		Version:  6,
+		Features: []iproto.Feature{0x01, 0x15},
+	}
+
+	dialer := tarantool.ProtocolDialer{
+		Dialer: &mockIoDialer{
+			init: func(conn *mockIoConn) {
+				conn.info = tarantool.ProtocolInfo{Version: 1}
+				conn.writeWgDelay = 1
+				conn.readWgDelay = 2
+				conn.readbuf.Write(idResponse)
+			},
+		},
+		RequiredProtocolInfo: protoInfo,
+	}
+
+	ctx, cancel := test_helpers.GetConnectContext()
+	defer cancel()
+	conn, err := dialer.Dial(ctx, tarantool.DialOpts{})
+	if conn != nil {
+		conn.Close()
+	}
+
+	assert.Nil(t, err)
+	assert.NotNil(t, conn)
+	assert.Equal(t, protoInfo, conn.ProtocolInfo())
+}
+
+func TestGreetingDialer_Dial_DialerError(t *testing.T) {
+	dialer := tarantool.GreetingDialer{
+		Dialer: mockErrorDialer{
+			err: fmt.Errorf("some error"),
+		},
+	}
+
+	ctx, cancel := test_helpers.GetConnectContext()
+	defer cancel()
+	conn, err := dialer.Dial(ctx, tarantool.DialOpts{})
+	if conn != nil {
+		conn.Close()
+	}
+
+	assert.NotNil(t, err)
+	assert.EqualError(t, err, "some error")
+}
+
+func TestGreetingDialer_Dial_GreetingFailed(t *testing.T) {
+	dialer := tarantool.GreetingDialer{
+		Dialer: &mockIoDialer{
+			init: func(conn *mockIoConn) {
+				conn.writeWgDelay = 1
+				conn.readWgDelay = 2
+				conn.readbuf.Write(errResponse)
+			},
+		},
+	}
+
+	ctx, cancel := test_helpers.GetConnectContext()
+	defer cancel()
+	conn, err := dialer.Dial(ctx, tarantool.DialOpts{})
+
+	assert.NotNil(t, err)
+	assert.ErrorContains(t, err, "failed to read greeting")
+	if conn != nil {
+		conn.Close()
+		t.Errorf("connection is not nil")
+	}
+}
+
+func TestGreetingDialer_Dial(t *testing.T) {
+	dialer := tarantool.GreetingDialer{
+		Dialer: &mockIoDialer{
+			init: func(conn *mockIoConn) {
+				conn.info = tarantool.ProtocolInfo{Version: 1}
+				conn.writeWgDelay = 1
+				conn.readWgDelay = 3
+				conn.readbuf.Write(append(testDialVersion[:], testDialSalt[:]...))
+				conn.readbuf.Write(idResponse)
+			},
+		},
+	}
+
+	ctx, cancel := test_helpers.GetConnectContext()
+	defer cancel()
+	conn, err := dialer.Dial(ctx, tarantool.DialOpts{})
+	if conn != nil {
+		conn.Close()
+	}
+
+	assert.Nil(t, err)
+	assert.NotNil(t, conn)
+	assert.Equal(t, string(testDialVersion[:]), conn.Greeting().Version)
+	assert.Equal(t, string(testDialSalt[:44]), conn.Greeting().Salt)
 }

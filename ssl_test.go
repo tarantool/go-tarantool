@@ -654,9 +654,8 @@ func TestOpenSslDialer_Dial_basic(t *testing.T) {
 			expectedProtocolInfo: idResponseTyped.Clone(),
 		},
 		{
-			name: "id request unsupported",
-			// Dialer sets auth.
-			expectedProtocolInfo: ProtocolInfo{Auth: ChapSha1Auth},
+			name:                 "id request unsupported",
+			expectedProtocolInfo: ProtocolInfo{},
 			isIdUnsupported:      true,
 		},
 		{
@@ -730,8 +729,9 @@ func TestOpenSslDialer_Dial_papSha256Auth(t *testing.T) {
 		Auth:     PapSha256Auth,
 	}
 
+	// Response from the server.
 	protocol := idResponseTyped.Clone()
-	protocol.Auth = PapSha256Auth
+	protocol.Auth = ChapSha1Auth
 
 	testDialer(t, l, dialer, testDialOpts{
 		expectedProtocolInfo: protocol,
