@@ -14,10 +14,6 @@ BENCH_OPTIONS := -bench=. -run=^Benchmark -benchmem -benchtime=${DURATION} -coun
 GO_TARANTOOL_URL := https://github.com/tarantool/go-tarantool
 GO_TARANTOOL_DIR := ${PROJECT_DIR}/${BENCH_PATH}/go-tarantool
 TAGS :=
-TTCTL := tt
-ifeq (,$(shell which tt 2>/dev/null))
-	TTCTL := tarantoolctl
-endif
 
 .PHONY: clean
 clean:
@@ -26,8 +22,9 @@ clean:
 
 .PHONY: deps
 deps: clean
-	( cd ./queue/testdata; $(TTCTL) rocks install queue 1.3.0 )
-	( cd ./crud/testdata; $(TTCTL) rocks install crud 1.4.1 )
+	@(command -v tt > /dev/null || (echo "error: tt not found" && exit 1))
+	( cd ./queue/testdata; tt rocks install queue 1.3.0 )
+	( cd ./crud/testdata; tt rocks install crud 1.4.1 )
 
 .PHONY: datetime-timezones
 datetime-timezones:

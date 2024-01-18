@@ -19,8 +19,14 @@ jobs:
       with:
         tarantool-version: '2.8'
 
+    - name: Setup tt
+      run: |
+        curl -L https://tarantool.io/release/2/installer.sh | sudo bash
+        sudo apt install -y tt
+        tt version
+
     - name: Setup luacheck
-      run: tarantoolctl rocks install luacheck 0.25.0
+      run: tt rocks install luacheck 0.25.0
 
     - name: Run luacheck
       run: ./.rocks/bin/luacheck .

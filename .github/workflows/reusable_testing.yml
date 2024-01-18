@@ -38,6 +38,12 @@ jobs:
         with:
           go-version: 1.13
 
+      - name: Setup tt
+        run: |
+          curl -L https://tarantool.io/release/2/installer.sh | sudo bash
+          sudo apt install -y tt
+          tt version
+
       - name: Install test dependencies
         run: make deps
 
