@@ -358,9 +358,15 @@ jobs:
         run: echo "MallocNanoZone=0" >> $GITHUB_ENV
         if: matrix.runs-on  == 'macos-12'
 
+      # Workaround issue https://github.com/tarantool/tt/issues/640
+      - name: Fix tt rocks
+        if: matrix.tarantool == 'brew'
+        run: |
+          brew ls --verbose tarantool | grep macosx.lua | xargs rm -f
+
       - name: Install test dependencies
         run:  |
-          brew install luarocks
+          brew install tt
           cd "${SRCDIR}"
           make deps
 
