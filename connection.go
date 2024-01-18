@@ -440,7 +440,9 @@ func (conn *Connection) dial(ctx context.Context) error {
 	}
 
 	conn.addr = c.Addr()
-	conn.Greeting.Version = c.Greeting().Version
+	connGreeting := c.Greeting()
+	conn.Greeting.Version = connGreeting.Version
+	conn.Greeting.Salt = connGreeting.Salt
 	conn.serverProtocolInfo = c.ProtocolInfo()
 
 	spaceAndIndexNamesSupported :=

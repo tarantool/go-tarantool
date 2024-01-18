@@ -772,6 +772,24 @@ func TestNetDialer(t *testing.T) {
 	assert.Equal([]byte{0x83, 0x00, 0xce, 0x00, 0x00, 0x00, 0x00}, buf[:7])
 }
 
+func TestNetDialer_BadUser(t *testing.T) {
+	badDialer := NetDialer{
+		Address:  server,
+		User:     "Cpt Smollett",
+		Password: "none",
+	}
+	ctx, cancel := test_helpers.GetConnectContext()
+	defer cancel()
+
+	conn, err := Connect(ctx, badDialer, opts)
+	assert.NotNil(t, err)
+	assert.ErrorContains(t, err, "failed to authenticate")
+	if conn != nil {
+		conn.Close()
+		t.Errorf("connection is not nil")
+	}
+}
+
 func TestFutureMultipleGetGetTyped(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
@@ -3273,9 +3291,7 @@ func TestConnectionProtocolInfoUnsupported(t *testing.T) {
 	defer conn.Close()
 
 	serverProtocolInfo := conn.ProtocolInfo()
-	expected := ProtocolInfo{
-		Auth: ChapSha1Auth,
-	}
+	expected := ProtocolInfo{}
 	require.Equal(t, expected, serverProtocolInfo)
 }
 

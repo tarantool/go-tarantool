@@ -20,7 +20,10 @@ const bufSize = 128 * 1024
 
 // Greeting is a message sent by Tarantool on connect.
 type Greeting struct {
+	// Version is the supported protocol version.
 	Version string
+	// Salt is used to authenticate a user.
+	Salt string
 }
 
 // writeFlusher is the interface that groups the basic Write and Flush methods.
@@ -71,30 +74,94 @@ type Dialer interface {
 }
 
 type tntConn struct {
-	net      net.Conn
-	reader   io.Reader
-	writer   writeFlusher
-	greeting Greeting
-	protocol ProtocolInfo
+	net    net.Conn
+	reader io.Reader
+	writer writeFlusher
 }
 
-// rawDial does basic dial operations:
-// reads greeting, identifies a protocol and validates it.
-func rawDial(conn *tntConn, requiredProto ProtocolInfo) (string, error) {
-	version, salt, err := readGreeting(conn.reader)
+// Addr makes tntConn satisfy the Conn interface.
+func (c *tntConn) Addr() net.Addr {
+	return c.net.RemoteAddr()
+}
+
+// Read makes tntConn satisfy the Conn interface.
+func (c *tntConn) Read(p []byte) (int, error) {
+	return c.reader.Read(p)
+}
+
+// Write makes tntConn satisfy the Conn interface.
+func (c *tntConn) Write(p []byte) (int, error) {
+	if l, err := c.writer.Write(p); err != nil {
+		return l, err
+	} else if l != len(p) {
+		return l, errors.New("wrong length written")
+	} else {
+		return l, nil
+	}
+}
+
+// Flush makes tntConn satisfy the Conn interface.
+func (c *tntConn) Flush() error {
+	return c.writer.Flush()
+}
+
+// Close makes tntConn satisfy the Conn interface.
+func (c *tntConn) Close() error {
+	return c.net.Close()
+}
+
+// Greeting makes tntConn satisfy the Conn interface.
+func (c *tntConn) Greeting() Greeting {
+	return Greeting{}
+}
+
+// ProtocolInfo makes tntConn satisfy the Conn interface.
+func (c *tntConn) ProtocolInfo() ProtocolInfo {
+	return ProtocolInfo{}
+}
+
+// protocolConn is a wrapper for connections, so they contain the ProtocolInfo.
+type protocolConn struct {
+	Conn
+	protocolInfo ProtocolInfo
+}
+
+// ProtocolInfo returns ProtocolInfo of a protocolConn.
+func (c *protocolConn) ProtocolInfo() ProtocolInfo {
+	return c.protocolInfo
+}
+
+// greetingConn is a wrapper for connections, so they contain the Greeting.
+type greetingConn struct {
+	Conn
+	greeting Greeting
+}
+
+// Greeting returns Greeting of a greetingConn.
+func (c *greetingConn) Greeting() Greeting {
+	return c.greeting
+}
+
+type netDialer struct {
+	address string
+}
+
+func (d netDialer) Dial(ctx context.Context, opts DialOpts) (Conn, error) {
+	var err error
+	conn := new(tntConn)
+
+	network, address := parseAddress(d.address)
+	dialer := net.Dialer{}
+	conn.net, err = dialer.DialContext(ctx, network, address)
 	if err != nil {
-		return "", fmt.Errorf("failed to read greeting: %w", err)
-	}
-	conn.greeting.Version = version
-
-	if conn.protocol, err = identify(conn.writer, conn.reader); err != nil {
-		return "", fmt.Errorf("failed to identify: %w", err)
+		return nil, fmt.Errorf("failed to dial: %w", err)
 	}
 
-	if err = checkProtocolInfo(requiredProto, conn.protocol); err != nil {
-		return "", fmt.Errorf("invalid server protocol: %w", err)
-	}
-	return salt, err
+	dc := &deadlineIO{to: opts.IoTimeout, c: conn.net}
+	conn.reader = bufio.NewReaderSize(dc, bufSize)
+	conn.writer = bufio.NewWriterSize(dc, bufSize)
+
+	return conn, nil
 }
 
 // NetDialer is a basic Dialer implementation.
@@ -121,12 +188,46 @@ type NetDialer struct {
 
 // Dial makes NetDialer satisfy the Dialer interface.
 func (d NetDialer) Dial(ctx context.Context, opts DialOpts) (Conn, error) {
+	dialer := AuthDialer{
+		Dialer: ProtocolDialer{
+			Dialer: GreetingDialer{
+				Dialer: netDialer{
+					address: d.Address,
+				},
+			},
+			RequiredProtocolInfo: d.RequiredProtocolInfo,
+		},
+		Auth:     ChapSha1Auth,
+		Username: d.User,
+		Password: d.Password,
+	}
+
+	return dialer.Dial(ctx, opts)
+}
+
+type openSslDialer struct {
+	address         string
+	sslKeyFile      string
+	sslCertFile     string
+	sslCaFile       string
+	sslCiphers      string
+	sslPassword     string
+	sslPasswordFile string
+}
+
+func (d openSslDialer) Dial(ctx context.Context, opts DialOpts) (Conn, error) {
 	var err error
 	conn := new(tntConn)
 
-	network, address := parseAddress(d.Address)
-	dialer := net.Dialer{}
-	conn.net, err = dialer.DialContext(ctx, network, address)
+	network, address := parseAddress(d.address)
+	conn.net, err = sslDialContext(ctx, network, address, sslOpts{
+		KeyFile:      d.sslKeyFile,
+		CertFile:     d.sslCertFile,
+		CaFile:       d.sslCaFile,
+		Ciphers:      d.sslCiphers,
+		Password:     d.sslPassword,
+		PasswordFile: d.sslPasswordFile,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to dial: %w", err)
 	}
@@ -134,22 +235,6 @@ func (d NetDialer) Dial(ctx context.Context, opts DialOpts) (Conn, error) {
 	dc := &deadlineIO{to: opts.IoTimeout, c: conn.net}
 	conn.reader = bufio.NewReaderSize(dc, bufSize)
 	conn.writer = bufio.NewWriterSize(dc, bufSize)
-
-	salt, err := rawDial(conn, d.RequiredProtocolInfo)
-	if err != nil {
-		conn.net.Close()
-		return nil, err
-	}
-
-	if d.User == "" {
-		return conn, nil
-	}
-
-	conn.protocol.Auth = ChapSha1Auth
-	if err = authenticate(conn, ChapSha1Auth, d.User, d.Password, salt); err != nil {
-		conn.net.Close()
-		return nil, fmt.Errorf("failed to authenticate: %w", err)
-	}
 
 	return conn, nil
 }
@@ -206,61 +291,27 @@ type OpenSslDialer struct {
 
 // Dial makes OpenSslDialer satisfy the Dialer interface.
 func (d OpenSslDialer) Dial(ctx context.Context, opts DialOpts) (Conn, error) {
-	var err error
-	conn := new(tntConn)
-
-	network, address := parseAddress(d.Address)
-	conn.net, err = sslDialContext(ctx, network, address, sslOpts{
-		KeyFile:      d.SslKeyFile,
-		CertFile:     d.SslCertFile,
-		CaFile:       d.SslCaFile,
-		Ciphers:      d.SslCiphers,
-		Password:     d.SslPassword,
-		PasswordFile: d.SslPasswordFile,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to dial: %w", err)
+	dialer := AuthDialer{
+		Dialer: ProtocolDialer{
+			Dialer: GreetingDialer{
+				Dialer: openSslDialer{
+					address:         d.Address,
+					sslKeyFile:      d.SslKeyFile,
+					sslCertFile:     d.SslCertFile,
+					sslCaFile:       d.SslCaFile,
+					sslCiphers:      d.SslCiphers,
+					sslPassword:     d.SslPassword,
+					sslPasswordFile: d.SslPasswordFile,
+				},
+			},
+			RequiredProtocolInfo: d.RequiredProtocolInfo,
+		},
+		Auth:     d.Auth,
+		Username: d.User,
+		Password: d.Password,
 	}
 
-	dc := &deadlineIO{to: opts.IoTimeout, c: conn.net}
-	conn.reader = bufio.NewReaderSize(dc, bufSize)
-	conn.writer = bufio.NewWriterSize(dc, bufSize)
-
-	salt, err := rawDial(conn, d.RequiredProtocolInfo)
-	if err != nil {
-		conn.net.Close()
-		return nil, err
-	}
-
-	if d.User == "" {
-		return conn, nil
-	}
-
-	if d.Auth == AutoAuth {
-		if conn.protocol.Auth != AutoAuth {
-			d.Auth = conn.protocol.Auth
-		} else {
-			d.Auth = ChapSha1Auth
-		}
-	}
-	conn.protocol.Auth = d.Auth
-
-	if err = authenticate(conn, d.Auth, d.User, d.Password, salt); err != nil {
-		conn.net.Close()
-		return nil, fmt.Errorf("failed to authenticate: %w", err)
-	}
-
-	return conn, nil
-}
-
-// FdDialer allows to use an existing socket fd for connection.
-type FdDialer struct {
-	// Fd is a socket file descrpitor.
-	Fd uintptr
-	// RequiredProtocol contains minimal protocol version and
-	// list of protocol features that should be supported by
-	// Tarantool server. By default, there are no restrictions.
-	RequiredProtocolInfo ProtocolInfo
+	return dialer.Dial(ctx, opts)
 }
 
 type fdAddr struct {
@@ -284,69 +335,163 @@ func (c *fdConn) RemoteAddr() net.Addr {
 	return c.Addr
 }
 
-// Dial makes FdDialer satisfy the Dialer interface.
-func (d FdDialer) Dial(ctx context.Context, opts DialOpts) (Conn, error) {
-	file := os.NewFile(d.Fd, "")
+type fdDialer struct {
+	fd uintptr
+}
+
+func (d fdDialer) Dial(ctx context.Context, opts DialOpts) (Conn, error) {
+	file := os.NewFile(d.fd, "")
 	c, err := net.FileConn(file)
 	if err != nil {
 		return nil, fmt.Errorf("failed to dial: %w", err)
 	}
 
 	conn := new(tntConn)
-	conn.net = &fdConn{Conn: c, Addr: fdAddr{Fd: d.Fd}}
+	conn.net = &fdConn{Conn: c, Addr: fdAddr{Fd: d.fd}}
 
 	dc := &deadlineIO{to: opts.IoTimeout, c: conn.net}
 	conn.reader = bufio.NewReaderSize(dc, bufSize)
 	conn.writer = bufio.NewWriterSize(dc, bufSize)
 
-	_, err = rawDial(conn, d.RequiredProtocolInfo)
-	if err != nil {
-		conn.net.Close()
-		return nil, err
-	}
-
 	return conn, nil
 }
 
-// Addr makes tntConn satisfy the Conn interface.
-func (c *tntConn) Addr() net.Addr {
-	return c.net.RemoteAddr()
+// FdDialer allows using an existing socket fd for connection.
+type FdDialer struct {
+	// Fd is a socket file descriptor.
+	Fd uintptr
+	// RequiredProtocol contains minimal protocol version and
+	// list of protocol features that should be supported by
+	// Tarantool server. By default, there are no restrictions.
+	RequiredProtocolInfo ProtocolInfo
 }
 
-// Read makes tntConn satisfy the Conn interface.
-func (c *tntConn) Read(p []byte) (int, error) {
-	return c.reader.Read(p)
-}
-
-// Write makes tntConn satisfy the Conn interface.
-func (c *tntConn) Write(p []byte) (int, error) {
-	if l, err := c.writer.Write(p); err != nil {
-		return l, err
-	} else if l != len(p) {
-		return l, errors.New("wrong length written")
-	} else {
-		return l, nil
+// Dial makes FdDialer satisfy the Dialer interface.
+func (d FdDialer) Dial(ctx context.Context, opts DialOpts) (Conn, error) {
+	dialer := ProtocolDialer{
+		Dialer: GreetingDialer{
+			Dialer: fdDialer{
+				fd: d.Fd,
+			},
+		},
+		RequiredProtocolInfo: d.RequiredProtocolInfo,
 	}
+
+	return dialer.Dial(ctx, opts)
 }
 
-// Flush makes tntConn satisfy the Conn interface.
-func (c *tntConn) Flush() error {
-	return c.writer.Flush()
+// AuthDialer is a dialer-wrapper that does authentication of a user.
+type AuthDialer struct {
+	// Dialer is a base dialer.
+	Dialer Dialer
+	// Authentication options.
+	Auth Auth
+	// Username is a name of a user for authentication.
+	Username string
+	// Password is a user password for authentication.
+	Password string
 }
 
-// Close makes tntConn satisfy the Conn interface.
-func (c *tntConn) Close() error {
-	return c.net.Close()
+// Dial makes AuthDialer satisfy the Dialer interface.
+func (d AuthDialer) Dial(ctx context.Context, opts DialOpts) (Conn, error) {
+	conn, err := d.Dialer.Dial(ctx, opts)
+	if err != nil {
+		return conn, err
+	}
+	greeting := conn.Greeting()
+	if greeting.Salt == "" {
+		conn.Close()
+		return nil, fmt.Errorf("failed to authenticate: " +
+			"an invalid connection without salt")
+	}
+
+	if d.Username == "" {
+		return conn, nil
+	}
+
+	protocolAuth := conn.ProtocolInfo().Auth
+	if d.Auth == AutoAuth {
+		if protocolAuth != AutoAuth {
+			d.Auth = protocolAuth
+		} else {
+			d.Auth = ChapSha1Auth
+		}
+	}
+
+	if err := authenticate(conn, d.Auth, d.Username, d.Password,
+		conn.Greeting().Salt); err != nil {
+		conn.Close()
+		return nil, fmt.Errorf("failed to authenticate: %w", err)
+	}
+	return conn, nil
 }
 
-// Greeting makes tntConn satisfy the Conn interface.
-func (c *tntConn) Greeting() Greeting {
-	return c.greeting
+// ProtocolDialer is a dialer-wrapper that reads and fills the ProtocolInfo
+// of a connection.
+type ProtocolDialer struct {
+	// Dialer is a base dialer.
+	Dialer Dialer
+	// RequiredProtocol contains minimal protocol version and
+	// list of protocol features that should be supported by
+	// Tarantool server. By default, there are no restrictions.
+	RequiredProtocolInfo ProtocolInfo
 }
 
-// ProtocolInfo makes tntConn satisfy the Conn interface.
-func (c *tntConn) ProtocolInfo() ProtocolInfo {
-	return c.protocol
+// Dial makes ProtocolDialer satisfy the Dialer interface.
+func (d ProtocolDialer) Dial(ctx context.Context, opts DialOpts) (Conn, error) {
+	conn, err := d.Dialer.Dial(ctx, opts)
+	if err != nil {
+		return conn, err
+	}
+
+	protocolConn := protocolConn{
+		Conn:         conn,
+		protocolInfo: d.RequiredProtocolInfo,
+	}
+
+	protocolConn.protocolInfo, err = identify(&protocolConn)
+	if err != nil {
+		protocolConn.Close()
+		return nil, fmt.Errorf("failed to identify: %w", err)
+	}
+
+	err = checkProtocolInfo(d.RequiredProtocolInfo, protocolConn.protocolInfo)
+	if err != nil {
+		protocolConn.Close()
+		return nil, fmt.Errorf("invalid server protocol: %w", err)
+	}
+
+	return &protocolConn, nil
+}
+
+// GreetingDialer is a dialer-wrapper that reads and fills the Greeting
+// of a connection.
+type GreetingDialer struct {
+	// Dialer is a base dialer.
+	Dialer Dialer
+}
+
+// Dial makes GreetingDialer satisfy the Dialer interface.
+func (d GreetingDialer) Dial(ctx context.Context, opts DialOpts) (Conn, error) {
+	conn, err := d.Dialer.Dial(ctx, opts)
+	if err != nil {
+		return conn, err
+	}
+
+	greetingConn := greetingConn{
+		Conn: conn,
+	}
+	version, salt, err := readGreeting(greetingConn)
+	if err != nil {
+		greetingConn.Close()
+		return nil, fmt.Errorf("failed to read greeting: %w", err)
+	}
+	greetingConn.greeting = Greeting{
+		Version: version,
+		Salt:    salt,
+	}
+
+	return &greetingConn, err
 }
 
 // parseAddress split address into network and address parts.
@@ -390,15 +535,15 @@ func readGreeting(reader io.Reader) (string, string, error) {
 
 // identify sends info about client protocol, receives info
 // about server protocol in response and stores it in the connection.
-func identify(w writeFlusher, r io.Reader) (ProtocolInfo, error) {
+func identify(conn Conn) (ProtocolInfo, error) {
 	var info ProtocolInfo
 
 	req := NewIdRequest(clientProtocolInfo)
-	if err := writeRequest(w, req); err != nil {
+	if err := writeRequest(conn, req); err != nil {
 		return info, err
 	}
 
-	resp, err := readResponse(r, req)
+	resp, err := readResponse(conn, req)
 	if err != nil {
 		if resp != nil &&
 			resp.Header().Error == iproto.ER_UNKNOWN_REQUEST_TYPE {
