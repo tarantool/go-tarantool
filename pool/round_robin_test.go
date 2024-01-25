@@ -18,11 +18,11 @@ func TestRoundRobinAddDelete(t *testing.T) {
 	conns := []*tarantool.Connection{&tarantool.Connection{}, &tarantool.Connection{}}
 
 	for i, addr := range addrs {
-		rr.AddConn(addr, conns[i])
+		rr.AddConnection(addr, conns[i])
 	}
 
 	for i, addr := range addrs {
-		if conn := rr.DeleteConnById(addr); conn != conns[i] {
+		if conn := rr.DeleteConnection(addr); conn != conns[i] {
 			t.Errorf("Unexpected connection on address %s", addr)
 		}
 	}
@@ -37,16 +37,16 @@ func TestRoundRobinAddDuplicateDelete(t *testing.T) {
 	conn1 := &tarantool.Connection{}
 	conn2 := &tarantool.Connection{}
 
-	rr.AddConn(validAddr1, conn1)
-	rr.AddConn(validAddr1, conn2)
+	rr.AddConnection(validAddr1, conn1)
+	rr.AddConnection(validAddr1, conn2)
 
-	if rr.DeleteConnById(validAddr1) != conn2 {
+	if rr.DeleteConnection(validAddr1) != conn2 {
 		t.Errorf("Unexpected deleted connection")
 	}
 	if !rr.IsEmpty() {
 		t.Errorf("RoundRobin does not empty")
 	}
-	if rr.DeleteConnById(validAddr1) != nil {
+	if rr.DeleteConnection(validAddr1) != nil {
 		t.Errorf("Unexpected value after second deletion")
 	}
 }
@@ -58,7 +58,7 @@ func TestRoundRobinGetNextConnection(t *testing.T) {
 	conns := []*tarantool.Connection{&tarantool.Connection{}, &tarantool.Connection{}}
 
 	for i, addr := range addrs {
-		rr.AddConn(addr, conns[i])
+		rr.AddConnection(addr, conns[i])
 	}
 
 	expectedConns := []*tarantool.Connection{conns[0], conns[1], conns[0], conns[1]}
@@ -76,7 +76,7 @@ func TestRoundRobinStrategy_GetConnections(t *testing.T) {
 	conns := []*tarantool.Connection{&tarantool.Connection{}, &tarantool.Connection{}}
 
 	for i, addr := range addrs {
-		rr.AddConn(addr, conns[i])
+		rr.AddConnection(addr, conns[i])
 	}
 
 	rr.GetConnections()[validAddr2] = conns[0] // GetConnections() returns a copy.

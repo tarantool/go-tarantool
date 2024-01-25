@@ -13,6 +13,7 @@ package pool
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"sync"
 	"time"
@@ -23,7 +24,7 @@ import (
 )
 
 var (
-	ErrEmptyDialers      = errors.New("dialers (second argument) should not be empty")
+	ErrEmptyInstances    = errors.New("instances (second argument) should not be empty")
 	ErrWrongCheckTimeout = errors.New("wrong check timeout, must be greater than 0")
 	ErrNoConnection      = errors.New("no active connections")
 	ErrTooManyArgs       = errors.New("too many arguments")
@@ -50,7 +51,7 @@ type ConnectionHandler interface {
 	// The client code may cancel adding a connection to the pool. The client
 	// need to return an error from the Discovered call for that. In this case
 	// the pool will close connection and will try to reopen it later.
-	Discovered(id string, conn *tarantool.Connection, role Role) error
+	Discovered(name string, conn *tarantool.Connection, role Role) error
 	// Deactivated is called when a connection with a role has become
 	// unavaileble to send requests. It happens if the connection is closed or
 	// the connection role is switched.
@@ -61,7 +62,17 @@ type ConnectionHandler interface {
 	// Deactivated will not be called if a previous Discovered() call returns
 	// an error. Because in this case, the connection does not become available
 	// for sending requests.
-	Deactivated(id string, conn *tarantool.Connection, role Role) error
+	Deactivated(name string, conn *tarantool.Connection, role Role) error
+}
+
+// Instance describes a single instance configuration in the pool.
+type Instance struct {
+	// Name is an instance name. The name must be unique.
+	Name string
+	// Dialer will be used to create a connection to the instance.
+	Dialer tarantool.Dialer
+	// Opts configures a connection to the instance.
+	Opts tarantool.Opts
 }
 
 // Opts provides additional options (configurable via ConnectWithOpts).
@@ -97,8 +108,7 @@ type ConnectionPool struct {
 	ends      map[string]*endpoint
 	endsMutex sync.RWMutex
 
-	connOpts tarantool.Opts
-	opts     Opts
+	opts Opts
 
 	state            state
 	done             chan struct{}
@@ -112,8 +122,9 @@ type ConnectionPool struct {
 var _ Pooler = (*ConnectionPool)(nil)
 
 type endpoint struct {
-	id     string
+	name   string
 	dialer tarantool.Dialer
+	opts   tarantool.Opts
 	notify chan tarantool.ConnEvent
 	conn   *tarantool.Connection
 	role   Role
@@ -125,10 +136,11 @@ type endpoint struct {
 	closeErr error
 }
 
-func newEndpoint(id string, dialer tarantool.Dialer) *endpoint {
+func newEndpoint(name string, dialer tarantool.Dialer, opts tarantool.Opts) *endpoint {
 	return &endpoint{
-		id:       id,
+		name:     name,
 		dialer:   dialer,
+		opts:     opts,
 		notify:   make(chan tarantool.ConnEvent, 100),
 		conn:     nil,
 		role:     UnknownRole,
@@ -139,34 +151,41 @@ func newEndpoint(id string, dialer tarantool.Dialer) *endpoint {
 	}
 }
 
-// ConnectWithOpts creates pool for instances with specified dialers and options opts.
-// Each dialer corresponds to a certain id by which they will be distinguished.
-func ConnectWithOpts(ctx context.Context, dialers map[string]tarantool.Dialer,
-	connOpts tarantool.Opts, opts Opts) (*ConnectionPool, error) {
-	if len(dialers) == 0 {
-		return nil, ErrEmptyDialers
+// ConnectWithOpts creates pool for instances with specified instances and
+// opts. Instances must have unique names.
+func ConnectWithOpts(ctx context.Context, instances []Instance,
+	opts Opts) (*ConnectionPool, error) {
+	if len(instances) == 0 {
+		return nil, ErrEmptyInstances
 	}
+	unique := make(map[string]bool)
+	for _, instance := range instances {
+		if _, ok := unique[instance.Name]; ok {
+			return nil, fmt.Errorf("duplicate instance name: %q", instance.Name)
+		}
+		unique[instance.Name] = true
+	}
+
 	if opts.CheckTimeout <= 0 {
 		return nil, ErrWrongCheckTimeout
 	}
 
-	size := len(dialers)
+	size := len(instances)
 	rwPool := newRoundRobinStrategy(size)
 	roPool := newRoundRobinStrategy(size)
 	anyPool := newRoundRobinStrategy(size)
 
 	connPool := &ConnectionPool{
-		ends:     make(map[string]*endpoint),
-		connOpts: connOpts,
-		opts:     opts,
-		state:    unknownState,
-		done:     make(chan struct{}),
-		rwPool:   rwPool,
-		roPool:   roPool,
-		anyPool:  anyPool,
+		ends:    make(map[string]*endpoint),
+		opts:    opts,
+		state:   unknownState,
+		done:    make(chan struct{}),
+		rwPool:  rwPool,
+		roPool:  roPool,
+		anyPool: anyPool,
 	}
 
-	somebodyAlive, ctxCanceled := connPool.fillPools(ctx, dialers)
+	somebodyAlive, ctxCanceled := connPool.fillPools(ctx, instances)
 	if !somebodyAlive {
 		connPool.state.set(closedState)
 		if ctxCanceled {
@@ -186,18 +205,17 @@ func ConnectWithOpts(ctx context.Context, dialers map[string]tarantool.Dialer,
 	return connPool, nil
 }
 
-// Connect creates pool for instances with specified dialers.
-// Each dialer corresponds to a certain id by which they will be distinguished.
+// Connect creates pool for instances with specified instances. Instances must
+// have unique names.
 //
 // It is useless to set up tarantool.Opts.Reconnect value for a connection.
 // The connection pool has its own reconnection logic. See
 // Opts.CheckTimeout description.
-func Connect(ctx context.Context, dialers map[string]tarantool.Dialer,
-	connOpts tarantool.Opts) (*ConnectionPool, error) {
+func Connect(ctx context.Context, instances []Instance) (*ConnectionPool, error) {
 	opts := Opts{
 		CheckTimeout: 1 * time.Second,
 	}
-	return ConnectWithOpts(ctx, dialers, connOpts, opts)
+	return ConnectWithOpts(ctx, instances, opts)
 }
 
 // ConnectedNow gets connected status of pool.
@@ -234,10 +252,10 @@ func (p *ConnectionPool) ConfiguredTimeout(mode Mode) (time.Duration, error) {
 	return conn.ConfiguredTimeout(), nil
 }
 
-// Add adds a new endpoint with the id into the pool. This function
-// adds the endpoint only after successful connection.
-func (p *ConnectionPool) Add(ctx context.Context, id string, dialer tarantool.Dialer) error {
-	e := newEndpoint(id, dialer)
+// Add adds a new instance into the pool. This function adds the instance
+// only after successful connection.
+func (p *ConnectionPool) Add(ctx context.Context, instance Instance) error {
+	e := newEndpoint(instance.Name, instance.Dialer, instance.Opts)
 
 	p.endsMutex.Lock()
 	// Ensure that Close()/CloseGraceful() not in progress/done.
@@ -245,7 +263,7 @@ func (p *ConnectionPool) Add(ctx context.Context, id string, dialer tarantool.Di
 		p.endsMutex.Unlock()
 		return ErrClosed
 	}
-	if _, ok := p.ends[id]; ok {
+	if _, ok := p.ends[instance.Name]; ok {
 		p.endsMutex.Unlock()
 		return ErrExists
 	}
@@ -253,12 +271,12 @@ func (p *ConnectionPool) Add(ctx context.Context, id string, dialer tarantool.Di
 	endpointCtx, cancel := context.WithCancel(context.Background())
 	e.cancel = cancel
 
-	p.ends[id] = e
+	p.ends[instance.Name] = e
 	p.endsMutex.Unlock()
 
 	if err := p.tryConnect(ctx, e); err != nil {
 		p.endsMutex.Lock()
-		delete(p.ends, id)
+		delete(p.ends, instance.Name)
 		p.endsMutex.Unlock()
 		e.cancel()
 		close(e.closed)
@@ -269,11 +287,11 @@ func (p *ConnectionPool) Add(ctx context.Context, id string, dialer tarantool.Di
 	return nil
 }
 
-// Remove removes an endpoint with the id from the pool. The call
+// Remove removes an endpoint with the name from the pool. The call
 // closes an active connection gracefully.
-func (p *ConnectionPool) Remove(id string) error {
+func (p *ConnectionPool) Remove(name string) error {
 	p.endsMutex.Lock()
-	endpoint, ok := p.ends[id]
+	endpoint, ok := p.ends[name]
 	if !ok {
 		p.endsMutex.Unlock()
 		return errors.New("endpoint not exist")
@@ -289,7 +307,7 @@ func (p *ConnectionPool) Remove(id string) error {
 		close(endpoint.shutdown)
 	}
 
-	delete(p.ends, id)
+	delete(p.ends, name)
 	p.endsMutex.Unlock()
 
 	<-endpoint.closed
@@ -357,12 +375,12 @@ func (p *ConnectionPool) GetInfo() map[string]ConnectionInfo {
 		return info
 	}
 
-	for id := range p.ends {
-		conn, role := p.getConnectionFromPool(id)
+	for name := range p.ends {
+		conn, role := p.getConnectionFromPool(name)
 		if conn != nil {
-			info[id] = ConnectionInfo{ConnectedNow: conn.ConnectedNow(), ConnRole: role}
+			info[name] = ConnectionInfo{ConnectedNow: conn.ConnectedNow(), ConnRole: role}
 		} else {
-			info[id] = ConnectionInfo{ConnectedNow: false, ConnRole: UnknownRole}
+			info[name] = ConnectionInfo{ConnectedNow: false, ConnRole: UnknownRole}
 		}
 	}
 
@@ -1011,22 +1029,22 @@ func (p *ConnectionPool) getConnectionRole(conn *tarantool.Connection) (Role, er
 	return UnknownRole, nil
 }
 
-func (p *ConnectionPool) getConnectionFromPool(id string) (*tarantool.Connection, Role) {
-	if conn := p.rwPool.GetConnById(id); conn != nil {
+func (p *ConnectionPool) getConnectionFromPool(name string) (*tarantool.Connection, Role) {
+	if conn := p.rwPool.GetConnection(name); conn != nil {
 		return conn, MasterRole
 	}
 
-	if conn := p.roPool.GetConnById(id); conn != nil {
+	if conn := p.roPool.GetConnection(name); conn != nil {
 		return conn, ReplicaRole
 	}
 
-	return p.anyPool.GetConnById(id), UnknownRole
+	return p.anyPool.GetConnection(name), UnknownRole
 }
 
-func (p *ConnectionPool) deleteConnection(id string) {
-	if conn := p.anyPool.DeleteConnById(id); conn != nil {
-		if conn := p.rwPool.DeleteConnById(id); conn == nil {
-			p.roPool.DeleteConnById(id)
+func (p *ConnectionPool) deleteConnection(name string) {
+	if conn := p.anyPool.DeleteConnection(name); conn != nil {
+		if conn := p.rwPool.DeleteConnection(name); conn == nil {
+			p.roPool.DeleteConnection(name)
 		}
 		// The internal connection deinitialization.
 		p.watcherContainer.mutex.RLock()
@@ -1039,7 +1057,7 @@ func (p *ConnectionPool) deleteConnection(id string) {
 	}
 }
 
-func (p *ConnectionPool) addConnection(id string,
+func (p *ConnectionPool) addConnection(name string,
 	conn *tarantool.Connection, role Role) error {
 	// The internal connection initialization.
 	p.watcherContainer.mutex.RLock()
@@ -1069,78 +1087,80 @@ func (p *ConnectionPool) addConnection(id string,
 			for _, watcher := range watched {
 				watcher.unwatch(conn)
 			}
-			log.Printf("tarantool: failed initialize watchers for %s: %s", id, err)
+			log.Printf("tarantool: failed initialize watchers for %s: %s", name, err)
 			return err
 		}
 	}
 
-	p.anyPool.AddConn(id, conn)
+	p.anyPool.AddConnection(name, conn)
 
 	switch role {
 	case MasterRole:
-		p.rwPool.AddConn(id, conn)
+		p.rwPool.AddConnection(name, conn)
 	case ReplicaRole:
-		p.roPool.AddConn(id, conn)
+		p.roPool.AddConnection(name, conn)
 	}
 	return nil
 }
 
-func (p *ConnectionPool) handlerDiscovered(id string, conn *tarantool.Connection,
+func (p *ConnectionPool) handlerDiscovered(name string, conn *tarantool.Connection,
 	role Role) bool {
 	var err error
 	if p.opts.ConnectionHandler != nil {
-		err = p.opts.ConnectionHandler.Discovered(id, conn, role)
+		err = p.opts.ConnectionHandler.Discovered(name, conn, role)
 	}
 
 	if err != nil {
-		log.Printf("tarantool: storing connection to %s canceled: %s\n", id, err)
+		log.Printf("tarantool: storing connection to %s canceled: %s\n", name, err)
 		return false
 	}
 	return true
 }
 
-func (p *ConnectionPool) handlerDeactivated(id string, conn *tarantool.Connection,
+func (p *ConnectionPool) handlerDeactivated(name string, conn *tarantool.Connection,
 	role Role) {
 	var err error
 	if p.opts.ConnectionHandler != nil {
-		err = p.opts.ConnectionHandler.Deactivated(id, conn, role)
+		err = p.opts.ConnectionHandler.Deactivated(name, conn, role)
 	}
 
 	if err != nil {
-		log.Printf("tarantool: deactivating connection to %s by user failed: %s\n", id, err)
+		log.Printf("tarantool: deactivating connection to %s by user failed: %s\n",
+			name, err)
 	}
 }
 
-func (p *ConnectionPool) deactivateConnection(id string, conn *tarantool.Connection, role Role) {
-	p.deleteConnection(id)
+func (p *ConnectionPool) deactivateConnection(name string,
+	conn *tarantool.Connection, role Role) {
+	p.deleteConnection(name)
 	conn.Close()
-	p.handlerDeactivated(id, conn, role)
+	p.handlerDeactivated(name, conn, role)
 }
 
 func (p *ConnectionPool) deactivateConnections() {
-	for id, endpoint := range p.ends {
+	for name, endpoint := range p.ends {
 		if endpoint != nil && endpoint.conn != nil {
-			p.deactivateConnection(id, endpoint.conn, endpoint.role)
+			p.deactivateConnection(name, endpoint.conn, endpoint.role)
 		}
 	}
 }
 
 func (p *ConnectionPool) processConnection(conn *tarantool.Connection,
-	id string, end *endpoint) bool {
+	name string, end *endpoint) bool {
 	role, err := p.getConnectionRole(conn)
 	if err != nil {
 		conn.Close()
-		log.Printf("tarantool: storing connection to %s failed: %s\n", id, err)
+		log.Printf("tarantool: storing connection to %s failed: %s\n", name, err)
 		return false
 	}
 
-	if !p.handlerDiscovered(id, conn, role) {
+	if !p.handlerDiscovered(name, conn, role) {
 		conn.Close()
 		return false
 	}
-	if p.addConnection(id, conn, role) != nil {
+	if p.addConnection(name, conn, role) != nil {
 		conn.Close()
-		p.handlerDeactivated(id, conn, role)
+		p.handlerDeactivated(name, conn, role)
 		return false
 	}
 
@@ -1149,27 +1169,27 @@ func (p *ConnectionPool) processConnection(conn *tarantool.Connection,
 	return true
 }
 
-func (p *ConnectionPool) fillPools(
-	ctx context.Context,
-	dialers map[string]tarantool.Dialer) (bool, bool) {
+func (p *ConnectionPool) fillPools(ctx context.Context,
+	instances []Instance) (bool, bool) {
 	somebodyAlive := false
 	ctxCanceled := false
 
 	// It is called before controller() goroutines, so we don't expect
 	// concurrency issues here.
-	for id, dialer := range dialers {
-		end := newEndpoint(id, dialer)
-		p.ends[id] = end
-		connOpts := p.connOpts
+	for _, instance := range instances {
+		end := newEndpoint(instance.Name, instance.Dialer, instance.Opts)
+		p.ends[instance.Name] = end
+		connOpts := instance.Opts
 		connOpts.Notify = end.notify
-		conn, err := tarantool.Connect(ctx, dialer, connOpts)
+		conn, err := tarantool.Connect(ctx, instance.Dialer, connOpts)
 		if err != nil {
-			log.Printf("tarantool: connect to %s failed: %s\n", id, err.Error())
+			log.Printf("tarantool: connect to %s failed: %s\n",
+				instance.Name, err)
 			select {
 			case <-ctx.Done():
 				ctxCanceled = true
 
-				p.ends[id] = nil
+				p.ends[instance.Name] = nil
 				log.Printf("tarantool: operation was canceled")
 
 				p.deactivateConnections()
@@ -1177,7 +1197,7 @@ func (p *ConnectionPool) fillPools(
 				return false, ctxCanceled
 			default:
 			}
-		} else if p.processConnection(conn, id, end) {
+		} else if p.processConnection(conn, instance.Name, end) {
 			somebodyAlive = true
 		}
 	}
@@ -1195,11 +1215,11 @@ func (p *ConnectionPool) updateConnection(e *endpoint) {
 
 	if role, err := p.getConnectionRole(e.conn); err == nil {
 		if e.role != role {
-			p.deleteConnection(e.id)
+			p.deleteConnection(e.name)
 			p.poolsMutex.Unlock()
 
-			p.handlerDeactivated(e.id, e.conn, e.role)
-			opened := p.handlerDiscovered(e.id, e.conn, role)
+			p.handlerDeactivated(e.name, e.conn, e.role)
+			opened := p.handlerDiscovered(e.name, e.conn, role)
 			if !opened {
 				e.conn.Close()
 				e.conn = nil
@@ -1212,17 +1232,17 @@ func (p *ConnectionPool) updateConnection(e *endpoint) {
 				p.poolsMutex.Unlock()
 
 				e.conn.Close()
-				p.handlerDeactivated(e.id, e.conn, role)
+				p.handlerDeactivated(e.name, e.conn, role)
 				e.conn = nil
 				e.role = UnknownRole
 				return
 			}
 
-			if p.addConnection(e.id, e.conn, role) != nil {
+			if p.addConnection(e.name, e.conn, role) != nil {
 				p.poolsMutex.Unlock()
 
 				e.conn.Close()
-				p.handlerDeactivated(e.id, e.conn, role)
+				p.handlerDeactivated(e.name, e.conn, role)
 				e.conn = nil
 				e.role = UnknownRole
 				return
@@ -1232,11 +1252,11 @@ func (p *ConnectionPool) updateConnection(e *endpoint) {
 		p.poolsMutex.Unlock()
 		return
 	} else {
-		p.deleteConnection(e.id)
+		p.deleteConnection(e.name)
 		p.poolsMutex.Unlock()
 
 		e.conn.Close()
-		p.handlerDeactivated(e.id, e.conn, e.role)
+		p.handlerDeactivated(e.name, e.conn, e.role)
 		e.conn = nil
 		e.role = UnknownRole
 		return
@@ -1254,7 +1274,7 @@ func (p *ConnectionPool) tryConnect(ctx context.Context, e *endpoint) error {
 	e.conn = nil
 	e.role = UnknownRole
 
-	connOpts := p.connOpts
+	connOpts := e.opts
 	connOpts.Notify = e.notify
 	conn, err := tarantool.Connect(ctx, e.dialer, connOpts)
 	if err == nil {
@@ -1264,11 +1284,11 @@ func (p *ConnectionPool) tryConnect(ctx context.Context, e *endpoint) error {
 		if err != nil {
 			conn.Close()
 			log.Printf("tarantool: storing connection to %s failed: %s\n",
-				e.id, err)
+				e.name, err)
 			return err
 		}
 
-		opened := p.handlerDiscovered(e.id, conn, role)
+		opened := p.handlerDiscovered(e.name, conn, role)
 		if !opened {
 			conn.Close()
 			return errors.New("storing connection canceled")
@@ -1278,14 +1298,14 @@ func (p *ConnectionPool) tryConnect(ctx context.Context, e *endpoint) error {
 		if p.state.get() != connectedState {
 			p.poolsMutex.Unlock()
 			conn.Close()
-			p.handlerDeactivated(e.id, conn, role)
+			p.handlerDeactivated(e.name, conn, role)
 			return ErrClosed
 		}
 
-		if err = p.addConnection(e.id, conn, role); err != nil {
+		if err = p.addConnection(e.name, conn, role); err != nil {
 			p.poolsMutex.Unlock()
 			conn.Close()
-			p.handlerDeactivated(e.id, conn, role)
+			p.handlerDeactivated(e.name, conn, role)
 			return err
 		}
 		e.conn = conn
@@ -1304,10 +1324,10 @@ func (p *ConnectionPool) reconnect(ctx context.Context, e *endpoint) {
 		return
 	}
 
-	p.deleteConnection(e.id)
+	p.deleteConnection(e.name)
 	p.poolsMutex.Unlock()
 
-	p.handlerDeactivated(e.id, e.conn, e.role)
+	p.handlerDeactivated(e.name, e.conn, e.role)
 	e.conn = nil
 	e.role = UnknownRole
 
@@ -1340,12 +1360,12 @@ func (p *ConnectionPool) controller(ctx context.Context, e *endpoint) {
 		case <-e.close:
 			if e.conn != nil {
 				p.poolsMutex.Lock()
-				p.deleteConnection(e.id)
+				p.deleteConnection(e.name)
 				p.poolsMutex.Unlock()
 
 				if !shutdown {
 					e.closeErr = e.conn.Close()
-					p.handlerDeactivated(e.id, e.conn, e.role)
+					p.handlerDeactivated(e.name, e.conn, e.role)
 					close(e.closed)
 				} else {
 					// Force close the connection.
@@ -1362,7 +1382,7 @@ func (p *ConnectionPool) controller(ctx context.Context, e *endpoint) {
 				shutdown = true
 				if e.conn != nil {
 					p.poolsMutex.Lock()
-					p.deleteConnection(e.id)
+					p.deleteConnection(e.name)
 					p.poolsMutex.Unlock()
 
 					// We need to catch s.close in the current goroutine, so
@@ -1384,9 +1404,9 @@ func (p *ConnectionPool) controller(ctx context.Context, e *endpoint) {
 					if e.conn != nil && e.conn.ClosedNow() {
 						p.poolsMutex.Lock()
 						if p.state.get() == connectedState {
-							p.deleteConnection(e.id)
+							p.deleteConnection(e.name)
 							p.poolsMutex.Unlock()
-							p.handlerDeactivated(e.id, e.conn, e.role)
+							p.handlerDeactivated(e.name, e.conn, e.role)
 							e.conn = nil
 							e.role = UnknownRole
 						} else {

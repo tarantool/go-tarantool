@@ -192,16 +192,19 @@ The subpackage has been deleted. You could use `pool` instead.
 
 * The `connection_pool` subpackage has been renamed to `pool`.
 * The type `PoolOpts` has been renamed to `Opts`.
-* `pool.Connect` now accepts context as first argument, which user may cancel
-  in process. If it is canceled in progress, an error will be returned.
-  All created connections will be closed.
-* `pool.Add` now accepts context as first argument, which user may cancel in
-  process.
-* Now you need to pass `map[string]Dialer` to the `pool.Connect` as the second
-  argument, instead of a list of addresses. Each dialer is associated with a
-  unique string ID, which allows them to be distinguished.
-* `pool.GetPoolInfo` has been renamed to `pool.GetInfo`. Return type has been changed
-  to `map[string]ConnectionInfo`.
+* `pool.Connect` and `pool.ConnectWithOpts`  now accept context as the first
+  argument, which user may cancel in process. If it is canceled in progress,
+  an error will be returned and all created connections will be closed.
+* `pool.Connect` and `pool.ConnectWithOpts` now accept `[]pool.Instance` as
+  the second argument instead of a list of addresses. Each instance is
+  associated with a unique string name, `Dialer` and connection options which
+  allows instances to be independently configured.
+* `pool.Add` now accepts context as the first argument, which user may cancel
+  in process.
+* `pool.Add` now accepts `pool.Instance` as the second argument instead of
+  an address, it allows to configure a new instance more flexible.
+* `pool.GetPoolInfo` has been renamed to `pool.GetInfo`. Return type has been
+  changed to `map[string]ConnectionInfo`.
 * Operations `Ping`, `Select`, `Insert`, `Replace`, `Delete`, `Update`, `Upsert`,
   `Call`, `Call16`, `Call17`, `Eval`, `Execute` of a `Pooler` return
   response data instead of an actual responses.
