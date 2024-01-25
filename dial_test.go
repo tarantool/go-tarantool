@@ -107,7 +107,7 @@ func (m *mockIoConn) Read(b []byte) (int, error) {
 
 	ret, err := m.readbuf.Read(b)
 
-	if m.read != nil {
+	if ret != 0 && m.read != nil {
 		m.read <- struct{}{}
 	}
 
@@ -282,15 +282,17 @@ func TestConn_ReadWrite(t *testing.T) {
 			0x01, 0xce, 0x00, 0x00, 0x00, 0x02,
 			0x80, // Body map.
 		})
-		conn.Close()
 	})
 	defer func() {
 		dialer.conn.writeWg.Done()
+		conn.Close()
 	}()
 
 	fut := conn.Do(tarantool.NewPingRequest())
 
 	<-dialer.conn.written
+	dialer.conn.written = nil
+
 	dialer.conn.readWg.Done()
 	<-dialer.conn.read
 	<-dialer.conn.read
