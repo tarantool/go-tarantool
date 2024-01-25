@@ -241,7 +241,7 @@ jobs:
           - macos-12
         tarantool:
           - brew
-          - 1.10.14
+          - 1.10.15
 
     env:
       # Make sense only for non-brew jobs.
