@@ -65,7 +65,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 - Change `OverrideSchema(*Schema)` to `SetSchema(Schema)` (#7)
 - Change values, stored by pointers in the `Schema`, `Space`, `Index` structs, 
   to be stored by their values (#7)
-- Make `Dialer` mandatory for creation a single connection / connection pool (#321)
+- Make `Dialer` mandatory for creation a single connection (#321)
 - Remove `Connection.RemoteAddr()`, `Connection.LocalAddr()`.
   Add `Addr()` function instead (#321)
 - Remove `Connection.ClientProtocolInfo`, `Connection.ServerProtocolInfo`.
@@ -93,6 +93,8 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
   `Call`, `Call16`, `Call17`, `Eval`, `Execute` of a `Connector` and `Pooler`
   return response data instead of an actual responses (#237)
 - Renamed `StrangerResponse` to `MockResponse` (#237)
+- `pool.Connect`, `pool.ConnetcWithOpts` and `pool.Add` use a new type
+  `pool.Instance` to determinate connection options (#356)
 
 ### Deprecated
 

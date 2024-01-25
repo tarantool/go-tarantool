@@ -44,7 +44,7 @@ func NewQueueConnectionHandler(name string, cfg queue.Cfg) *QueueConnectionHandl
 //
 // NOTE: the Queue supports only a master-replica cluster configuration. It
 // does not support a master-master configuration.
-func (h *QueueConnectionHandler) Discovered(id string, conn *tarantool.Connection,
+func (h *QueueConnectionHandler) Discovered(name string, conn *tarantool.Connection,
 	role pool.Role) error {
 	h.mutex.Lock()
 	defer h.mutex.Unlock()
@@ -106,14 +106,14 @@ func (h *QueueConnectionHandler) Discovered(id string, conn *tarantool.Connectio
 		return h.err
 	}
 
-	fmt.Printf("Master %s is ready to work!\n", id)
+	fmt.Printf("Master %s is ready to work!\n", name)
 	atomic.AddInt32(&h.masterCnt, 1)
 
 	return nil
 }
 
 // Deactivated doesn't do anything useful for the example.
-func (h *QueueConnectionHandler) Deactivated(id string, conn *tarantool.Connection,
+func (h *QueueConnectionHandler) Deactivated(name string, conn *tarantool.Connection,
 	role pool.Role) error {
 	if role == pool.MasterRole {
 		atomic.AddInt32(&h.masterCnt, -1)
@@ -154,28 +154,33 @@ func Example_connectionPool() {
 	// Create a ConnectionPool object.
 	poolServers := []string{"127.0.0.1:3014", "127.0.0.1:3015"}
 	poolDialers := []tarantool.Dialer{}
-	poolDialersMap := map[string]tarantool.Dialer{}
-
-	for _, serv := range poolServers {
-		dialer := tarantool.NetDialer{
-			Address:  serv,
-			User:     "test",
-			Password: "test",
-		}
-		poolDialers = append(poolDialers, dialer)
-		poolDialersMap[serv] = dialer
-	}
+	poolInstances := []pool.Instance{}
 
 	connOpts := tarantool.Opts{
 		Timeout: 5 * time.Second,
 	}
+	for _, server := range poolServers {
+		dialer := tarantool.NetDialer{
+			Address:  server,
+			User:     "test",
+			Password: "test",
+		}
+		poolDialers = append(poolDialers, dialer)
+		poolInstances = append(poolInstances, pool.Instance{
+			Name:   server,
+			Dialer: dialer,
+			Opts:   connOpts,
+		})
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
+
 	poolOpts := pool.Opts{
 		CheckTimeout:      5 * time.Second,
 		ConnectionHandler: h,
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
-	defer cancel()
-	connPool, err := pool.ConnectWithOpts(ctx, poolDialersMap, connOpts, poolOpts)
+	connPool, err := pool.ConnectWithOpts(ctx, poolInstances, poolOpts)
 	if err != nil {
 		fmt.Printf("Unable to connect to the pool: %s", err)
 		return

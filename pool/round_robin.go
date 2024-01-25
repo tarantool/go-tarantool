@@ -24,7 +24,7 @@ func newRoundRobinStrategy(size int) *roundRobinStrategy {
 	}
 }
 
-func (r *roundRobinStrategy) GetConnById(id string) *tarantool.Connection {
+func (r *roundRobinStrategy) GetConnection(id string) *tarantool.Connection {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
 
@@ -36,7 +36,7 @@ func (r *roundRobinStrategy) GetConnById(id string) *tarantool.Connection {
 	return r.conns[index]
 }
 
-func (r *roundRobinStrategy) DeleteConnById(id string) *tarantool.Connection {
+func (r *roundRobinStrategy) DeleteConnection(id string) *tarantool.Connection {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
@@ -93,7 +93,7 @@ func (r *roundRobinStrategy) GetConnections() map[string]*tarantool.Connection {
 	return conns
 }
 
-func (r *roundRobinStrategy) AddConn(id string, conn *tarantool.Connection) {
+func (r *roundRobinStrategy) AddConnection(id string, conn *tarantool.Connection) {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 

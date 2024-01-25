@@ -30,8 +30,6 @@ var indexNo = uint32(0)
 var ports = []string{"3013", "3014", "3015", "3016", "3017"}
 var host = "127.0.0.1"
 
-type DialersMap = map[string]tarantool.Dialer
-
 var servers = []string{
 	strings.Join([]string{host, ports[0]}, ":"),
 	strings.Join([]string{host, ports[1]}, ":"),
@@ -40,9 +38,9 @@ var servers = []string{
 	strings.Join([]string{host, ports[4]}, ":"),
 }
 
-func makeDialer(serv string) tarantool.Dialer {
+func makeDialer(server string) tarantool.Dialer {
 	return tarantool.NetDialer{
-		Address:  serv,
+		Address:  server,
 		User:     user,
 		Password: pass,
 	}
@@ -50,23 +48,35 @@ func makeDialer(serv string) tarantool.Dialer {
 
 func makeDialers(servers []string) []tarantool.Dialer {
 	dialers := make([]tarantool.Dialer, 0, len(servers))
-	for _, serv := range servers {
-		dialers = append(dialers, makeDialer(serv))
+	for _, server := range servers {
+		dialers = append(dialers, makeDialer(server))
 	}
 	return dialers
 }
 
-func makeDialersMap(servers []string) DialersMap {
-	dialersMap := DialersMap{}
-	for _, serv := range servers {
-		dialersMap[serv] = makeDialer(serv)
+var dialers = makeDialers(servers)
+
+func makeInstance(server string, opts tarantool.Opts) pool.Instance {
+	return pool.Instance{
+		Name: server,
+		Dialer: tarantool.NetDialer{
+			Address:  server,
+			User:     user,
+			Password: pass,
+		},
+		Opts: opts,
 	}
-	return dialersMap
 }
 
-var dialers = makeDialers(servers)
-var dialersMap = makeDialersMap(servers)
+func makeInstances(servers []string, opts tarantool.Opts) []pool.Instance {
+	var instances []pool.Instance
+	for _, server := range servers {
+		instances = append(instances, makeInstance(server, opts))
+	}
+	return instances
+}
 
+var instances = makeInstances(servers, connOpts)
 var connOpts = tarantool.Opts{
 	Timeout: 5 * time.Second,
 }
@@ -74,32 +84,40 @@ var connOpts = tarantool.Opts{
 var defaultCountRetry = 5
 var defaultTimeoutRetry = 500 * time.Millisecond
 
-var instances []test_helpers.TarantoolInstance
+var helpInstances []test_helpers.TarantoolInstance
 
-func TestConnError_IncorrectParams(t *testing.T) {
+func TestConnect_error_empty_instances(t *testing.T) {
 	ctx, cancel := test_helpers.GetPoolConnectContext()
-	connPool, err := pool.Connect(ctx, DialersMap{}, tarantool.Opts{})
+	connPool, err := pool.Connect(ctx, []pool.Instance{})
 	cancel()
 	require.Nilf(t, connPool, "conn is not nil with incorrect param")
-	require.NotNilf(t, err, "err is nil with incorrect params")
-	require.Equal(t, "dialers (second argument) should not be empty", err.Error())
+	require.ErrorIs(t, err, pool.ErrEmptyInstances)
+}
 
-	ctx, cancel = test_helpers.GetPoolConnectContext()
-	connPool, err = pool.Connect(ctx, DialersMap{
-		"err1": tarantool.NetDialer{Address: "err1"},
-		"err2": tarantool.NetDialer{Address: "err2"},
-	}, connOpts)
+func TestConnect_error_unavailable(t *testing.T) {
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	connPool, err := pool.Connect(ctx, makeInstances([]string{"err1", "err2"}, connOpts))
 	cancel()
 	require.Nilf(t, connPool, "conn is not nil with incorrect param")
-	require.NotNilf(t, err, "err is nil with incorrect params")
-	require.Equal(t, "no active connections", err.Error())
+	require.ErrorIs(t, err, pool.ErrNoConnection)
+}
 
-	ctx, cancel = test_helpers.GetPoolConnectContext()
-	connPool, err = pool.ConnectWithOpts(ctx, dialersMap, tarantool.Opts{}, pool.Opts{})
+func TestConnect_error_duplicate(t *testing.T) {
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	connPool, err := pool.Connect(ctx, makeInstances([]string{"foo", "foo"}, connOpts))
+	cancel()
+
+	require.Nilf(t, connPool, "conn is not nil with incorrect param")
+	require.EqualError(t, err, "duplicate instance name: \"foo\"")
+}
+
+func TestConnectWithOpts_error_no_timeout(t *testing.T) {
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	connPool, err := pool.ConnectWithOpts(ctx, makeInstances([]string{"any"}, connOpts),
+		pool.Opts{})
 	cancel()
 	require.Nilf(t, connPool, "conn is not nil with incorrect param")
-	require.NotNilf(t, err, "err is nil with incorrect params")
-	require.Equal(t, "wrong check timeout, must be greater than 0", err.Error())
+	require.ErrorIs(t, err, pool.ErrWrongCheckTimeout)
 }
 
 func TestConnSuccessfully(t *testing.T) {
@@ -107,7 +125,7 @@ func TestConnSuccessfully(t *testing.T) {
 
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.Connect(ctx, makeDialersMap([]string{healthyServ, "err"}), connOpts)
+	connPool, err := pool.Connect(ctx, makeInstances([]string{healthyServ, "err"}, connOpts))
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -140,7 +158,7 @@ func TestConnErrorAfterCtxCancel(t *testing.T) {
 	var err error
 
 	cancel()
-	connPool, err = pool.Connect(ctx, dialersMap, connLongReconnectOpts)
+	connPool, err = pool.Connect(ctx, makeInstances(servers, connLongReconnectOpts))
 
 	if connPool != nil || err == nil {
 		t.Fatalf("ConnectionPool was created after cancel")
@@ -180,17 +198,21 @@ func TestContextCancelInProgress(t *testing.T) {
 	defer cancel()
 
 	cnt := new(int)
-	poolDialers := DialersMap{}
-	for _, serv := range servers {
-		poolDialers[serv] = &mockClosingDialer{
-			addr:      serv,
-			cnt:       cnt,
-			ctx:       ctx,
-			ctxCancel: cancel,
-		}
+	var instances []pool.Instance
+	for _, server := range servers {
+		instances = append(instances, pool.Instance{
+			Name: server,
+			Dialer: &mockClosingDialer{
+				addr:      server,
+				cnt:       cnt,
+				ctx:       ctx,
+				ctxCancel: cancel,
+			},
+			Opts: connOpts,
+		})
 	}
 
-	connPool, err := pool.Connect(ctx, poolDialers, tarantool.Opts{})
+	connPool, err := pool.Connect(ctx, instances)
 	require.NotNilf(t, err, "expected err after ctx cancel")
 	assert.Truef(t, strings.Contains(err.Error(), "operation was canceled"),
 		fmt.Sprintf("unexpected error, expected to contain %s, got %v",
@@ -201,18 +223,22 @@ func TestContextCancelInProgress(t *testing.T) {
 func TestConnSuccessfullyDuplicates(t *testing.T) {
 	server := servers[0]
 
-	poolDialers := DialersMap{}
+	var instances []pool.Instance
 	for i := 0; i < 4; i++ {
-		poolDialers[fmt.Sprintf("c%d", i)] = tarantool.NetDialer{
-			Address:  server,
-			User:     user,
-			Password: pass,
-		}
+		instances = append(instances, pool.Instance{
+			Name: fmt.Sprintf("c%d", i),
+			Dialer: tarantool.NetDialer{
+				Address:  server,
+				User:     user,
+				Password: pass,
+			},
+			Opts: connOpts,
+		})
 	}
 
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.Connect(ctx, poolDialers, connOpts)
+	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -240,13 +266,13 @@ func TestReconnect(t *testing.T) {
 
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.Connect(ctx, dialersMap, connOpts)
+	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
 	defer connPool.Close()
 
-	test_helpers.StopTarantoolWithCleanup(instances[0])
+	test_helpers.StopTarantoolWithCleanup(helpInstances[0])
 
 	args := test_helpers.CheckStatusesArgs{
 		ConnPool:           connPool,
@@ -262,7 +288,7 @@ func TestReconnect(t *testing.T) {
 		defaultCountRetry, defaultTimeoutRetry)
 	require.Nil(t, err)
 
-	err = test_helpers.RestartTarantool(&instances[0])
+	err = test_helpers.RestartTarantool(&helpInstances[0])
 	require.Nilf(t, err, "failed to restart tarantool")
 
 	args = test_helpers.CheckStatusesArgs{
@@ -289,14 +315,14 @@ func TestDisconnect_withReconnect(t *testing.T) {
 
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.Connect(ctx, makeDialersMap([]string{server}), opts)
+	connPool, err := pool.Connect(ctx, makeInstances([]string{server}, opts))
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
 	defer connPool.Close()
 
 	// Test.
-	test_helpers.StopTarantoolWithCleanup(instances[serverId])
+	test_helpers.StopTarantoolWithCleanup(helpInstances[serverId])
 	args := test_helpers.CheckStatusesArgs{
 		ConnPool:           connPool,
 		Mode:               pool.ANY,
@@ -311,7 +337,7 @@ func TestDisconnect_withReconnect(t *testing.T) {
 	require.Nil(t, err)
 
 	// Restart the server after success.
-	err = test_helpers.RestartTarantool(&instances[serverId])
+	err = test_helpers.RestartTarantool(&helpInstances[serverId])
 	require.Nilf(t, err, "failed to restart tarantool")
 
 	args = test_helpers.CheckStatusesArgs{
@@ -335,14 +361,14 @@ func TestDisconnectAll(t *testing.T) {
 
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.Connect(ctx, makeDialersMap([]string{server1, server2}), connOpts)
+	connPool, err := pool.Connect(ctx, makeInstances([]string{server1, server2}, connOpts))
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
 	defer connPool.Close()
 
-	test_helpers.StopTarantoolWithCleanup(instances[0])
-	test_helpers.StopTarantoolWithCleanup(instances[1])
+	test_helpers.StopTarantoolWithCleanup(helpInstances[0])
+	test_helpers.StopTarantoolWithCleanup(helpInstances[1])
 
 	args := test_helpers.CheckStatusesArgs{
 		ConnPool:           connPool,
@@ -359,10 +385,10 @@ func TestDisconnectAll(t *testing.T) {
 		defaultCountRetry, defaultTimeoutRetry)
 	require.Nil(t, err)
 
-	err = test_helpers.RestartTarantool(&instances[0])
+	err = test_helpers.RestartTarantool(&helpInstances[0])
 	require.Nilf(t, err, "failed to restart tarantool")
 
-	err = test_helpers.RestartTarantool(&instances[1])
+	err = test_helpers.RestartTarantool(&helpInstances[1])
 	require.Nilf(t, err, "failed to restart tarantool")
 
 	args = test_helpers.CheckStatusesArgs{
@@ -384,7 +410,7 @@ func TestDisconnectAll(t *testing.T) {
 func TestAdd(t *testing.T) {
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.Connect(ctx, makeDialersMap(servers[:1]), connOpts)
+	connPool, err := pool.Connect(ctx, makeInstances(servers[:1], connOpts))
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -392,7 +418,7 @@ func TestAdd(t *testing.T) {
 
 	for _, server := range servers[1:] {
 		ctx, cancel := test_helpers.GetConnectContext()
-		err = connPool.Add(ctx, server, dialersMap[server])
+		err = connPool.Add(ctx, makeInstance(server, connOpts))
 		cancel()
 		require.Nil(t, err)
 	}
@@ -419,7 +445,7 @@ func TestAdd(t *testing.T) {
 func TestAdd_exist(t *testing.T) {
 	server := servers[0]
 	ctx, cancel := test_helpers.GetPoolConnectContext()
-	connPool, err := pool.Connect(ctx, makeDialersMap([]string{server}), connOpts)
+	connPool, err := pool.Connect(ctx, makeInstances([]string{server}, connOpts))
 	cancel()
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
@@ -427,7 +453,7 @@ func TestAdd_exist(t *testing.T) {
 	defer connPool.Close()
 
 	ctx, cancel = test_helpers.GetConnectContext()
-	err = connPool.Add(ctx, server, makeDialer(server))
+	err = connPool.Add(ctx, makeInstance(server, connOpts))
 	cancel()
 	require.Equal(t, pool.ErrExists, err)
 
@@ -450,7 +476,7 @@ func TestAdd_unreachable(t *testing.T) {
 	server := servers[0]
 
 	ctx, cancel := test_helpers.GetPoolConnectContext()
-	connPool, err := pool.Connect(ctx, makeDialersMap([]string{server}), connOpts)
+	connPool, err := pool.Connect(ctx, makeInstances([]string{server}, connOpts))
 	cancel()
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
@@ -459,8 +485,12 @@ func TestAdd_unreachable(t *testing.T) {
 
 	unhealthyServ := "127.0.0.2:6667"
 	ctx, cancel = test_helpers.GetConnectContext()
-	err = connPool.Add(ctx, unhealthyServ, tarantool.NetDialer{
-		Address: unhealthyServ,
+	err = connPool.Add(ctx, pool.Instance{
+		Name: unhealthyServ,
+		Dialer: tarantool.NetDialer{
+			Address: unhealthyServ,
+		},
+		Opts: connOpts,
 	})
 	cancel()
 	// The OS-dependent error so we just check for existence.
@@ -484,14 +514,14 @@ func TestAdd_unreachable(t *testing.T) {
 func TestAdd_afterClose(t *testing.T) {
 	server := servers[0]
 	ctx, cancel := test_helpers.GetPoolConnectContext()
-	connPool, err := pool.Connect(ctx, makeDialersMap([]string{server}), connOpts)
+	connPool, err := pool.Connect(ctx, makeInstances([]string{server}, connOpts))
 	cancel()
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
 	connPool.Close()
 	ctx, cancel = test_helpers.GetConnectContext()
-	err = connPool.Add(ctx, server, dialersMap[server])
+	err = connPool.Add(ctx, makeInstance(server, connOpts))
 	cancel()
 	assert.Equal(t, err, pool.ErrClosed)
 }
@@ -501,7 +531,7 @@ func TestAdd_Close_concurrent(t *testing.T) {
 	serv1 := servers[1]
 
 	ctx, cancel := test_helpers.GetPoolConnectContext()
-	connPool, err := pool.Connect(ctx, makeDialersMap([]string{serv0}), connOpts)
+	connPool, err := pool.Connect(ctx, makeInstances([]string{serv0}, connOpts))
 	cancel()
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
@@ -512,7 +542,7 @@ func TestAdd_Close_concurrent(t *testing.T) {
 		defer wg.Done()
 
 		ctx, cancel := test_helpers.GetConnectContext()
-		err = connPool.Add(ctx, serv1, makeDialer(serv1))
+		err = connPool.Add(ctx, makeInstance(serv1, connOpts))
 		cancel()
 		if err != nil {
 			assert.Equal(t, pool.ErrClosed, err)
@@ -529,7 +559,7 @@ func TestAdd_CloseGraceful_concurrent(t *testing.T) {
 	serv1 := servers[1]
 
 	ctx, cancel := test_helpers.GetPoolConnectContext()
-	connPool, err := pool.Connect(ctx, makeDialersMap([]string{serv0}), connOpts)
+	connPool, err := pool.Connect(ctx, makeInstances([]string{serv0}, connOpts))
 	cancel()
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
@@ -540,7 +570,7 @@ func TestAdd_CloseGraceful_concurrent(t *testing.T) {
 		defer wg.Done()
 
 		ctx, cancel := test_helpers.GetConnectContext()
-		err = connPool.Add(ctx, serv1, makeDialer(serv1))
+		err = connPool.Add(ctx, makeInstance(serv1, connOpts))
 		cancel()
 		if err != nil {
 			assert.Equal(t, pool.ErrClosed, err)
@@ -555,7 +585,7 @@ func TestAdd_CloseGraceful_concurrent(t *testing.T) {
 func TestRemove(t *testing.T) {
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.Connect(ctx, dialersMap, connOpts)
+	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -584,7 +614,7 @@ func TestRemove(t *testing.T) {
 func TestRemove_double(t *testing.T) {
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.Connect(ctx, makeDialersMap(servers[:2]), connOpts)
+	connPool, err := pool.Connect(ctx, makeInstances(servers[:2], connOpts))
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -613,7 +643,7 @@ func TestRemove_double(t *testing.T) {
 func TestRemove_unknown(t *testing.T) {
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.Connect(ctx, makeDialersMap(servers[:2]), connOpts)
+	connPool, err := pool.Connect(ctx, makeInstances(servers[:2], connOpts))
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -641,7 +671,7 @@ func TestRemove_unknown(t *testing.T) {
 func TestRemove_concurrent(t *testing.T) {
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.Connect(ctx, makeDialersMap(servers[:2]), connOpts)
+	connPool, err := pool.Connect(ctx, makeInstances(servers[:2], connOpts))
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -690,7 +720,7 @@ func TestRemove_concurrent(t *testing.T) {
 func TestRemove_Close_concurrent(t *testing.T) {
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.Connect(ctx, makeDialersMap(servers[:2]), connOpts)
+	connPool, err := pool.Connect(ctx, makeInstances(servers[:2], connOpts))
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -711,7 +741,7 @@ func TestRemove_Close_concurrent(t *testing.T) {
 func TestRemove_CloseGraceful_concurrent(t *testing.T) {
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.Connect(ctx, makeDialersMap(servers[:2]), connOpts)
+	connPool, err := pool.Connect(ctx, makeInstances(servers[:2], connOpts))
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -735,7 +765,7 @@ func TestClose(t *testing.T) {
 
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.Connect(ctx, makeDialersMap([]string{server1, server2}), connOpts)
+	connPool, err := pool.Connect(ctx, makeInstances([]string{server1, server2}, connOpts))
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -777,7 +807,7 @@ func TestCloseGraceful(t *testing.T) {
 
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.Connect(ctx, makeDialersMap([]string{server1, server2}), connOpts)
+	connPool, err := pool.Connect(ctx, makeInstances([]string{server1, server2}, connOpts))
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -842,8 +872,7 @@ func (h *testHandler) addErr(err error) {
 	h.errs = append(h.errs, err)
 }
 
-func (h *testHandler) Discovered(id string, conn *tarantool.Connection,
-
+func (h *testHandler) Discovered(name string, conn *tarantool.Connection,
 	role pool.Role) error {
 	discovered := atomic.AddUint32(&h.discovered, 1)
 
@@ -854,29 +883,28 @@ func (h *testHandler) Discovered(id string, conn *tarantool.Connection,
 
 	// discovered < 3 - initial open of connections
 	// discovered >= 3 - update a connection after a role update
-	if id == servers[0] {
+	if name == servers[0] {
 		if discovered < 3 && role != pool.MasterRole {
-			h.addErr(fmt.Errorf("unexpected init role %d for id %s", role, id))
+			h.addErr(fmt.Errorf("unexpected init role %d for name %s", role, name))
 		}
 		if discovered >= 3 && role != pool.ReplicaRole {
-			h.addErr(fmt.Errorf("unexpected updated role %d for id %s", role, id))
+			h.addErr(fmt.Errorf("unexpected updated role %d for name %s", role, name))
 		}
-	} else if id == servers[1] {
+	} else if name == servers[1] {
 		if discovered >= 3 {
-			h.addErr(fmt.Errorf("unexpected discovery for id %s", id))
+			h.addErr(fmt.Errorf("unexpected discovery for name %s", name))
 		}
 		if role != pool.ReplicaRole {
-			h.addErr(fmt.Errorf("unexpected role %d for id %s", role, id))
+			h.addErr(fmt.Errorf("unexpected role %d for name %s", role, name))
 		}
 	} else {
-		h.addErr(fmt.Errorf("unexpected discovered id %s", id))
+		h.addErr(fmt.Errorf("unexpected discovered name %s", name))
 	}
 
 	return nil
 }
 
-func (h *testHandler) Deactivated(id string, conn *tarantool.Connection,
-
+func (h *testHandler) Deactivated(name string, conn *tarantool.Connection,
 	role pool.Role) error {
 	deactivated := atomic.AddUint32(&h.deactivated, 1)
 
@@ -885,21 +913,21 @@ func (h *testHandler) Deactivated(id string, conn *tarantool.Connection,
 		return nil
 	}
 
-	if deactivated == 1 && id == servers[0] {
+	if deactivated == 1 && name == servers[0] {
 		// A first close is a role update.
 		if role != pool.MasterRole {
-			h.addErr(fmt.Errorf("unexpected removed role %d for id %s", role, id))
+			h.addErr(fmt.Errorf("unexpected removed role %d for name %s", role, name))
 		}
 		return nil
 	}
 
-	if id == servers[0] || id == servers[1] {
+	if name == servers[0] || name == servers[1] {
 		// Close.
 		if role != pool.ReplicaRole {
-			h.addErr(fmt.Errorf("unexpected removed role %d for id %s", role, id))
+			h.addErr(fmt.Errorf("unexpected removed role %d for name %s", role, name))
 		}
 	} else {
-		h.addErr(fmt.Errorf("unexpected removed id %s", id))
+		h.addErr(fmt.Errorf("unexpected removed name %s", name))
 	}
 
 	return nil
@@ -907,7 +935,7 @@ func (h *testHandler) Deactivated(id string, conn *tarantool.Connection,
 
 func TestConnectionHandlerOpenUpdateClose(t *testing.T) {
 	poolServers := []string{servers[0], servers[1]}
-	poolDialers := makeDialersMap(poolServers)
+	poolInstances := makeInstances(poolServers, connOpts)
 	roles := []bool{false, true}
 
 	err := test_helpers.SetClusterRO(makeDialers(poolServers), connOpts, roles)
@@ -920,7 +948,7 @@ func TestConnectionHandlerOpenUpdateClose(t *testing.T) {
 	}
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.ConnectWithOpts(ctx, poolDialers, connOpts, poolOpts)
+	connPool, err := pool.ConnectWithOpts(ctx, poolInstances, poolOpts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -974,15 +1002,13 @@ type testAddErrorHandler struct {
 	discovered, deactivated int
 }
 
-func (h *testAddErrorHandler) Discovered(id string, conn *tarantool.Connection,
-
+func (h *testAddErrorHandler) Discovered(name string, conn *tarantool.Connection,
 	role pool.Role) error {
 	h.discovered++
 	return fmt.Errorf("any error")
 }
 
-func (h *testAddErrorHandler) Deactivated(id string, conn *tarantool.Connection,
-
+func (h *testAddErrorHandler) Deactivated(name string, conn *tarantool.Connection,
 	role pool.Role) error {
 	h.deactivated++
 	return nil
@@ -998,7 +1024,7 @@ func TestConnectionHandlerOpenError(t *testing.T) {
 	}
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.ConnectWithOpts(ctx, makeDialersMap(poolServers), connOpts, poolOpts)
+	connPool, err := pool.ConnectWithOpts(ctx, makeInstances(poolServers, connOpts), poolOpts)
 	if err == nil {
 		defer connPool.Close()
 	}
@@ -1011,8 +1037,7 @@ type testUpdateErrorHandler struct {
 	discovered, deactivated uint32
 }
 
-func (h *testUpdateErrorHandler) Discovered(id string, conn *tarantool.Connection,
-
+func (h *testUpdateErrorHandler) Discovered(name string, conn *tarantool.Connection,
 	role pool.Role) error {
 	atomic.AddUint32(&h.discovered, 1)
 
@@ -1023,8 +1048,7 @@ func (h *testUpdateErrorHandler) Discovered(id string, conn *tarantool.Connectio
 	return nil
 }
 
-func (h *testUpdateErrorHandler) Deactivated(id string, conn *tarantool.Connection,
-
+func (h *testUpdateErrorHandler) Deactivated(name string, conn *tarantool.Connection,
 	role pool.Role) error {
 	atomic.AddUint32(&h.deactivated, 1)
 	return nil
@@ -1032,7 +1056,7 @@ func (h *testUpdateErrorHandler) Deactivated(id string, conn *tarantool.Connecti
 
 func TestConnectionHandlerUpdateError(t *testing.T) {
 	poolServers := []string{servers[0], servers[1]}
-	poolDialers := makeDialersMap(poolServers)
+	poolInstances := makeInstances(poolServers, connOpts)
 	roles := []bool{false, false}
 
 	err := test_helpers.SetClusterRO(makeDialers(poolServers), connOpts, roles)
@@ -1045,7 +1069,7 @@ func TestConnectionHandlerUpdateError(t *testing.T) {
 	}
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.ConnectWithOpts(ctx, poolDialers, connOpts, poolOpts)
+	connPool, err := pool.ConnectWithOpts(ctx, poolInstances, poolOpts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 	defer connPool.Close()
@@ -1092,14 +1116,14 @@ func TestRequestOnClosed(t *testing.T) {
 
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.Connect(ctx, makeDialersMap([]string{server1, server2}), connOpts)
+	connPool, err := pool.Connect(ctx, makeInstances([]string{server1, server2}, connOpts))
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
 	defer connPool.Close()
 
-	test_helpers.StopTarantoolWithCleanup(instances[0])
-	test_helpers.StopTarantoolWithCleanup(instances[1])
+	test_helpers.StopTarantoolWithCleanup(helpInstances[0])
+	test_helpers.StopTarantoolWithCleanup(helpInstances[1])
 
 	args := test_helpers.CheckStatusesArgs{
 		ConnPool:           connPool,
@@ -1118,10 +1142,10 @@ func TestRequestOnClosed(t *testing.T) {
 	_, err = connPool.Ping(pool.ANY)
 	require.NotNilf(t, err, "err is nil after Ping")
 
-	err = test_helpers.RestartTarantool(&instances[0])
+	err = test_helpers.RestartTarantool(&helpInstances[0])
 	require.Nilf(t, err, "failed to restart tarantool")
 
-	err = test_helpers.RestartTarantool(&instances[1])
+	err = test_helpers.RestartTarantool(&helpInstances[1])
 	require.Nilf(t, err, "failed to restart tarantool")
 }
 
@@ -1133,7 +1157,7 @@ func TestCall(t *testing.T) {
 
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.Connect(ctx, dialersMap, connOpts)
+	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -1192,7 +1216,7 @@ func TestCall16(t *testing.T) {
 
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.Connect(ctx, dialersMap, connOpts)
+	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -1251,7 +1275,7 @@ func TestCall17(t *testing.T) {
 
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.Connect(ctx, dialersMap, connOpts)
+	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -1310,7 +1334,7 @@ func TestEval(t *testing.T) {
 
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.Connect(ctx, dialersMap, connOpts)
+	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -1390,7 +1414,7 @@ func TestExecute(t *testing.T) {
 
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.Connect(ctx, dialersMap, connOpts)
+	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -1448,7 +1472,7 @@ func TestRoundRobinStrategy(t *testing.T) {
 
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.Connect(ctx, dialersMap, connOpts)
+	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -1527,7 +1551,7 @@ func TestRoundRobinStrategy_NoReplica(t *testing.T) {
 
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.Connect(ctx, dialersMap, connOpts)
+	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -1600,7 +1624,7 @@ func TestRoundRobinStrategy_NoMaster(t *testing.T) {
 
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.Connect(ctx, dialersMap, connOpts)
+	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -1685,7 +1709,7 @@ func TestUpdateInstancesRoles(t *testing.T) {
 
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.Connect(ctx, dialersMap, connOpts)
+	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -1831,7 +1855,7 @@ func TestInsert(t *testing.T) {
 
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.Connect(ctx, dialersMap, connOpts)
+	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -1930,7 +1954,7 @@ func TestDelete(t *testing.T) {
 
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.Connect(ctx, dialersMap, connOpts)
+	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -1994,7 +2018,7 @@ func TestUpsert(t *testing.T) {
 
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.Connect(ctx, dialersMap, connOpts)
+	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -2066,7 +2090,7 @@ func TestUpdate(t *testing.T) {
 
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.Connect(ctx, dialersMap, connOpts)
+	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -2155,7 +2179,7 @@ func TestReplace(t *testing.T) {
 
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.Connect(ctx, dialersMap, connOpts)
+	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -2240,7 +2264,7 @@ func TestSelect(t *testing.T) {
 
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.Connect(ctx, dialersMap, connOpts)
+	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -2362,7 +2386,7 @@ func TestPing(t *testing.T) {
 
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.Connect(ctx, dialersMap, connOpts)
+	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -2401,7 +2425,7 @@ func TestDo(t *testing.T) {
 
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.Connect(ctx, dialersMap, connOpts)
+	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -2437,7 +2461,7 @@ func TestDo_concurrent(t *testing.T) {
 
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.Connect(ctx, dialersMap, connOpts)
+	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -2470,7 +2494,7 @@ func TestNewPrepared(t *testing.T) {
 
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.Connect(ctx, dialersMap, connOpts)
+	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -2542,7 +2566,7 @@ func TestDoWithStrangerConn(t *testing.T) {
 
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.Connect(ctx, dialersMap, connOpts)
+	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -2572,7 +2596,7 @@ func TestStream_Commit(t *testing.T) {
 
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.Connect(ctx, dialersMap, connOpts)
+	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 	defer connPool.Close()
@@ -2663,7 +2687,7 @@ func TestStream_Rollback(t *testing.T) {
 
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.Connect(ctx, dialersMap, connOpts)
+	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 	defer connPool.Close()
@@ -2753,7 +2777,7 @@ func TestStream_TxnIsolationLevel(t *testing.T) {
 
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.Connect(ctx, dialersMap, connOpts)
+	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 	defer connPool.Close()
@@ -2834,7 +2858,7 @@ func TestConnectionPool_NewWatcher_no_watchers(t *testing.T) {
 
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.Connect(ctx, dialersMap, connOpts)
+	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nill after Connect")
 	defer connPool.Close()
@@ -2864,7 +2888,7 @@ func TestConnectionPool_NewWatcher_modes(t *testing.T) {
 
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.Connect(ctx, dialersMap, connOpts)
+	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 	defer connPool.Close()
@@ -2944,7 +2968,7 @@ func TestConnectionPool_NewWatcher_update(t *testing.T) {
 	}
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	pool, err := pool.ConnectWithOpts(ctx, dialersMap, connOpts, poolOpts)
+	pool, err := pool.ConnectWithOpts(ctx, instances, poolOpts)
 
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, pool, "conn is nil after Connect")
@@ -3026,7 +3050,7 @@ func TestWatcher_Unregister(t *testing.T) {
 
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	pool, err := pool.Connect(ctx, dialersMap, connOpts)
+	pool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, pool, "conn is nil after Connect")
 	defer pool.Close()
@@ -3083,7 +3107,7 @@ func TestConnectionPool_NewWatcher_concurrent(t *testing.T) {
 
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.Connect(ctx, dialersMap, connOpts)
+	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 	defer connPool.Close()
@@ -3121,7 +3145,7 @@ func TestWatcher_Unregister_concurrent(t *testing.T) {
 
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.Connect(ctx, dialersMap, connOpts)
+	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 	defer connPool.Close()
@@ -3177,14 +3201,14 @@ func runTestMain(m *testing.M) int {
 		})
 	}
 
-	instances, err = test_helpers.StartTarantoolInstances(instsOpts)
+	helpInstances, err = test_helpers.StartTarantoolInstances(instsOpts)
 
 	if err != nil {
 		log.Fatalf("Failed to prepare test tarantool: %s", err)
 		return -1
 	}
 
-	defer test_helpers.StopTarantoolInstances(instances)
+	defer test_helpers.StopTarantoolInstances(helpInstances)
 
 	return m.Run()
 }

@@ -29,7 +29,7 @@ func examplePool(roles []bool,
 	}
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.Connect(ctx, dialersMap, connOpts)
+	connPool, err := pool.Connect(ctx, instances)
 	if err != nil || connPool == nil {
 		return nil, fmt.Errorf("ConnectionPool is not established")
 	}
@@ -39,16 +39,21 @@ func examplePool(roles []bool,
 
 func exampleFeaturesPool(roles []bool, connOpts tarantool.Opts,
 	requiredProtocol tarantool.ProtocolInfo) (*pool.ConnectionPool, error) {
-	poolDialersMap := map[string]tarantool.Dialer{}
+	poolInstances := []pool.Instance{}
 	poolDialers := []tarantool.Dialer{}
-	for _, serv := range servers {
-		poolDialersMap[serv] = tarantool.NetDialer{
-			Address:              serv,
+	for _, server := range servers {
+		dialer := tarantool.NetDialer{
+			Address:              server,
 			User:                 user,
 			Password:             pass,
 			RequiredProtocolInfo: requiredProtocol,
 		}
-		poolDialers = append(poolDialers, poolDialersMap[serv])
+		poolInstances = append(poolInstances, pool.Instance{
+			Name:   server,
+			Dialer: dialer,
+			Opts:   connOpts,
+		})
+		poolDialers = append(poolDialers, dialer)
 	}
 	err := test_helpers.SetClusterRO(poolDialers, connOpts, roles)
 	if err != nil {
@@ -56,7 +61,7 @@ func exampleFeaturesPool(roles []bool, connOpts tarantool.Opts,
 	}
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.Connect(ctx, poolDialersMap, connOpts)
+	connPool, err := pool.Connect(ctx, poolInstances)
 	if err != nil || connPool == nil {
 		return nil, fmt.Errorf("ConnectionPool is not established")
 	}
