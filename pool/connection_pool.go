@@ -24,9 +24,7 @@ import (
 )
 
 var (
-	ErrEmptyInstances    = errors.New("instances (second argument) should not be empty")
 	ErrWrongCheckTimeout = errors.New("wrong check timeout, must be greater than 0")
-	ErrNoConnection      = errors.New("no active connections")
 	ErrTooManyArgs       = errors.New("too many arguments")
 	ErrIncorrectResponse = errors.New("incorrect response format")
 	ErrIncorrectStatus   = errors.New("incorrect instance status: status should be `running`")
@@ -155,9 +153,6 @@ func newEndpoint(name string, dialer tarantool.Dialer, opts tarantool.Opts) *end
 // opts. Instances must have unique names.
 func ConnectWithOpts(ctx context.Context, instances []Instance,
 	opts Opts) (*ConnectionPool, error) {
-	if len(instances) == 0 {
-		return nil, ErrEmptyInstances
-	}
 	unique := make(map[string]bool)
 	for _, instance := range instances {
 		if _, ok := unique[instance.Name]; ok {
@@ -178,28 +173,23 @@ func ConnectWithOpts(ctx context.Context, instances []Instance,
 	connPool := &ConnectionPool{
 		ends:    make(map[string]*endpoint),
 		opts:    opts,
-		state:   unknownState,
+		state:   connectedState,
 		done:    make(chan struct{}),
 		rwPool:  rwPool,
 		roPool:  roPool,
 		anyPool: anyPool,
 	}
 
-	somebodyAlive, ctxCanceled := connPool.fillPools(ctx, instances)
-	if !somebodyAlive {
+	canceled := connPool.fillPools(ctx, instances)
+	if canceled {
 		connPool.state.set(closedState)
-		if ctxCanceled {
-			return nil, ErrContextCanceled
-		}
-		return nil, ErrNoConnection
+		return nil, ErrContextCanceled
 	}
 
-	connPool.state.set(connectedState)
-
-	for _, s := range connPool.ends {
+	for _, endpoint := range connPool.ends {
 		endpointCtx, cancel := context.WithCancel(context.Background())
-		s.cancel = cancel
-		go connPool.controller(endpointCtx, s)
+		endpoint.cancel = cancel
+		go connPool.controller(endpointCtx, endpoint)
 	}
 
 	return connPool, nil
@@ -252,8 +242,12 @@ func (p *ConnectionPool) ConfiguredTimeout(mode Mode) (time.Duration, error) {
 	return conn.ConfiguredTimeout(), nil
 }
 
-// Add adds a new instance into the pool. This function adds the instance
-// only after successful connection.
+// Add adds a new instance into the pool. The pool will try to connect to the
+// instance later if it is unable to establish a connection.
+//
+// The function may return an error and don't add the instance into the pool
+// if the context has been cancelled or on concurrent Close()/CloseGraceful()
+// call.
 func (p *ConnectionPool) Add(ctx context.Context, instance Instance) error {
 	e := newEndpoint(instance.Name, instance.Dialer, instance.Opts)
 
@@ -268,19 +262,34 @@ func (p *ConnectionPool) Add(ctx context.Context, instance Instance) error {
 		return ErrExists
 	}
 
-	endpointCtx, cancel := context.WithCancel(context.Background())
-	e.cancel = cancel
+	endpointCtx, endpointCancel := context.WithCancel(context.Background())
+	connectCtx, connectCancel := context.WithCancel(ctx)
+	e.cancel = func() {
+		connectCancel()
+		endpointCancel()
+	}
 
 	p.ends[instance.Name] = e
 	p.endsMutex.Unlock()
 
-	if err := p.tryConnect(ctx, e); err != nil {
-		p.endsMutex.Lock()
-		delete(p.ends, instance.Name)
-		p.endsMutex.Unlock()
-		e.cancel()
-		close(e.closed)
-		return err
+	if err := p.tryConnect(connectCtx, e); err != nil {
+		var canceled bool
+		select {
+		case <-connectCtx.Done():
+			canceled = true
+		case <-endpointCtx.Done():
+			canceled = true
+		default:
+			canceled = false
+		}
+		if canceled {
+			p.endsMutex.Lock()
+			delete(p.ends, instance.Name)
+			p.endsMutex.Unlock()
+			e.cancel()
+			close(e.closed)
+			return err
+		}
 	}
 
 	go p.controller(endpointCtx, e)
@@ -1145,64 +1154,30 @@ func (p *ConnectionPool) deactivateConnections() {
 	}
 }
 
-func (p *ConnectionPool) processConnection(conn *tarantool.Connection,
-	name string, end *endpoint) bool {
-	role, err := p.getConnectionRole(conn)
-	if err != nil {
-		conn.Close()
-		log.Printf("tarantool: storing connection to %s failed: %s\n", name, err)
-		return false
-	}
-
-	if !p.handlerDiscovered(name, conn, role) {
-		conn.Close()
-		return false
-	}
-	if p.addConnection(name, conn, role) != nil {
-		conn.Close()
-		p.handlerDeactivated(name, conn, role)
-		return false
-	}
-
-	end.conn = conn
-	end.role = role
-	return true
-}
-
-func (p *ConnectionPool) fillPools(ctx context.Context,
-	instances []Instance) (bool, bool) {
-	somebodyAlive := false
-	ctxCanceled := false
-
+func (p *ConnectionPool) fillPools(ctx context.Context, instances []Instance) bool {
 	// It is called before controller() goroutines, so we don't expect
 	// concurrency issues here.
 	for _, instance := range instances {
 		end := newEndpoint(instance.Name, instance.Dialer, instance.Opts)
 		p.ends[instance.Name] = end
-		connOpts := instance.Opts
-		connOpts.Notify = end.notify
-		conn, err := tarantool.Connect(ctx, instance.Dialer, connOpts)
-		if err != nil {
+
+		if err := p.tryConnect(ctx, end); err != nil {
 			log.Printf("tarantool: connect to %s failed: %s\n",
 				instance.Name, err)
 			select {
 			case <-ctx.Done():
-				ctxCanceled = true
-
 				p.ends[instance.Name] = nil
 				log.Printf("tarantool: operation was canceled")
 
 				p.deactivateConnections()
 
-				return false, ctxCanceled
+				return true
 			default:
 			}
-		} else if p.processConnection(conn, instance.Name, end) {
-			somebodyAlive = true
 		}
 	}
 
-	return somebodyAlive, ctxCanceled
+	return false
 }
 
 func (p *ConnectionPool) updateConnection(e *endpoint) {

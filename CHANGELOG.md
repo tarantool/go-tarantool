@@ -52,8 +52,8 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
   connection objects (#136). This function now does not attempt to reconnect 
   and tries to establish a connection only once. Function might be canceled 
   via context. Context accepted as first argument.
-  `pool.Connect` and `pool.Add` now accept context as first argument, which 
-  user may cancel in process. If `pool.Connect` is canceled in progress, an 
+  `pool.Connect` and `pool.Add` now accept context as the first argument, which
+  user may cancel in process. If `pool.Connect` is canceled in progress, an
   error will be returned. All created connections will be closed.
 - `iproto.Feature` type now used instead of `ProtocolFeature` (#337)
 - `iproto.IPROTO_FEATURE_` constants now used instead of local `Feature` 
@@ -95,6 +95,8 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 - Renamed `StrangerResponse` to `MockResponse` (#237)
 - `pool.Connect`, `pool.ConnetcWithOpts` and `pool.Add` use a new type
   `pool.Instance` to determinate connection options (#356)
+- `pool.Connect`, `pool.ConnectWithOpts` and `pool.Add` add connections to
+  the pool even it is unable to connect to it (#372)
 
 ### Deprecated
 

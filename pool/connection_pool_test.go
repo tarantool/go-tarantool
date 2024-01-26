@@ -86,22 +86,6 @@ var defaultTimeoutRetry = 500 * time.Millisecond
 
 var helpInstances []test_helpers.TarantoolInstance
 
-func TestConnect_error_empty_instances(t *testing.T) {
-	ctx, cancel := test_helpers.GetPoolConnectContext()
-	connPool, err := pool.Connect(ctx, []pool.Instance{})
-	cancel()
-	require.Nilf(t, connPool, "conn is not nil with incorrect param")
-	require.ErrorIs(t, err, pool.ErrEmptyInstances)
-}
-
-func TestConnect_error_unavailable(t *testing.T) {
-	ctx, cancel := test_helpers.GetPoolConnectContext()
-	connPool, err := pool.Connect(ctx, makeInstances([]string{"err1", "err2"}, connOpts))
-	cancel()
-	require.Nilf(t, connPool, "conn is not nil with incorrect param")
-	require.ErrorIs(t, err, pool.ErrNoConnection)
-}
-
 func TestConnect_error_duplicate(t *testing.T) {
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	connPool, err := pool.Connect(ctx, makeInstances([]string{"foo", "foo"}, connOpts))
@@ -138,11 +122,54 @@ func TestConnSuccessfully(t *testing.T) {
 		ExpectedPoolStatus: true,
 		ExpectedStatuses: map[string]bool{
 			healthyServ: true,
+			"err":       false,
 		},
 	}
 
 	err = test_helpers.CheckPoolStatuses(args)
 	require.Nil(t, err)
+}
+
+func TestConnect_empty(t *testing.T) {
+	cases := []struct {
+		Name      string
+		Instances []pool.Instance
+	}{
+		{"nil", nil},
+		{"empty", []pool.Instance{}},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.Name, func(t *testing.T) {
+			ctx, cancel := test_helpers.GetPoolConnectContext()
+			defer cancel()
+			connPool, err := pool.Connect(ctx, tc.Instances)
+			if connPool != nil {
+				defer connPool.Close()
+			}
+			require.NoError(t, err, "failed to create a pool")
+			require.NotNilf(t, connPool, "pool is nil after Connect")
+			require.Lenf(t, connPool.GetInfo(), 0, "empty pool expected")
+		})
+	}
+}
+
+func TestConnect_unavailable(t *testing.T) {
+	servers := []string{"err1", "err2"}
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	connPool, err := pool.Connect(ctx, makeInstances([]string{"err1", "err2"}, connOpts))
+	cancel()
+
+	if connPool != nil {
+		defer connPool.Close()
+	}
+
+	require.NoError(t, err, "failed to create a pool")
+	require.NotNilf(t, connPool, "pool is nil after Connect")
+	require.Equal(t, map[string]pool.ConnectionInfo{
+		servers[0]: pool.ConnectionInfo{ConnectedNow: false, ConnRole: pool.UnknownRole},
+		servers[1]: pool.ConnectionInfo{ConnectedNow: false, ConnRole: pool.UnknownRole},
+	}, connPool.GetInfo())
 }
 
 func TestConnErrorAfterCtxCancel(t *testing.T) {
@@ -410,16 +437,17 @@ func TestDisconnectAll(t *testing.T) {
 func TestAdd(t *testing.T) {
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.Connect(ctx, makeInstances(servers[:1], connOpts))
+	connPool, err := pool.Connect(ctx, []pool.Instance{})
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
 	defer connPool.Close()
 
-	for _, server := range servers[1:] {
+	for _, server := range servers {
 		ctx, cancel := test_helpers.GetConnectContext()
+		defer cancel()
+
 		err = connPool.Add(ctx, makeInstance(server, connOpts))
-		cancel()
 		require.Nil(t, err)
 	}
 
@@ -442,6 +470,22 @@ func TestAdd(t *testing.T) {
 	require.Nil(t, err)
 }
 
+func TestAdd_canceled_ctx(t *testing.T) {
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx, []pool.Instance{})
+	require.Nilf(t, err, "failed to connect")
+	require.NotNilf(t, connPool, "conn is nil after Connect")
+
+	defer connPool.Close()
+
+	ctx, cancel = test_helpers.GetConnectContext()
+	cancel()
+
+	err = connPool.Add(ctx, makeInstance(servers[0], connOpts))
+	require.Error(t, err)
+}
+
 func TestAdd_exist(t *testing.T) {
 	server := servers[0]
 	ctx, cancel := test_helpers.GetPoolConnectContext()
@@ -453,8 +497,9 @@ func TestAdd_exist(t *testing.T) {
 	defer connPool.Close()
 
 	ctx, cancel = test_helpers.GetConnectContext()
+	defer cancel()
+
 	err = connPool.Add(ctx, makeInstance(server, connOpts))
-	cancel()
 	require.Equal(t, pool.ErrExists, err)
 
 	args := test_helpers.CheckStatusesArgs{
@@ -483,18 +528,15 @@ func TestAdd_unreachable(t *testing.T) {
 
 	defer connPool.Close()
 
-	unhealthyServ := "127.0.0.2:6667"
-	ctx, cancel = test_helpers.GetConnectContext()
-	err = connPool.Add(ctx, pool.Instance{
+	unhealthyServ := "unreachable:6667"
+	err = connPool.Add(context.Background(), pool.Instance{
 		Name: unhealthyServ,
 		Dialer: tarantool.NetDialer{
 			Address: unhealthyServ,
 		},
 		Opts: connOpts,
 	})
-	cancel()
-	// The OS-dependent error so we just check for existence.
-	require.NotNil(t, err)
+	require.NoError(t, err)
 
 	args := test_helpers.CheckStatusesArgs{
 		ConnPool:           connPool,
@@ -502,7 +544,8 @@ func TestAdd_unreachable(t *testing.T) {
 		Servers:            servers,
 		ExpectedPoolStatus: true,
 		ExpectedStatuses: map[string]bool{
-			server: true,
+			server:        true,
+			unhealthyServ: false,
 		},
 	}
 
@@ -520,9 +563,11 @@ func TestAdd_afterClose(t *testing.T) {
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
 	connPool.Close()
+
 	ctx, cancel = test_helpers.GetConnectContext()
+	defer cancel()
+
 	err = connPool.Add(ctx, makeInstance(server, connOpts))
-	cancel()
 	assert.Equal(t, err, pool.ErrClosed)
 }
 
@@ -541,9 +586,10 @@ func TestAdd_Close_concurrent(t *testing.T) {
 	go func() {
 		defer wg.Done()
 
-		ctx, cancel := test_helpers.GetConnectContext()
+		ctx, cancel = test_helpers.GetConnectContext()
+		defer cancel()
+
 		err = connPool.Add(ctx, makeInstance(serv1, connOpts))
-		cancel()
 		if err != nil {
 			assert.Equal(t, pool.ErrClosed, err)
 		}
@@ -569,9 +615,10 @@ func TestAdd_CloseGraceful_concurrent(t *testing.T) {
 	go func() {
 		defer wg.Done()
 
-		ctx, cancel := test_helpers.GetConnectContext()
+		ctx, cancel = test_helpers.GetConnectContext()
+		defer cancel()
+
 		err = connPool.Add(ctx, makeInstance(serv1, connOpts))
-		cancel()
 		if err != nil {
 			assert.Equal(t, pool.ErrClosed, err)
 		}
@@ -1028,8 +1075,17 @@ func TestConnectionHandlerOpenError(t *testing.T) {
 	if err == nil {
 		defer connPool.Close()
 	}
-	require.NotNilf(t, err, "success to connect")
-	require.Equalf(t, 2, h.discovered, "unexpected discovered count")
+	require.NoError(t, err, "failed to connect")
+	require.NotNil(t, connPool, "pool expected")
+	require.Equal(t, map[string]pool.ConnectionInfo{
+		servers[0]: pool.ConnectionInfo{ConnectedNow: false, ConnRole: pool.UnknownRole},
+		servers[1]: pool.ConnectionInfo{ConnectedNow: false, ConnRole: pool.UnknownRole},
+	}, connPool.GetInfo())
+	connPool.Close()
+
+	// It could happen additional reconnect attempts in the background, but
+	// at least 2 connects on start.
+	require.GreaterOrEqualf(t, h.discovered, 2, "unexpected discovered count")
 	require.Equalf(t, 0, h.deactivated, "unexpected deactivated count")
 }
 

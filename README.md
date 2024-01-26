@@ -199,6 +199,9 @@ The subpackage has been deleted. You could use `pool` instead.
   the second argument instead of a list of addresses. Each instance is
   associated with a unique string name, `Dialer` and connection options which
   allows instances to be independently configured.
+* `pool.Connect`, `pool.ConnectWithOpts` and `pool.Add` add instances into
+  the pool even it is unable to connect to it. The pool will try to connect to
+  the instance later.
 * `pool.Add` now accepts context as the first argument, which user may cancel
   in process.
 * `pool.Add` now accepts `pool.Instance` as the second argument instead of
