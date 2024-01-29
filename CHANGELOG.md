@@ -131,6 +131,8 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 - Tests with crud 1.4.0 (#336)
 - Tests with case sensitive SQL (#341)
 - Splice update operation accepts 3 arguments instead of 5 (#348)
+- Unable to use a slice of custom types as a slice of tuples or objects for
+  `crud.*ManyRequest/crud.*ObjectManyRequest` (#365)
 
 ## [1.12.0] - 2023-06-07
 

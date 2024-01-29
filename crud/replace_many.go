@@ -15,14 +15,14 @@ type ReplaceManyOpts = OperationManyOpts
 // `crud.replace_many` for execution by a Connection.
 type ReplaceManyRequest struct {
 	spaceRequest
-	tuples []Tuple
+	tuples Tuples
 	opts   ReplaceManyOpts
 }
 
 type replaceManyArgs struct {
 	_msgpack struct{} `msgpack:",asArray"` //nolint: structcheck,unused
 	Space    string
-	Tuples   []Tuple
+	Tuples   Tuples
 	Opts     ReplaceManyOpts
 }
 
@@ -37,7 +37,7 @@ func MakeReplaceManyRequest(space string) ReplaceManyRequest {
 
 // Tuples sets the tuples for the ReplaceManyRequest request.
 // Note: default value is nil.
-func (req ReplaceManyRequest) Tuples(tuples []Tuple) ReplaceManyRequest {
+func (req ReplaceManyRequest) Tuples(tuples Tuples) ReplaceManyRequest {
 	req.tuples = tuples
 	return req
 }
@@ -73,14 +73,14 @@ type ReplaceObjectManyOpts = OperationObjectManyOpts
 // `crud.replace_object_many` for execution by a Connection.
 type ReplaceObjectManyRequest struct {
 	spaceRequest
-	objects []Object
+	objects Objects
 	opts    ReplaceObjectManyOpts
 }
 
 type replaceObjectManyArgs struct {
 	_msgpack struct{} `msgpack:",asArray"` //nolint: structcheck,unused
 	Space    string
-	Objects  []Object
+	Objects  Objects
 	Opts     ReplaceObjectManyOpts
 }
 
@@ -95,7 +95,7 @@ func MakeReplaceObjectManyRequest(space string) ReplaceObjectManyRequest {
 
 // Objects sets the tuple for the ReplaceObjectManyRequest request.
 // Note: default value is nil.
-func (req ReplaceObjectManyRequest) Objects(objects []Object) ReplaceObjectManyRequest {
+func (req ReplaceObjectManyRequest) Objects(objects Objects) ReplaceObjectManyRequest {
 	req.objects = objects
 	return req
 }

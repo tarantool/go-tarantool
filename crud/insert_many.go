@@ -15,14 +15,14 @@ type InsertManyOpts = OperationManyOpts
 // `crud.insert_many` for execution by a Connection.
 type InsertManyRequest struct {
 	spaceRequest
-	tuples []Tuple
+	tuples Tuples
 	opts   InsertManyOpts
 }
 
 type insertManyArgs struct {
 	_msgpack struct{} `msgpack:",asArray"` //nolint: structcheck,unused
 	Space    string
-	Tuples   []Tuple
+	Tuples   Tuples
 	Opts     InsertManyOpts
 }
 
@@ -37,7 +37,7 @@ func MakeInsertManyRequest(space string) InsertManyRequest {
 
 // Tuples sets the tuples for the InsertManyRequest request.
 // Note: default value is nil.
-func (req InsertManyRequest) Tuples(tuples []Tuple) InsertManyRequest {
+func (req InsertManyRequest) Tuples(tuples Tuples) InsertManyRequest {
 	req.tuples = tuples
 	return req
 }
@@ -73,14 +73,14 @@ type InsertObjectManyOpts = OperationObjectManyOpts
 // `crud.insert_object_many` for execution by a Connection.
 type InsertObjectManyRequest struct {
 	spaceRequest
-	objects []Object
+	objects Objects
 	opts    InsertObjectManyOpts
 }
 
 type insertObjectManyArgs struct {
 	_msgpack struct{} `msgpack:",asArray"` //nolint: structcheck,unused
 	Space    string
-	Objects  []Object
+	Objects  Objects
 	Opts     InsertObjectManyOpts
 }
 
@@ -95,7 +95,7 @@ func MakeInsertObjectManyRequest(space string) InsertObjectManyRequest {
 
 // Objects sets the objects for the InsertObjectManyRequest request.
 // Note: default value is nil.
-func (req InsertObjectManyRequest) Objects(objects []Object) InsertObjectManyRequest {
+func (req InsertObjectManyRequest) Objects(objects Objects) InsertObjectManyRequest {
 	req.objects = objects
 	return req
 }

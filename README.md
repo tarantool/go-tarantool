@@ -213,6 +213,10 @@ The subpackage has been deleted. You could use `pool` instead.
 
 * `crud` operations `Timeout` option has `crud.OptFloat64` type
   instead of `crud.OptUint`.
+* A slice of a custom type could be used as tuples for `ReplaceManyRequest` and
+  `InsertManyRequest`, `ReplaceObjectManyRequest`.
+* A slice of a custom type could be used as objects for `ReplaceObjectManyRequest`
+  and `InsertObjectManyRequest`.
 
 #### test_helpers package
 
