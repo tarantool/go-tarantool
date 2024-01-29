@@ -85,6 +85,89 @@ func ExampleResult_rowsCustomType() {
 	// [{{} 2010 45 bla}]
 }
 
+// ExampleTuples_customType demonstrates how to use a slice of objects of a
+// custom type as Tuples to make a ReplaceManyRequest.
+func ExampleTuples_customType() {
+	conn := exampleConnect()
+
+	// The type will be encoded/decoded as an array.
+	type Tuple struct {
+		_msgpack struct{} `msgpack:",asArray"` //nolint: structcheck,unused
+		Id       uint64
+		BucketId *uint64
+		Name     string
+	}
+	req := crud.MakeReplaceManyRequest(exampleSpace).Tuples([]Tuple{
+		Tuple{
+			Id:       2010,
+			BucketId: nil,
+			Name:     "bla",
+		},
+	})
+
+	ret := crud.MakeResult(reflect.TypeOf(Tuple{}))
+	if err := conn.Do(req).GetTyped(&ret); err != nil {
+		fmt.Printf("Failed to execute request: %s", err)
+		return
+	}
+
+	fmt.Println(ret.Metadata)
+	rows := ret.Rows.([]Tuple)
+	if len(rows) == 1 {
+		fmt.Println(rows[0].Id)
+		fmt.Println(*rows[0].BucketId)
+		fmt.Println(rows[0].Name)
+	} else {
+		fmt.Printf("Unexpected result tuples count: %d", len(rows))
+	}
+	// Output:
+	// [{id unsigned false} {bucket_id unsigned true} {name string false}]
+	// 2010
+	// 45
+	// bla
+}
+
+// ExampleObjects_customType demonstrates how to use a slice of objects of
+// a custom type as Objects to make a ReplaceObjectManyRequest.
+func ExampleObjects_customType() {
+	conn := exampleConnect()
+
+	// The type will be encoded/decoded as a map.
+	type Tuple struct {
+		Id       uint64  `msgpack:"id,omitempty"`
+		BucketId *uint64 `msgpack:"bucket_id,omitempty"`
+		Name     string  `msgpack:"name,omitempty"`
+	}
+	req := crud.MakeReplaceObjectManyRequest(exampleSpace).Objects([]Tuple{
+		Tuple{
+			Id:       2010,
+			BucketId: nil,
+			Name:     "bla",
+		},
+	})
+
+	ret := crud.MakeResult(reflect.TypeOf(Tuple{}))
+	if err := conn.Do(req).GetTyped(&ret); err != nil {
+		fmt.Printf("Failed to execute request: %s", err)
+		return
+	}
+
+	fmt.Println(ret.Metadata)
+	rows := ret.Rows.([]Tuple)
+	if len(rows) == 1 {
+		fmt.Println(rows[0].Id)
+		fmt.Println(*rows[0].BucketId)
+		fmt.Println(rows[0].Name)
+	} else {
+		fmt.Printf("Unexpected result tuples count: %d", len(rows))
+	}
+	// Output:
+	// [{id unsigned false} {bucket_id unsigned true} {name string false}]
+	// 2010
+	// 45
+	// bla
+}
+
 // ExampleResult_operationData demonstrates how to obtain information
 // about erroneous objects from crud.Error using `OperationData` field.
 func ExampleResult_operationData() {
