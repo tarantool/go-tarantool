@@ -42,6 +42,8 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
   check (#301)
 - `GreetingDialer` type for creating a dialer, that fills `Greeting` of a
   connection (#301)
+- New method `Pool.DoInstance` to execute a request on a target instance in
+  a pool (#376).
 
 ### Changed
 
