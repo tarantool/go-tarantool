@@ -2540,6 +2540,76 @@ func TestDo_concurrent(t *testing.T) {
 	wg.Wait()
 }
 
+func TestDoInstance(t *testing.T) {
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+
+	connPool, err := pool.Connect(ctx, instances)
+	require.Nilf(t, err, "failed to connect")
+	require.NotNilf(t, connPool, "conn is nil after Connect")
+
+	defer connPool.Close()
+
+	req := tarantool.NewEvalRequest("return box.cfg.listen")
+	for _, server := range servers {
+		data, err := connPool.DoInstance(req, server).Get()
+		require.NoError(t, err)
+		assert.Equal(t, []interface{}{server}, data)
+	}
+}
+
+func TestDoInstance_not_found(t *testing.T) {
+	roles := []bool{true, true, false, true, false}
+
+	err := test_helpers.SetClusterRO(dialers, connOpts, roles)
+	require.Nilf(t, err, "fail to set roles for cluster")
+
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+
+	connPool, err := pool.Connect(ctx, []pool.Instance{})
+	require.Nilf(t, err, "failed to connect")
+	require.NotNilf(t, connPool, "conn is nil after Connect")
+
+	defer connPool.Close()
+
+	data, err := connPool.DoInstance(tarantool.NewPingRequest(), "not_exist").Get()
+	assert.Nil(t, data)
+	require.ErrorIs(t, err, pool.ErrNoHealthyInstance)
+}
+
+func TestDoInstance_concurrent(t *testing.T) {
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx, instances)
+	require.Nilf(t, err, "failed to connect")
+	require.NotNilf(t, connPool, "conn is nil after Connect")
+
+	defer connPool.Close()
+
+	eval := tarantool.NewEvalRequest("return box.cfg.listen")
+	ping := tarantool.NewPingRequest()
+	const concurrency = 100
+	var wg sync.WaitGroup
+	wg.Add(concurrency)
+
+	for i := 0; i < concurrency; i++ {
+		go func() {
+			defer wg.Done()
+
+			for _, server := range servers {
+				data, err := connPool.DoInstance(eval, server).Get()
+				require.NoError(t, err)
+				assert.Equal(t, []interface{}{server}, data)
+			}
+			_, err := connPool.DoInstance(ping, "not_exist").Get()
+			require.ErrorIs(t, err, pool.ErrNoHealthyInstance)
+		}()
+	}
+
+	wg.Wait()
+}
+
 func TestNewPrepared(t *testing.T) {
 	test_helpers.SkipIfSQLUnsupported(t)
 
