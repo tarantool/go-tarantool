@@ -31,24 +31,6 @@ func exampleConnect(dialer tarantool.Dialer, opts tarantool.Opts) *tarantool.Con
 	return conn
 }
 
-// Example demonstrates how to use SSL transport.
-func ExampleOpenSslDialer() {
-	sslDialer := tarantool.OpenSslDialer{
-		Address:     "127.0.0.1:3013",
-		User:        "test",
-		Password:    "test",
-		SslKeyFile:  "testdata/localhost.key",
-		SslCertFile: "testdata/localhost.crt",
-		SslCaFile:   "testdata/ca.crt",
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
-	defer cancel()
-	_, err := tarantool.Connect(ctx, sslDialer, opts)
-	if err != nil {
-		panic("Connection is not established: " + err.Error())
-	}
-}
-
 func ExampleIntKey() {
 	conn := exampleConnect(dialer, opts)
 	defer conn.Close()

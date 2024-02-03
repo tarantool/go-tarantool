@@ -790,6 +790,26 @@ func TestNetDialer_BadUser(t *testing.T) {
 	}
 }
 
+// NetDialer does not work with PapSha256Auth, no matter the Tarantool version
+// and edition.
+func TestNetDialer_PapSha256Auth(t *testing.T) {
+	authDialer := AuthDialer{
+		Dialer:   dialer,
+		Username: "test",
+		Password: "test",
+		Auth:     PapSha256Auth,
+	}
+	ctx, cancel := test_helpers.GetConnectContext()
+	defer cancel()
+	conn, err := authDialer.Dial(ctx, DialOpts{})
+	if conn != nil {
+		conn.Close()
+		t.Fatalf("Connection created successfully")
+	}
+
+	assert.ErrorContains(t, err, "failed to authenticate")
+}
+
 func TestFutureMultipleGetGetTyped(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()

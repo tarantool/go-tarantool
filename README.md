@@ -68,11 +68,7 @@ We define multiple [build tags](https://pkg.go.dev/go/build#hdr-Build_Constraint
 
 This allows us to introduce new features without losing backward compatibility.
 
-1. To disable SSL support and linking with OpenSSL, you can use the tag:
-   ```
-   go_tarantool_ssl_disable
-   ```
-2. To run fuzz tests with decimals, you can use the build tag:
+1. To run fuzz tests with decimals, you can use the build tag:
    ```
    go_tarantool_decimal_fuzzing
    ```
@@ -168,6 +164,60 @@ otherwise it will have a description which can be retrieved with `err.Error()`.
 **Observation 6:** The `Insert` request, like almost all requests, is preceded
 by the method `Do` of object `conn` which is the object that was returned
 by `Connect()`.
+
+### Example with encrypting traffic
+
+For SSL-enabled connections, use `OpenSSLDialer` from the [`go-tlsdialer`](https://github.com/tarantool/go-tlsdialer)
+package.
+
+Here is small example with importing `go-tlsdialer` and using the
+`OpenSSLDialer`:
+
+```go
+package tarantool
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/tarantool/go-tarantool/v2"
+	"github.com/tarantool/go-tlsdialer"
+)
+
+func main() {
+	sslDialer := tlsdialer.OpenSSLDialer{
+		Address:     "127.0.0.1:3013", 
+		User:        "test", 
+		Password:    "test", 
+		SslKeyFile:  "testdata/localhost.key",
+		SslCertFile: "testdata/localhost.crt",
+		SslCaFile:   "testdata/ca.crt",
+	}
+	opts := tarantool.Opts{
+		Timeout: time.Second,
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
+	conn, err := tarantool.Connect(ctx, sslDialer, opts)
+	if err != nil {
+		fmt.Printf("Connection refused: %s", err)
+	}
+
+	data, err := conn.Do(tarantool.NewInsertRequest(999).
+		Tuple([]interface{}{99999, "BB"}), 
+	).Get()
+	if err != nil {
+		fmt.Printf("Error: %s", err)
+	} else {
+		fmt.Printf("Data: %v", data)
+	}
+}
+```
+
+Note that [traffic encryption](https://www.tarantool.io/en/doc/latest/enterprise/security/#encrypting-traffic)
+is only available in Tarantool Enterprise Edition 2.10 or newer.
 
 ### Migration to v2
 
@@ -315,8 +365,10 @@ and user may cancel it in process.
 
 Now you need to pass `Dialer` as the second argument instead of URI.
 If you were using a non-SSL connection, you need to create `NetDialer`.
-For SSL-enabled connections, use `OpenSslDialer`. Please note that the options
-for creating a connection are now stored in corresponding `Dialer`, not in `Opts`.
+For SSL-enabled connections, use `OpenSSLDialer` from the `go-tlsdialer`
+package.
+Please note that the options for creating a connection are now stored in
+corresponding `Dialer`, not in `Opts`.
 
 #### Connection schema
 

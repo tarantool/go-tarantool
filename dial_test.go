@@ -442,7 +442,6 @@ type testDialOpts struct {
 	isErrGreeting   bool
 	isErrId         bool
 	isIdUnsupported bool
-	isPapSha256Auth bool
 	isErrAuth       bool
 	isEmptyAuth     bool
 }
@@ -485,9 +484,7 @@ func testDialAccept(opts testDialOpts, l net.Listener) chan dialServerActual {
 
 		// Read Auth request.
 		authRequestExpected := authRequestExpectedChapSha1
-		if opts.isPapSha256Auth {
-			authRequestExpected = authRequestExpectedPapSha256
-		} else if opts.isEmptyAuth {
+		if opts.isEmptyAuth {
 			authRequestExpected = []byte{}
 		}
 		authRequestActual := make([]byte, len(authRequestExpected))
@@ -530,9 +527,7 @@ func testDialer(t *testing.T, l net.Listener, dialer tarantool.Dialer,
 	require.Equal(t, idRequestExpected, actual.IdRequest)
 
 	authRequestExpected := authRequestExpectedChapSha1
-	if opts.isPapSha256Auth {
-		authRequestExpected = authRequestExpectedPapSha256
-	} else if opts.isEmptyAuth {
+	if opts.isEmptyAuth {
 		authRequestExpected = []byte{}
 	}
 	require.Equal(t, authRequestExpected, actual.AuthRequest)
@@ -749,9 +744,42 @@ func TestAuthDialer_Dial(t *testing.T) {
 		conn.Close()
 	}
 
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.NotNil(t, conn)
 	assert.Equal(t, authRequestExpectedChapSha1[:41], dialer.conn.writebuf.Bytes()[:41])
+}
+
+func TestAuthDialer_Dial_PapSha256Auth(t *testing.T) {
+	salt := fmt.Sprintf("%s", testDialSalt)
+	salt = base64.StdEncoding.EncodeToString([]byte(salt))
+	dialer := mockIoDialer{
+		init: func(conn *mockIoConn) {
+			conn.greeting.Salt = salt
+			conn.writeWgDelay = 1
+			conn.readWgDelay = 2
+			conn.readbuf.Write(okResponse)
+		},
+	}
+	defer func() {
+		dialer.conn.writeWg.Done()
+	}()
+
+	authDialer := tarantool.AuthDialer{
+		Dialer:   &dialer,
+		Username: "test",
+		Password: "test",
+		Auth:     tarantool.PapSha256Auth,
+	}
+	ctx, cancel := test_helpers.GetConnectContext()
+	defer cancel()
+	conn, err := authDialer.Dial(ctx, tarantool.DialOpts{})
+	if conn != nil {
+		conn.Close()
+	}
+
+	assert.NoError(t, err)
+	assert.NotNil(t, conn)
+	assert.Equal(t, authRequestExpectedPapSha256[:41], dialer.conn.writebuf.Bytes()[:41])
 }
 
 func TestProtocolDialer_Dial_DialerError(t *testing.T) {
@@ -847,7 +875,7 @@ func TestProtocolDialer_Dial(t *testing.T) {
 		conn.Close()
 	}
 
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.NotNil(t, conn)
 	assert.Equal(t, protoInfo, conn.ProtocolInfo())
 }
@@ -913,7 +941,7 @@ func TestGreetingDialer_Dial(t *testing.T) {
 		conn.Close()
 	}
 
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.NotNil(t, conn)
 	assert.Equal(t, string(testDialVersion[:]), conn.Greeting().Version)
 	assert.Equal(t, string(testDialSalt[:44]), conn.Greeting().Salt)
