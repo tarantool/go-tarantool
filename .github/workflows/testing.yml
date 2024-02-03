@@ -103,11 +103,6 @@ jobs:
           make test
           make testrace
 
-      - name: Run regression tests with disabled SSL
-        run: |
-          make test TAGS="go_tarantool_ssl_disable"
-          make testrace TAGS="go_tarantool_ssl_disable"
-
       - name: Run fuzzing tests
         if: ${{ matrix.fuzzing }}
         run: make fuzzing TAGS="go_tarantool_decimal_fuzzing"
@@ -149,16 +144,13 @@ jobs:
           - 'sdk-1.10.15-0-r598'
         coveralls: [false]
         fuzzing: [false]
-        ssl: [false]
         include:
           - sdk-path: 'release/linux/x86_64/2.10/'
             sdk-version: 'sdk-gc64-2.10.8-0-r598.linux.x86_64'
             coveralls: false
-            ssl: true
           - sdk-path: 'release/linux/x86_64/2.11/'
             sdk-version: 'sdk-gc64-2.11.1-0-r598.linux.x86_64'
             coveralls: true
-            ssl: true
 
     steps:
       - name: Clone the connector
@@ -195,14 +187,6 @@ jobs:
           source tarantool-enterprise/env.sh
           make test
           make testrace
-        env:
-          TEST_TNT_SSL: ${{matrix.ssl}}
-
-      - name: Run regression tests with disabled SSL
-        run: |
-          source tarantool-enterprise/env.sh
-          make test TAGS="go_tarantool_ssl_disable"
-          make testrace TAGS="go_tarantool_ssl_disable"
 
       - name: Run fuzzing tests
         if: ${{ matrix.fuzzing }}
@@ -212,7 +196,6 @@ jobs:
         if: ${{ matrix.coveralls }}
         env:
           COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TEST_TNT_SSL: ${{matrix.ssl}}
         run: |
           source tarantool-enterprise/env.sh
           make coveralls
@@ -375,12 +358,6 @@ jobs:
           cd "${SRCDIR}"
           make test
           make testrace
-
-      - name: Run regression tests with disabled SSL
-        run: |
-          cd "${SRCDIR}"
-          make test TAGS="go_tarantool_ssl_disable"
-          make testrace TAGS="go_tarantool_ssl_disable"
 
       - name: Run fuzzing tests
         if: ${{ matrix.fuzzing }}

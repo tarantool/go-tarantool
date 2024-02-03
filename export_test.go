@@ -6,19 +6,6 @@ import (
 	"github.com/vmihailenco/msgpack/v5"
 )
 
-type SslTestOpts struct {
-	KeyFile      string
-	CertFile     string
-	CaFile       string
-	Ciphers      string
-	Password     string
-	PasswordFile string
-}
-
-func SslCreateContext(opts SslTestOpts) (ctx interface{}, err error) {
-	return sslCreateContext(sslOpts(opts))
-}
-
 // RefImplPingBody is reference implementation for filling of a ping
 // request's body.
 func RefImplPingBody(enc *msgpack.Encoder) error {
