@@ -103,6 +103,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
   `pool.Instance` to determinate connection options (#356)
 - `pool.Connect`, `pool.ConnectWithOpts` and `pool.Add` add connections to
   the pool even it is unable to connect to it (#372)
+- Required Go version from `1.11` to `1.20` (#378)
 
 ### Deprecated
 
