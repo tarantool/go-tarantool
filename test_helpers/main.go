@@ -15,7 +15,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -185,10 +184,7 @@ func StartTarantool(startOpts StartOpts) (TarantoolInstance, error) {
 	inst.Dialer = startOpts.Dialer
 
 	if startOpts.WorkDir == "" {
-		// Create work_dir for a new instance.
-		// TO DO: replace with `os.MkdirTemp` when we drop support of
-		// Go 1.16 an older
-		dir, err = ioutil.TempDir("", "work_dir")
+		dir, err = os.MkdirTemp("", "work_dir")
 		if err != nil {
 			return inst, err
 		}
@@ -305,7 +301,7 @@ func copySslCerts(dst string, sslCertsDir string) (err error) {
 }
 
 func copyDirectoryFiles(scrDir, dest string) error {
-	entries, err := ioutil.ReadDir(scrDir)
+	entries, err := os.ReadDir(scrDir)
 	if err != nil {
 		return err
 	}
@@ -324,7 +320,12 @@ func copyDirectoryFiles(scrDir, dest string) error {
 			return err
 		}
 
-		if err := os.Chmod(destPath, entry.Mode()); err != nil {
+		info, err := entry.Info()
+		if err != nil {
+			return err
+		}
+
+		if err := os.Chmod(destPath, info.Mode()); err != nil {
 			return err
 		}
 	}

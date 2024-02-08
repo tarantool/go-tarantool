@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"io/ioutil"
 	"sync"
 	"testing"
 	"time"
@@ -74,7 +73,7 @@ func (resp *futureMockResponse) DecodeTyped(res interface{}) error {
 }
 
 func createFutureMockResponse(header Header, body io.Reader) (Response, error) {
-	data, err := ioutil.ReadAll(body)
+	data, err := io.ReadAll(body)
 	if err != nil {
 		return nil, err
 	}

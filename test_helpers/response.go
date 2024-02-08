@@ -3,7 +3,6 @@ package test_helpers
 import (
 	"bytes"
 	"io"
-	"io/ioutil"
 	"testing"
 
 	"github.com/vmihailenco/msgpack/v5"
@@ -43,7 +42,7 @@ func CreateMockResponse(header tarantool.Header, body io.Reader) (*MockResponse,
 	if body == nil {
 		return &MockResponse{header: header, data: nil}, nil
 	}
-	data, err := ioutil.ReadAll(body)
+	data, err := io.ReadAll(body)
 	if err != nil {
 		return nil, err
 	}

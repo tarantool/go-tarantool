@@ -114,6 +114,7 @@ coverage:
 .PHONY: coveralls
 coveralls: coverage
 	go get github.com/mattn/goveralls
+	go install github.com/mattn/goveralls
 	goveralls -coverprofile=$(COVERAGE_FILE) -service=github
 
 .PHONY: bench-deps
@@ -122,14 +123,9 @@ ${BENCH_PATH} bench-deps:
 	rm -rf ${BENCH_PATH}
 	mkdir ${BENCH_PATH}
 	go clean -testcache
-	# It is unable to build a latest version of benchstat with go 1.13. So
-	# we need to switch to an old commit.
 	cd ${BENCH_PATH} && \
-		git clone https://go.googlesource.com/perf && \
-		cd perf && \
-		git checkout 91a04616dc65ba76dbe9e5cf746b923b1402d303 && \
-		go install ./cmd/benchstat
-	rm -rf ${BENCH_PATH}/perf
+		go get golang.org/x/perf/cmd/benchstat
+		go install golang.org/x/perf/cmd/benchstat
 
 .PHONY: bench
 ${BENCH_FILE} bench: ${BENCH_PATH}

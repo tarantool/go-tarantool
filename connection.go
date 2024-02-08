@@ -869,7 +869,7 @@ func (conn *Connection) eventer(events <-chan connWatchEvent) {
 			st := value.(chan watchState)
 			state := <-st
 			state.value = event.value
-			if state.version == math.MaxUint64 {
+			if state.version == math.MaxUint {
 				state.version = initWatchEventVersion + 1
 			} else {
 				state.version += 1
@@ -1277,9 +1277,8 @@ func (conn *Connection) NewStream() (*Stream, error) {
 type watchState struct {
 	// value is a current value.
 	value interface{}
-	// version is a current version of the value. The only reason for uint64:
-	// go 1.13 has no math.Uint.
-	version uint64
+	// version is a current version of the value.
+	version uint
 	// ack true if the acknowledge is already sent.
 	ack bool
 	// cnt is a count of active watchers for the key.
@@ -1292,7 +1291,7 @@ type watchState struct {
 }
 
 // initWatchEventVersion is an initial version until no events from Tarantool.
-const initWatchEventVersion uint64 = 0
+const initWatchEventVersion uint = 0
 
 // connWatcher is an internal implementation of the Watcher interface.
 type connWatcher struct {

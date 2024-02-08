@@ -3,7 +3,6 @@ package tarantool
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 
 	"github.com/tarantool/go-iproto"
 	"github.com/vmihailenco/msgpack/v5"
@@ -39,7 +38,7 @@ func createBaseResponse(header Header, body io.Reader) (baseResponse, error) {
 	if buf, ok := body.(*smallBuf); ok {
 		return baseResponse{header: header, buf: *buf}, nil
 	}
-	data, err := ioutil.ReadAll(body)
+	data, err := io.ReadAll(body)
 	if err != nil {
 		return baseResponse{}, err
 	}
