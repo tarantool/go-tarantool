@@ -266,11 +266,3 @@ func (fut *Future) WaitChan() <-chan struct{} {
 	}
 	return fut.done
 }
-
-// Err returns error set on Future.
-// It waits for future to be set.
-// Note: it doesn't decode body, therefore decoding error are not set here.
-func (fut *Future) Err() error {
-	fut.wait()
-	return fut.err
-}

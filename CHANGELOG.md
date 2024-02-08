@@ -128,6 +128,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 - `Schema` field from the `Connection` struct (#7)
 - `OkCode` and `PushCode` constants (#237)
 - SSL support (#301)
+- `Future.Err()` method (#382)
 
 ### Fixed
 

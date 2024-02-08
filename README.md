@@ -352,6 +352,9 @@ for an `ops` field. `*Operations` needs to be used instead.
 * `Future` constructors now accept `Request` as their argument.
 * Methods `AppendPush` and `SetResponse` accepts response `Header` and data
   as their arguments.
+* Method `Err` was removed because it was causing improper error handling. You
+  You need to check an error from `Get`, `GetTyped` or `GetResponse` with
+  an addition check of a value `Response.Header().Error`, see `ExampleErrorNo`.
 
 #### Connector changes
 
