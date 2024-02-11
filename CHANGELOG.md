@@ -10,20 +10,47 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [2.0.0] - 2024-02-12
+
+There are a lot of changes in the new major version. The main ones:
+
+* The `go_tarantool_call_17` build tag is no longer needed, since by default
+  the `CallRequest` is `Call17Request`.
+* The `go_tarantool_msgpack_v5` build tag is no longer needed, since only the
+  `msgpack/v5` library is used.
+* The `go_tarantool_ssl_disable` build tag is no longer needed, since the
+  connector is no longer depends on `OpenSSL` by default. You could use the
+  external library [go-tlsdialer](https://github.com/tarantool/go-tlsdialer) to
+  create a connection with the `ssl` transport.
+* Required Go version is `1.20` now.
+* The `Connect` function became more flexible. It now allows to create a
+  connection with cancellation and a custom `Dialer` implementation.
+* It is required to use `Request` implementation types with the `Connection.Do`
+  method instead of `Connection.<Request>` methods.
+* The `connection_pool` package renamed to `pool`.
+
+See the [migration guide](./MIGRATION.md) for more details.
+
+### Added
+
 - Type() method to the Request interface (#158)
 - Enumeration types for RLimitAction/iterators (#158)
 - IsNullable flag for Field (#302)
 - More linters on CI (#310)
 - Meaningful description for read/write socket errors (#129)
-- Support `operation_data` in `crud.Error` (#330) 
+- Support `operation_data` in `crud.Error` (#330)
 - Support `fetch_latest_metadata` option for crud requests with metadata (#335)
 - Support `noreturn` option for data change crud requests (#335)
 - Support `crud.schema` request (#336, #351)
-- Support `IPROTO_WATCH_ONCE` request type for Tarantool 
+- Support `IPROTO_WATCH_ONCE` request type for Tarantool
   version >= 3.0.0-alpha1 (#337)
 - Support `yield_every` option for crud select requests (#350)
 - Support `IPROTO_FEATURE_SPACE_AND_INDEX_NAMES` for Tarantool
-  version >= 3.0.0-alpha1 (#338). It allows to use space and index names 
+  version >= 3.0.0-alpha1 (#338). It allows to use space and index names
   in requests instead of their IDs.
 - `GetSchema` function to get the actual schema (#7)
 - Support connection via an existing socket fd (#321)
@@ -37,12 +64,12 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 - Ability to mock connections for tests (#237). Added new types `MockDoer`,
   `MockRequest` to `test_helpers`.
 - `AuthDialer` type for creating a dialer with authentication (#301)
-- `ProtocolDialer` type for creating a dialer with `ProtocolInfo` receiving and 
+- `ProtocolDialer` type for creating a dialer with `ProtocolInfo` receiving and
   check (#301)
 - `GreetingDialer` type for creating a dialer, that fills `Greeting` of a
   connection (#301)
 - New method `Pool.DoInstance` to execute a request on a target instance in
-  a pool (#376).
+  a pool (#376)
 
 ### Changed
 
@@ -54,22 +81,22 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
   decoded to a varbinary object (#313).
 - Use objects of the Decimal type instead of pointers (#238)
 - Use objects of the Datetime type instead of pointers (#238)
-- `connection.Connect` no longer return non-working 
-  connection objects (#136). This function now does not attempt to reconnect 
-  and tries to establish a connection only once. Function might be canceled 
+- `connection.Connect` no longer return non-working
+  connection objects (#136). This function now does not attempt to reconnect
+  and tries to establish a connection only once. Function might be canceled
   via context. Context accepted as first argument.
   `pool.Connect` and `pool.Add` now accept context as the first argument, which
   user may cancel in process. If `pool.Connect` is canceled in progress, an
   error will be returned. All created connections will be closed.
 - `iproto.Feature` type now used instead of `ProtocolFeature` (#337)
-- `iproto.IPROTO_FEATURE_` constants now used instead of local `Feature` 
+- `iproto.IPROTO_FEATURE_` constants now used instead of local `Feature`
   constants for `protocol` (#337)
 - Change `crud` operations `Timeout` option type to `crud.OptFloat64`
   instead of `crud.OptUint` (#342)
-- Change all `Upsert` and `Update` requests to accept `*tarantool.Operations` 
+- Change all `Upsert` and `Update` requests to accept `*tarantool.Operations`
   as `ops` parameters instead of `interface{}` (#348)
 - Change `OverrideSchema(*Schema)` to `SetSchema(Schema)` (#7)
-- Change values, stored by pointers in the `Schema`, `Space`, `Index` structs, 
+- Change values, stored by pointers in the `Schema`, `Space`, `Index` structs,
   to be stored by their values (#7)
 - Make `Dialer` mandatory for creation a single connection (#321)
 - Remove `Connection.RemoteAddr()`, `Connection.LocalAddr()`.
@@ -103,7 +130,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
   `pool.Instance` to determinate connection options (#356)
 - `pool.Connect`, `pool.ConnectWithOpts` and `pool.Add` add connections to
   the pool even it is unable to connect to it (#372)
-- Required Go version from `1.11` to `1.20` (#378)
+- Required Go version updated from `1.13` to `1.20` (#378)
 
 ### Deprecated
 
