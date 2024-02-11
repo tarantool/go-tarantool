@@ -99,6 +99,9 @@ import (
 	"time"
 
 	"github.com/tarantool/go-tarantool/v2"
+	_ "github.com/tarantool/go-tarantool/v2/datetime"
+	_ "github.com/tarantool/go-tarantool/v2/decimal"
+	_ "github.com/tarantool/go-tarantool/v2/uuid"
 )
 
 func main() {
@@ -131,19 +134,22 @@ func main() {
 **Observation 1:** The line "`github.com/tarantool/go-tarantool/v2`" in the
 `import(...)` section brings in all Tarantool-related functions and structures.
 
-**Observation 2:** The line starting with "`ctx, cancel :=`" creates a context
+**Observation 2:** Unused import lines are required to initialize encoders and
+decoders for external `msgpack` types.
+
+**Observation 3:** The line starting with "`ctx, cancel :=`" creates a context
 object for `Connect()`. The `Connect()` call will return an error when a
 timeout expires before the connection is established.
 
-**Observation 3:** The line starting with "`dialer :=`" creates dialer for
+**Observation 4:** The line starting with "`dialer :=`" creates dialer for
 `Connect()`. This structure contains fields required to establish a connection.
 
-**Observation 4:** The line starting with "`opts :=`" sets up the options for
+**Observation 5:** The line starting with "`opts :=`" sets up the options for
 `Connect()`. In this example, the structure contains only a single value, the
 timeout. The structure may also contain other settings, see more in
 [documentation][godoc-opts-url] for the "`Opts`" structure.
 
-**Observation 5:** The line containing "`tarantool.Connect`" is essential for
+**Observation 6:** The line containing "`tarantool.Connect`" is essential for
 starting a session. There are three parameters:
 
 * a context,
@@ -155,10 +161,10 @@ There will be only one attempt to connect. If multiple attempts needed,
 between each try. Example could be found in the [example_test](./example_test.go),
 name - `ExampleConnect_reconnects`.
 
-**Observation 6:** The `err` structure will be `nil` if there is no error,
+**Observation 7:** The `err` structure will be `nil` if there is no error,
 otherwise it will have a description which can be retrieved with `err.Error()`.
 
-**Observation 7:** The `Insert` request, like almost all requests, is preceded
+**Observation 8:** The `Insert` request, like almost all requests, is preceded
 by the method `Do` of object `conn` which is the object that was returned
 by `Connect()`.
 
@@ -179,6 +185,9 @@ import (
 	"time"
 
 	"github.com/tarantool/go-tarantool/v2"
+	_ "github.com/tarantool/go-tarantool/v2/datetime"
+	_ "github.com/tarantool/go-tarantool/v2/decimal"
+	_ "github.com/tarantool/go-tarantool/v2/uuid"
 	"github.com/tarantool/go-tlsdialer"
 )
 

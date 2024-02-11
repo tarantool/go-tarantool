@@ -50,6 +50,9 @@ import (
 	"fmt"
 
 	"github.com/tarantool/go-tarantool"
+	_ "github.com/tarantool/go-tarantool/v2/datetime"
+	_ "github.com/tarantool/go-tarantool/v2/decimal"
+	_ "github.com/tarantool/go-tarantool/v2/uuid"
 )
 
 func main() {
@@ -80,6 +83,9 @@ import (
 	"time"
 
 	"github.com/tarantool/go-tarantool/v2"
+	_ "github.com/tarantool/go-tarantool/v2/datetime"
+	_ "github.com/tarantool/go-tarantool/v2/decimal"
+	_ "github.com/tarantool/go-tarantool/v2/uuid"
 )
 
 func main() {
