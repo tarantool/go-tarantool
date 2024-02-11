@@ -245,8 +245,8 @@ There are two other connectors available from the open source community:
 See feature comparison in the [documentation][tarantool-doc-connectors-comparison].
 
 [tarantool-site]: https://tarantool.io/
-[godoc-badge]: https://pkg.go.dev/badge/github.com/tarantool/go-tarantool.svg
-[godoc-url]: https://pkg.go.dev/github.com/tarantool/go-tarantool
+[godoc-badge]: https://pkg.go.dev/badge/github.com/tarantool/go-tarantool/v2.svg
+[godoc-url]: https://pkg.go.dev/github.com/tarantool/go-tarantool/v2
 [actions-badge]: https://github.com/tarantool/go-tarantool/actions/workflows/testing.yml/badge.svg
 [actions-url]: https://github.com/tarantool/go-tarantool/actions/workflows/testing.yml
 [coverage-badge]: https://coveralls.io/repos/github/tarantool/go-tarantool/badge.svg?branch=master
@@ -261,5 +261,5 @@ See feature comparison in the [documentation][tarantool-doc-connectors-compariso
 [go-tarantool]: https://github.com/tarantool/go-tarantool
 [tarantool-doc-data-model-url]: https://www.tarantool.io/en/doc/latest/book/box/data_model/
 [tarantool-doc-box-space-url]: https://www.tarantool.io/en/doc/latest/reference/reference_lua/box_space/
-[godoc-opts-url]: https://pkg.go.dev/github.com/tarantool/go-tarantool#Opts
+[godoc-opts-url]: https://pkg.go.dev/github.com/tarantool/go-tarantool/v2#Opts
 [tarantool-doc-connectors-comparison]: https://www.tarantool.io/en/doc/latest/book/connectors/#go-feature-comparison
