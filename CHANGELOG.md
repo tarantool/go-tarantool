@@ -14,6 +14,9 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Fixed
 
+- `ConnectionPool.Remove()` does not notify a `ConnectionHandler` after
+  an instance is already removed from the pool (#385)
+
 ## [2.0.0] - 2024-02-12
 
 There are a lot of changes in the new major version. The main ones:
