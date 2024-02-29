@@ -1374,6 +1374,7 @@ func (p *ConnectionPool) controller(ctx context.Context, e *endpoint) {
 					// we need to start an another one for the shutdown.
 					go func() {
 						e.closeErr = e.conn.CloseGraceful()
+						p.handlerDeactivated(e.name, e.conn, e.role)
 						close(e.closed)
 					}()
 				} else {

@@ -1166,6 +1166,77 @@ func TestConnectionHandlerUpdateError(t *testing.T) {
 	require.Nilf(t, err, "failed to get ConnectedNow()")
 }
 
+type testDeactivatedErrorHandler struct {
+	mut         sync.Mutex
+	deactivated []string
+}
+
+func (h *testDeactivatedErrorHandler) Discovered(name string, conn *tarantool.Connection,
+	role pool.Role) error {
+	return nil
+}
+
+func (h *testDeactivatedErrorHandler) Deactivated(name string, conn *tarantool.Connection,
+	role pool.Role) error {
+	h.mut.Lock()
+	defer h.mut.Unlock()
+
+	h.deactivated = append(h.deactivated, name)
+	return nil
+}
+
+func TestConnectionHandlerDeactivated_on_remove(t *testing.T) {
+	poolServers := []string{servers[0], servers[1]}
+	poolInstances := makeInstances(poolServers, connOpts)
+	roles := []bool{false, false}
+
+	err := test_helpers.SetClusterRO(makeDialers(poolServers), connOpts, roles)
+	require.Nilf(t, err, "fail to set roles for cluster")
+
+	h := &testDeactivatedErrorHandler{}
+	poolOpts := pool.Opts{
+		CheckTimeout:      100 * time.Microsecond,
+		ConnectionHandler: h,
+	}
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.ConnectWithOpts(ctx, poolInstances, poolOpts)
+	require.Nilf(t, err, "failed to connect")
+	require.NotNilf(t, connPool, "conn is nil after Connect")
+	defer connPool.Close()
+
+	args := test_helpers.CheckStatusesArgs{
+		ConnPool:           connPool,
+		Mode:               pool.ANY,
+		Servers:            servers,
+		ExpectedPoolStatus: true,
+		ExpectedStatuses: map[string]bool{
+			servers[0]: true,
+			servers[1]: true,
+		},
+	}
+	err = test_helpers.CheckPoolStatuses(args)
+	require.Nil(t, err)
+
+	for _, server := range poolServers {
+		connPool.Remove(server)
+		connPool.Remove(server)
+	}
+
+	args = test_helpers.CheckStatusesArgs{
+		ConnPool:           connPool,
+		Mode:               pool.ANY,
+		Servers:            servers,
+		ExpectedPoolStatus: false,
+	}
+	err = test_helpers.CheckPoolStatuses(args)
+	require.Nil(t, err)
+
+	h.mut.Lock()
+	defer h.mut.Unlock()
+	require.ElementsMatch(t, poolServers, h.deactivated)
+}
+
 func TestRequestOnClosed(t *testing.T) {
 	server1 := servers[0]
 	server2 := servers[1]
