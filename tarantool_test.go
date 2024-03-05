@@ -2591,13 +2591,7 @@ func TestConnectionDoWatchOnceRequest(t *testing.T) {
 }
 
 func TestConnectionDoWatchOnceOnEmptyKey(t *testing.T) {
-	watchOnceNotSupported, err := test_helpers.IsTarantoolVersionLess(3, 0, 0)
-	if err != nil {
-		log.Fatalf("Could not check the Tarantool version: %s", err)
-	}
-	if watchOnceNotSupported {
-		return
-	}
+	test_helpers.SkipIfWatchOnceUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()

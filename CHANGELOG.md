@@ -12,6 +12,9 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Changed
 
+- `execute` access for `box.info` is no longer required for ConnectionPool
+  for a Tarantool version >= 3.0.0 (#380)
+
 ### Fixed
 
 - `ConnectionPool.Remove()` does not notify a `ConnectionHandler` after

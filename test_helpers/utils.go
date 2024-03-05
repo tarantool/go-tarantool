@@ -200,6 +200,14 @@ func SkipIfWatchOnceUnsupported(t *testing.T) {
 	SkipIfFeatureUnsupported(t, "watch once", 3, 0, 0)
 }
 
+// SkipIfWatchOnceSupported skips test run if Tarantool with WatchOnce
+// request type is used.
+func SkipIfWatchOnceSupported(t *testing.T) {
+	t.Helper()
+
+	SkipIfFeatureSupported(t, "watch once", 3, 0, 0)
+}
+
 // SkipIfCrudSpliceBroken skips test run if splice operation is broken
 // on the crud side.
 // https://github.com/tarantool/crud/issues/397

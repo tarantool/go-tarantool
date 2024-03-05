@@ -1017,7 +1017,20 @@ func (p *ConnectionPool) DoInstance(req tarantool.Request, name string) *taranto
 //
 
 func (p *ConnectionPool) getConnectionRole(conn *tarantool.Connection) (Role, error) {
-	data, err := conn.Do(tarantool.NewCallRequest("box.info")).Get()
+	var (
+		roFieldName string
+		data        []interface{}
+		err         error
+	)
+
+	if isFeatureInSlice(iproto.IPROTO_FEATURE_WATCH_ONCE, conn.ProtocolInfo().Features) {
+		roFieldName = "is_ro"
+		data, err = conn.Do(tarantool.NewWatchOnceRequest("box.status")).Get()
+	} else {
+		roFieldName = "ro"
+		data, err = conn.Do(tarantool.NewCallRequest("box.info")).Get()
+	}
+
 	if err != nil {
 		return UnknownRole, err
 	}
@@ -1033,7 +1046,7 @@ func (p *ConnectionPool) getConnectionRole(conn *tarantool.Connection) (Role, er
 		return UnknownRole, ErrIncorrectStatus
 	}
 
-	replicaRole, ok := data[0].(map[interface{}]interface{})["ro"]
+	replicaRole, ok := data[0].(map[interface{}]interface{})[roFieldName]
 	if !ok {
 		return UnknownRole, ErrIncorrectResponse
 	}
