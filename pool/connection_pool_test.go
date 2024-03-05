@@ -1,6 +1,7 @@
 package pool_test
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"log"
@@ -22,6 +23,7 @@ import (
 )
 
 var user = "test"
+var userNoExec = "test_noexec"
 var pass = "test"
 var spaceNo = uint32(520)
 var spaceName = "testPool"
@@ -62,6 +64,18 @@ func makeInstance(server string, opts tarantool.Opts) pool.Instance {
 		Dialer: tarantool.NetDialer{
 			Address:  server,
 			User:     user,
+			Password: pass,
+		},
+		Opts: opts,
+	}
+}
+
+func makeNoExecuteInstance(server string, opts tarantool.Opts) pool.Instance {
+	return pool.Instance{
+		Name: server,
+		Dialer: tarantool.NetDialer{
+			Address:  server,
+			User:     userNoExec,
 			Password: pass,
 		},
 		Opts: opts,
@@ -128,6 +142,77 @@ func TestConnSuccessfully(t *testing.T) {
 
 	err = test_helpers.CheckPoolStatuses(args)
 	require.Nil(t, err)
+}
+
+func TestConn_no_execute_supported(t *testing.T) {
+	test_helpers.SkipIfWatchOnceUnsupported(t)
+
+	healthyServ := servers[0]
+
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx,
+		[]pool.Instance{makeNoExecuteInstance(healthyServ, connOpts)})
+	require.Nilf(t, err, "failed to connect")
+	require.NotNilf(t, connPool, "conn is nil after Connect")
+
+	defer connPool.Close()
+
+	args := test_helpers.CheckStatusesArgs{
+		ConnPool:           connPool,
+		Mode:               pool.ANY,
+		Servers:            []string{healthyServ},
+		ExpectedPoolStatus: true,
+		ExpectedStatuses: map[string]bool{
+			healthyServ: true,
+		},
+	}
+
+	err = test_helpers.CheckPoolStatuses(args)
+	require.Nil(t, err)
+
+	_, err = connPool.Do(tarantool.NewPingRequest(), pool.ANY).Get()
+	require.Nil(t, err)
+}
+
+func TestConn_no_execute_unsupported(t *testing.T) {
+	test_helpers.SkipIfWatchOnceSupported(t)
+
+	var buf bytes.Buffer
+	log.SetOutput(&buf)
+	defer log.SetOutput(os.Stderr)
+
+	healthyServ := servers[0]
+
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx,
+		[]pool.Instance{makeNoExecuteInstance(healthyServ, connOpts)})
+	require.Nilf(t, err, "failed to connect")
+	require.NotNilf(t, connPool, "conn is nil after Connect")
+
+	defer connPool.Close()
+
+	require.Contains(t, buf.String(),
+		fmt.Sprintf("connect to %s failed: Execute access to function "+
+			"'box.info' is denied for user '%s'", servers[0], userNoExec))
+
+	args := test_helpers.CheckStatusesArgs{
+		ConnPool:           connPool,
+		Mode:               pool.ANY,
+		Servers:            []string{healthyServ},
+		ExpectedPoolStatus: false,
+		ExpectedStatuses: map[string]bool{
+			healthyServ: false,
+		},
+	}
+
+	err = test_helpers.CheckPoolStatuses(args)
+	require.Nil(t, err)
+
+	_, err = connPool.Do(tarantool.NewPingRequest(), pool.ANY).Get()
+	require.Error(t, err)
+	require.Equal(t, "can't find healthy instance in pool", err.Error())
 }
 
 func TestConnect_empty(t *testing.T) {

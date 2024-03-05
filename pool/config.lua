@@ -9,6 +9,9 @@ box.once("init", function()
     box.schema.user.create('test', { password = 'test' })
     box.schema.user.grant('test', 'read,write,execute', 'universe')
 
+    box.schema.user.create('test_noexec', { password = 'test' })
+    box.schema.user.grant('test_noexec', 'read,write', 'universe')
+
     local s = box.schema.space.create('testPool', {
         id = 520,
         if_not_exists = true,
