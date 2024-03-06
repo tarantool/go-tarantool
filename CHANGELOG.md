@@ -12,6 +12,15 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Changed
 
+### Fixed
+
+## [2.1.0] - 2024-03-06
+
+The small release improves the ConnectionPool. The ConnectionPool now does not
+require execute access for `box.info` from a user for Tarantool >= 3.0.0.
+
+### Changed
+
 - `execute` access for `box.info` is no longer required for ConnectionPool
   for a Tarantool version >= 3.0.0 (#380)
 
