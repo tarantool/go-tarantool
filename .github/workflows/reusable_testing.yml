@@ -14,12 +14,12 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - name: Clone the go-tarantool connector
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: ${{ github.repository_owner }}/go-tarantool
 
       - name: Download the tarantool build artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.artifact_name }}
 
@@ -34,7 +34,7 @@ jobs:
           echo "TNT_VERSION=$TNT_VERSION" >> $GITHUB_ENV
 
       - name: Setup golang for connector and tests
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v5
         with:
           go-version: '1.20'
 
