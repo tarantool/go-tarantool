@@ -289,6 +289,8 @@ func (p *ConnectionPool) Add(ctx context.Context, instance Instance) error {
 			e.cancel()
 			close(e.closed)
 			return err
+		} else {
+			log.Printf("tarantool: connect to %s failed: %s\n", instance.Name, err)
 		}
 	}
 
@@ -1329,7 +1331,9 @@ func (p *ConnectionPool) reconnect(ctx context.Context, e *endpoint) {
 	e.conn = nil
 	e.role = UnknownRole
 
-	p.tryConnect(ctx, e)
+	if err := p.tryConnect(ctx, e); err != nil {
+		log.Printf("tarantool: reconnect to %s failed: %s\n", e.name, err)
+	}
 }
 
 func (p *ConnectionPool) controller(ctx context.Context, e *endpoint) {
@@ -1417,7 +1421,10 @@ func (p *ConnectionPool) controller(ctx context.Context, e *endpoint) {
 					// Relocate connection between subpools
 					// if ro/rw was updated.
 					if e.conn == nil {
-						p.tryConnect(ctx, e)
+						if err := p.tryConnect(ctx, e); err != nil {
+							log.Printf("tarantool: reopen connection to %s failed: %s\n",
+								e.name, err)
+						}
 					} else if !e.conn.ClosedNow() {
 						p.updateConnection(e)
 					} else {
