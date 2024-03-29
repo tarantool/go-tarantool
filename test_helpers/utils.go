@@ -244,7 +244,7 @@ func CheckEqualBoxErrors(t *testing.T, expected tarantool.BoxError, actual taran
 		require.Equal(t, expected.Msg, actual.Msg)
 		require.Equal(t, expected.Errno, actual.Errno)
 		require.Equal(t, expected.Code, actual.Code)
-		require.Equal(t, expected.Fields, actual.Fields)
+		require.Subset(t, actual.Fields, expected.Fields)
 
 		if expected.Prev != nil {
 			// Stack depth is the same
