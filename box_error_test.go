@@ -358,7 +358,7 @@ func TestErrorTypeInsert(t *testing.T) {
 				local tuple_err = tuple[2]
 				assert(tuple_err ~= nil)
 
-				return compare_box_errors(err, tuple_err)
+				return compare_box_errors(tuple_err, err)
 			`, testcase.ttObj, space, testcase.tuple.pk)
 
 			// In fact, compare_box_errors does not check than File and Line
@@ -400,7 +400,7 @@ func TestErrorTypeInsertTyped(t *testing.T) {
 				local tuple_err = tuple[2]
 				assert(tuple_err ~= nil)
 
-				return compare_box_errors(err, tuple_err)
+				return compare_box_errors(tuple_err, err)
 			`, testcase.ttObj, space, testcase.tuple.pk)
 
 			// In fact, compare_box_errors does not check than File and Line
