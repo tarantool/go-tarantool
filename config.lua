@@ -248,8 +248,8 @@ if tarantool_version_at_least(2, 4, 1) then
     --   - file: val
     --     line: val
 
-    local function compare_box_error_attributes(expected, actual, attr_provider)
-        for attr, _ in pairs(attr_provider:unpack()) do
+    local function compare_box_error_attributes(expected, actual)
+        for attr, _ in pairs(expected:unpack()) do
             if (attr ~= 'prev') and (attr ~= 'trace') then
                 if expected[attr] ~= actual[attr] then
                     error(('%s expected %s is not equal to actual %s'):format(
@@ -272,8 +272,7 @@ if tarantool_version_at_least(2, 4, 1) then
                    expected.type, expected.message))
         end
 
-        compare_box_error_attributes(expected, actual, expected)
-        compare_box_error_attributes(expected, actual, actual)
+        compare_box_error_attributes(expected, actual)
 
         if (expected.prev ~= nil) or (actual.prev ~= nil) then
             return compare_box_errors(expected.prev, actual.prev)
