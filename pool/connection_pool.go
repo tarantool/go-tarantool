@@ -81,6 +81,8 @@ type Opts struct {
 	CheckTimeout time.Duration
 	// ConnectionHandler provides an ability to handle connection updates.
 	ConnectionHandler ConnectionHandler
+	// BalancingMethod is how connections for the request will be selected
+	BalancingMethod BalancingMethod
 }
 
 /*
@@ -110,9 +112,9 @@ type ConnectionPool struct {
 
 	state            state
 	done             chan struct{}
-	roPool           *roundRobinStrategy
-	rwPool           *roundRobinStrategy
-	anyPool          *roundRobinStrategy
+	roPool           BalancingPool
+	rwPool           BalancingPool
+	anyPool          BalancingPool
 	poolsMutex       sync.RWMutex
 	watcherContainer watcherContainer
 }
@@ -153,6 +155,10 @@ func newEndpoint(name string, dialer tarantool.Dialer, opts tarantool.Opts) *end
 // opts. Instances must have unique names.
 func ConnectWithOpts(ctx context.Context, instances []Instance,
 	opts Opts) (*ConnectionPool, error) {
+	if opts.BalancingMethod == nil {
+		opts.BalancingMethod = NewRoundRobinStrategy
+	}
+
 	unique := make(map[string]bool)
 	for _, instance := range instances {
 		if _, ok := unique[instance.Name]; ok {
@@ -166,9 +172,9 @@ func ConnectWithOpts(ctx context.Context, instances []Instance,
 	}
 
 	size := len(instances)
-	rwPool := newRoundRobinStrategy(size)
-	roPool := newRoundRobinStrategy(size)
-	anyPool := newRoundRobinStrategy(size)
+	rwPool := opts.BalancingMethod(size)
+	roPool := opts.BalancingMethod(size)
+	anyPool := opts.BalancingMethod(size)
 
 	connPool := &ConnectionPool{
 		ends:    make(map[string]*endpoint),
