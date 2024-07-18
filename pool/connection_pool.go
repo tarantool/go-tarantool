@@ -81,6 +81,9 @@ type Opts struct {
 	CheckTimeout time.Duration
 	// ConnectionHandler provides an ability to handle connection updates.
 	ConnectionHandler ConnectionHandler
+	// BalancerFactory - a factory for creating balancing,
+	// contains the pool size as well as the connections for which it is used.
+	BalancerFactory BalancerFactory
 }
 
 /*
@@ -110,9 +113,9 @@ type ConnectionPool struct {
 
 	state            state
 	done             chan struct{}
-	roPool           *roundRobinStrategy
-	rwPool           *roundRobinStrategy
-	anyPool          *roundRobinStrategy
+	roPool           BalancingPool
+	rwPool           BalancingPool
+	anyPool          BalancingPool
 	poolsMutex       sync.RWMutex
 	watcherContainer watcherContainer
 }
@@ -153,6 +156,10 @@ func newEndpoint(name string, dialer tarantool.Dialer, opts tarantool.Opts) *end
 // opts. Instances must have unique names.
 func ConnectWithOpts(ctx context.Context, instances []Instance,
 	opts Opts) (*ConnectionPool, error) {
+	if opts.BalancerFactory == nil {
+		opts.BalancerFactory = &RoundRobinFactory{}
+	}
+
 	unique := make(map[string]bool)
 	for _, instance := range instances {
 		if _, ok := unique[instance.Name]; ok {
@@ -166,9 +173,9 @@ func ConnectWithOpts(ctx context.Context, instances []Instance,
 	}
 
 	size := len(instances)
-	rwPool := newRoundRobinStrategy(size)
-	roPool := newRoundRobinStrategy(size)
-	anyPool := newRoundRobinStrategy(size)
+	rwPool := opts.BalancerFactory.Create(size)
+	roPool := opts.BalancerFactory.Create(size)
+	anyPool := opts.BalancerFactory.Create(size)
 
 	connPool := &ConnectionPool{
 		ends:    make(map[string]*endpoint),
@@ -218,15 +225,15 @@ func (p *ConnectionPool) ConnectedNow(mode Mode) (bool, error) {
 	}
 	switch mode {
 	case ANY:
-		return !p.anyPool.IsEmpty(), nil
+		return !IsEmpty(p.anyPool), nil
 	case RW:
-		return !p.rwPool.IsEmpty(), nil
+		return !IsEmpty(p.rwPool), nil
 	case RO:
-		return !p.roPool.IsEmpty(), nil
+		return !IsEmpty(p.roPool), nil
 	case PreferRW:
 		fallthrough
 	case PreferRO:
-		return !p.rwPool.IsEmpty() || !p.roPool.IsEmpty(), nil
+		return !IsEmpty(p.rwPool) || !IsEmpty(p.roPool), nil
 	default:
 		return false, ErrNoHealthyInstance
 	}
