@@ -136,11 +136,14 @@ jobs:
           - '1.20'
           - 'stable'
         runs-on:
-          - macos-11
           - macos-12
+          - macos-14
         tarantool:
           - brew
           - 1.10.15
+        exclude:
+          - runs-on: macos-14
+            tarantool: 1.10.15
 
     env:
       # Make sense only for non-brew jobs.
