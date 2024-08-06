@@ -24,7 +24,7 @@ clean:
 deps: clean
 	@(command -v tt > /dev/null || (echo "error: tt not found" && exit 1))
 	( cd ./queue/testdata; tt rocks install queue 1.3.0 )
-	( cd ./crud/testdata; tt rocks install crud 1.4.1 )
+	( cd ./crud/testdata; tt rocks install crud )
 
 .PHONY: datetime-timezones
 datetime-timezones:
