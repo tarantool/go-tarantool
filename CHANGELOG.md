@@ -14,6 +14,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
   also added logs for error case of `ConnectionPool.tryConnect()` calls in 
   `ConnectionPool.controller()` and `ConnectionPool.reconnect()`
 - Methods that are implemented but not included in the pooler interface (#395).
+- Add support for external load balancing methods when connecting via Pool (#400).
 
 ### Changed
 
