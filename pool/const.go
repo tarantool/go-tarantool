@@ -1,3 +1,4 @@
+//go:generate stringer -type Role -linecomment
 package pool
 
 /*
@@ -31,7 +32,10 @@ const (
 type Role uint32
 
 const (
-	UnknownRole Role = iota // A connection pool failed to discover mode of the instance.
-	MasterRole              // The instance is read-write mode.
-	ReplicaRole             // The instance is in read-only mode.
+	// UnknownRole - the connection pool was unable to detect the instance mode.
+	UnknownRole Role = iota // unknown
+	// MasterRole - the instance is in read-write mode.
+	MasterRole // master
+	// ReplicaRole - the instance is in read-only mode.
+	ReplicaRole // replica
 )
