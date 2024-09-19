@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"runtime"
 	"strings"
 	"sync"
@@ -46,6 +47,8 @@ type Member struct {
 	Nonce string
 	Val   uint
 }
+
+var contextDoneErrRegexp = regexp.MustCompile(`^context is done \(request ID [0-9]+\)$`)
 
 func (m *Member) EncodeMsgpack(e *msgpack.Encoder) error {
 	if err := e.EncodeArrayLen(2); err != nil {
@@ -2731,7 +2734,7 @@ func TestClientRequestObjectsWithPassedCanceledContext(t *testing.T) {
 	req := NewPingRequest().Context(ctx)
 	cancel()
 	resp, err := conn.Do(req).Get()
-	if err.Error() != "context is done" {
+	if !contextDoneErrRegexp.Match([]byte(err.Error())) {
 		t.Fatalf("Failed to catch an error from done context")
 	}
 	if resp != nil {
@@ -2802,7 +2805,7 @@ func TestClientRequestObjectsWithContext(t *testing.T) {
 	if err == nil {
 		t.Fatalf("caught nil error")
 	}
-	if err.Error() != "context is done" {
+	if !contextDoneErrRegexp.Match([]byte(err.Error())) {
 		t.Fatalf("wrong error caught: %v", err)
 	}
 }
@@ -3295,7 +3298,7 @@ func TestClientIdRequestObjectWithPassedCanceledContext(t *testing.T) {
 	resp, err := conn.Do(req).Get()
 	require.Nilf(t, resp, "Response is empty")
 	require.NotNilf(t, err, "Error is not empty")
-	require.Equal(t, err.Error(), "context is done")
+	require.Regexp(t, contextDoneErrRegexp, err.Error())
 }
 
 func TestConnectionProtocolInfoUnsupported(t *testing.T) {

@@ -18,6 +18,9 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Changed
 
+- More informative request canceling: log the probable reason for unexpected request ID
+  and add request ID info to context done error message (#407).
+
 ### Fixed
 
 ## [2.1.0] - 2024-03-06

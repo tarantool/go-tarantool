@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"regexp"
 	"time"
 
 	"github.com/tarantool/go-iproto"
@@ -163,10 +164,10 @@ func ExamplePingRequest_Context() {
 	// Ping a Tarantool instance to check connection.
 	data, err := conn.Do(req).Get()
 	fmt.Println("Ping Resp data", data)
-	fmt.Println("Ping Error", err)
+	fmt.Println("Ping Error", regexp.MustCompile("[0-9]+").ReplaceAllString(err.Error(), "N"))
 	// Output:
 	// Ping Resp data []
-	// Ping Error context is done
+	// Ping Error context is done (request ID N)
 }
 
 func ExampleSelectRequest() {

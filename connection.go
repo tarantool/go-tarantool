@@ -100,7 +100,8 @@ func (d defaultLogger) Report(event ConnLogKind, conn *Connection, v ...interfac
 			conn.Addr(), err)
 	case LogUnexpectedResultId:
 		header := v[0].(Header)
-		log.Printf("tarantool: connection %s got unexpected resultId (%d) in response",
+		log.Printf("tarantool: connection %s got unexpected request ID (%d) in response "+
+			"(probably cancelled request)",
 			conn.Addr(), header.RequestId)
 	case LogWatchEventReadFailed:
 		err := v[0].(error)
@@ -940,7 +941,7 @@ func (conn *Connection) newFuture(req Request) (fut *Future) {
 	if ctx != nil {
 		select {
 		case <-ctx.Done():
-			fut.SetError(fmt.Errorf("context is done"))
+			fut.SetError(fmt.Errorf("context is done (request ID %d)", fut.requestId))
 			shard.rmut.Unlock()
 			return
 		default:
@@ -982,7 +983,7 @@ func (conn *Connection) contextWatchdog(fut *Future, ctx context.Context) {
 	case <-fut.done:
 		return
 	default:
-		conn.cancelFuture(fut, fmt.Errorf("context is done"))
+		conn.cancelFuture(fut, fmt.Errorf("context is done (request ID %d)", fut.requestId))
 	}
 }
 
@@ -1008,7 +1009,7 @@ func (conn *Connection) send(req Request, streamId uint64) *Future {
 	if req.Ctx() != nil {
 		select {
 		case <-req.Ctx().Done():
-			conn.cancelFuture(fut, fmt.Errorf("context is done"))
+			conn.cancelFuture(fut, fmt.Errorf("context is done (request ID %d)", fut.requestId))
 			return fut
 		default:
 		}
