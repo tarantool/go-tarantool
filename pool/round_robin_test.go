@@ -1,9 +1,10 @@
-package pool
+package pool_test
 
 import (
 	"testing"
 
 	"github.com/tarantool/go-tarantool/v2"
+	"github.com/tarantool/go-tarantool/v2/pool"
 )
 
 const (
@@ -12,7 +13,7 @@ const (
 )
 
 func TestRoundRobinAddDelete(t *testing.T) {
-	rr := NewRoundRobinStrategy(10)
+	rr := pool.NewRoundRobinStrategy(10)
 
 	addrs := []string{validAddr1, validAddr2}
 	conns := []*tarantool.Connection{&tarantool.Connection{}, &tarantool.Connection{}}
@@ -26,13 +27,13 @@ func TestRoundRobinAddDelete(t *testing.T) {
 			t.Errorf("Unexpected connection on address %s", addr)
 		}
 	}
-	if !IsEmpty(rr) {
+	if !pool.IsEmpty(rr) {
 		t.Errorf("RoundRobin does not empty")
 	}
 }
 
 func TestRoundRobinAddDuplicateDelete(t *testing.T) {
-	rr := NewRoundRobinStrategy(10)
+	rr := pool.NewRoundRobinStrategy(10)
 
 	conn1 := &tarantool.Connection{}
 	conn2 := &tarantool.Connection{}
@@ -43,7 +44,7 @@ func TestRoundRobinAddDuplicateDelete(t *testing.T) {
 	if rr.DeleteConnection(validAddr1) != conn2 {
 		t.Errorf("Unexpected deleted connection")
 	}
-	if !IsEmpty(rr) {
+	if !pool.IsEmpty(rr) {
 		t.Errorf("RoundRobin does not empty")
 	}
 	if rr.DeleteConnection(validAddr1) != nil {
@@ -52,7 +53,7 @@ func TestRoundRobinAddDuplicateDelete(t *testing.T) {
 }
 
 func TestRoundRobinGetNextConnection(t *testing.T) {
-	rr := NewRoundRobinStrategy(10)
+	rr := pool.NewRoundRobinStrategy(10)
 
 	addrs := []string{validAddr1, validAddr2}
 	conns := []*tarantool.Connection{&tarantool.Connection{}, &tarantool.Connection{}}
@@ -70,7 +71,7 @@ func TestRoundRobinGetNextConnection(t *testing.T) {
 }
 
 func TestRoundRobinStrategy_GetConnections(t *testing.T) {
-	rr := NewRoundRobinStrategy(10)
+	rr := pool.NewRoundRobinStrategy(10)
 
 	addrs := []string{validAddr1, validAddr2}
 	conns := []*tarantool.Connection{&tarantool.Connection{}, &tarantool.Connection{}}
