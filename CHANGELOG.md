@@ -9,12 +9,13 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 ## [Unreleased]
 
 ### Added
-- Add err log to `ConnectionPool.Add()` in case, when unable to establish 
-  connection and ctx is not canceled; 
-  also added logs for error case of `ConnectionPool.tryConnect()` calls in 
+- Add err log to `ConnectionPool.Add()` in case, when unable to establish
+  connection and ctx is not canceled;
+  also added logs for error case of `ConnectionPool.tryConnect()` calls in
   `ConnectionPool.controller()` and `ConnectionPool.reconnect()`
 - Methods that are implemented but not included in the pooler interface (#395).
 - Implemented stringer methods for pool.Role (#405).
+- Support the IPROTO_INSERT_ARROW request (#399).
 
 ### Changed
 
