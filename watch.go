@@ -58,11 +58,7 @@ func (req *BroadcastRequest) Async() bool {
 
 // Response creates a response for a BroadcastRequest.
 func (req *BroadcastRequest) Response(header Header, body io.Reader) (Response, error) {
-	resp, err := createBaseResponse(header, body)
-	if err != nil {
-		return nil, err
-	}
-	return &resp, nil
+	return DecodeBaseResponse(header, body)
 }
 
 // watchRequest subscribes to the updates of a specified key defined on the

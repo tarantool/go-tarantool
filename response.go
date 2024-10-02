@@ -45,6 +45,12 @@ func createBaseResponse(header Header, body io.Reader) (baseResponse, error) {
 	return baseResponse{header: header, buf: smallBuf{b: data}}, nil
 }
 
+// DecodeBaseResponse parse response header and body.
+func DecodeBaseResponse(header Header, body io.Reader) (Response, error) {
+	resp, err := createBaseResponse(header, body)
+	return &resp, err
+}
+
 // SelectResponse is used for the select requests.
 // It might contain a position descriptor of the last selected tuple.
 //

@@ -855,11 +855,7 @@ func (req *baseRequest) Ctx() context.Context {
 
 // Response creates a response for the baseRequest.
 func (req *baseRequest) Response(header Header, body io.Reader) (Response, error) {
-	resp, err := createBaseResponse(header, body)
-	if err != nil {
-		return nil, err
-	}
-	return &resp, nil
+	return DecodeBaseResponse(header, body)
 }
 
 type spaceRequest struct {
@@ -869,6 +865,17 @@ type spaceRequest struct {
 
 func (req *spaceRequest) setSpace(space interface{}) {
 	req.space = space
+}
+
+func EncodeSpace(res SchemaResolver, enc *msgpack.Encoder, space interface{}) error {
+	spaceEnc, err := newSpaceEncoder(res, space)
+	if err != nil {
+		return err
+	}
+	if err := spaceEnc.Encode(enc); err != nil {
+		return err
+	}
+	return nil
 }
 
 type spaceIndexRequest struct {
@@ -954,11 +961,7 @@ func (req authRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 
 // Response creates a response for the authRequest.
 func (req authRequest) Response(header Header, body io.Reader) (Response, error) {
-	resp, err := createBaseResponse(header, body)
-	if err != nil {
-		return nil, err
-	}
-	return &resp, nil
+	return DecodeBaseResponse(header, body)
 }
 
 // PingRequest helps you to create an execute request object for execution
