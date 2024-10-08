@@ -27,4 +27,4 @@ issues:
   exclude-rules:
     - linters:
       - lll
-      source: "\t?// *(see )?https://"
+      source: "^\\s*//\\s*(\\S+\\s){0,3}https?://\\S+$"
