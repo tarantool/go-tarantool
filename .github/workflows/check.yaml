@@ -6,7 +6,7 @@ on:
 
 jobs:
   luacheck:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     if: |
       github.event_name == 'push' ||
       github.event_name == 'pull_request' &&
@@ -32,7 +32,7 @@ jobs:
       run: ./.rocks/bin/luacheck .
 
   golangci-lint:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     if: |
       github.event_name == 'push' ||
       github.event_name == 'pull_request' &&
@@ -57,7 +57,7 @@ jobs:
           args: --out-${NO_FUTURE}format colored-line-number --config=.golangci.yaml
 
   codespell:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     if: |
       github.event_name == 'push' ||
       github.event_name == 'pull_request' &&
