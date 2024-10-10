@@ -9,10 +9,10 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/tarantool/go-iproto"
-	"github.com/vmihailenco/msgpack/v5"
-
 	. "github.com/tarantool/go-tarantool/v2"
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 const invalidSpaceMsg = "invalid space"
@@ -1061,5 +1061,84 @@ func TestResponseDecodeTyped(t *testing.T) {
 		err = resp.DecodeTyped(&decoded)
 		assert.NoError(t, err)
 		assert.Equal(t, []byte{'v', '2'}, decoded)
+	}
+}
+
+type stubSchemeResolver struct {
+	space interface{}
+}
+
+func (r stubSchemeResolver) ResolveSpace(s interface{}) (uint32, error) {
+	if id, ok := r.space.(uint32); ok {
+		return id, nil
+	}
+	if _, ok := r.space.(string); ok {
+		return 0, nil
+	}
+	return 0, fmt.Errorf("stub error message: %v", r.space)
+}
+
+func (stubSchemeResolver) ResolveIndex(i interface{}, spaceNo uint32) (uint32, error) {
+	return 0, nil
+}
+
+func (r stubSchemeResolver) NamesUseSupported() bool {
+	_, ok := r.space.(string)
+	return ok
+}
+
+func TestEncodeSpace(t *testing.T) {
+	tests := []struct {
+		name string
+		res  stubSchemeResolver
+		err  string
+		out  []byte
+	}{
+		{
+			name: "string space",
+			res:  stubSchemeResolver{"test"},
+			out:  []byte{0x5E, 0xA4, 0x74, 0x65, 0x73, 0x74},
+		},
+		{
+			name: "empty string",
+			res:  stubSchemeResolver{""},
+			out:  []byte{0x5E, 0xA0},
+		},
+		{
+			name: "numeric 524",
+			res:  stubSchemeResolver{uint32(524)},
+			out:  []byte{0x10, 0xCD, 0x02, 0x0C},
+		},
+		{
+			name: "numeric zero",
+			res:  stubSchemeResolver{uint32(0)},
+			out:  []byte{0x10, 0x00},
+		},
+		{
+			name: "numeric max value",
+			res:  stubSchemeResolver{^uint32(0)},
+			out:  []byte{0x10, 0xCE, 0xFF, 0xFF, 0xFF, 0xFF},
+		},
+		{
+			name: "resolve error",
+			res:  stubSchemeResolver{false},
+			err:  "stub error message",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			enc := msgpack.NewEncoder(&buf)
+
+			err := EncodeSpace(tt.res, enc, tt.res.space)
+			if tt.err != "" {
+				require.ErrorContains(t, err, tt.err)
+				return
+			} else {
+				require.NoError(t, err)
+			}
+
+			require.Equal(t, tt.out, buf.Bytes())
+		})
 	}
 }

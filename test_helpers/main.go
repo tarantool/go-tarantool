@@ -120,13 +120,20 @@ func atoiUint64(str string) (uint64, error) {
 	return res, nil
 }
 
+func getTarantoolExec() string {
+	if tar_bin := os.Getenv("TARANTOOL_BIN"); tar_bin != "" {
+		return tar_bin
+	}
+	return "tarantool"
+}
+
 // IsTarantoolVersionLess checks if tarantool version is less
 // than passed <major.minor.patch>. Returns error if failed
 // to extract version.
 func IsTarantoolVersionLess(majorMin uint64, minorMin uint64, patchMin uint64) (bool, error) {
 	var major, minor, patch uint64
 
-	out, err := exec.Command("tarantool", "--version").Output()
+	out, err := exec.Command(getTarantoolExec(), "--version").Output()
 
 	if err != nil {
 		return true, err
@@ -203,7 +210,7 @@ func StartTarantool(startOpts StartOpts) (TarantoolInstance, error) {
 		}
 	}
 
-	inst.Cmd = exec.Command("tarantool", startOpts.InitScript)
+	inst.Cmd = exec.Command(getTarantoolExec(), startOpts.InitScript)
 
 	inst.Cmd.Env = append(
 		os.Environ(),
