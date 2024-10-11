@@ -13,17 +13,11 @@ import (
 	"github.com/vmihailenco/msgpack/v5"
 )
 
-// INSERT Arrow request.
-//
-// FIXME: replace with iproto.IPROTO_INSERT_ARROW when iproto will released.
-// https://github.com/tarantool/go-tarantool/issues/412
-const iprotoInsertArrowType = iproto.Type(17)
-
 const validSpace uint32 = 1 // Any valid value != default.
 
 func TestInsertRequestType(t *testing.T) {
 	request := arrow.NewInsertRequest(validSpace, arrow.Arrow{})
-	require.Equal(t, iprotoInsertArrowType, request.Type())
+	require.Equal(t, iproto.IPROTO_INSERT_ARROW, request.Type())
 }
 
 func TestInsertRequestAsync(t *testing.T) {
