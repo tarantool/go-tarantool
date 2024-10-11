@@ -6,7 +6,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/shopspring/decimal v1.3.1
 	github.com/stretchr/testify v1.9.0
-	github.com/tarantool/go-iproto v1.0.0
+	github.com/tarantool/go-iproto v1.0.1-0.20241010173538-44b6566ef267
 	github.com/vmihailenco/msgpack/v5 v5.3.5
 )
 

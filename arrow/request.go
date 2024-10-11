@@ -9,18 +9,6 @@ import (
 	"github.com/vmihailenco/msgpack/v5"
 )
 
-// INSERT Arrow request.
-//
-// FIXME: replace with iproto.IPROTO_INSERT_ARROW when iproto will released.
-// https://github.com/tarantool/go-tarantool/issues/412
-const iprotoInsertArrowType = iproto.Type(17)
-
-// The data in Arrow format.
-//
-// FIXME: replace with iproto.IPROTO_ARROW when iproto will released.
-// https://github.com/tarantool/go-tarantool/issues/412
-const iprotoArrowKey = iproto.Key(0x36)
-
 // InsertRequest helps you to create an insert request object for execution
 // by a Connection.
 type InsertRequest struct {
@@ -39,7 +27,7 @@ func NewInsertRequest(space interface{}, arrow Arrow) *InsertRequest {
 
 // Type returns a IPROTO_INSERT_ARROW type for the request.
 func (r *InsertRequest) Type() iproto.Type {
-	return iprotoInsertArrowType
+	return iproto.IPROTO_INSERT_ARROW
 }
 
 // Async returns false to the request return a response.
@@ -78,7 +66,7 @@ func (r *InsertRequest) Body(res tarantool.SchemaResolver, enc *msgpack.Encoder)
 	if err := tarantool.EncodeSpace(res, enc, r.space); err != nil {
 		return err
 	}
-	if err := enc.EncodeUint(uint64(iprotoArrowKey)); err != nil {
+	if err := enc.EncodeUint(uint64(iproto.IPROTO_ARROW)); err != nil {
 		return err
 	}
 	return enc.Encode(r.arrow)
