@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"github.com/tarantool/go-iproto"
+
 	"github.com/tarantool/go-tarantool/v2"
 	"github.com/tarantool/go-tarantool/v2/arrow"
 	"github.com/tarantool/go-tarantool/v2/test_helpers"
@@ -33,15 +35,19 @@ var opts = tarantool.Opts{
 func TestInsert_invalid(t *testing.T) {
 	arrows := []struct {
 		arrow    string
-		expected string
+		expected []iproto.Error
 	}{
 		{
 			"",
-			"Failed to decode Arrow IPC data",
+			// TODO: delete iproto.ER_ARROW_IPC_DECODE, see:
+			// https://github.com/tarantool/go-tarantool/issues/415
+			[]iproto.Error{iproto.ER_INVALID_MSGPACK, iproto.ER_ARROW_IPC_DECODE},
 		},
 		{
 			"00",
-			"Failed to decode Arrow IPC data",
+			// TODO: delete iproto.ER_ARROW_IPC_DECODE, see:
+			// https://github.com/tarantool/go-tarantool/issues/415
+			[]iproto.Error{iproto.ER_INVALID_MSGPACK, iproto.ER_ARROW_IPC_DECODE},
 		},
 		{
 			"ffffffff70000000040000009effffff0400010004000000" +
@@ -53,7 +59,7 @@ func TestInsert_invalid(t *testing.T) {
 				"00000000000000000000000000000800000000000000000000000100000001000000" +
 				"0000000000000000000000000a00140004000c0010000c0014000400060008000c00" +
 				"00000000000000000000",
-			"memtx does not support arrow format",
+			[]iproto.Error{iproto.ER_UNSUPPORTED},
 		},
 	}
 
@@ -66,14 +72,19 @@ func TestInsert_invalid(t *testing.T) {
 			require.NoError(t, err)
 
 			arr, err := arrow.MakeArrow(data)
-			if err != nil {
-				require.ErrorContains(t, err, a.expected)
-				return
-			}
-			req := arrow.NewInsertRequest(space, arr)
+			require.NoError(t, err)
 
+			req := arrow.NewInsertRequest(space, arr)
 			_, err = conn.Do(req).Get()
-			require.ErrorContains(t, err, a.expected)
+			ttErr := err.(tarantool.Error)
+
+			require.Contains(t, a.expected, ttErr.Code)
+			// TODO: replace the check with:
+			//
+			// require.Equal(t, a.expected, ttErr.Code)
+			//
+			// See:
+			// https://github.com/tarantool/go-tarantool/issues/415
 		})
 	}
 
