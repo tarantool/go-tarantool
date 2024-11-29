@@ -85,7 +85,8 @@ type InfoRequest struct {
 	baseRequest
 }
 
-// Body method is used to serialize the request's body. It is part of the tarantool.Request interface implementation.
+// Body method is used to serialize the request's body.
+// It is part of the tarantool.Request interface implementation.
 func (i InfoRequest) Body(res tarantool.SchemaResolver, enc *msgpack.Encoder) error {
 	return i.impl.Body(res, enc)
 }
