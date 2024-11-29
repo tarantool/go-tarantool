@@ -34,7 +34,8 @@ type Info struct {
 	LSN uint64 `msgpack:"lsn"`
 }
 
-// InfoResponse represents the response structure that holds the information of the Tarantool instance.
+// InfoResponse represents the response structure
+// that holds the information of the Tarantool instance.
 // It contains a single field: Info, which holds the instance details (version, UUID, PID, etc.).
 type InfoResponse struct {
 	Info Info
