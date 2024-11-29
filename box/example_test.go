@@ -11,11 +11,11 @@ package box_test
 import (
 	"context"
 	"fmt"
-	"github.com/tarantool/go-tarantool/v2/box"
 	"log"
 	"time"
 
 	"github.com/tarantool/go-tarantool/v2"
+	"github.com/tarantool/go-tarantool/v2/box"
 )
 
 func Example() {

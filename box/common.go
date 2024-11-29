@@ -2,9 +2,10 @@ package box
 
 import (
 	"context"
+	"io"
+
 	"github.com/tarantool/go-iproto"
 	"github.com/tarantool/go-tarantool/v2"
-	"io"
 )
 
 type baseRequest struct {

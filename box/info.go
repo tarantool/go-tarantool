@@ -2,6 +2,7 @@ package box
 
 import (
 	"fmt"
+
 	"github.com/tarantool/go-tarantool/v2"
 	"github.com/vmihailenco/msgpack/v5"
 )
