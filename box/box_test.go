@@ -12,7 +12,7 @@ func TestBy(t *testing.T) {
 	// The library does not control this zone, and the nil connection would cause a runtime error
 	// when we attempt to call methods (like Info) on it.
 	// This test ensures that such an invalid state is correctly handled by causing a panic,
-	// as it's outside of the library's responsibility.
+	// as it's outside the library's responsibility.
 	require.Panics(t, func() {
 		// Create a box instance with a nil connection. This should lead to a panic later.
 		b := box.By(nil)

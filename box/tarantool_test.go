@@ -21,14 +21,8 @@ var dialer = tarantool.NetDialer{
 	Password: "test",
 }
 
-func TestBox_Info(t *testing.T) {
-	ctx := context.TODO()
-
-	conn, err := tarantool.Connect(ctx, dialer, tarantool.Opts{})
-	require.NoError(t, err)
-
-	info, err := box.By(conn).Info()
-	require.NoError(t, err)
+func validateInfo(t testing.TB, info box.Info) {
+	var err error
 
 	// check all fields run correctly
 	_, err = uuid.Parse(info.UUID)
@@ -37,7 +31,34 @@ func TestBox_Info(t *testing.T) {
 	require.NotEmpty(t, info.Version)
 	// check that pid parsed correctly
 	require.NotEqual(t, info.PID, 0)
+}
 
+func TestBox_Sugar_Info(t *testing.T) {
+	ctx := context.TODO()
+
+	conn, err := tarantool.Connect(ctx, dialer, tarantool.Opts{})
+	require.NoError(t, err)
+
+	info, err := box.By(conn).Info()
+	require.NoError(t, err)
+
+	validateInfo(t, info)
+}
+
+func TestBox_Info(t *testing.T) {
+	ctx := context.TODO()
+
+	conn, err := tarantool.Connect(ctx, dialer, tarantool.Opts{})
+	require.NoError(t, err)
+
+	fut := conn.Do(box.NewInfoRequest())
+	require.NotNil(t, fut)
+
+	resp := &box.InfoResponse{}
+	err = fut.GetTyped(resp)
+	require.NoError(t, err)
+
+	validateInfo(t, resp.Info)
 }
 
 func runTestMain(m *testing.M) int {
