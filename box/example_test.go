@@ -35,5 +35,9 @@ func Example() {
 
 	resp := &box.InfoResponse{}
 	err = fut.GetTyped(resp)
+	if err != nil {
+		log.Fatalf("Failed get box info: %s", err)
+	}
+
 	fmt.Printf("Current box info: %+v\n", resp.Info)
 }
