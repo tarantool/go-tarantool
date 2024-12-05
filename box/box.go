@@ -10,8 +10,8 @@ type Box struct {
 	conn tarantool.Doer // Connection interface for interacting with Tarantool.
 }
 
-// By returns a new instance of the box structure, which implements the Box interface.
-func New(conn tarantool.Doer) Box {
+// New returns a new instance of the box structure, which implements the Box interface.
+func New(conn tarantool.Doer) *Box {
 	return &Box{
 		conn: conn, // Assigns the provided Tarantool connection.
 	}
@@ -19,7 +19,7 @@ func New(conn tarantool.Doer) Box {
 
 // Info retrieves the current information of the Tarantool instance.
 // It calls the "box.info" function and parses the result into the Info structure.
-func (b *box) Info() (Info, error) {
+func (b *Box) Info() (Info, error) {
 	var infoResp InfoResponse
 
 	// Call "box.info" to get instance information from Tarantool.

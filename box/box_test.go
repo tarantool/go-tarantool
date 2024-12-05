@@ -7,7 +7,7 @@ import (
 	"github.com/tarantool/go-tarantool/v2/box"
 )
 
-func TestBy(t *testing.T) {
+func TestNew(t *testing.T) {
 	// We expect a panic because we are passing a nil connection (nil Doer) to the By function.
 	// The library does not control this zone, and the nil connection would cause a runtime error
 	// when we attempt to call methods (like Info) on it.
@@ -15,7 +15,7 @@ func TestBy(t *testing.T) {
 	// as it's outside the library's responsibility.
 	require.Panics(t, func() {
 		// Create a box instance with a nil connection. This should lead to a panic later.
-		b := box.By(nil)
+		b := box.New(nil)
 
 		// Ensure the box instance is not nil (which it shouldn't be), but this is not meaningful
 		// since we will panic when we call the Info method with the nil connection.
