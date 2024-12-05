@@ -31,13 +31,30 @@ func Example() {
 		log.Fatalf("Failed to connect: %s", err)
 	}
 
+	// You can use Info Request type.
+
 	fut := client.Do(box.NewInfoRequest())
 
 	resp := &box.InfoResponse{}
+
 	err = fut.GetTyped(resp)
 	if err != nil {
 		log.Fatalf("Failed get box info: %s", err)
 	}
 
+	// Or use simple Box implementation.
+
+	b := box.New(client)
+
+	info, err := b.Info()
+	if err != nil {
+		log.Fatalf("Failed get box info: %s", err)
+	}
+
+	if info.UUID != resp.Info.UUID {
+		log.Fatalf("Box info uuids are not equal")
+	}
+
+	fmt.Printf("Box info uuids are equal")
 	fmt.Printf("Current box info: %+v\n", resp.Info)
 }
