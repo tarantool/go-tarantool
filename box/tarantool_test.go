@@ -24,12 +24,12 @@ var dialer = tarantool.NetDialer{
 func validateInfo(t testing.TB, info box.Info) {
 	var err error
 
-	// check all fields run correctly
+	// Check all fields run correctly.
 	_, err = uuid.Parse(info.UUID)
 	require.NoErrorf(t, err, "validate instance uuid is valid")
 
 	require.NotEmpty(t, info.Version)
-	// check that pid parsed correctly
+	// Check that pid parsed correctly.
 	require.NotEqual(t, info.PID, 0)
 }
 
