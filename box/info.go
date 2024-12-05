@@ -9,12 +9,6 @@ import (
 
 var _ tarantool.Request = (*InfoRequest)(nil)
 
-// ClusterInfo represents information about the cluster.
-// It contains the unique identifier (UUID) of the cluster.
-type ClusterInfo struct {
-	UUID string `msgpack:"uuid"`
-}
-
 // Info represents detailed information about the Tarantool instance.
 // It includes version, node ID, read-only status, process ID, cluster information, and more.
 type Info struct {
