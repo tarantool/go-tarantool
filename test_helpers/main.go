@@ -142,19 +142,19 @@ func IsTarantoolVersionLess(majorMin uint64, minorMin uint64, patchMin uint64) (
 	parsed := tarantoolVersionRegexp.FindStringSubmatch(string(out))
 
 	if parsed == nil {
-		return true, errors.New("regexp parse failed")
+		return true, fmt.Errorf("failed to parse output %q", out)
 	}
 
 	if major, err = atoiUint64(parsed[1]); err != nil {
-		return true, fmt.Errorf("failed to parse major: %s", err)
+		return true, fmt.Errorf("failed to parse major from output %q: %w", out, err)
 	}
 
 	if minor, err = atoiUint64(parsed[2]); err != nil {
-		return true, fmt.Errorf("failed to parse minor: %s", err)
+		return true, fmt.Errorf("failed to parse minor from output %q: %w", out, err)
 	}
 
 	if patch, err = atoiUint64(parsed[3]); err != nil {
-		return true, fmt.Errorf("failed to parse patch: %s", err)
+		return true, fmt.Errorf("failed to parse patch from output %q: %w", out, err)
 	}
 
 	if major != majorMin {
