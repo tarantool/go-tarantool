@@ -136,7 +136,7 @@ jobs:
           - '1.20'
           - 'stable'
         runs-on:
-          - macos-12
+          - macos-13
           - macos-14
         tarantool:
           - brew
@@ -253,12 +253,6 @@ jobs:
         uses: actions/setup-go@v3
         with:
           go-version: ${{ matrix.golang }}
-
-      # Workaround for Mac OS 12 testrace failure
-      # https://github.com/golang/go/issues/49138
-      - name: disable MallocNanoZone for macos-12
-        run: echo "MallocNanoZone=0" >> $GITHUB_ENV
-        if: matrix.runs-on  == 'macos-12'
 
       # Workaround issue https://github.com/tarantool/tt/issues/640
       - name: Fix tt rocks
