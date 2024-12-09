@@ -4,7 +4,7 @@ import (
 	"github.com/tarantool/go-tarantool/v2"
 )
 
-// Box is a helper that wraps for box.* requests.
+// Box is a helper that wraps box.* requests.
 // It holds a connection to the Tarantool instance via the Doer interface.
 type Box struct {
 	conn tarantool.Doer // Connection interface for interacting with Tarantool.
