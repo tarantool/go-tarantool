@@ -283,6 +283,13 @@ func (p *ConnectionPool) Add(ctx context.Context, instance Instance) error {
 			canceled = false
 		}
 		if canceled {
+			if p.state.get() != connectedState {
+				// If it is canceled (or could be canceled) due to a
+				// Close()/CloseGraceful() call we overwrite the error
+				// to make behavior expected.
+				err = ErrClosed
+			}
+
 			p.endsMutex.Lock()
 			delete(p.ends, instance.Name)
 			p.endsMutex.Unlock()
