@@ -16,6 +16,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 - Methods that are implemented but not included in the pooler interface (#395).
 - Implemented stringer methods for pool.Role (#405).
 - Support the IPROTO_INSERT_ARROW request (#399).
+- A simple implementation of using the box interface was written (#410).
 
 ### Changed
 
