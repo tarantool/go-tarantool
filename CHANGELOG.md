@@ -10,6 +10,18 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [v2.2.0] - 2024-12-16
+
+The release introduces the IPROTO_INSERT_ARROW request (arrow.InsertRequest)
+and a request to archive `box.info` values (box.InfoRequest). Additionally, it
+includes some improvements to logging.
+
+### Added
+
 - Error logging to `ConnectionPool.Add()` in case, when unable to establish
   connection and ctx is not canceled (#389).
 - Error logging for error case of `ConnectionPool.tryConnect()` calls in
@@ -24,9 +36,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 - More informative request canceling: log the probable reason for unexpected
   request ID and add request ID info to context done error message (#407).
 
-### Fixed
-
-## [2.1.0] - 2024-03-06
+## [v2.1.0] - 2024-03-06
 
 The small release improves the ConnectionPool. The ConnectionPool now does not
 require execute access for `box.info` from a user for Tarantool >= 3.0.0.
@@ -41,7 +51,7 @@ require execute access for `box.info` from a user for Tarantool >= 3.0.0.
 - `ConnectionPool.Remove()` does not notify a `ConnectionHandler` after
   an instance is already removed from the pool (#385).
 
-## [2.0.0] - 2024-02-12
+## [v2.0.0] - 2024-02-12
 
 There are a lot of changes in the new major version. The main ones:
 
@@ -201,7 +211,7 @@ See the [migration guide](./MIGRATION.md) for more details.
 - Unable to use a slice of custom types as a slice of tuples or objects for
   `crud.*ManyRequest/crud.*ObjectManyRequest` (#365).
 
-## [1.12.0] - 2023-06-07
+## [v1.12.0] - 2023-06-07
 
 The release introduces the ability to gracefully close Connection
 and ConnectionPool and also provides methods for adding or removing an endpoint
@@ -223,7 +233,7 @@ from a ConnectionPool.
 - crud tests with Tarantool 3.0 (#293).
 - SQL tests with Tarantool 3.0 (#295).
 
-## [1.11.0] - 2023-05-18
+## [v1.11.0] - 2023-05-18
 
 The release adds pagination support and wrappers for the
 [crud](https://github.com/tarantool/crud) module.
@@ -253,7 +263,7 @@ The release adds pagination support and wrappers for the
 - Flaky queue/Example_connectionPool (#278).
 - Flaky queue/Example_simpleQueueCustomMsgPack (#277).
 
-## [1.10.0] - 2022-12-31
+## [v1.10.0] - 2022-12-31
 
 The release improves compatibility with new Tarantool versions.
 
@@ -275,7 +285,7 @@ The release improves compatibility with new Tarantool versions.
 - Flaky test multi/TestDisconnectAll (#234).
 - Build on macOS with Apple M1 (#260).
 
-## [1.9.0] - 2022-11-02
+## [v1.9.0] - 2022-11-02
 
 The release adds support for the latest version of the
 [queue package](https://github.com/tarantool/queue) with master-replica
@@ -308,7 +318,7 @@ switching.
 - Invalid MsgPack if STREAM_ID > 127 (#224).
 - queue.Take() returns an invalid task (#222).
 
-## [1.8.0] - 2022-08-17
+## [v1.8.0] - 2022-08-17
 
 The minor release with time zones and interval support for datetime.
 
@@ -322,7 +332,7 @@ The minor release with time zones and interval support for datetime.
 
 - Markdown of documentation for the decimal subpackage (#201).
 
-## [1.7.0] - 2022-08-02
+## [v1.7.0] - 2022-08-02
 
 This release adds a number of features. The extending of the public API has
 become possible with a new way of creating requests. New types of requests are
@@ -355,7 +365,7 @@ based on this idea.
 
 - Add `ExecuteAsync` and `ExecuteTyped` to common connector interface (#62).
 
-## [1.6.0] - 2022-06-01
+## [v1.6.0] - 2022-06-01
 
 This release adds a number of features. Also it significantly improves testing,
 CI and documentation.
