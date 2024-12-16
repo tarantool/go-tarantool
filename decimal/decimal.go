@@ -1,4 +1,4 @@
-// Package decimal with support of Tarantool's decimal data type.
+// Package decimal provides support for Tarantool's decimal data type.
 //
 // Decimal data type supported in Tarantool since 2.2.
 //
@@ -37,11 +37,10 @@ import (
 // - Tarantool module decimal:
 //   https://www.tarantool.io/en/doc/latest/reference/reference_lua/decimal/
 
-const (
-	// Decimal external type.
-	decimalExtID     = 1
-	decimalPrecision = 38
-)
+// ExtID represents the Decimal MessagePack extension type identifier.
+const ExtID = 1
+
+const decimalPrecision = 38
 
 var (
 	one decimal.Decimal = decimal.NewFromInt(1)
@@ -71,7 +70,8 @@ func MakeDecimalFromString(src string) (Decimal, error) {
 	return result, nil
 }
 
-func decimalEncoder(e *msgpack.Encoder, v reflect.Value) ([]byte, error) {
+// EncodeExt encodes a Decimal into a MessagePack extension.
+func EncodeExt(_ *msgpack.Encoder, v reflect.Value) ([]byte, error) {
 	dec := v.Interface().(Decimal)
 	if dec.GreaterThan(maxSupportedDecimal) {
 		return nil,
@@ -94,7 +94,8 @@ func decimalEncoder(e *msgpack.Encoder, v reflect.Value) ([]byte, error) {
 	return bcdBuf, nil
 }
 
-func decimalDecoder(d *msgpack.Decoder, v reflect.Value, extLen int) error {
+// DecodeExt decodes a MessagePack extension into a Decimal.
+func DecodeExt(d *msgpack.Decoder, v reflect.Value, extLen int) error {
 	b := make([]byte, extLen)
 	n, err := d.Buffered().Read(b)
 	if err != nil {
@@ -131,6 +132,6 @@ func decimalDecoder(d *msgpack.Decoder, v reflect.Value, extLen int) error {
 }
 
 func init() {
-	msgpack.RegisterExtDecoder(decimalExtID, Decimal{}, decimalDecoder)
-	msgpack.RegisterExtEncoder(decimalExtID, Decimal{}, decimalEncoder)
+	msgpack.RegisterExtEncoder(ExtID, Decimal{}, EncodeExt)
+	msgpack.RegisterExtDecoder(ExtID, Decimal{}, DecodeExt)
 }
