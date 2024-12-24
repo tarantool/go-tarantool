@@ -1,5 +1,5 @@
 <a href="http://tarantool.org">
-	<img src="https://avatars2.githubusercontent.com/u/2344919?v=2&s=250" align="right">
+	<img src="docs/static/logo.png"  width="250" align="right">
 </a>
 
 [![Go Reference][godoc-badge]][godoc-url]
