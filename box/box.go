@@ -17,6 +17,12 @@ func New(conn tarantool.Doer) *Box {
 	}
 }
 
+// Schema returns a new Schema instance, providing access to schema-related operations.
+// It uses the connection from the Box instance to communicate with Tarantool.
+func (b *Box) Schema() *Schema {
+	return NewSchema(b.conn)
+}
+
 // Info retrieves the current information of the Tarantool instance.
 // It calls the "box.info" function and parses the result into the Info structure.
 func (b *Box) Info() (Info, error) {
