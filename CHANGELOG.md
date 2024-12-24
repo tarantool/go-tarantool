@@ -11,6 +11,8 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 ### Added
 
 - Extend box with replication information (#427).
+- Implemented all box.schema.user operations requests and sugar interface (#426).
+- Implemented box.session.su request and sugar interface only for current session granting (#426).
 
 ### Changed
 
