@@ -14,6 +14,9 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Fixed
 
+- `unable to use an index name because schema is not loaded` error after
+  a reconnect (#424).
+
 ## [v2.2.0] - 2024-12-16
 
 The release introduces the IPROTO_INSERT_ARROW request (arrow.InsertRequest)
