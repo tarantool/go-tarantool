@@ -3868,6 +3868,61 @@ func TestWatcher_Unregister_concurrent(t *testing.T) {
 	wg.Wait()
 }
 
+func TestConnection_named_index_after_reconnect(t *testing.T) {
+	const server = "127.0.0.1:3015"
+
+	testDialer := dialer
+	testDialer.Address = server
+
+	inst, err := test_helpers.StartTarantool(test_helpers.StartOpts{
+		Dialer:       testDialer,
+		InitScript:   "config.lua",
+		Listen:       server,
+		WaitStart:    100 * time.Millisecond,
+		ConnectRetry: 10,
+		RetryTimeout: 500 * time.Millisecond,
+	})
+	defer test_helpers.StopTarantoolWithCleanup(inst)
+	if err != nil {
+		t.Fatalf("Unable to start Tarantool: %s", err)
+	}
+
+	reconnectOpts := opts
+	reconnectOpts.Reconnect = 100 * time.Millisecond
+	reconnectOpts.MaxReconnects = 10
+
+	conn := test_helpers.ConnectWithValidation(t, testDialer, reconnectOpts)
+	defer conn.Close()
+
+	test_helpers.StopTarantool(inst)
+
+	request := NewSelectRequest("test").Index("primary").Limit(1)
+	_, err = conn.Do(request).Get()
+	if err == nil {
+		t.Fatalf("An error expected.")
+	}
+
+	if err := test_helpers.RestartTarantool(&inst); err != nil {
+		t.Fatalf("Unable to restart Tarantool: %s", err)
+	}
+
+	maxTime := reconnectOpts.Reconnect * time.Duration(reconnectOpts.MaxReconnects)
+	timeout := time.After(maxTime)
+
+	for {
+		select {
+		case <-timeout:
+			t.Fatalf("Failed to execute request without an error, last error: %s", err)
+		default:
+		}
+
+		_, err = conn.Do(request).Get()
+		if err == nil {
+			return
+		}
+	}
+}
+
 func TestConnect_schema_update(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
