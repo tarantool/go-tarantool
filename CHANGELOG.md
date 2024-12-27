@@ -14,6 +14,12 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Fixed
 
+## [v2.2.1] - 2024-12-17
+
+The release fixes a schema lost after a reconnect.
+
+### Fixed
+
 - `unable to use an index name because schema is not loaded` error after
   a reconnect (#424).
 
