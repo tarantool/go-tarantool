@@ -31,6 +31,12 @@ func validateInfo(t testing.TB, info box.Info) {
 	require.NotEmpty(t, info.Version)
 	// Check that pid parsed correctly.
 	require.NotEqual(t, info.PID, 0)
+
+	// Check replication is parsed correctly.
+	require.NotEmpty(t, info.Replication)
+
+	// Check one replica uuid is equal system uuid.
+	require.Equal(t, info.UUID, info.Replication[1].UUID)
 }
 
 func TestBox_Sugar_Info(t *testing.T) {
