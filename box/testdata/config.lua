@@ -10,4 +10,7 @@ box.schema.user.grant('test', 'execute', 'universe', nil, { if_not_exists = true
 -- Set listen only when every other thing is configured.
 box.cfg{
     listen = os.getenv("TEST_TNT_LISTEN"),
+    replication = {
+        os.getenv("TEST_TNT_LISTEN"),
+    },
 }

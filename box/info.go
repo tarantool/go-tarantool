@@ -26,6 +26,59 @@ type Info struct {
 	Status string `msgpack:"status"`
 	// LSN - Log sequence number of the instance.
 	LSN uint64 `msgpack:"lsn"`
+	// Replication - replication status.
+	Replication map[int]Replication `msgpack:"replication,omitempty"`
+}
+
+// Replication section of box.info() is a table with statistics for all instances
+// in the replica set that the current instance belongs to.
+type Replication struct {
+	// ID is a short numeric identifier of instance n within the replica set.
+	ID int `msgpack:"id"`
+	// UUID - Unique identifier of the instance.
+	UUID string `msgpack:"uuid"`
+	// LSN - Log sequence number of the instance.
+	LSN uint64 `msgpack:"lsn"`
+	// Upstream - information about upstream.
+	Upstream Upstream `msgpack:"upstream,omitempty"`
+	// Downstream - information about downstream.
+	Downstream Downstream `msgpack:"downstream,omitempty"`
+}
+
+// Upstream information.
+type Upstream struct {
+	// Status is replication status of the connection with the instance.
+	Status string `msgpack:"status"`
+	// Idle is the time (in seconds) since the last event was received.
+	Idle float64 `msgpack:"idle"`
+	// Peer contains instance n’s URI.
+	Peer string `msgpack:"peer"`
+	// Lag is the time difference between the local time of instance n,
+	// recorded when the event was received, and the local time at another master
+	// recorded when the event was written to the write-ahead log on that master.
+	Lag float64 `msgpack:"lag"`
+	// Message contains an error message in case of a degraded state; otherwise, it is nil.
+	Message string `msgpack:"message,omitempty"`
+	// SystemMessage contains an error message in case of a degraded state; otherwise, it is nil.
+	SystemMessage string `msgpack:"system_message,omitempty"`
+}
+
+// Downstream information.
+type Downstream struct {
+	// Status is replication status of the connection with the instance.
+	Status string `msgpack:"status"`
+	// Idle is the time (in seconds) since the last event was received.
+	Idle float64 `msgpack:"idle"`
+	// VClock contains the vector clock, which is a table of ‘id, lsn’ pairs.
+	VClock map[int]uint64 `msgpack:"vclock"`
+	// Lag is the time difference between the local time of instance n,
+	// recorded when the event was received, and the local time at another master
+	// recorded when the event was written to the write-ahead log on that master.
+	Lag float64 `msgpack:"lag"`
+	// Message contains an error message in case of a degraded state; otherwise, it is nil.
+	Message string `msgpack:"message,omitempty"`
+	// SystemMessage contains an error message in case of a degraded state; otherwise, it is nil.
+	SystemMessage string `msgpack:"system_message,omitempty"`
 }
 
 // InfoResponse represents the response structure
