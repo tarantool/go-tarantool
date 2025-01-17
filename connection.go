@@ -446,12 +446,13 @@ func (conn *Connection) dial(ctx context.Context) error {
 	conn.Greeting.Salt = connGreeting.Salt
 	conn.serverProtocolInfo = c.ProtocolInfo()
 
-	spaceAndIndexNamesSupported :=
-		isFeatureInSlice(iproto.IPROTO_FEATURE_SPACE_AND_INDEX_NAMES,
+	if conn.schemaResolver == nil {
+		namesSupported := isFeatureInSlice(iproto.IPROTO_FEATURE_SPACE_AND_INDEX_NAMES,
 			conn.serverProtocolInfo.Features)
 
-	conn.schemaResolver = &noSchemaResolver{
-		SpaceAndIndexNamesSupported: spaceAndIndexNamesSupported,
+		conn.schemaResolver = &noSchemaResolver{
+			SpaceAndIndexNamesSupported: namesSupported,
+		}
 	}
 
 	// Watchers.

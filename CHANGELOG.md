@@ -10,12 +10,23 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Added
 
+- Extend box with replication information (#427).
+
 ### Changed
 
 - Made MessagePack extension encoding and decoding functions exportable, 
   allowing users to reuse the logic for custom extensions (#421).
 
 ### Fixed
+
+## [v2.2.1] - 2024-12-17
+
+The release fixes a schema lost after a reconnect.
+
+### Fixed
+
+- `unable to use an index name because schema is not loaded` error after
+  a reconnect (#424).
 
 ## [v2.2.0] - 2024-12-16
 
