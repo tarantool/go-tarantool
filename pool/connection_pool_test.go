@@ -3449,6 +3449,27 @@ func TestWatcher_Unregister_concurrent(t *testing.T) {
 	wg.Wait()
 }
 
+func TestConnectionPool_GetInstances(t *testing.T) {
+	var tCases [][]pool.Instance
+
+	tCases = append(tCases, makeInstances([]string{servers[0], servers[1]}, connOpts))
+	tCases = append(tCases, makeInstances([]string{servers[0], servers[1], servers[3]}, connOpts))
+	tCases = append(tCases, makeInstances([]string{servers[0]}, connOpts))
+
+	for _, tc := range tCases {
+		ctx, cancel := test_helpers.GetPoolConnectContext()
+		connPool, err := pool.Connect(ctx, tc)
+		cancel()
+		require.Nilf(t, err, "failed to connect")
+		require.NotNilf(t, connPool, "conn is nil after Connect")
+
+		poolInstns := connPool.GetInstances()
+		require.ElementsMatch(t, tc, poolInstns)
+		connPool.Close()
+	}
+
+}
+
 // runTestMain is a body of TestMain function
 // (see https://pkg.go.dev/testing#hdr-Main).
 // Using defer + os.Exit is not works so TestMain body

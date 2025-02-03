@@ -11,6 +11,8 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 ### Added
 
 - Extend box with replication information (#427).
+- The GetConnections method has been added,
+which is necessary to monitor the current state of the pool (#428).
 
 ### Changed
 

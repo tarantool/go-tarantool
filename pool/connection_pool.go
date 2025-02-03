@@ -1506,3 +1506,21 @@ func isFeatureInSlice(expected iproto.Feature, actualSlice []iproto.Feature) boo
 	}
 	return false
 }
+
+// GetInstances retrieves a slice of Instance objects representing the connections in the pool.
+func (p *ConnectionPool) GetInstances() []Instance {
+	p.endsMutex.Lock()
+	defer p.endsMutex.Unlock()
+
+	res := make([]Instance, 0, len(p.ends))
+
+	for _, end := range p.ends {
+		res = append(res, Instance{
+			Name:   end.name,
+			Dialer: end.dialer,
+			Opts:   end.opts,
+		})
+	}
+
+	return res
+}
