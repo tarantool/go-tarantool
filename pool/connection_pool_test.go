@@ -242,7 +242,9 @@ func TestConnect_empty(t *testing.T) {
 func TestConnect_unavailable(t *testing.T) {
 	servers := []string{"err1", "err2"}
 	ctx, cancel := test_helpers.GetPoolConnectContext()
-	connPool, err := pool.Connect(ctx, makeInstances([]string{"err1", "err2"}, connOpts))
+	insts := makeInstances([]string{"err1", "err2"}, connOpts)
+
+	connPool, err := pool.Connect(ctx, insts)
 	cancel()
 
 	if connPool != nil {
@@ -252,8 +254,10 @@ func TestConnect_unavailable(t *testing.T) {
 	require.NoError(t, err, "failed to create a pool")
 	require.NotNilf(t, connPool, "pool is nil after Connect")
 	require.Equal(t, map[string]pool.ConnectionInfo{
-		servers[0]: pool.ConnectionInfo{ConnectedNow: false, ConnRole: pool.UnknownRole},
-		servers[1]: pool.ConnectionInfo{ConnectedNow: false, ConnRole: pool.UnknownRole},
+		servers[0]: pool.ConnectionInfo{
+			ConnectedNow: false, ConnRole: pool.UnknownRole, Instance: insts[0]},
+		servers[1]: pool.ConnectionInfo{
+			ConnectedNow: false, ConnRole: pool.UnknownRole, Instance: insts[1]},
 	}, connPool.GetInfo())
 }
 
@@ -1156,15 +1160,19 @@ func TestConnectionHandlerOpenError(t *testing.T) {
 	}
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.ConnectWithOpts(ctx, makeInstances(poolServers, connOpts), poolOpts)
+
+	insts := makeInstances(poolServers, connOpts)
+	connPool, err := pool.ConnectWithOpts(ctx, insts, poolOpts)
 	if err == nil {
 		defer connPool.Close()
 	}
 	require.NoError(t, err, "failed to connect")
 	require.NotNil(t, connPool, "pool expected")
 	require.Equal(t, map[string]pool.ConnectionInfo{
-		servers[0]: pool.ConnectionInfo{ConnectedNow: false, ConnRole: pool.UnknownRole},
-		servers[1]: pool.ConnectionInfo{ConnectedNow: false, ConnRole: pool.UnknownRole},
+		servers[0]: pool.ConnectionInfo{
+			ConnectedNow: false, ConnRole: pool.UnknownRole, Instance: insts[0]},
+		servers[1]: pool.ConnectionInfo{
+			ConnectedNow: false, ConnRole: pool.UnknownRole, Instance: insts[1]},
 	}, connPool.GetInfo())
 	connPool.Close()
 
@@ -3493,6 +3501,37 @@ func runTestMain(m *testing.M) int {
 	defer test_helpers.StopTarantoolInstances(helpInstances)
 
 	return m.Run()
+}
+
+func TestConnectionPool_GetInfo_equal_instance_info(t *testing.T) {
+	var tCases [][]pool.Instance
+
+	tCases = append(tCases, makeInstances([]string{servers[0], servers[1]}, connOpts))
+	tCases = append(tCases, makeInstances([]string{
+		servers[0],
+		servers[1],
+		servers[3]},
+		connOpts))
+	tCases = append(tCases, makeInstances([]string{servers[0]}, connOpts))
+
+	for _, tc := range tCases {
+		ctx, cancel := test_helpers.GetPoolConnectContext()
+		connPool, err := pool.Connect(ctx, tc)
+		cancel()
+		require.Nilf(t, err, "failed to connect")
+		require.NotNilf(t, connPool, "conn is nil after Connect")
+
+		info := connPool.GetInfo()
+
+		var infoInstances []pool.Instance
+
+		for _, infoInst := range info {
+			infoInstances = append(infoInstances, infoInst.Instance)
+		}
+
+		require.ElementsMatch(t, tc, infoInstances)
+		connPool.Close()
+	}
 }
 
 func TestMain(m *testing.M) {

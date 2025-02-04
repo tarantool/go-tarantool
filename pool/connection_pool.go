@@ -93,6 +93,7 @@ ConnectionInfo structure for information about connection statuses:
 type ConnectionInfo struct {
 	ConnectedNow bool
 	ConnRole     Role
+	Instance     Instance
 }
 
 /*
@@ -393,13 +394,25 @@ func (p *ConnectionPool) GetInfo() map[string]ConnectionInfo {
 		return info
 	}
 
-	for name := range p.ends {
+	for name, end := range p.ends {
 		conn, role := p.getConnectionFromPool(name)
-		if conn != nil {
-			info[name] = ConnectionInfo{ConnectedNow: conn.ConnectedNow(), ConnRole: role}
-		} else {
-			info[name] = ConnectionInfo{ConnectedNow: false, ConnRole: UnknownRole}
+
+		connInfo := ConnectionInfo{
+			ConnectedNow: false,
+			ConnRole:     UnknownRole,
+			Instance: Instance{
+				Name:   name,
+				Dialer: end.dialer,
+				Opts:   end.opts,
+			},
 		}
+
+		if conn != nil {
+			connInfo.ConnRole = role
+			connInfo.ConnectedNow = conn.ConnectedNow()
+		}
+
+		info[name] = connInfo
 	}
 
 	return info
