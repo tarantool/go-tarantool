@@ -19,7 +19,6 @@ import (
 	"time"
 
 	"github.com/tarantool/go-iproto"
-
 	"github.com/tarantool/go-tarantool/v2"
 )
 
@@ -75,12 +74,17 @@ type Instance struct {
 
 // Opts provides additional options (configurable via ConnectWithOpts).
 type Opts struct {
+	DiscoveringDialer tarantool.NetDialer
 	// Timeout for timer to reopen connections that have been closed by some
 	// events and to relocate connection between subpools if ro/rw role has
 	// been updated.
 	CheckTimeout time.Duration
 	// ConnectionHandler provides an ability to handle connection updates.
 	ConnectionHandler ConnectionHandler
+	// WatchTopology start pool auto discovering by replication option
+	EnableDiscovery bool
+	// DiscoveryTimeout timout for discovering function
+	DiscoveryTimeout time.Duration
 }
 
 /*
@@ -103,6 +107,9 @@ Main features:
 - Automatic master discovery by mode parameter.
 */
 type ConnectionPool struct {
+	// root background connection pool ctx
+	ctx context.Context
+
 	ends      map[string]*endpoint
 	endsMutex sync.RWMutex
 
@@ -115,6 +122,8 @@ type ConnectionPool struct {
 	anyPool          *roundRobinStrategy
 	poolsMutex       sync.RWMutex
 	watcherContainer watcherContainer
+
+	discoveringCancel context.CancelFunc
 }
 
 var _ Pooler = (*ConnectionPool)(nil)
@@ -171,6 +180,7 @@ func ConnectWithOpts(ctx context.Context, instances []Instance,
 	anyPool := newRoundRobinStrategy(size)
 
 	connPool := &ConnectionPool{
+		ctx:     ctx,
 		ends:    make(map[string]*endpoint),
 		opts:    opts,
 		state:   connectedState,
@@ -190,6 +200,13 @@ func ConnectWithOpts(ctx context.Context, instances []Instance,
 		endpointCtx, cancel := context.WithCancel(context.Background())
 		endpoint.cancel = cancel
 		go connPool.controller(endpointCtx, endpoint)
+	}
+
+	if opts.EnableDiscovery {
+		err := connPool.StartDiscovery()
+		if err != nil { // it strange if there is error, but we need to check that one
+			return nil, err
+		}
 	}
 
 	return connPool, nil
