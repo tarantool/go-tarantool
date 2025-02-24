@@ -1,0 +1,198 @@
+package tcs
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"log"
+	"net"
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/tarantool/go-tarantool/v2"
+	"github.com/tarantool/go-tarantool/v2/test_helpers"
+)
+
+var ErrNotSupported = errors.New("required Tarantool EE 3.3+")
+var ErrNoValue = errors.New("required Value not found")
+
+// TCS is a Tarantool centralized configuration storage connection.
+type TCS struct {
+	inst test_helpers.TarantoolInstance
+	conn *tarantool.Connection
+	tb   testing.TB
+	port int
+}
+
+// dataResponse content of TcS response in data array.
+type dataResponse struct {
+	Path        string `msgpack:"path"`
+	Value       string `msgpack:"value"`
+	ModRevision int64  `msgpack:"mod_revision"`
+}
+
+func isSupported() bool {
+	if is_ee, err := test_helpers.IsTarantoolEE(); !is_ee || err != nil {
+		return false
+	}
+	if less, err := test_helpers.IsTarantoolVersionLess(3, 3, 0); less || err != nil {
+		return false
+	}
+	return true
+
+}
+
+// findEmptyPort returns some random unused port if @port is passed with zero.
+// If @port not zero, it checks if the port is free.
+func findEmptyPort(port int) (int, error) {
+	listener, err := net.Listen("tcp4", fmt.Sprintf(":%d", port)) // Bind to port 0
+	if err != nil {
+		return 0, err
+	}
+	defer listener.Close() // Ensure the listener is closed after use
+	addr := listener.Addr().(*net.TCPAddr)
+	return addr.Port, nil // Return the assigned port
+}
+
+// Start starts a Tarantool centralized configuration storage.
+// Use `port = 0` to use any unused port.
+// Returns a Tcs instance and a cleanup function.
+func Start(port int) (TCS, error) {
+	tcs := TCS{}
+	if !isSupported() {
+		return tcs, ErrNotSupported
+	}
+	var err error
+	tcs.port, err = findEmptyPort(port)
+	if err != nil {
+		if port == 0 {
+			return tcs, fmt.Errorf("failed to detect an empty port: %w", err)
+		} else {
+			return tcs, fmt.Errorf("port %d can't be used: %w", port, err)
+		}
+	}
+	opts, err := makeOpts(tcs.port)
+	if err != nil {
+		return tcs, err
+	}
+
+	tcs.inst, err = test_helpers.StartTarantool(opts)
+	if err != nil {
+		return tcs, fmt.Errorf("failed to start Tarantool config storage: %w", err)
+	}
+
+	tcs.conn, err = tarantool.Connect(context.Background(), tcs.inst.Dialer, tarantool.Opts{})
+	if err != nil {
+		return tcs, fmt.Errorf("failed to connect to Tarantool config storage: %w", err)
+	}
+
+	return tcs, nil
+}
+
+// Start starts a Tarantool centralized configuration storage.
+// Returns a Tcs instance and a cleanup function.
+func StartTesting(tb testing.TB, port int) TCS {
+	tcs, err := Start(port)
+	if err != nil {
+		if errors.Is(err, ErrNotSupported) {
+			tb.Skip(err)
+		} else {
+			tb.Fatal(err)
+		}
+	}
+	return tcs
+}
+
+// Doer return interface for interacting with Tarantool.
+func (t *TCS) Doer() tarantool.Doer {
+	return t.conn
+}
+
+// Dialer returns a dialer to connect to Tarantool.
+func (t *TCS) Dialer() tarantool.Dialer {
+	return t.inst.Dialer
+}
+
+// Endpoints returns a list of addresses to connect.
+func (t *TCS) Endpoints() []string {
+	return []string{fmt.Sprintf("localhost:%d", t.port)}
+}
+
+// Credentials returns a user name and password to connect.
+func (t *TCS) Credentials() (string, string) {
+	return TcsUser, TcsPassword
+}
+
+// Stop stops the Tarantool centralized configuration storage.
+func (t *TCS) Stop() {
+	if t.tb != nil {
+		t.tb.Helper()
+	}
+	if t.conn != nil {
+		t.conn.Close()
+	}
+	test_helpers.StopTarantoolWithCleanup(t.inst)
+	tcs_dir := filepath.Dir(t.inst.Opts.ConfigFile)
+	if err := os.RemoveAll(tcs_dir); err != nil {
+		log.Fatalf("Failed to clean TcS directory, got %s", err)
+	}
+}
+
+// Put implements "config.storage.put" method.
+func (t *TCS) Put(ctx context.Context, path string, value string) error {
+	if t.tb != nil {
+		t.tb.Helper()
+	}
+	req := tarantool.NewCallRequest("config.storage.put").
+		Args([]any{path, value}).
+		Context(ctx)
+	if _, err := t.conn.Do(req).GetResponse(); err != nil {
+		return fmt.Errorf("failed save data to tarantool: %w", err)
+	}
+	return nil
+}
+
+// Delete implements "config.storage.delete" method.
+func (t *TCS) Delete(ctx context.Context, path string) error {
+	if t.tb != nil {
+		t.tb.Helper()
+	}
+	req := tarantool.NewCallRequest("config.storage.delete").
+		Args([]any{path}).
+		Context(ctx)
+	if _, err := t.conn.Do(req).GetResponse(); err != nil {
+		return fmt.Errorf("failed delete data from tarantool: %w", err)
+	}
+	return nil
+}
+
+// Get implements "config.storage.get" method.
+func (t *TCS) Get(ctx context.Context, path string) (string, error) {
+	if t.tb != nil {
+		t.tb.Helper()
+	}
+	req := tarantool.NewCallRequest("config.storage.get").
+		Args([]any{path}).
+		Context(ctx)
+
+	resp := []struct {
+		Data []dataResponse `msgpack:"data"`
+	}{}
+
+	err := t.conn.Do(req).GetTyped(&resp)
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch data from tarantool: %w", err)
+	}
+	if len(resp) != 1 {
+		return "", errors.New("unexpected response from tarantool")
+	}
+	if len(resp[0].Data) == 0 {
+		return "", ErrNoValue
+	}
+	if len(resp[0].Data) != 1 {
+		return "", errors.New("to many data in response from tarantool")
+	}
+
+	return resp[0].Data[0].Value, nil
+}
