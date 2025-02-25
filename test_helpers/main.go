@@ -33,6 +33,14 @@ type StartOpts struct {
 	// InitScript is a Lua script for tarantool to run on start.
 	InitScript string
 
+	// ConfigFile is a path to a configuration file for a Tarantool instance.
+	// Required in pair with InstanceName.
+	ConfigFile string
+
+	// InstanceName is a name of an instance to run.
+	// Required in pair with ConfigFile.
+	InstanceName string
+
 	// Listen is box.cfg listen parameter for tarantool.
 	// Use this address to connect to tarantool after configuration.
 	// https://www.tarantool.io/en/doc/latest/reference/configuration/#cfg-basic-listen
@@ -77,6 +85,25 @@ type TarantoolInstance struct {
 
 	// Dialer to check that connection established.
 	Dialer tarantool.Dialer
+
+	done chan error
+}
+
+// WorkStatus checks if Tarantool instance is still running.
+// Return true if it is running, false if it is not.
+// If instance was exit and error is nil - process completed success with zero status code.
+func (t *TarantoolInstance) WorkStatus() (bool, error) {
+	select {
+	case err := <-t.done:
+		return false, err
+	default:
+		return true, nil
+	}
+}
+
+func (t *TarantoolInstance) checkDone() {
+	t.done = make(chan error, 1)
+	t.done <- t.Cmd.Wait()
 }
 
 func isReady(dialer tarantool.Dialer, opts *tarantool.Opts) error {
@@ -108,7 +135,7 @@ var (
 )
 
 func init() {
-	tarantoolVersionRegexp = regexp.MustCompile(`Tarantool (?:Enterprise )?(\d+)\.(\d+)\.(\d+).*`)
+	tarantoolVersionRegexp = regexp.MustCompile(`Tarantool (Enterprise )?(\d+)\.(\d+)\.(\d+).*`)
 }
 
 // atoiUint64 parses string to uint64.
@@ -145,15 +172,15 @@ func IsTarantoolVersionLess(majorMin uint64, minorMin uint64, patchMin uint64) (
 		return true, fmt.Errorf("failed to parse output %q", out)
 	}
 
-	if major, err = atoiUint64(parsed[1]); err != nil {
+	if major, err = atoiUint64(parsed[2]); err != nil {
 		return true, fmt.Errorf("failed to parse major from output %q: %w", out, err)
 	}
 
-	if minor, err = atoiUint64(parsed[2]); err != nil {
+	if minor, err = atoiUint64(parsed[3]); err != nil {
 		return true, fmt.Errorf("failed to parse minor from output %q: %w", out, err)
 	}
 
-	if patch, err = atoiUint64(parsed[3]); err != nil {
+	if patch, err = atoiUint64(parsed[4]); err != nil {
 		return true, fmt.Errorf("failed to parse patch from output %q: %w", out, err)
 	}
 
@@ -164,6 +191,21 @@ func IsTarantoolVersionLess(majorMin uint64, minorMin uint64, patchMin uint64) (
 	} else {
 		return patch < patchMin, nil
 	}
+}
+
+// IsTarantoolEE checks if Tarantool is Enterprise edition.
+func IsTarantoolEE() (bool, error) {
+	out, err := exec.Command(getTarantoolExec(), "--version").Output()
+	if err != nil {
+		return true, err
+	}
+
+	parsed := tarantoolVersionRegexp.FindStringSubmatch(string(out))
+	if parsed == nil {
+		return true, fmt.Errorf("failed to parse output %q", out)
+	}
+
+	return parsed[1] != "", nil
 }
 
 // RestartTarantool restarts a tarantool instance for tests
@@ -211,6 +253,7 @@ func StartTarantool(startOpts StartOpts) (TarantoolInstance, error) {
 	}
 
 	inst.Cmd = exec.Command(getTarantoolExec(), startOpts.InitScript)
+	inst.Cmd.Dir = startOpts.WorkDir
 
 	inst.Cmd.Env = append(
 		os.Environ(),
@@ -219,6 +262,11 @@ func StartTarantool(startOpts StartOpts) (TarantoolInstance, error) {
 		fmt.Sprintf("TEST_TNT_MEMTX_USE_MVCC_ENGINE=%t", startOpts.MemtxUseMvccEngine),
 		fmt.Sprintf("TEST_TNT_AUTH_TYPE=%s", startOpts.Auth),
 	)
+	if startOpts.ConfigFile != "" && startOpts.InstanceName != "" {
+		inst.Cmd.Env = append(inst.Cmd.Env, fmt.Sprintf("TT_CONFIG=%s", startOpts.ConfigFile))
+		inst.Cmd.Env = append(inst.Cmd.Env,
+			fmt.Sprintf("TT_INSTANCE_NAME=%s", startOpts.InstanceName))
+	}
 
 	// Copy SSL certificates.
 	if startOpts.SslCertsDir != "" {
@@ -242,6 +290,8 @@ func StartTarantool(startOpts StartOpts) (TarantoolInstance, error) {
 	// see https://github.com/tarantool/go-tarantool/issues/136
 	time.Sleep(startOpts.WaitStart)
 
+	go inst.checkDone()
+
 	opts := tarantool.Opts{
 		Timeout:    500 * time.Millisecond,
 		SkipSchema: true,
@@ -261,6 +311,16 @@ func StartTarantool(startOpts StartOpts) (TarantoolInstance, error) {
 		}
 	}
 
+	if err != nil {
+		StopTarantool(inst)
+		return TarantoolInstance{}, fmt.Errorf("failed to connect Tarantool: %w", err)
+	}
+
+	working, err := inst.WorkStatus()
+	if !working || err != nil {
+		StopTarantool(inst)
+		return TarantoolInstance{}, fmt.Errorf("unexpected terminated Tarantool: %w", err)
+	}
 	return inst, err
 }
 

@@ -4,6 +4,7 @@ go 1.20
 
 require (
 	github.com/google/uuid v1.3.0
+	github.com/mitchellh/mapstructure v1.5.0
 	github.com/shopspring/decimal v1.3.1
 	github.com/stretchr/testify v1.9.0
 	github.com/tarantool/go-iproto v1.1.0
