@@ -108,7 +108,7 @@ func testGracefulShutdown(t *testing.T, conn *Connection, inst *test_helpers.Tar
 	// Wait until server go down.
 	// Server will go down only when it process all requests from our connection
 	// (or on timeout).
-	_, err = inst.Cmd.Process.Wait()
+	err = inst.Wait()
 	require.Nil(t, err)
 	shutdownFinish := time.Now()
 	shutdownTime := shutdownFinish.Sub(shutdownStart)
@@ -256,7 +256,7 @@ func TestNoGracefulShutdown(t *testing.T) {
 	require.NotNilf(t, err, "sleep request error")
 
 	// Wait until server go down.
-	_, err = inst.Cmd.Process.Wait()
+	err = inst.Wait()
 	require.Nil(t, err)
 	shutdownFinish := time.Now()
 	shutdownTime := shutdownFinish.Sub(shutdownStart)
@@ -327,7 +327,7 @@ func TestGracefulShutdownRespectsClose(t *testing.T) {
 	require.NotNilf(t, err, "sleep request error")
 
 	// Wait until server go down.
-	_, err = inst.Cmd.Process.Wait()
+	err = inst.Wait()
 	require.Nil(t, err)
 	shutdownFinish := time.Now()
 	shutdownTime := shutdownFinish.Sub(shutdownStart)
@@ -401,7 +401,7 @@ func TestGracefulShutdownNotRacesWithRequestReconnect(t *testing.T) {
 
 	// Wait until server go down.
 	// Server is expected to go down on timeout.
-	_, err = inst.Cmd.Process.Wait()
+	err = inst.Wait()
 	require.Nil(t, err)
 
 	// Help test helpers to properly clean up.
@@ -497,7 +497,7 @@ func TestGracefulShutdownCloseConcurrent(t *testing.T) {
 	srvStop.Wait()
 	require.Nil(t, sret, "No errors on server SIGTERM")
 
-	_, err = inst.Cmd.Process.Wait()
+	err = inst.Wait()
 	require.Nil(t, err)
 
 	// Help test helpers to properly clean up.
@@ -590,7 +590,7 @@ func TestGracefulShutdownConcurrent(t *testing.T) {
 	caseWg.Wait()
 	require.Nil(t, ret, "No errors on concurrent wait")
 
-	_, err = inst.Cmd.Process.Wait()
+	err = inst.Wait()
 	require.Nil(t, err)
 
 	// Help test helpers to properly clean up.

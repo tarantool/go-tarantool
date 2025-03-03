@@ -4,10 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"net"
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/tarantool/go-tarantool/v2"
@@ -133,10 +130,6 @@ func (t *TCS) Stop() {
 		t.conn.Close()
 	}
 	test_helpers.StopTarantoolWithCleanup(t.inst)
-	tcs_dir := filepath.Dir(t.inst.Opts.ConfigFile)
-	if err := os.RemoveAll(tcs_dir); err != nil {
-		log.Fatalf("Failed to clean TcS directory, got %s", err)
-	}
 }
 
 // Put implements "config.storage.put" method.

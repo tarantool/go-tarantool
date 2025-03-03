@@ -21,6 +21,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/tarantool/go-tarantool/v2"
@@ -75,6 +77,27 @@ type StartOpts struct {
 	Dialer tarantool.Dialer
 }
 
+// errorWrap should be used with a pointer - as `optional` type.
+type errorWrap struct {
+	err error
+}
+
+type statusInstance struct {
+	// status if nil, then process is not done yet.
+	status *errorWrap
+	// isStopping is a flag that terminate was internally initiated.
+	isStopping atomic.Bool
+	// waitMutex is used to prevent several invokes of the "Wait"
+	// for the same process.
+	// https://github.com/golang/go/issues/28461
+	waitMutex sync.RWMutex
+}
+
+// statusInstanceWrap used to avoid capturing content in defer function.
+type statusInstanceWrap struct {
+	impl *statusInstance
+}
+
 // TarantoolInstance is a data for instance graceful shutdown and cleanup.
 type TarantoolInstance struct {
 	// Cmd is a Tarantool command. Used to kill Tarantool process.
@@ -86,38 +109,78 @@ type TarantoolInstance struct {
 	// Dialer to check that connection established.
 	Dialer tarantool.Dialer
 
-	done        chan error
-	is_done     bool
-	result      error
-	is_stopping bool
+	st *statusInstanceWrap
 }
 
-// Status checks if Tarantool instance is still running.
-// Return true if it is running, false if it is not.
-// If instance was exit and error is nil - process completed success with zero status code.
-func (t *TarantoolInstance) Status() (bool, error) {
-	if t.is_done {
-		return false, t.result
-	}
+func newTarantoolInstance() TarantoolInstance {
+	return TarantoolInstance{st: &statusInstanceWrap{&statusInstance{}}}
+}
 
-	select {
-	case t.result = <-t.done:
-		t.is_done = true
-		return false, t.result
-	default:
-		return true, nil
+func (t *TarantoolInstance) IsExit() bool {
+	succeeded := t.st.impl.waitMutex.TryRLock()
+	if !succeeded {
+		// Due to mutex locked by goroutine, it means that process running.
+		return false
 	}
+	defer t.st.impl.waitMutex.RUnlock()
+	return t.st.impl.status != nil
+}
+
+func (t *TarantoolInstance) result() error {
+	succeeded := t.st.impl.waitMutex.TryRLock()
+	if !succeeded {
+		return nil
+	}
+	defer t.st.impl.waitMutex.RUnlock()
+	return t.st.impl.status.err
 }
 
 func (t *TarantoolInstance) checkDone() {
-	t.is_done = false
-	t.is_stopping = false
-	t.done = make(chan error, 1)
-	t.done <- t.Cmd.Wait()
-	if !t.is_stopping {
-		_, err := t.Status()
-		log.Printf("Tarantool was unexpected terminated: %s", err)
+	if t.st == nil || t.st.impl == nil {
+		panic("TarantoolInstance is not initialized properly.")
 	}
+
+	go func() {
+		t.st.impl.waitMutex.Lock()
+		defer t.st.impl.waitMutex.Unlock()
+		t.st.impl.status = &errorWrap{t.Cmd.Wait()}
+		if !t.st.impl.isStopping.Load() {
+			log.Printf("Tarantool %q was unexpected terminated: %v", t.Opts.Listen, t.result())
+		}
+	}()
+}
+
+func (t *TarantoolInstance) Wait() error {
+	if t.st == nil {
+		panic("TarantoolInstance is not initialized")
+	}
+	t.st.impl.waitMutex.RLock()
+	defer t.st.impl.waitMutex.RUnlock()
+	// Note: don't call `result()` here to avoid double locking.
+	return t.st.impl.status.err
+}
+
+func (t *TarantoolInstance) Stop() error {
+	if t == nil {
+		log.Print("ASSERT: no Tarantool instance")
+		return nil
+	}
+	log.Printf("Stopping Tarantool instance %q", t.Opts.Listen)
+	t.st.impl.isStopping.Store(true)
+	if t.IsExit() {
+		log.Printf("Already stopped instance %q with result: %v", t.Opts.Listen, t.result())
+		return nil
+	}
+	if t.Cmd != nil && t.Cmd.Process != nil {
+		log.Printf("Killing Tarantool %q (pid %d)", t.Opts.Listen, t.Cmd.Process.Pid)
+		if err := t.Cmd.Process.Kill(); err != nil && !t.IsExit() {
+			return fmt.Errorf("failed to kill tarantool %q (pid %d), got %s",
+				t.Opts.Listen, t.Cmd.Process.Pid, err)
+		}
+		t.Wait()
+		t.Cmd.Process = nil
+	}
+	return nil
 }
 
 func isReady(dialer tarantool.Dialer, opts *tarantool.Opts) error {
@@ -230,9 +293,50 @@ func IsTarantoolEE() (bool, error) {
 // instance with StopTarantool.
 // Process must be stopped with StopTarantool.
 func RestartTarantool(inst *TarantoolInstance) error {
+	log.Printf("Restarting Tarantool instance %q", inst.Opts.Listen)
 	startedInst, err := StartTarantool(inst.Opts)
 	inst.Cmd.Process = startedInst.Cmd.Process
+	// We can't change pointer to status instance, cause it could captured by `defer`.
+	inst.st.impl = startedInst.st.impl
 	return err
+}
+
+func removeByMask(dir string, masks ...string) error {
+	for _, mask := range masks {
+		files, err := filepath.Glob(filepath.Join(dir, mask))
+		if err != nil {
+			return err
+		}
+		for _, f := range files {
+			if err = os.Remove(f); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func prepareDir(workDir string) (string, error) {
+	if workDir == "" {
+		dir, err := os.MkdirTemp("", "work_dir")
+		if err != nil {
+			return "", err
+		}
+		return dir, nil
+	}
+	// Create work_dir.
+	err := os.MkdirAll(workDir, 0755)
+	if err != nil {
+		return "", err
+	}
+
+	// Clean up existing work_dir.
+	// TODO: Ensure that nested files will be removed.
+	err = removeByMask(workDir, "*.snap", "*.xlog")
+	if err != nil {
+		return "", err
+	}
+	return workDir, nil
 }
 
 // StartTarantool starts a tarantool instance for tests
@@ -240,34 +344,24 @@ func RestartTarantool(inst *TarantoolInstance) error {
 // Process must be stopped with StopTarantool.
 func StartTarantool(startOpts StartOpts) (TarantoolInstance, error) {
 	// Prepare tarantool command.
-	var inst TarantoolInstance
-	var dir string
+	inst := newTarantoolInstance()
 	var err error
 
 	inst.Dialer = startOpts.Dialer
-
-	if startOpts.WorkDir == "" {
-		dir, err = os.MkdirTemp("", "work_dir")
-		if err != nil {
-			return inst, err
-		}
-		startOpts.WorkDir = dir
-	} else {
-		// Clean up existing work_dir.
-		err = os.RemoveAll(startOpts.WorkDir)
-		if err != nil {
-			return inst, err
-		}
-
-		// Create work_dir.
-		err = os.Mkdir(startOpts.WorkDir, 0755)
-		if err != nil {
-			return inst, err
-		}
+	startOpts.WorkDir, err = prepareDir(startOpts.WorkDir)
+	if err != nil {
+		return inst, fmt.Errorf("failed prepare working dir %q: %w", startOpts.WorkDir, err)
 	}
-	args := []string{}
 
+	args := []string{}
 	if startOpts.InitScript != "" {
+		if !filepath.IsAbs(startOpts.InitScript) {
+			cwd, err := os.Getwd()
+			if err != nil {
+				return inst, fmt.Errorf("failed to get current working directory: %w", err)
+			}
+			startOpts.InitScript = filepath.Join(cwd, startOpts.InitScript)
+		}
 		args = append(args, startOpts.InitScript)
 	}
 	if startOpts.ConfigFile != "" && startOpts.InstanceName != "" {
@@ -275,6 +369,9 @@ func StartTarantool(startOpts StartOpts) (TarantoolInstance, error) {
 		args = append(args, "--name", startOpts.InstanceName)
 	}
 	inst.Cmd = exec.Command(getTarantoolExec(), args...)
+	inst.Cmd.Dir = startOpts.WorkDir
+	inst.Cmd.Stdout = os.Stderr //! DEBUG: remove
+	inst.Cmd.Stderr = os.Stderr //! DEBUG: remove
 
 	inst.Cmd.Env = append(
 		os.Environ(),
@@ -306,7 +403,7 @@ func StartTarantool(startOpts StartOpts) (TarantoolInstance, error) {
 	// see https://github.com/tarantool/go-tarantool/issues/136
 	time.Sleep(startOpts.WaitStart)
 
-	go inst.checkDone()
+	inst.checkDone()
 
 	opts := tarantool.Opts{
 		Timeout:    500 * time.Millisecond,
@@ -327,15 +424,16 @@ func StartTarantool(startOpts StartOpts) (TarantoolInstance, error) {
 		}
 	}
 
-	working, err_st := inst.Status()
-	if !working || err_st != nil {
+	if inst.IsExit() && inst.result() != nil {
 		StopTarantool(inst)
-		return TarantoolInstance{}, fmt.Errorf("unexpected terminated Tarantool: %w", err_st)
+		return TarantoolInstance{}, fmt.Errorf("unexpected terminated Tarantool %q: %w",
+			inst.Opts.Listen, inst.result())
 	}
 
 	if err != nil {
 		StopTarantool(inst)
-		return TarantoolInstance{}, fmt.Errorf("failed to connect Tarantool: %w", err)
+		return TarantoolInstance{}, fmt.Errorf("failed to connect Tarantool %q: %w",
+			inst.Opts.Listen, err)
 	}
 
 	return inst, nil
@@ -345,25 +443,9 @@ func StartTarantool(startOpts StartOpts) (TarantoolInstance, error) {
 // with StartTarantool. Waits until any resources
 // associated with the process is released. If something went wrong, fails.
 func StopTarantool(inst TarantoolInstance) {
-	log.Printf("Stopping Tarantool instance")
-	inst.is_stopping = true
-	if inst.Cmd != nil && inst.Cmd.Process != nil {
-		if err := inst.Cmd.Process.Kill(); err != nil {
-			is_running, _ := inst.Status()
-			if is_running {
-				log.Fatalf("Failed to kill tarantool (pid %d), got %s", inst.Cmd.Process.Pid, err)
-			}
-		}
-
-		// Wait releases any resources associated with the Process.
-		if _, err := inst.Cmd.Process.Wait(); err != nil {
-			is_running, _ := inst.Status()
-			if is_running {
-				log.Fatalf("Failed to wait for Tarantool process to exit, got %s", err)
-			}
-		}
-
-		inst.Cmd.Process = nil
+	err := inst.Stop()
+	if err != nil {
+		log.Fatal(err)
 	}
 }
 

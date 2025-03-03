@@ -39,11 +39,12 @@ func writeConfig(name string, port int) error {
 
 func makeOpts(port int) (test_helpers.StartOpts, error) {
 	opts := test_helpers.StartOpts{}
-	dir, err := os.MkdirTemp("", "tcs_dir")
+	var err error
+	opts.WorkDir, err = os.MkdirTemp("", "tcs_dir")
 	if err != nil {
 		return opts, err
 	}
-	opts.ConfigFile = filepath.Join(dir, "config.yaml")
+	opts.ConfigFile = filepath.Join(opts.WorkDir, "config.yaml")
 	err = writeConfig(opts.ConfigFile, port)
 	if err != nil {
 		return opts, fmt.Errorf("can't save file %q: %w", opts.ConfigFile, err)
