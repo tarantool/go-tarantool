@@ -227,8 +227,8 @@ func SetClusterRO(dialers []tarantool.Dialer, connOpts tarantool.Opts,
 	return nil
 }
 
-func StartTarantoolInstances(instsOpts []StartOpts) ([]TarantoolInstance, error) {
-	instances := make([]TarantoolInstance, 0, len(instsOpts))
+func StartTarantoolInstances(instsOpts []StartOpts) ([]*TarantoolInstance, error) {
+	instances := make([]*TarantoolInstance, 0, len(instsOpts))
 
 	for _, opts := range instsOpts {
 		instance, err := StartTarantool(opts)
@@ -243,7 +243,7 @@ func StartTarantoolInstances(instsOpts []StartOpts) ([]TarantoolInstance, error)
 	return instances, nil
 }
 
-func StopTarantoolInstances(instances []TarantoolInstance) {
+func StopTarantoolInstances(instances []*TarantoolInstance) {
 	for _, instance := range instances {
 		StopTarantoolWithCleanup(instance)
 	}

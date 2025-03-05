@@ -33,6 +33,14 @@ type StartOpts struct {
 	// InitScript is a Lua script for tarantool to run on start.
 	InitScript string
 
+	// ConfigFile is a path to a configuration file for a Tarantool instance.
+	// Required in pair with InstanceName.
+	ConfigFile string
+
+	// InstanceName is a name of an instance to run.
+	// Required in pair with ConfigFile.
+	InstanceName string
+
 	// Listen is box.cfg listen parameter for tarantool.
 	// Use this address to connect to tarantool after configuration.
 	// https://www.tarantool.io/en/doc/latest/reference/configuration/#cfg-basic-listen
@@ -67,6 +75,12 @@ type StartOpts struct {
 	Dialer tarantool.Dialer
 }
 
+type state struct {
+	done    chan struct{}
+	ret     error
+	stopped bool
+}
+
 // TarantoolInstance is a data for instance graceful shutdown and cleanup.
 type TarantoolInstance struct {
 	// Cmd is a Tarantool command. Used to kill Tarantool process.
@@ -77,6 +91,83 @@ type TarantoolInstance struct {
 
 	// Dialer to check that connection established.
 	Dialer tarantool.Dialer
+
+	st chan state
+}
+
+func (t *TarantoolInstance) IsExit() bool {
+	st := <-t.st
+	t.st <- st
+
+	select {
+	case <-st.done:
+	default:
+		return false
+	}
+
+	return st.ret != nil
+}
+
+func (t *TarantoolInstance) result() error {
+	st := <-t.st
+	t.st <- st
+
+	select {
+	case <-st.done:
+	default:
+		return nil
+	}
+
+	return st.ret
+}
+
+func (t *TarantoolInstance) checkDone() {
+	ret := t.Cmd.Wait()
+
+	st := <-t.st
+
+	st.ret = ret
+	close(st.done)
+
+	t.st <- st
+
+	if !st.stopped {
+		log.Printf("Tarantool %q was unexpected terminated: %v", t.Opts.Listen, t.result())
+	}
+}
+
+func (t *TarantoolInstance) Wait() error {
+	st := <-t.st
+	t.st <- st
+
+	<-st.done
+
+	st = <-t.st
+	t.st <- st
+
+	return st.ret
+}
+
+func (t *TarantoolInstance) Stop() error {
+	st := <-t.st
+	st.stopped = true
+	t.st <- st
+
+	log.Printf("Stopping Tarantool instance %q", t.Opts.Listen)
+	if t.IsExit() {
+		log.Printf("Already stopped instance %q with result: %v", t.Opts.Listen, t.result())
+		return nil
+	}
+	if t.Cmd != nil && t.Cmd.Process != nil {
+		log.Printf("Killing Tarantool %q (pid %d)", t.Opts.Listen, t.Cmd.Process.Pid)
+		if err := t.Cmd.Process.Kill(); err != nil && !t.IsExit() {
+			return fmt.Errorf("failed to kill tarantool %q (pid %d), got %s",
+				t.Opts.Listen, t.Cmd.Process.Pid, err)
+		}
+		t.Wait()
+		t.Cmd.Process = nil
+	}
+	return nil
 }
 
 func isReady(dialer tarantool.Dialer, opts *tarantool.Opts) error {
@@ -108,7 +199,7 @@ var (
 )
 
 func init() {
-	tarantoolVersionRegexp = regexp.MustCompile(`Tarantool (?:Enterprise )?(\d+)\.(\d+)\.(\d+).*`)
+	tarantoolVersionRegexp = regexp.MustCompile(`Tarantool (Enterprise )?(\d+)\.(\d+)\.(\d+).*`)
 }
 
 // atoiUint64 parses string to uint64.
@@ -145,15 +236,15 @@ func IsTarantoolVersionLess(majorMin uint64, minorMin uint64, patchMin uint64) (
 		return true, fmt.Errorf("failed to parse output %q", out)
 	}
 
-	if major, err = atoiUint64(parsed[1]); err != nil {
+	if major, err = atoiUint64(parsed[2]); err != nil {
 		return true, fmt.Errorf("failed to parse major from output %q: %w", out, err)
 	}
 
-	if minor, err = atoiUint64(parsed[2]); err != nil {
+	if minor, err = atoiUint64(parsed[3]); err != nil {
 		return true, fmt.Errorf("failed to parse minor from output %q: %w", out, err)
 	}
 
-	if patch, err = atoiUint64(parsed[3]); err != nil {
+	if patch, err = atoiUint64(parsed[4]); err != nil {
 		return true, fmt.Errorf("failed to parse patch from output %q: %w", out, err)
 	}
 
@@ -166,6 +257,21 @@ func IsTarantoolVersionLess(majorMin uint64, minorMin uint64, patchMin uint64) (
 	}
 }
 
+// IsTarantoolEE checks if Tarantool is Enterprise edition.
+func IsTarantoolEE() (bool, error) {
+	out, err := exec.Command(getTarantoolExec(), "--version").Output()
+	if err != nil {
+		return true, err
+	}
+
+	parsed := tarantoolVersionRegexp.FindStringSubmatch(string(out))
+	if parsed == nil {
+		return true, fmt.Errorf("failed to parse output %q", out)
+	}
+
+	return parsed[1] != "", nil
+}
+
 // RestartTarantool restarts a tarantool instance for tests
 // with specifies parameters (refer to StartOpts)
 // which were specified in inst parameter.
@@ -174,43 +280,92 @@ func IsTarantoolVersionLess(majorMin uint64, minorMin uint64, patchMin uint64) (
 // instance with StopTarantool.
 // Process must be stopped with StopTarantool.
 func RestartTarantool(inst *TarantoolInstance) error {
+	log.Printf("Restarting Tarantool instance %q", inst.Opts.Listen)
 	startedInst, err := StartTarantool(inst.Opts)
+
 	inst.Cmd.Process = startedInst.Cmd.Process
+	inst.st = startedInst.st
+
 	return err
+}
+
+func removeByMask(dir string, masks ...string) error {
+	for _, mask := range masks {
+		files, err := filepath.Glob(filepath.Join(dir, mask))
+		if err != nil {
+			return err
+		}
+		for _, f := range files {
+			if err = os.Remove(f); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func prepareDir(workDir string) (string, error) {
+	if workDir == "" {
+		dir, err := os.MkdirTemp("", "work_dir")
+		if err != nil {
+			return "", err
+		}
+		return dir, nil
+	}
+	// Create work_dir.
+	err := os.MkdirAll(workDir, 0755)
+	if err != nil {
+		return "", err
+	}
+
+	// Clean up existing work_dir.
+	// TODO: Ensure that nested files will be removed.
+	err = removeByMask(workDir, "*.snap", "*.xlog")
+	if err != nil {
+		return "", err
+	}
+	return workDir, nil
 }
 
 // StartTarantool starts a tarantool instance for tests
 // with specifies parameters (refer to StartOpts).
 // Process must be stopped with StopTarantool.
-func StartTarantool(startOpts StartOpts) (TarantoolInstance, error) {
+func StartTarantool(startOpts StartOpts) (*TarantoolInstance, error) {
 	// Prepare tarantool command.
-	var inst TarantoolInstance
-	var dir string
+	inst := &TarantoolInstance{
+		st: make(chan state, 1),
+	}
+	init := state{
+		done: make(chan struct{}),
+	}
+	inst.st <- init
+
 	var err error
-
 	inst.Dialer = startOpts.Dialer
-
-	if startOpts.WorkDir == "" {
-		dir, err = os.MkdirTemp("", "work_dir")
-		if err != nil {
-			return inst, err
-		}
-		startOpts.WorkDir = dir
-	} else {
-		// Clean up existing work_dir.
-		err = os.RemoveAll(startOpts.WorkDir)
-		if err != nil {
-			return inst, err
-		}
-
-		// Create work_dir.
-		err = os.Mkdir(startOpts.WorkDir, 0755)
-		if err != nil {
-			return inst, err
-		}
+	startOpts.WorkDir, err = prepareDir(startOpts.WorkDir)
+	if err != nil {
+		return inst, fmt.Errorf("failed prepare working dir %q: %w", startOpts.WorkDir, err)
 	}
 
-	inst.Cmd = exec.Command(getTarantoolExec(), startOpts.InitScript)
+	args := []string{}
+	if startOpts.InitScript != "" {
+		if !filepath.IsAbs(startOpts.InitScript) {
+			cwd, err := os.Getwd()
+			if err != nil {
+				return inst, fmt.Errorf("failed to get current working directory: %w", err)
+			}
+			startOpts.InitScript = filepath.Join(cwd, startOpts.InitScript)
+		}
+		args = append(args, startOpts.InitScript)
+	}
+	if startOpts.ConfigFile != "" && startOpts.InstanceName != "" {
+		args = append(args, "--config", startOpts.ConfigFile)
+		args = append(args, "--name", startOpts.InstanceName)
+	}
+	inst.Cmd = exec.Command(getTarantoolExec(), args...)
+	inst.Cmd.Dir = startOpts.WorkDir
+	inst.Cmd.Stdout = os.Stderr //! DEBUG: remove
+	inst.Cmd.Stderr = os.Stderr //! DEBUG: remove
 
 	inst.Cmd.Env = append(
 		os.Environ(),
@@ -242,6 +397,8 @@ func StartTarantool(startOpts StartOpts) (TarantoolInstance, error) {
 	// see https://github.com/tarantool/go-tarantool/issues/136
 	time.Sleep(startOpts.WaitStart)
 
+	go inst.checkDone()
+
 	opts := tarantool.Opts{
 		Timeout:    500 * time.Millisecond,
 		SkipSchema: true,
@@ -261,24 +418,28 @@ func StartTarantool(startOpts StartOpts) (TarantoolInstance, error) {
 		}
 	}
 
-	return inst, err
+	if inst.IsExit() && inst.result() != nil {
+		StopTarantool(inst)
+		return nil, fmt.Errorf("unexpected terminated Tarantool %q: %w",
+			inst.Opts.Listen, inst.result())
+	}
+
+	if err != nil {
+		StopTarantool(inst)
+		return nil, fmt.Errorf("failed to connect Tarantool %q: %w",
+			inst.Opts.Listen, err)
+	}
+
+	return inst, nil
 }
 
 // StopTarantool stops a tarantool instance started
 // with StartTarantool. Waits until any resources
 // associated with the process is released. If something went wrong, fails.
-func StopTarantool(inst TarantoolInstance) {
-	if inst.Cmd != nil && inst.Cmd.Process != nil {
-		if err := inst.Cmd.Process.Kill(); err != nil {
-			log.Fatalf("Failed to kill tarantool (pid %d), got %s", inst.Cmd.Process.Pid, err)
-		}
-
-		// Wait releases any resources associated with the Process.
-		if _, err := inst.Cmd.Process.Wait(); err != nil {
-			log.Fatalf("Failed to wait for Tarantool process to exit, got %s", err)
-		}
-
-		inst.Cmd.Process = nil
+func StopTarantool(inst *TarantoolInstance) {
+	err := inst.Stop()
+	if err != nil {
+		log.Fatal(err)
 	}
 }
 
@@ -286,7 +447,7 @@ func StopTarantool(inst TarantoolInstance) {
 // with StartTarantool. Waits until any resources
 // associated with the process is released.
 // Cleans work directory after stop. If something went wrong, fails.
-func StopTarantoolWithCleanup(inst TarantoolInstance) {
+func StopTarantoolWithCleanup(inst *TarantoolInstance) {
 	StopTarantool(inst)
 
 	if inst.Opts.WorkDir != "" {
