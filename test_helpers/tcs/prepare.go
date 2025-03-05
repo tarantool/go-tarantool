@@ -15,8 +15,8 @@ import (
 const (
 	waitTimeout  = 500 * time.Millisecond
 	connectRetry = 3
-	TcsUser      = "client"
-	TcsPassword  = "secret"
+	tcsUser      = "client"
+	tcsPassword  = "secret"
 )
 
 //go:embed testdata/config.yaml
@@ -28,6 +28,7 @@ func writeConfig(name string, port int) error {
 		return err
 	}
 	defer cfg.Close()
+
 	cfg.Chmod(0644)
 
 	t := template.Must(template.New("config").Parse(string(tcsConfig)))
@@ -44,6 +45,7 @@ func makeOpts(port int) (test_helpers.StartOpts, error) {
 	if err != nil {
 		return opts, err
 	}
+
 	opts.ConfigFile = filepath.Join(opts.WorkDir, "config.yaml")
 	err = writeConfig(opts.ConfigFile, port)
 	if err != nil {
@@ -57,8 +59,8 @@ func makeOpts(port int) (test_helpers.StartOpts, error) {
 	opts.InstanceName = "master"
 	opts.Dialer = tarantool.NetDialer{
 		Address:  opts.Listen,
-		User:     TcsUser,
-		Password: TcsPassword,
+		User:     tcsUser,
+		Password: tcsPassword,
 	}
 	return opts, nil
 }

@@ -21,8 +21,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
-	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/tarantool/go-tarantool/v2"
@@ -77,25 +75,10 @@ type StartOpts struct {
 	Dialer tarantool.Dialer
 }
 
-// errorWrap should be used with a pointer - as `optional` type.
-type errorWrap struct {
-	err error
-}
-
-type statusInstance struct {
-	// status if nil, then process is not done yet.
-	status *errorWrap
-	// isStopping is a flag that terminate was internally initiated.
-	isStopping atomic.Bool
-	// waitMutex is used to prevent several invokes of the "Wait"
-	// for the same process.
-	// https://github.com/golang/go/issues/28461
-	waitMutex sync.RWMutex
-}
-
-// statusInstanceWrap used to avoid capturing content in defer function.
-type statusInstanceWrap struct {
-	impl *statusInstance
+type state struct {
+	done    chan struct{}
+	ret     error
+	stopped bool
 }
 
 // TarantoolInstance is a data for instance graceful shutdown and cleanup.
@@ -109,64 +92,68 @@ type TarantoolInstance struct {
 	// Dialer to check that connection established.
 	Dialer tarantool.Dialer
 
-	st *statusInstanceWrap
-}
-
-func newTarantoolInstance() TarantoolInstance {
-	return TarantoolInstance{st: &statusInstanceWrap{&statusInstance{}}}
+	st chan state
 }
 
 func (t *TarantoolInstance) IsExit() bool {
-	succeeded := t.st.impl.waitMutex.TryRLock()
-	if !succeeded {
-		// Due to mutex locked by goroutine, it means that process running.
+	st := <-t.st
+	t.st <- st
+
+	select {
+	case <-st.done:
+	default:
 		return false
 	}
-	defer t.st.impl.waitMutex.RUnlock()
-	return t.st.impl.status != nil
+
+	return st.ret != nil
 }
 
 func (t *TarantoolInstance) result() error {
-	succeeded := t.st.impl.waitMutex.TryRLock()
-	if !succeeded {
+	st := <-t.st
+	t.st <- st
+
+	select {
+	case <-st.done:
+	default:
 		return nil
 	}
-	defer t.st.impl.waitMutex.RUnlock()
-	return t.st.impl.status.err
+
+	return st.ret
 }
 
 func (t *TarantoolInstance) checkDone() {
-	if t.st == nil || t.st.impl == nil {
-		panic("TarantoolInstance is not initialized properly.")
-	}
+	ret := t.Cmd.Wait()
 
-	go func() {
-		t.st.impl.waitMutex.Lock()
-		defer t.st.impl.waitMutex.Unlock()
-		t.st.impl.status = &errorWrap{t.Cmd.Wait()}
-		if !t.st.impl.isStopping.Load() {
-			log.Printf("Tarantool %q was unexpected terminated: %v", t.Opts.Listen, t.result())
-		}
-	}()
+	st := <-t.st
+
+	st.ret = ret
+	close(st.done)
+
+	t.st <- st
+
+	if !st.stopped {
+		log.Printf("Tarantool %q was unexpected terminated: %v", t.Opts.Listen, t.result())
+	}
 }
 
 func (t *TarantoolInstance) Wait() error {
-	if t.st == nil {
-		panic("TarantoolInstance is not initialized")
-	}
-	t.st.impl.waitMutex.RLock()
-	defer t.st.impl.waitMutex.RUnlock()
-	// Note: don't call `result()` here to avoid double locking.
-	return t.st.impl.status.err
+	st := <-t.st
+	t.st <- st
+
+	<-st.done
+
+	st = <-t.st
+	t.st <- st
+
+	return st.ret
 }
 
 func (t *TarantoolInstance) Stop() error {
-	if t == nil {
-		log.Print("ASSERT: no Tarantool instance")
-		return nil
-	}
+	st := <-t.st
+	st.stopped = true
+	t.st <- st
+
 	log.Printf("Stopping Tarantool instance %q", t.Opts.Listen)
-	t.st.impl.isStopping.Store(true)
 	if t.IsExit() {
 		log.Printf("Already stopped instance %q with result: %v", t.Opts.Listen, t.result())
 		return nil
@@ -295,9 +282,10 @@ func IsTarantoolEE() (bool, error) {
 func RestartTarantool(inst *TarantoolInstance) error {
 	log.Printf("Restarting Tarantool instance %q", inst.Opts.Listen)
 	startedInst, err := StartTarantool(inst.Opts)
+
 	inst.Cmd.Process = startedInst.Cmd.Process
-	// We can't change pointer to status instance, cause it could captured by `defer`.
-	inst.st.impl = startedInst.st.impl
+	inst.st = startedInst.st
+
 	return err
 }
 
@@ -342,11 +330,17 @@ func prepareDir(workDir string) (string, error) {
 // StartTarantool starts a tarantool instance for tests
 // with specifies parameters (refer to StartOpts).
 // Process must be stopped with StopTarantool.
-func StartTarantool(startOpts StartOpts) (TarantoolInstance, error) {
+func StartTarantool(startOpts StartOpts) (*TarantoolInstance, error) {
 	// Prepare tarantool command.
-	inst := newTarantoolInstance()
-	var err error
+	inst := &TarantoolInstance{
+		st: make(chan state, 1),
+	}
+	init := state{
+		done: make(chan struct{}),
+	}
+	inst.st <- init
 
+	var err error
 	inst.Dialer = startOpts.Dialer
 	startOpts.WorkDir, err = prepareDir(startOpts.WorkDir)
 	if err != nil {
@@ -403,7 +397,7 @@ func StartTarantool(startOpts StartOpts) (TarantoolInstance, error) {
 	// see https://github.com/tarantool/go-tarantool/issues/136
 	time.Sleep(startOpts.WaitStart)
 
-	inst.checkDone()
+	go inst.checkDone()
 
 	opts := tarantool.Opts{
 		Timeout:    500 * time.Millisecond,
@@ -426,13 +420,13 @@ func StartTarantool(startOpts StartOpts) (TarantoolInstance, error) {
 
 	if inst.IsExit() && inst.result() != nil {
 		StopTarantool(inst)
-		return TarantoolInstance{}, fmt.Errorf("unexpected terminated Tarantool %q: %w",
+		return nil, fmt.Errorf("unexpected terminated Tarantool %q: %w",
 			inst.Opts.Listen, inst.result())
 	}
 
 	if err != nil {
 		StopTarantool(inst)
-		return TarantoolInstance{}, fmt.Errorf("failed to connect Tarantool %q: %w",
+		return nil, fmt.Errorf("failed to connect Tarantool %q: %w",
 			inst.Opts.Listen, err)
 	}
 
@@ -442,7 +436,7 @@ func StartTarantool(startOpts StartOpts) (TarantoolInstance, error) {
 // StopTarantool stops a tarantool instance started
 // with StartTarantool. Waits until any resources
 // associated with the process is released. If something went wrong, fails.
-func StopTarantool(inst TarantoolInstance) {
+func StopTarantool(inst *TarantoolInstance) {
 	err := inst.Stop()
 	if err != nil {
 		log.Fatal(err)
@@ -453,7 +447,7 @@ func StopTarantool(inst TarantoolInstance) {
 // with StartTarantool. Waits until any resources
 // associated with the process is released.
 // Cleans work directory after stop. If something went wrong, fails.
-func StopTarantoolWithCleanup(inst TarantoolInstance) {
+func StopTarantoolWithCleanup(inst *TarantoolInstance) {
 	StopTarantool(inst)
 
 	if inst.Opts.WorkDir != "" {

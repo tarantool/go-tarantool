@@ -11,12 +11,15 @@ import (
 	"github.com/tarantool/go-tarantool/v2/test_helpers"
 )
 
+// ErrNotSupported identifies result of `Start()` why storage was not started.
 var ErrNotSupported = errors.New("required Tarantool EE 3.3+")
-var ErrNoValue = errors.New("required Value not found")
+
+// ErrNoValue used to show that `Get()` was success, but no values was found.
+var ErrNoValue = errors.New("required value not found")
 
 // TCS is a Tarantool centralized configuration storage connection.
 type TCS struct {
-	inst test_helpers.TarantoolInstance
+	inst *test_helpers.TarantoolInstance
 	conn *tarantool.Connection
 	tb   testing.TB
 	port int
@@ -41,15 +44,15 @@ func isSupported() bool {
 }
 
 // findEmptyPort returns some random unused port if @port is passed with zero.
-// If @port not zero, it checks if the port is free.
 func findEmptyPort(port int) (int, error) {
-	listener, err := net.Listen("tcp4", fmt.Sprintf(":%d", port)) // Bind to port 0
+	listener, err := net.Listen("tcp4", fmt.Sprintf(":%d", port))
 	if err != nil {
 		return 0, err
 	}
-	defer listener.Close() // Ensure the listener is closed after use
+	defer listener.Close()
+
 	addr := listener.Addr().(*net.TCPAddr)
-	return addr.Port, nil // Return the assigned port
+	return addr.Port, nil
 }
 
 // Start starts a Tarantool centralized configuration storage.
@@ -69,6 +72,7 @@ func Start(port int) (TCS, error) {
 			return tcs, fmt.Errorf("port %d can't be used: %w", port, err)
 		}
 	}
+
 	opts, err := makeOpts(tcs.port)
 	if err != nil {
 		return tcs, err
@@ -113,12 +117,12 @@ func (t *TCS) Dialer() tarantool.Dialer {
 
 // Endpoints returns a list of addresses to connect.
 func (t *TCS) Endpoints() []string {
-	return []string{fmt.Sprintf("localhost:%d", t.port)}
+	return []string{fmt.Sprintf("127.0.0.1:%d", t.port)}
 }
 
 // Credentials returns a user name and password to connect.
 func (t *TCS) Credentials() (string, string) {
-	return TcsUser, TcsPassword
+	return tcsUser, tcsPassword
 }
 
 // Stop stops the Tarantool centralized configuration storage.

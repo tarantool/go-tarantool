@@ -23,8 +23,6 @@ const (
 var servers = []string{"127.0.0.1:3014", "127.0.0.1:3015"}
 var server = "127.0.0.1:3013"
 
-var instances []test_helpers.TarantoolInstance
-
 var dialer = NetDialer{
 	Address:  server,
 	User:     user,
@@ -931,7 +929,7 @@ func runTestMain(m *testing.M) int {
 		})
 	}
 
-	instances, err = test_helpers.StartTarantoolInstances(poolInstsOpts)
+	instances, err := test_helpers.StartTarantoolInstances(poolInstsOpts)
 
 	if err != nil {
 		log.Printf("Failed to prepare test tarantool pool: %s", err)
