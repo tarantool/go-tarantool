@@ -1,0 +1,39 @@
+credentials:
+  users:
+    replicator:
+      password: "topsecret"
+      roles: [replication]
+    client:
+      password: "secret"
+      privileges:
+        - permissions: [execute]
+          universe: true
+        - permissions: [read, write]
+          spaces: [config_storage, config_storage_meta]
+
+iproto:
+  advertise:
+    peer:
+      login: replicator
+
+replication:
+  failover: election
+
+database:
+  use_mvcc_engine: true
+
+groups:
+  group-001:
+    replicasets:
+      replicaset-001:
+        roles: [config.storage]
+        roles_cfg:
+          config_storage:
+            status_check_interval: 3
+        instances:
+          master:
+            iproto:
+              listen:
+                - uri: "{{.host}}:{{.port}}"
+                  params:
+                    transport: plain
