@@ -98,7 +98,7 @@ var connOpts = tarantool.Opts{
 var defaultCountRetry = 5
 var defaultTimeoutRetry = 500 * time.Millisecond
 
-var helpInstances []test_helpers.TarantoolInstance
+var helpInstances []*test_helpers.TarantoolInstance
 
 func TestConnect_error_duplicate(t *testing.T) {
 	ctx, cancel := test_helpers.GetPoolConnectContext()
@@ -404,7 +404,7 @@ func TestReconnect(t *testing.T) {
 		defaultCountRetry, defaultTimeoutRetry)
 	require.Nil(t, err)
 
-	err = test_helpers.RestartTarantool(&helpInstances[0])
+	err = test_helpers.RestartTarantool(helpInstances[0])
 	require.Nilf(t, err, "failed to restart tarantool")
 
 	args = test_helpers.CheckStatusesArgs{
@@ -453,7 +453,7 @@ func TestDisconnect_withReconnect(t *testing.T) {
 	require.Nil(t, err)
 
 	// Restart the server after success.
-	err = test_helpers.RestartTarantool(&helpInstances[serverId])
+	err = test_helpers.RestartTarantool(helpInstances[serverId])
 	require.Nilf(t, err, "failed to restart tarantool")
 
 	args = test_helpers.CheckStatusesArgs{
@@ -501,10 +501,10 @@ func TestDisconnectAll(t *testing.T) {
 		defaultCountRetry, defaultTimeoutRetry)
 	require.Nil(t, err)
 
-	err = test_helpers.RestartTarantool(&helpInstances[0])
+	err = test_helpers.RestartTarantool(helpInstances[0])
 	require.Nilf(t, err, "failed to restart tarantool")
 
-	err = test_helpers.RestartTarantool(&helpInstances[1])
+	err = test_helpers.RestartTarantool(helpInstances[1])
 	require.Nilf(t, err, "failed to restart tarantool")
 
 	args = test_helpers.CheckStatusesArgs{
@@ -1362,10 +1362,10 @@ func TestRequestOnClosed(t *testing.T) {
 	_, err = connPool.Ping(pool.ANY)
 	require.NotNilf(t, err, "err is nil after Ping")
 
-	err = test_helpers.RestartTarantool(&helpInstances[0])
+	err = test_helpers.RestartTarantool(helpInstances[0])
 	require.Nilf(t, err, "failed to restart tarantool")
 
-	err = test_helpers.RestartTarantool(&helpInstances[1])
+	err = test_helpers.RestartTarantool(helpInstances[1])
 	require.Nilf(t, err, "failed to restart tarantool")
 }
 

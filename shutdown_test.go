@@ -78,7 +78,7 @@ func testGracefulShutdown(t *testing.T, conn *Connection, inst *test_helpers.Tar
 
 	// SIGTERM the server.
 	shutdownStart := time.Now()
-	require.Nil(t, inst.Cmd.Process.Signal(syscall.SIGTERM))
+	require.Nil(t, inst.Signal(syscall.SIGTERM))
 
 	// Check that we can't send new requests after shutdown starts.
 	// Retry helps to wait a bit until server starts to shutdown
@@ -108,13 +108,10 @@ func testGracefulShutdown(t *testing.T, conn *Connection, inst *test_helpers.Tar
 	// Wait until server go down.
 	// Server will go down only when it process all requests from our connection
 	// (or on timeout).
-	_, err = inst.Cmd.Process.Wait()
+	err = inst.Wait()
 	require.Nil(t, err)
 	shutdownFinish := time.Now()
 	shutdownTime := shutdownFinish.Sub(shutdownStart)
-
-	// Help test helpers to properly clean up.
-	inst.Cmd.Process = nil
 
 	// Check that it wasn't a timeout.
 	require.Lessf(t,
@@ -129,18 +126,16 @@ func testGracefulShutdown(t *testing.T, conn *Connection, inst *test_helpers.Tar
 func TestGracefulShutdown(t *testing.T) {
 	test_helpers.SkipIfWatchersUnsupported(t)
 
-	var inst test_helpers.TarantoolInstance
 	var conn *Connection
-	var err error
 
-	inst, err = test_helpers.StartTarantool(shtdnSrvOpts)
+	inst, err := test_helpers.StartTarantool(shtdnSrvOpts)
 	require.Nil(t, err)
 	defer test_helpers.StopTarantoolWithCleanup(inst)
 
 	conn = test_helpers.ConnectWithValidation(t, shtdnDialer, shtdnClntOpts)
 	defer conn.Close()
 
-	testGracefulShutdown(t, conn, &inst)
+	testGracefulShutdown(t, conn, inst)
 }
 
 func TestCloseGraceful(t *testing.T) {
@@ -190,26 +185,23 @@ func TestCloseGraceful(t *testing.T) {
 func TestGracefulShutdownWithReconnect(t *testing.T) {
 	test_helpers.SkipIfWatchersUnsupported(t)
 
-	var inst test_helpers.TarantoolInstance
-	var err error
-
-	inst, err = test_helpers.StartTarantool(shtdnSrvOpts)
+	inst, err := test_helpers.StartTarantool(shtdnSrvOpts)
 	require.Nil(t, err)
 	defer test_helpers.StopTarantoolWithCleanup(inst)
 
 	conn := test_helpers.ConnectWithValidation(t, shtdnDialer, shtdnClntOpts)
 	defer conn.Close()
 
-	testGracefulShutdown(t, conn, &inst)
+	testGracefulShutdown(t, conn, inst)
 
-	err = test_helpers.RestartTarantool(&inst)
+	err = test_helpers.RestartTarantool(inst)
 	require.Nilf(t, err, "Failed to restart tarantool")
 
 	connected := test_helpers.WaitUntilReconnected(conn, shtdnClntOpts.MaxReconnects,
 		shtdnClntOpts.Reconnect)
 	require.Truef(t, connected, "Reconnect success")
 
-	testGracefulShutdown(t, conn, &inst)
+	testGracefulShutdown(t, conn, inst)
 }
 
 func TestNoGracefulShutdown(t *testing.T) {
@@ -219,14 +211,12 @@ func TestNoGracefulShutdown(t *testing.T) {
 	noShtdDialer.RequiredProtocolInfo = ProtocolInfo{}
 	test_helpers.SkipIfWatchersSupported(t)
 
-	var inst test_helpers.TarantoolInstance
 	var conn *Connection
-	var err error
 
 	testSrvOpts := shtdnSrvOpts
 	testSrvOpts.Dialer = noShtdDialer
 
-	inst, err = test_helpers.StartTarantool(testSrvOpts)
+	inst, err := test_helpers.StartTarantool(testSrvOpts)
 	require.Nil(t, err)
 	defer test_helpers.StopTarantoolWithCleanup(inst)
 
@@ -249,20 +239,17 @@ func TestNoGracefulShutdown(t *testing.T) {
 
 	// SIGTERM the server.
 	shutdownStart := time.Now()
-	require.Nil(t, inst.Cmd.Process.Signal(syscall.SIGTERM))
+	require.Nil(t, inst.Signal(syscall.SIGTERM))
 
 	// Check that request was interrupted.
 	_, err = fut.Get()
 	require.NotNilf(t, err, "sleep request error")
 
 	// Wait until server go down.
-	_, err = inst.Cmd.Process.Wait()
+	err = inst.Wait()
 	require.Nil(t, err)
 	shutdownFinish := time.Now()
 	shutdownTime := shutdownFinish.Sub(shutdownStart)
-
-	// Help test helpers to properly clean up.
-	inst.Cmd.Process = nil
 
 	// Check that server finished without waiting for eval to finish.
 	require.Lessf(t,
@@ -274,11 +261,9 @@ func TestNoGracefulShutdown(t *testing.T) {
 func TestGracefulShutdownRespectsClose(t *testing.T) {
 	test_helpers.SkipIfWatchersUnsupported(t)
 
-	var inst test_helpers.TarantoolInstance
 	var conn *Connection
-	var err error
 
-	inst, err = test_helpers.StartTarantool(shtdnSrvOpts)
+	inst, err := test_helpers.StartTarantool(shtdnSrvOpts)
 	require.Nil(t, err)
 	defer test_helpers.StopTarantoolWithCleanup(inst)
 
@@ -314,7 +299,7 @@ func TestGracefulShutdownRespectsClose(t *testing.T) {
 
 	// SIGTERM the server.
 	shutdownStart := time.Now()
-	require.Nil(t, inst.Cmd.Process.Signal(syscall.SIGTERM))
+	require.Nil(t, inst.Signal(syscall.SIGTERM))
 
 	// Close the connection.
 	conn.Close()
@@ -327,13 +312,10 @@ func TestGracefulShutdownRespectsClose(t *testing.T) {
 	require.NotNilf(t, err, "sleep request error")
 
 	// Wait until server go down.
-	_, err = inst.Cmd.Process.Wait()
+	err = inst.Wait()
 	require.Nil(t, err)
 	shutdownFinish := time.Now()
 	shutdownTime := shutdownFinish.Sub(shutdownStart)
-
-	// Help test helpers to properly clean up.
-	inst.Cmd.Process = nil
 
 	// Check that server finished without waiting for eval to finish.
 	require.Lessf(t,
@@ -354,11 +336,9 @@ func TestGracefulShutdownRespectsClose(t *testing.T) {
 func TestGracefulShutdownNotRacesWithRequestReconnect(t *testing.T) {
 	test_helpers.SkipIfWatchersUnsupported(t)
 
-	var inst test_helpers.TarantoolInstance
 	var conn *Connection
-	var err error
 
-	inst, err = test_helpers.StartTarantool(shtdnSrvOpts)
+	inst, err := test_helpers.StartTarantool(shtdnSrvOpts)
 	require.Nil(t, err)
 	defer test_helpers.StopTarantoolWithCleanup(inst)
 
@@ -397,15 +377,12 @@ func TestGracefulShutdownNotRacesWithRequestReconnect(t *testing.T) {
 	fut := conn.Do(req)
 
 	// SIGTERM the server.
-	require.Nil(t, inst.Cmd.Process.Signal(syscall.SIGTERM))
+	require.Nil(t, inst.Signal(syscall.SIGTERM))
 
 	// Wait until server go down.
 	// Server is expected to go down on timeout.
-	_, err = inst.Cmd.Process.Wait()
+	err = inst.Wait()
 	require.Nil(t, err)
-
-	// Help test helpers to properly clean up.
-	inst.Cmd.Process = nil
 
 	// Check that request failed by server disconnect, not a client timeout.
 	_, err = fut.Get()
@@ -425,11 +402,9 @@ func TestGracefulShutdownNotRacesWithRequestReconnect(t *testing.T) {
 func TestGracefulShutdownCloseConcurrent(t *testing.T) {
 	test_helpers.SkipIfWatchersUnsupported(t)
 
-	var inst test_helpers.TarantoolInstance
-	var err error
 	var srvShtdnStart, srvShtdnFinish time.Time
 
-	inst, err = test_helpers.StartTarantool(shtdnSrvOpts)
+	inst, err := test_helpers.StartTarantool(shtdnSrvOpts)
 	require.Nil(t, err)
 	defer test_helpers.StopTarantoolWithCleanup(inst)
 
@@ -487,21 +462,18 @@ func TestGracefulShutdownCloseConcurrent(t *testing.T) {
 	go func(inst *test_helpers.TarantoolInstance) {
 		srvToStop.Wait()
 		srvShtdnStart = time.Now()
-		cerr := inst.Cmd.Process.Signal(syscall.SIGTERM)
+		cerr := inst.Signal(syscall.SIGTERM)
 		if cerr != nil {
 			sret = cerr
 		}
 		srvStop.Done()
-	}(&inst)
+	}(inst)
 
 	srvStop.Wait()
 	require.Nil(t, sret, "No errors on server SIGTERM")
 
-	_, err = inst.Cmd.Process.Wait()
+	err = inst.Wait()
 	require.Nil(t, err)
-
-	// Help test helpers to properly clean up.
-	inst.Cmd.Process = nil
 
 	srvShtdnFinish = time.Now()
 	srvShtdnTime := srvShtdnFinish.Sub(srvShtdnStart)
@@ -515,11 +487,9 @@ func TestGracefulShutdownCloseConcurrent(t *testing.T) {
 func TestGracefulShutdownConcurrent(t *testing.T) {
 	test_helpers.SkipIfWatchersUnsupported(t)
 
-	var inst test_helpers.TarantoolInstance
-	var err error
 	var srvShtdnStart, srvShtdnFinish time.Time
 
-	inst, err = test_helpers.StartTarantool(shtdnSrvOpts)
+	inst, err := test_helpers.StartTarantool(shtdnSrvOpts)
 	require.Nil(t, err)
 	defer test_helpers.StopTarantoolWithCleanup(inst)
 
@@ -577,12 +547,12 @@ func TestGracefulShutdownConcurrent(t *testing.T) {
 	go func(inst *test_helpers.TarantoolInstance) {
 		srvToStop.Wait()
 		srvShtdnStart = time.Now()
-		cerr := inst.Cmd.Process.Signal(syscall.SIGTERM)
+		cerr := inst.Signal(syscall.SIGTERM)
 		if cerr != nil {
 			sret = cerr
 		}
 		srvStop.Done()
-	}(&inst)
+	}(inst)
 
 	srvStop.Wait()
 	require.Nil(t, sret, "No errors on server SIGTERM")
@@ -590,11 +560,8 @@ func TestGracefulShutdownConcurrent(t *testing.T) {
 	caseWg.Wait()
 	require.Nil(t, ret, "No errors on concurrent wait")
 
-	_, err = inst.Cmd.Process.Wait()
+	err = inst.Wait()
 	require.Nil(t, err)
-
-	// Help test helpers to properly clean up.
-	inst.Cmd.Process = nil
 
 	srvShtdnFinish = time.Now()
 	srvShtdnTime := srvShtdnFinish.Sub(srvShtdnStart)
