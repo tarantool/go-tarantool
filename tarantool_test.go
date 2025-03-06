@@ -3609,7 +3609,7 @@ func TestConnection_NewWatcher_reconnect(t *testing.T) {
 	<-events
 
 	test_helpers.StopTarantool(inst)
-	if err := test_helpers.RestartTarantool(&inst); err != nil {
+	if err := test_helpers.RestartTarantool(inst); err != nil {
 		t.Fatalf("Unable to restart Tarantool: %s", err)
 	}
 
@@ -3902,7 +3902,7 @@ func TestConnection_named_index_after_reconnect(t *testing.T) {
 		t.Fatalf("An error expected.")
 	}
 
-	if err := test_helpers.RestartTarantool(&inst); err != nil {
+	if err := test_helpers.RestartTarantool(inst); err != nil {
 		t.Fatalf("Unable to restart Tarantool: %s", err)
 	}
 

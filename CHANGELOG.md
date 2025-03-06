@@ -12,10 +12,22 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 - Extend box with replication information (#427).
 - The Instance info has been added to ConnectionInfo for GetInfo response (#429).
+- Added helpers to run Tarantool config storage (#431).
 
 ### Changed
 
+- Changed helpers API `StartTarantool` and `StopTarantool`, now it uses
+  pointer on `TarantoolInstance`:
+  * `StartTarantool()` returns `*TarantoolInstance`;
+  * `StopTarantool()` and `StopTarantoolWithCleanup()` accepts
+    `*TarantoolInstance` as arguments.
+- Field `Cmd` in `TarantoolInstance` struct declared as deprecated.
+  Suggested `Wait()`, `Stop()` and `Signal()` methods as safer to use
+  instead of direct `Cmd.Process` access (#431).
+
 ### Fixed
+
+- Fixed flaky test detection on fail start Tarantool instance (#431).
 
 ## [v2.2.1] - 2024-12-17
 
