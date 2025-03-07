@@ -108,7 +108,7 @@ test-main:
 coverage:
 	go clean -testcache
 	go get golang.org/x/tools/cmd/cover
-	go test -tags "$(TAGS)" ./... -v -p 1 -covermode=atomic -coverprofile=$(COVERAGE_FILE)
+	go test -tags "$(TAGS)" $(go list ./... | grep -v test_helpers) -v -p 1 -covermode=atomic -coverprofile=$(COVERAGE_FILE)
 	go tool cover -func=$(COVERAGE_FILE)
 
 .PHONY: coveralls

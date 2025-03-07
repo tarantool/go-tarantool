@@ -23,7 +23,7 @@ jobs:
 
     # We could replace it with ubuntu-latest after fixing the bug:
     # https://github.com/tarantool/setup-tarantool/issues/37
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     strategy:
       fail-fast: false
@@ -100,9 +100,10 @@ jobs:
         run: make deps
 
       - name: Run regression tests
-        run: |
-          make test
-          make testrace
+        run: make test
+
+      - name: Run race tests
+        run: make testrace
 
       - name: Run fuzzing tests
         if: ${{ matrix.fuzzing }}
@@ -116,6 +117,7 @@ jobs:
           make coveralls
 
       - name: Check workability of benchmark tests
+        if: matrix.golang == 'stable'
         run: make bench-deps bench DURATION=1x COUNT=1
 
   testing_mac_os:
@@ -270,6 +272,10 @@ jobs:
         run: |
           cd "${SRCDIR}"
           make test
+
+      - name: Run race tests
+        run: |
+          cd "${SRCDIR}"
           make testrace
 
       - name: Run fuzzing tests
@@ -279,6 +285,7 @@ jobs:
           make fuzzing TAGS="go_tarantool_decimal_fuzzing"
 
       - name: Check workability of benchmark tests
+        if: matrix.golang == 'stable'
         run: |
           cd "${SRCDIR}"
           make bench-deps bench DURATION=1x COUNT=1

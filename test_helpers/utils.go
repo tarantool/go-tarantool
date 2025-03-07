@@ -217,6 +217,32 @@ func SkipIfCrudSpliceBroken(t *testing.T) {
 	SkipIfFeatureUnsupported(t, "crud update splice", 2, 0, 0)
 }
 
+// IsTcsSupported checks if Tarantool supports centralized storage.
+// Tarantool supports centralized storage with Enterprise since 3.3.0 version.
+func IsTcsSupported() (bool, error) {
+
+	if isEe, err := IsTarantoolEE(); !isEe || err != nil {
+		return false, err
+	}
+	if isLess, err := IsTarantoolVersionLess(3, 3, 0); isLess || err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// SkipIfTCSUnsupported skips test if no centralized storage support.
+func SkipIfTcsUnsupported(t testing.TB) {
+	t.Helper()
+
+	ok, err := IsTcsSupported()
+	if err != nil {
+		t.Fatalf("Could not check the Tarantool version: %s", err)
+	}
+	if !ok {
+		t.Skip("not found Tarantool EE 3.3+")
+	}
+}
+
 // CheckEqualBoxErrors checks equivalence of tarantool.BoxError objects.
 //
 // Tarantool errors are not comparable by nature:
