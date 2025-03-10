@@ -6,12 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic
 Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
-## [Unreleased]
+## [v2.3.0] - 2025-03-11
+
+The release extends box.info responses and ConnectionPool.GetInfo return data.
+
+Be careful, we have changed the test_helpers package a little since we do not
+support backward compatibility for it.
 
 ### Added
 
 - Extend box with replication information (#427).
-- The Instance info has been added to ConnectionInfo for GetInfo response (#429).
+- The Instance info has been added to ConnectionInfo for ConnectionPool.GetInfo
+  response (#429).
 - Added helpers to run Tarantool config storage (#431).
 
 ### Changed
@@ -27,7 +33,8 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Fixed
 
-- Fixed flaky test detection on fail start Tarantool instance (#431).
+- Test helpers does not detect a fail to start a Tarantool instance if
+  another Tarantool instance already listens a port (#431).
 
 ## [v2.2.1] - 2024-12-17
 
