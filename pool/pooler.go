@@ -14,9 +14,16 @@ type TopologyEditor interface {
 	Remove(name string) error
 }
 
+// Doer is an interface that performs requests asynchronously.
+type Doer interface {
+	// Do performs a request asynchronously.
+	Do(req tarantool.Request, mode Mode) (fut *tarantool.Future)
+}
+
 // Pooler is the interface that must be implemented by a connection pool.
 type Pooler interface {
 	TopologyEditor
+	Doer
 
 	ConnectedNow(mode Mode) (bool, error)
 	Close() []error
@@ -28,7 +35,6 @@ type Pooler interface {
 	NewStream(mode Mode) (*tarantool.Stream, error)
 	NewWatcher(key string, callback tarantool.WatchCallback,
 		mode Mode) (tarantool.Watcher, error)
-	Do(req tarantool.Request, mode Mode) (fut *tarantool.Future)
 
 	// Deprecated: the method will be removed in the next major version,
 	// use a PingRequest object + Do() instead.
