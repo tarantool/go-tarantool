@@ -12,6 +12,7 @@ import (
 type TopologyEditor interface {
 	Add(ctx context.Context, instance Instance) error
 	Remove(name string) error
+	GetInfo() map[string]ConnectionInfo
 }
 
 // Pooler is the interface that must be implemented by a connection pool.

@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic
 Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
+## Unreleased
+
+### Added
+
+- GetInfo method added to Pooler TopologyEditor interface.
+
 ## [v2.3.0] - 2025-03-11
 
 The release extends box.info responses and ConnectionPool.GetInfo return data.
