@@ -3972,6 +3972,86 @@ func TestConnect_context_cancel(t *testing.T) {
 	}
 }
 
+// A dialer that rejects the first few connection requests.
+type mockSlowDialer struct {
+	counter  *int
+	original NetDialer
+}
+
+func (m mockSlowDialer) Dial(ctx context.Context, opts DialOpts) (Conn, error) {
+	*m.counter++
+	if *m.counter < 10 {
+		return nil, fmt.Errorf("Too early: %v", *m.counter)
+	}
+	return m.original.Dial(ctx, opts)
+}
+
+func TestConnectIsBlocked(t *testing.T) {
+	const server = "127.0.0.1:3015"
+	testDialer := dialer
+	testDialer.Address = server
+
+	inst, err := test_helpers.StartTarantool(test_helpers.StartOpts{
+		Dialer:       testDialer,
+		InitScript:   "config.lua",
+		Listen:       server,
+		WaitStart:    100 * time.Millisecond,
+		ConnectRetry: 10,
+		RetryTimeout: 500 * time.Millisecond,
+	})
+	defer test_helpers.StopTarantoolWithCleanup(inst)
+	if err != nil {
+		t.Fatalf("Unable to start Tarantool: %s", err)
+	}
+
+	var counter int
+	mockDialer := mockSlowDialer{original: testDialer, counter: &counter}
+	ctx, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
+	defer cancel()
+
+	reconnectOpts := opts
+	reconnectOpts.Reconnect = 100 * time.Millisecond
+	reconnectOpts.MaxReconnects = 100
+	conn, err := Connect(ctx, mockDialer, reconnectOpts)
+	assert.Nil(t, err)
+	conn.Close()
+	assert.GreaterOrEqual(t, counter, 10)
+}
+
+func TestConnectIsBlockedUntilContextExpires(t *testing.T) {
+	const server = "127.0.0.1:3015"
+
+	testDialer := dialer
+	testDialer.Address = server
+
+	ctx, cancel := test_helpers.GetConnectContext()
+	defer cancel()
+
+	reconnectOpts := opts
+	reconnectOpts.Reconnect = 100 * time.Millisecond
+	reconnectOpts.MaxReconnects = 100
+	_, err := Connect(ctx, testDialer, reconnectOpts)
+	assert.NotNil(t, err)
+	assert.ErrorContains(t, err, "failed to dial: dial tcp 127.0.0.1:3015: i/o timeout")
+}
+
+func TestConnectIsUnblockedAfterMaxAttempts(t *testing.T) {
+	const server = "127.0.0.1:3015"
+
+	testDialer := dialer
+	testDialer.Address = server
+
+	ctx, cancel := test_helpers.GetConnectContext()
+	defer cancel()
+
+	reconnectOpts := opts
+	reconnectOpts.Reconnect = 100 * time.Millisecond
+	reconnectOpts.MaxReconnects = 1
+	_, err := Connect(ctx, testDialer, reconnectOpts)
+	assert.NotNil(t, err)
+	assert.ErrorContains(t, err, "last reconnect failed")
+}
+
 func buildSidecar(dir string) error {
 	goPath, err := exec.LookPath("go")
 	if err != nil {

@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic
 Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
+## [Unreleased]
+
+### Added
+
+### Changed
+
+- Connect() now retry the connection if a failure occurs and opts.Reconnect > 0.
+  The number of attempts is equal to opts.MaxReconnects or unlimited if
+  opts.MaxReconnects == 0. Connect() blocks until a connection is established,
+  the context is cancelled, or the number of attempts is exhausted (#436).
+
+### Fixed
+
 ## [v2.3.0] - 2025-03-11
 
 The release extends box.info responses and ConnectionPool.GetInfo return data.

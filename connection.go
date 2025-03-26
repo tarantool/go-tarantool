@@ -92,12 +92,24 @@ func (d defaultLogger) Report(event ConnLogKind, conn *Connection, v ...interfac
 	case LogReconnectFailed:
 		reconnects := v[0].(uint)
 		err := v[1].(error)
-		log.Printf("tarantool: reconnect (%d/%d) to %s failed: %s",
-			reconnects, conn.opts.MaxReconnects, conn.Addr(), err)
+		addr := conn.Addr()
+		if addr == nil {
+			log.Printf("tarantool: connect (%d/%d) failed: %s",
+				reconnects, conn.opts.MaxReconnects, err)
+		} else {
+			log.Printf("tarantool: reconnect (%d/%d) to %s failed: %s",
+				reconnects, conn.opts.MaxReconnects, addr, err)
+		}
 	case LogLastReconnectFailed:
 		err := v[0].(error)
-		log.Printf("tarantool: last reconnect to %s failed: %s, giving it up",
-			conn.Addr(), err)
+		addr := conn.Addr()
+		if addr == nil {
+			log.Printf("tarantool: last connect failed: %s, giving it up",
+				err)
+		} else {
+			log.Printf("tarantool: last reconnect to %s failed: %s, giving it up",
+				addr, err)
+		}
 	case LogUnexpectedResultId:
 		header := v[0].(Header)
 		log.Printf("tarantool: connection %s got unexpected request ID (%d) in response "+
@@ -362,8 +374,20 @@ func Connect(ctx context.Context, dialer Dialer, opts Opts) (conn *Connection, e
 
 	conn.cond = sync.NewCond(&conn.mutex)
 
-	if err = conn.createConnection(ctx); err != nil {
-		return nil, err
+	if conn.opts.Reconnect > 0 {
+		// We don't need these mutex.Lock()/mutex.Unlock() here, but
+		// runReconnects() expects mutex.Lock() to be set, so it's
+		// easier to add them instead of reworking runReconnects().
+		conn.mutex.Lock()
+		err = conn.runReconnects(ctx)
+		conn.mutex.Unlock()
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		if err = conn.connect(ctx); err != nil {
+			return nil, err
+		}
 	}
 
 	go conn.pinger()
@@ -553,7 +577,7 @@ func pack(h *smallWBuf, enc *msgpack.Encoder, reqid uint32,
 	return
 }
 
-func (conn *Connection) createConnection(ctx context.Context) error {
+func (conn *Connection) connect(ctx context.Context) error {
 	var err error
 	if conn.c == nil && conn.state == connDisconnected {
 		if err = conn.dial(ctx); err == nil {
@@ -616,19 +640,30 @@ func (conn *Connection) getDialTimeout() time.Duration {
 	return dialTimeout
 }
 
-func (conn *Connection) runReconnects() error {
+func (conn *Connection) runReconnects(ctx context.Context) error {
 	dialTimeout := conn.getDialTimeout()
 	var reconnects uint
 	var err error
 
+	t := time.NewTicker(conn.opts.Reconnect)
+	defer t.Stop()
 	for conn.opts.MaxReconnects == 0 || reconnects <= conn.opts.MaxReconnects {
-		now := time.Now()
-
-		ctx, cancel := context.WithTimeout(context.Background(), dialTimeout)
-		err = conn.createConnection(ctx)
+		localCtx, cancel := context.WithTimeout(ctx, dialTimeout)
+		err = conn.connect(localCtx)
 		cancel()
 
 		if err != nil {
+			// The error will most likely be the one that Dialer
+			// returns to us due to the context being cancelled.
+			// Although this is not guaranteed. For example,
+			// if the dialer may throw another error before checking
+			// the context, and the context has already been
+			// canceled. Or the context was not canceled after
+			// the error was thrown, but before the context was
+			// checked here.
+			if ctx.Err() != nil {
+				return err
+			}
 			if clientErr, ok := err.(ClientError); ok &&
 				clientErr.Code == ErrConnectionClosed {
 				return err
@@ -642,7 +677,12 @@ func (conn *Connection) runReconnects() error {
 		reconnects++
 		conn.mutex.Unlock()
 
-		time.Sleep(time.Until(now.Add(conn.opts.Reconnect)))
+		select {
+		case <-ctx.Done():
+			// Since the context is cancelled, we don't need to do anything.
+			// Conn.connect() will return the correct error.
+		case <-t.C:
+		}
 
 		conn.mutex.Lock()
 	}
@@ -656,7 +696,7 @@ func (conn *Connection) reconnectImpl(neterr error, c Conn) {
 	if conn.opts.Reconnect > 0 {
 		if c == conn.c {
 			conn.closeConnection(neterr, false)
-			if err := conn.runReconnects(); err != nil {
+			if err := conn.runReconnects(context.Background()); err != nil {
 				conn.closeConnection(err, true)
 			}
 		}
