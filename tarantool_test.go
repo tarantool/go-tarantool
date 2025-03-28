@@ -3550,6 +3550,53 @@ func TestConnection_NewWatcher(t *testing.T) {
 	}
 }
 
+func TestNewWatcherDuringReconnectOrAfterClose(t *testing.T) {
+	test_helpers.SkipIfWatchersUnsupported(t)
+
+	const server = "127.0.0.1:3015"
+	testDialer := dialer
+	testDialer.Address = server
+
+	inst, err := test_helpers.StartTarantool(test_helpers.StartOpts{
+		Dialer:       testDialer,
+		InitScript:   "config.lua",
+		Listen:       server,
+		WaitStart:    100 * time.Millisecond,
+		ConnectRetry: 10,
+		RetryTimeout: 500 * time.Millisecond,
+	})
+	defer test_helpers.StopTarantoolWithCleanup(inst)
+	if err != nil {
+		t.Fatalf("Unable to start Tarantool: %s", err)
+	}
+
+	ctx, cancel := test_helpers.GetConnectContext()
+	defer cancel()
+
+	reconnectOpts := opts
+	reconnectOpts.Reconnect = 100 * time.Millisecond
+	reconnectOpts.MaxReconnects = 0
+	reconnectOpts.Notify = make(chan ConnEvent)
+	conn, err := Connect(ctx, testDialer, reconnectOpts)
+	if err != nil {
+		t.Fatalf("Connection was not established: %v", err)
+	}
+	defer conn.Close()
+	test_helpers.StopTarantool(inst)
+
+	for conn.ConnectedNow() {
+		time.Sleep(100 * time.Millisecond)
+	}
+	_, err = conn.NewWatcher("one", func(event WatchEvent) {})
+	assert.NotNil(t, err)
+	assert.ErrorContains(t, err, "client connection is not ready")
+
+	conn.Close()
+	_, err = conn.NewWatcher("two", func(event WatchEvent) {})
+	assert.NotNil(t, err)
+	assert.ErrorContains(t, err, "client connection is not ready")
+}
+
 func TestConnection_NewWatcher_noWatchersFeature(t *testing.T) {
 	test_helpers.SkipIfWatchersSupported(t)
 
