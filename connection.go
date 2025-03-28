@@ -1461,7 +1461,7 @@ func (conn *Connection) NewWatcher(key string, callback WatchCallback) (Watcher,
 	// That's why we can't just check the Tarantool response for an unsupported
 	// request error.
 	if !isFeatureInSlice(iproto.IPROTO_FEATURE_WATCHERS,
-		conn.c.ProtocolInfo().Features) {
+		conn.serverProtocolInfo.Features) {
 		err := fmt.Errorf("the feature %s must be supported by connection "+
 			"to create a watcher", iproto.IPROTO_FEATURE_WATCHERS)
 		return nil, err

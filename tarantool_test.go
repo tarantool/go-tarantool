@@ -3550,6 +3550,72 @@ func TestConnection_NewWatcher(t *testing.T) {
 	}
 }
 
+func newWatcherReconnectionPrepareTestConnection(t *testing.T) (*Connection, context.CancelFunc) {
+	t.Helper()
+
+	const server = "127.0.0.1:3015"
+	testDialer := dialer
+	testDialer.Address = server
+
+	inst, err := test_helpers.StartTarantool(test_helpers.StartOpts{
+		Dialer:       testDialer,
+		InitScript:   "config.lua",
+		Listen:       server,
+		WaitStart:    100 * time.Millisecond,
+		ConnectRetry: 10,
+		RetryTimeout: 500 * time.Millisecond,
+	})
+	t.Cleanup(func() { test_helpers.StopTarantoolWithCleanup(inst) })
+	if err != nil {
+		t.Fatalf("Unable to start Tarantool: %s", err)
+	}
+
+	ctx, cancel := test_helpers.GetConnectContext()
+
+	reconnectOpts := opts
+	reconnectOpts.Reconnect = 100 * time.Millisecond
+	reconnectOpts.MaxReconnects = 0
+	reconnectOpts.Notify = make(chan ConnEvent)
+	conn, err := Connect(ctx, testDialer, reconnectOpts)
+	if err != nil {
+		t.Fatalf("Connection was not established: %v", err)
+	}
+
+	test_helpers.StopTarantool(inst)
+
+	// Wait for reconnection process to be started.
+	for conn.ConnectedNow() {
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	return conn, cancel
+}
+
+func TestNewWatcherDuringReconnect(t *testing.T) {
+	test_helpers.SkipIfWatchersUnsupported(t)
+
+	conn, cancel := newWatcherReconnectionPrepareTestConnection(t)
+	defer conn.Close()
+	defer cancel()
+
+	_, err := conn.NewWatcher("one", func(event WatchEvent) {})
+	assert.NotNil(t, err)
+	assert.ErrorContains(t, err, "client connection is not ready")
+}
+
+func TestNewWatcherAfterClose(t *testing.T) {
+	test_helpers.SkipIfWatchersUnsupported(t)
+
+	conn, cancel := newWatcherReconnectionPrepareTestConnection(t)
+	defer cancel()
+
+	_ = conn.Close()
+
+	_, err := conn.NewWatcher("one", func(event WatchEvent) {})
+	assert.NotNil(t, err)
+	assert.ErrorContains(t, err, "using closed connection")
+}
+
 func TestConnection_NewWatcher_noWatchersFeature(t *testing.T) {
 	test_helpers.SkipIfWatchersSupported(t)
 
@@ -4149,12 +4215,12 @@ func runTestMain(m *testing.M) int {
 	startOpts.MemtxUseMvccEngine = !isStreamUnsupported
 
 	inst, err := test_helpers.StartTarantool(startOpts)
-	defer test_helpers.StopTarantoolWithCleanup(inst)
-
 	if err != nil {
 		log.Printf("Failed to prepare test tarantool: %s", err)
 		return 1
 	}
+
+	defer test_helpers.StopTarantoolWithCleanup(inst)
 
 	return m.Run()
 }
