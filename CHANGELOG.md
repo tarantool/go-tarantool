@@ -19,6 +19,9 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Fixed
 
+- Fixed panic when calling NewWatcher() during reconnection or after
+  connection is closed (#438).
+
 ## [v2.3.0] - 2025-03-11
 
 The release extends box.info responses and ConnectionPool.GetInfo return data.

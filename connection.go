@@ -1454,6 +1454,9 @@ func isFeatureInSlice(expected iproto.Feature, actualSlice []iproto.Feature) boo
 //
 // Since 1.10.0
 func (conn *Connection) NewWatcher(key string, callback WatchCallback) (Watcher, error) {
+	if conn.c == nil {
+		return nil, ClientError{ErrConnectionNotReady, "client connection is not ready"}
+	}
 	// We need to check the feature because the IPROTO_WATCH request is
 	// asynchronous. We do not expect any response from a Tarantool instance
 	// That's why we can't just check the Tarantool response for an unsupported
