@@ -14,6 +14,9 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Fixed
 
+- Fixed panic when calling NewWatcher() during reconnection or after
+  connection is closed (#438).
+
 ## [v2.3.2] - 2025-04-14
 
 This release improves the logic of `Connect` and `pool.Connect` in case of a
