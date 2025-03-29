@@ -547,7 +547,11 @@ func readResponse(r io.Reader, req Request) (Response, error) {
 	}
 
 	buf := smallBuf{b: respBytes}
-	header, _, err := decodeHeader(msgpack.NewDecoder(&smallBuf{}), &buf)
+
+	d := getDecoder(&buf)
+	defer putDecoder(d)
+
+	header, _, err := decodeHeader(d, &buf)
 	if err != nil {
 		return nil, fmt.Errorf("decode response header error: %w", err)
 	}

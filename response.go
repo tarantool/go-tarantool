@@ -329,10 +329,8 @@ func (resp *baseResponse) Decode() ([]interface{}, error) {
 		var l int
 		info := &decodeInfo{}
 
-		d := msgpack.NewDecoder(&resp.buf)
-		d.SetMapDecoder(func(dec *msgpack.Decoder) (interface{}, error) {
-			return dec.DecodeUntypedMap()
-		})
+		d := getDecoder(&resp.buf)
+		defer putDecoder(d)
 
 		if l, err = d.DecodeMapLen(); err != nil {
 			resp.err = err
@@ -384,10 +382,8 @@ func (resp *SelectResponse) Decode() ([]interface{}, error) {
 		var l int
 		info := &decodeInfo{}
 
-		d := msgpack.NewDecoder(&resp.buf)
-		d.SetMapDecoder(func(dec *msgpack.Decoder) (interface{}, error) {
-			return dec.DecodeUntypedMap()
-		})
+		d := getDecoder(&resp.buf)
+		defer putDecoder(d)
 
 		if l, err = d.DecodeMapLen(); err != nil {
 			resp.err = err
@@ -447,10 +443,8 @@ func (resp *ExecuteResponse) Decode() ([]interface{}, error) {
 		var l int
 		info := &decodeInfo{}
 
-		d := msgpack.NewDecoder(&resp.buf)
-		d.SetMapDecoder(func(dec *msgpack.Decoder) (interface{}, error) {
-			return dec.DecodeUntypedMap()
-		})
+		d := getDecoder(&resp.buf)
+		defer putDecoder(d)
 
 		if l, err = d.DecodeMapLen(); err != nil {
 			resp.err = err
@@ -535,10 +529,8 @@ func (resp *baseResponse) DecodeTyped(res interface{}) error {
 		info := &decodeInfo{}
 		var l int
 
-		d := msgpack.NewDecoder(&resp.buf)
-		d.SetMapDecoder(func(dec *msgpack.Decoder) (interface{}, error) {
-			return dec.DecodeUntypedMap()
-		})
+		d := getDecoder(&resp.buf)
+		defer putDecoder(d)
 
 		if l, err = d.DecodeMapLen(); err != nil {
 			return err
@@ -576,10 +568,8 @@ func (resp *SelectResponse) DecodeTyped(res interface{}) error {
 		info := &decodeInfo{}
 		var l int
 
-		d := msgpack.NewDecoder(&resp.buf)
-		d.SetMapDecoder(func(dec *msgpack.Decoder) (interface{}, error) {
-			return dec.DecodeUntypedMap()
-		})
+		d := getDecoder(&resp.buf)
+		defer putDecoder(d)
 
 		if l, err = d.DecodeMapLen(); err != nil {
 			return err
@@ -624,10 +614,8 @@ func (resp *ExecuteResponse) DecodeTyped(res interface{}) error {
 		info := &decodeInfo{}
 		var l int
 
-		d := msgpack.NewDecoder(&resp.buf)
-		d.SetMapDecoder(func(dec *msgpack.Decoder) (interface{}, error) {
-			return dec.DecodeUntypedMap()
-		})
+		d := getDecoder(&resp.buf)
+		defer putDecoder(d)
 
 		if l, err = d.DecodeMapLen(); err != nil {
 			return err

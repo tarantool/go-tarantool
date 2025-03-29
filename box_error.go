@@ -278,7 +278,9 @@ func (e *BoxError) UnmarshalMsgpack(b []byte) error {
 	}
 
 	buf := bytes.NewBuffer(b)
-	dec := msgpack.NewDecoder(buf)
+
+	dec := getDecoder(buf)
+	defer putDecoder(dec)
 
 	if val, err := decodeBoxError(dec); err != nil {
 		return err
