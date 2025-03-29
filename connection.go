@@ -803,7 +803,9 @@ func (conn *Connection) writer(w writeFlusher, c Conn) {
 func readWatchEvent(reader io.Reader) (connWatchEvent, error) {
 	keyExist := false
 	event := connWatchEvent{}
-	d := msgpack.NewDecoder(reader)
+
+	d := getDecoder(reader)
+	defer putDecoder(d)
 
 	l, err := d.DecodeMapLen()
 	if err != nil {

@@ -10,6 +10,9 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Added
 
+- A usage of sync.Pool of msgpack.Decoder saves 2 object allocations per
+  a response decoding.
+
 ### Changed
 
 - Connect() now retry the connection if a failure occurs and opts.Reconnect > 0.
