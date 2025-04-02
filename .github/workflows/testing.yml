@@ -59,6 +59,10 @@ jobs:
       - name: Setup tt environment
         run: tt init
 
+      # https://github.com/tarantool/checks/issues/64
+      - name: Install specific CMake version
+        run: pip3 install cmake==3.15.3
+
       - name: Setup Tarantool ${{ matrix.tarantool }}
         if: matrix.tarantool != 'master'
         uses: tarantool/setup-tarantool@v2
@@ -85,6 +89,7 @@ jobs:
       - name: Setup Tarantool master
         if: matrix.tarantool == 'master' && steps.cache-latest.outputs.cache-hit != 'true'
         run: |
+          sudo pip3 install cmake==3.15.3
           sudo tt install tarantool master
 
       - name: Add Tarantool master to PATH
