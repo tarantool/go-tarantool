@@ -10,6 +10,16 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [v2.3.1] - 2025-04-03
+
+The patch releases fixes expected Connect() behavior and reduces allocations.
+
+### Added
+
 - A usage of sync.Pool of msgpack.Decoder saves 2 object allocations per
   a response decoding.
 
@@ -19,8 +29,6 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
   The number of attempts is equal to opts.MaxReconnects or unlimited if
   opts.MaxReconnects == 0. Connect() blocks until a connection is established,
   the context is cancelled, or the number of attempts is exhausted (#436).
-
-### Fixed
 
 ## [v2.3.0] - 2025-03-11
 
