@@ -87,6 +87,8 @@ type mockIoConn struct {
 	readbuf, writebuf bytes.Buffer
 	// Calls readWg/writeWg.Wait() in Read()/Flush().
 	readWg, writeWg sync.WaitGroup
+	// wgDoneOnClose call Done() on the wait groups on Close().
+	wgDoneOnClose bool
 	// How many times to wait before a wg.Wait() call.
 	readWgDelay, writeWgDelay int
 	// Write()/Read()/Flush()/Close() calls count.
@@ -137,6 +139,12 @@ func (m *mockIoConn) Flush() error {
 }
 
 func (m *mockIoConn) Close() error {
+	if m.wgDoneOnClose {
+		m.readWg.Done()
+		m.writeWg.Done()
+		m.wgDoneOnClose = false
+	}
+
 	m.closeCnt++
 	return nil
 }
@@ -165,6 +173,7 @@ func newMockIoConn() *mockIoConn {
 	conn := new(mockIoConn)
 	conn.readWg.Add(1)
 	conn.writeWg.Add(1)
+	conn.wgDoneOnClose = true
 	return conn
 }
 
@@ -201,9 +210,6 @@ func TestConn_Close(t *testing.T) {
 	conn.Close()
 
 	assert.Equal(t, 1, dialer.conn.closeCnt)
-
-	dialer.conn.readWg.Done()
-	dialer.conn.writeWg.Done()
 }
 
 type stubAddr struct {
@@ -224,8 +230,6 @@ func TestConn_Addr(t *testing.T) {
 		conn.addr = stubAddr{str: addr}
 	})
 	defer func() {
-		dialer.conn.readWg.Done()
-		dialer.conn.writeWg.Done()
 		conn.Close()
 	}()
 
@@ -242,8 +246,6 @@ func TestConn_Greeting(t *testing.T) {
 		conn.greeting = greeting
 	})
 	defer func() {
-		dialer.conn.readWg.Done()
-		dialer.conn.writeWg.Done()
 		conn.Close()
 	}()
 
@@ -263,8 +265,6 @@ func TestConn_ProtocolInfo(t *testing.T) {
 		conn.info = info
 	})
 	defer func() {
-		dialer.conn.readWg.Done()
-		dialer.conn.writeWg.Done()
 		conn.Close()
 	}()
 
@@ -284,6 +284,7 @@ func TestConn_ReadWrite(t *testing.T) {
 			0x01, 0xce, 0x00, 0x00, 0x00, 0x02,
 			0x80, // Body map.
 		})
+		conn.wgDoneOnClose = false
 	})
 	defer func() {
 		dialer.conn.writeWg.Done()
@@ -579,6 +580,24 @@ func TestNetDialer_Dial(t *testing.T) {
 	}
 }
 
+func TestNetDialer_Dial_hang_connection(t *testing.T) {
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	defer l.Close()
+
+	dialer := tarantool.NetDialer{
+		Address: l.Addr().String(),
+	}
+
+	ctx, cancel := test_helpers.GetConnectContext()
+	defer cancel()
+
+	conn, err := dialer.Dial(ctx, tarantool.DialOpts{})
+
+	require.Nil(t, conn)
+	require.Error(t, err, context.DeadlineExceeded)
+}
+
 func TestNetDialer_Dial_requirements(t *testing.T) {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
@@ -685,6 +704,7 @@ func TestAuthDialer_Dial_DialerError(t *testing.T) {
 
 	ctx, cancel := test_helpers.GetConnectContext()
 	defer cancel()
+
 	conn, err := dialer.Dial(ctx, tarantool.DialOpts{})
 	if conn != nil {
 		conn.Close()
@@ -717,6 +737,38 @@ func TestAuthDialer_Dial_NoSalt(t *testing.T) {
 	}
 }
 
+func TestConn_AuthDialer_hang_connection(t *testing.T) {
+	salt := fmt.Sprintf("%s", testDialSalt)
+	salt = base64.StdEncoding.EncodeToString([]byte(salt))
+	mock := &mockIoDialer{
+		init: func(conn *mockIoConn) {
+			conn.greeting.Salt = salt
+			conn.readWgDelay = 0
+			conn.writeWgDelay = 0
+		},
+	}
+	dialer := tarantool.AuthDialer{
+		Dialer:   mock,
+		Username: "test",
+		Password: "test",
+	}
+
+	ctx, cancel := test_helpers.GetConnectContext()
+	defer cancel()
+
+	conn, err := tarantool.Connect(ctx, &dialer,
+		tarantool.Opts{
+			Timeout:    1000 * time.Second, // Avoid pings.
+			SkipSchema: true,
+		})
+
+	require.Nil(t, conn)
+	require.Error(t, err, context.DeadlineExceeded)
+	require.Equal(t, mock.conn.writeCnt, 1)
+	require.Equal(t, mock.conn.readCnt, 0)
+	require.Greater(t, mock.conn.closeCnt, 1)
+}
+
 func TestAuthDialer_Dial(t *testing.T) {
 	salt := fmt.Sprintf("%s", testDialSalt)
 	salt = base64.StdEncoding.EncodeToString([]byte(salt))
@@ -726,6 +778,7 @@ func TestAuthDialer_Dial(t *testing.T) {
 			conn.writeWgDelay = 1
 			conn.readWgDelay = 2
 			conn.readbuf.Write(okResponse)
+			conn.wgDoneOnClose = false
 		},
 	}
 	defer func() {
@@ -758,6 +811,7 @@ func TestAuthDialer_Dial_PapSha256Auth(t *testing.T) {
 			conn.writeWgDelay = 1
 			conn.readWgDelay = 2
 			conn.readbuf.Write(okResponse)
+			conn.wgDoneOnClose = false
 		},
 	}
 	defer func() {
@@ -798,6 +852,34 @@ func TestProtocolDialer_Dial_DialerError(t *testing.T) {
 
 	assert.NotNil(t, err)
 	assert.EqualError(t, err, "some error")
+}
+
+func TestConn_ProtocolDialer_hang_connection(t *testing.T) {
+	mock := &mockIoDialer{
+		init: func(conn *mockIoConn) {
+			conn.info = tarantool.ProtocolInfo{Version: 1}
+			conn.readWgDelay = 0
+			conn.writeWgDelay = 0
+		},
+	}
+	dialer := tarantool.ProtocolDialer{
+		Dialer: mock,
+	}
+
+	ctx, cancel := test_helpers.GetConnectContext()
+	defer cancel()
+
+	conn, err := tarantool.Connect(ctx, &dialer,
+		tarantool.Opts{
+			Timeout:    1000 * time.Second, // Avoid pings.
+			SkipSchema: true,
+		})
+
+	require.Nil(t, conn)
+	require.Error(t, err, context.DeadlineExceeded)
+	require.Equal(t, mock.conn.writeCnt, 1)
+	require.Equal(t, mock.conn.readCnt, 0)
+	require.Greater(t, mock.conn.closeCnt, 1)
 }
 
 func TestProtocolDialer_Dial_IdentifyFailed(t *testing.T) {
@@ -896,6 +978,31 @@ func TestGreetingDialer_Dial_DialerError(t *testing.T) {
 
 	assert.NotNil(t, err)
 	assert.EqualError(t, err, "some error")
+}
+
+func TestConn_GreetingDialer_hang_connection(t *testing.T) {
+	mock := &mockIoDialer{
+		init: func(conn *mockIoConn) {
+			conn.readWgDelay = 0
+		},
+	}
+	dialer := tarantool.GreetingDialer{
+		Dialer: mock,
+	}
+
+	ctx, cancel := test_helpers.GetConnectContext()
+	defer cancel()
+
+	conn, err := tarantool.Connect(ctx, &dialer,
+		tarantool.Opts{
+			Timeout:    1000 * time.Second, // Avoid pings.
+			SkipSchema: true,
+		})
+
+	require.Nil(t, conn)
+	require.Error(t, err, context.DeadlineExceeded)
+	require.Equal(t, mock.conn.readCnt, 1)
+	require.Greater(t, mock.conn.closeCnt, 1)
 }
 
 func TestGreetingDialer_Dial_GreetingFailed(t *testing.T) {
