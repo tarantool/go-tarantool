@@ -14,6 +14,9 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Fixed
 
+- Connect() may not cancel Dial() call on context expiration if network
+  connection hangs (#443).
+
 ## [v2.3.1] - 2025-04-03
 
 The patch releases fixes expected Connect() behavior and reduces allocations.
@@ -21,7 +24,7 @@ The patch releases fixes expected Connect() behavior and reduces allocations.
 ### Added
 
 - A usage of sync.Pool of msgpack.Decoder saves 2 object allocations per
-  a response decoding.
+  a response decoding (#440).
 
 ### Changed
 

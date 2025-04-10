@@ -489,7 +489,7 @@ func (conn *Connection) dial(ctx context.Context) error {
 		}
 
 		req := newWatchRequest(key.(string))
-		if err = writeRequest(c, req); err != nil {
+		if err = writeRequest(ctx, c, req); err != nil {
 			st <- state
 			return false
 		}
