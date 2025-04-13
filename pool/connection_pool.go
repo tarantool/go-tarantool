@@ -171,7 +171,7 @@ func ConnectWithOpts(ctx context.Context, instances []Instance,
 	roPool := newRoundRobinStrategy(size)
 	anyPool := newRoundRobinStrategy(size)
 
-	connPool := &ConnectionPool{
+	p := &ConnectionPool{
 		ends:    make(map[string]*endpoint),
 		opts:    opts,
 		state:   connectedState,
@@ -181,19 +181,44 @@ func ConnectWithOpts(ctx context.Context, instances []Instance,
 		anyPool: anyPool,
 	}
 
-	canceled := connPool.fillPools(ctx, instances)
-	if canceled {
-		connPool.state.set(closedState)
-		return nil, ErrContextCanceled
+	fillCtx, fillCancel := context.WithCancel(ctx)
+	defer fillCancel()
+
+	var timeout <-chan time.Time
+
+	timeout = make(chan time.Time)
+	filled := p.fillPools(fillCtx, instances)
+	done := 0
+	success := len(instances) == 0
+
+	for done < len(instances) {
+		select {
+		case <-timeout:
+			fillCancel()
+			// To be sure that the branch is called only once.
+			timeout = make(chan time.Time)
+		case err := <-filled:
+			done++
+
+			if err == nil && !success {
+				timeout = time.After(opts.CheckTimeout)
+				success = true
+			}
+		}
 	}
 
-	for _, endpoint := range connPool.ends {
+	if !success && ctx.Err() != nil {
+		p.state.set(closedState)
+		return nil, ctx.Err()
+	}
+
+	for _, endpoint := range p.ends {
 		endpointCtx, cancel := context.WithCancel(context.Background())
 		endpoint.cancel = cancel
-		go connPool.controller(endpointCtx, endpoint)
+		go p.controller(endpointCtx, endpoint)
 	}
 
-	return connPool, nil
+	return p, nil
 }
 
 // Connect creates pool for instances with specified instances. Instances must
@@ -1184,45 +1209,33 @@ func (p *ConnectionPool) handlerDeactivated(name string, conn *tarantool.Connect
 	}
 }
 
-func (p *ConnectionPool) deactivateConnection(name string,
-	conn *tarantool.Connection, role Role) {
-	p.deleteConnection(name)
-	conn.Close()
-	p.handlerDeactivated(name, conn, role)
-}
+func (p *ConnectionPool) fillPools(ctx context.Context, instances []Instance) <-chan error {
+	done := make(chan error, len(instances))
 
-func (p *ConnectionPool) deactivateConnections() {
-	for name, endpoint := range p.ends {
-		if endpoint != nil && endpoint.conn != nil {
-			p.deactivateConnection(name, endpoint.conn, endpoint.role)
-		}
-	}
-}
-
-func (p *ConnectionPool) fillPools(ctx context.Context, instances []Instance) bool {
 	// It is called before controller() goroutines, so we don't expect
 	// concurrency issues here.
 	for _, instance := range instances {
 		end := newEndpoint(instance.Name, instance.Dialer, instance.Opts)
 		p.ends[instance.Name] = end
-
-		if err := p.tryConnect(ctx, end); err != nil {
-			log.Printf("tarantool: connect to %s failed: %s\n",
-				instance.Name, err)
-			select {
-			case <-ctx.Done():
-				p.ends[instance.Name] = nil
-				log.Printf("tarantool: operation was canceled")
-
-				p.deactivateConnections()
-
-				return true
-			default:
-			}
-		}
 	}
 
-	return false
+	for _, instance := range instances {
+		name := instance.Name
+		end := p.ends[name]
+
+		go func() {
+			if err := p.tryConnect(ctx, end); err != nil {
+				log.Printf("tarantool: connect to %s failed: %s\n", name, err)
+				done <- fmt.Errorf("failed to connect to %s :%w", name, err)
+
+				return
+			}
+
+			done <- nil
+		}()
+	}
+
+	return done
 }
 
 func (p *ConnectionPool) updateConnection(e *endpoint) {
@@ -1284,19 +1297,24 @@ func (p *ConnectionPool) updateConnection(e *endpoint) {
 }
 
 func (p *ConnectionPool) tryConnect(ctx context.Context, e *endpoint) error {
-	p.poolsMutex.Lock()
-
-	if p.state.get() != connectedState {
-		p.poolsMutex.Unlock()
-		return ErrClosed
-	}
-
 	e.conn = nil
 	e.role = UnknownRole
 
 	connOpts := e.opts
 	connOpts.Notify = e.notify
 	conn, err := tarantool.Connect(ctx, e.dialer, connOpts)
+
+	p.poolsMutex.Lock()
+
+	if p.state.get() != connectedState {
+		if err == nil {
+			conn.Close()
+		}
+
+		p.poolsMutex.Unlock()
+		return ErrClosed
+	}
+
 	if err == nil {
 		role, err := p.getConnectionRole(conn)
 		p.poolsMutex.Unlock()
