@@ -3927,11 +3927,12 @@ func TestConnect_schema_update(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
 	for i := 0; i < 100; i++ {
 		fut := conn.Do(NewCallRequest("create_spaces"))
 
-		ctx, cancel := test_helpers.GetConnectContext()
-		defer cancel()
 		if conn, err := Connect(ctx, dialer, opts); err != nil {
 			if err.Error() != "concurrent schema update" {
 				t.Errorf("unexpected error: %s", err)
