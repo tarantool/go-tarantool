@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"reflect"
 	"strings"
@@ -141,7 +142,7 @@ func TestConnSuccessfully(t *testing.T) {
 	}
 
 	err = test_helpers.CheckPoolStatuses(args)
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestConn_no_execute_supported(t *testing.T) {
@@ -261,6 +262,51 @@ func TestConnect_unavailable(t *testing.T) {
 	}, connPool.GetInfo())
 }
 
+func TestConnect_single_server_hang(t *testing.T) {
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	defer l.Close()
+
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+
+	insts := makeInstances([]string{l.Addr().String()}, connOpts)
+
+	connPool, err := pool.Connect(ctx, insts)
+	if connPool != nil {
+		defer connPool.Close()
+	}
+
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+	require.Nil(t, connPool)
+}
+
+func TestConnect_server_hang(t *testing.T) {
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	defer l.Close()
+
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+
+	servers := []string{l.Addr().String(), servers[0]}
+	insts := makeInstances(servers, connOpts)
+
+	connPool, err := pool.Connect(ctx, insts)
+	if connPool != nil {
+		defer connPool.Close()
+	}
+
+	require.NoError(t, err, "failed to create a pool")
+	require.NotNil(t, connPool, "pool is nil after Connect")
+	require.Equal(t, map[string]pool.ConnectionInfo{
+		servers[0]: pool.ConnectionInfo{
+			ConnectedNow: false, ConnRole: pool.UnknownRole, Instance: insts[0]},
+		servers[1]: pool.ConnectionInfo{
+			ConnectedNow: true, ConnRole: pool.MasterRole, Instance: insts[1]},
+	}, connPool.GetInfo())
+}
+
 func TestConnErrorAfterCtxCancel(t *testing.T) {
 	var connLongReconnectOpts = tarantool.Opts{
 		Timeout:       5 * time.Second,
@@ -279,7 +325,7 @@ func TestConnErrorAfterCtxCancel(t *testing.T) {
 	if connPool != nil || err == nil {
 		t.Fatalf("ConnectionPool was created after cancel")
 	}
-	if !strings.Contains(err.Error(), "operation was canceled") {
+	if !strings.Contains(err.Error(), "context canceled") {
 		t.Fatalf("Unexpected error, expected to contain %s, got %v",
 			"operation was canceled", err)
 	}
@@ -287,7 +333,6 @@ func TestConnErrorAfterCtxCancel(t *testing.T) {
 
 type mockClosingDialer struct {
 	addr      string
-	cnt       *int
 	ctx       context.Context
 	ctxCancel context.CancelFunc
 }
@@ -301,26 +346,21 @@ func (m *mockClosingDialer) Dial(ctx context.Context,
 	}
 	conn, err := dialer.Dial(m.ctx, tarantool.DialOpts{})
 
-	if *m.cnt == 0 {
-		m.ctxCancel()
-	}
-	*m.cnt++
+	m.ctxCancel()
 
 	return conn, err
 }
 
-func TestContextCancelInProgress(t *testing.T) {
+func TestConnectContextCancelAfterConnect(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cnt := new(int)
 	var instances []pool.Instance
 	for _, server := range servers {
 		instances = append(instances, pool.Instance{
 			Name: server,
 			Dialer: &mockClosingDialer{
 				addr:      server,
-				cnt:       cnt,
 				ctx:       ctx,
 				ctxCancel: cancel,
 			},
@@ -329,11 +369,12 @@ func TestContextCancelInProgress(t *testing.T) {
 	}
 
 	connPool, err := pool.Connect(ctx, instances)
-	require.NotNilf(t, err, "expected err after ctx cancel")
-	assert.Truef(t, strings.Contains(err.Error(), "operation was canceled"),
-		fmt.Sprintf("unexpected error, expected to contain %s, got %v",
-			"operation was canceled", err))
-	require.Nilf(t, connPool, "conn is not nil after ctx cancel")
+	if connPool != nil {
+		defer connPool.Close()
+	}
+
+	assert.NoError(t, err, "expected err after ctx cancel")
+	assert.NotNil(t, connPool)
 }
 
 func TestConnSuccessfullyDuplicates(t *testing.T) {
@@ -527,8 +568,8 @@ func TestAdd(t *testing.T) {
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
 	connPool, err := pool.Connect(ctx, []pool.Instance{})
-	require.Nilf(t, err, "failed to connect")
-	require.NotNilf(t, connPool, "conn is nil after Connect")
+	require.NoError(t, err, "failed to connect")
+	require.NotNil(t, connPool, "conn is nil after Connect")
 
 	defer connPool.Close()
 

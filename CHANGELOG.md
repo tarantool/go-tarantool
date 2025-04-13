@@ -12,10 +12,18 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Changed
 
+- Previously, `pool.Connect` attempted to establish a connection one after
+  another instance. It could cause the entire chain to hang if one connection
+  hanged. Now connections are established in parallel. After the first
+  successful connection, the remaining connections wait with a timeout of
+  `pool.Opts.CheckTimeout` (#444).
+
 ### Fixed
 
 - Connect() may not cancel Dial() call on context expiration if network
   connection hangs (#443).
+- pool.Connect() failed to connect to any instance if a first instance
+  connection hangs (#444).
 
 ## [v2.3.1] - 2025-04-03
 
