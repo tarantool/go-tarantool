@@ -12,6 +12,15 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Changed
 
+### Fixed
+
+## [v2.3.2] - 2025-04-14
+
+This release improves the logic of `Connect` and `pool.Connect` in case of a
+hung I/O connection.
+
+### Changed
+
 - Previously, `pool.Connect` attempted to establish a connection one after
   another instance. It could cause the entire chain to hang if one connection
   hanged. Now connections are established in parallel. After the first
