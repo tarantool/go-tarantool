@@ -12,9 +12,21 @@ type Box struct {
 
 // New returns a new instance of the box structure, which implements the Box interface.
 func New(conn tarantool.Doer) *Box {
+	if conn == nil {
+		// Check if the provided Tarantool connection is nil, and if it is, panic with an error
+		// message. panic early helps to catch and fix nil pointer issues in the code.
+		panic("tarantool connection cannot be nil")
+	}
+
 	return &Box{
 		conn: conn, // Assigns the provided Tarantool connection.
 	}
+}
+
+// Schema returns a new Schema instance, providing access to schema-related operations.
+// It uses the connection from the Box instance to communicate with Tarantool.
+func (b *Box) Schema() *Schema {
+	return newSchema(b.conn)
 }
 
 // Info retrieves the current information of the Tarantool instance.

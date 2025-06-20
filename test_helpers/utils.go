@@ -281,3 +281,13 @@ func CheckEqualBoxErrors(t *testing.T, expected tarantool.BoxError, actual taran
 		}
 	}
 }
+
+// Ptr returns a pointer to an existing value.
+//
+// Example:
+//
+//	func NewInt() int { return 1 }
+//	var b *int = Ptr(NewInt())
+func Ptr[T any](val T) *T {
+	return &val
+}
