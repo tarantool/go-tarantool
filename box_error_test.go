@@ -190,7 +190,7 @@ var mpDecodeSamples = map[string]struct {
 func TestMessagePackDecode(t *testing.T) {
 	for name, testcase := range mpDecodeSamples {
 		t.Run(name, func(t *testing.T) {
-			var val *BoxError = &BoxError{}
+			var val = &BoxError{}
 			err := val.UnmarshalMsgpack(testcase.b)
 			if testcase.ok {
 				require.Nilf(t, err, "No errors on decode")

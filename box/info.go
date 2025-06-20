@@ -105,25 +105,20 @@ func (ir *InfoResponse) DecodeMsgpack(d *msgpack.Decoder) error {
 	}
 
 	ir.Info = i
-
 	return nil
 }
 
 // InfoRequest represents a request to retrieve information about the Tarantool instance.
 // It implements the tarantool.Request interface.
 type InfoRequest struct {
-	baseRequest
-}
-
-// Body method is used to serialize the request's body.
-// It is part of the tarantool.Request interface implementation.
-func (i InfoRequest) Body(res tarantool.SchemaResolver, enc *msgpack.Encoder) error {
-	return i.impl.Body(res, enc)
+	*tarantool.CallRequest // Underlying Tarantool call request.
 }
 
 // NewInfoRequest returns a new empty info request.
 func NewInfoRequest() InfoRequest {
-	req := InfoRequest{}
-	req.impl = newCall("box.info")
-	return req
+	callReq := tarantool.NewCallRequest("box.info")
+
+	return InfoRequest{
+		callReq,
+	}
 }

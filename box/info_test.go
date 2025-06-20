@@ -1,22 +1,24 @@
-package box
+package box_test
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	"github.com/vmihailenco/msgpack/v5"
+
+	"github.com/tarantool/go-tarantool/v2/box"
 )
 
 func TestInfo(t *testing.T) {
 	id := 1
 	cases := []struct {
 		Name   string
-		Struct Info
+		Struct box.Info
 		Data   map[string]interface{}
 	}{
 		{
 			Name: "Case: base info struct",
-			Struct: Info{
+			Struct: box.Info{
 				Version: "2.11.4-0-g8cebbf2cad",
 				ID:      &id,
 				RO:      false,
@@ -37,7 +39,7 @@ func TestInfo(t *testing.T) {
 		},
 		{
 			Name: "Case: info struct with replication",
-			Struct: Info{
+			Struct: box.Info{
 				Version: "2.11.4-0-g8cebbf2cad",
 				ID:      &id,
 				RO:      false,
@@ -45,7 +47,7 @@ func TestInfo(t *testing.T) {
 				PID:     1,
 				Status:  "running",
 				LSN:     8,
-				Replication: map[int]Replication{
+				Replication: map[int]box.Replication{
 					1: {
 						ID:   1,
 						UUID: "69360e9b-4641-4ec3-ab51-297f46749849",
@@ -55,7 +57,7 @@ func TestInfo(t *testing.T) {
 						ID:   2,
 						UUID: "75f5f5aa-89f0-4d95-b5a9-96a0eaa0ce36",
 						LSN:  0,
-						Upstream: Upstream{
+						Upstream: box.Upstream{
 							Status:        "follow",
 							Idle:          2.4564633660484,
 							Peer:          "other.tarantool:3301",
@@ -63,7 +65,7 @@ func TestInfo(t *testing.T) {
 							Message:       "'getaddrinfo: Name or service not known'",
 							SystemMessage: "Input/output error",
 						},
-						Downstream: Downstream{
+						Downstream: box.Downstream{
 							Status:        "follow",
 							Idle:          2.8306158290943,
 							VClock:        map[int]uint64{1: 8},
@@ -117,7 +119,7 @@ func TestInfo(t *testing.T) {
 		data, err := msgpack.Marshal(tc.Data)
 		require.NoError(t, err, tc.Name)
 
-		var result Info
+		var result box.Info
 		err = msgpack.Unmarshal(data, &result)
 		require.NoError(t, err, tc.Name)
 

@@ -1,29 +1,88 @@
 package box_test
 
 import (
+	"context"
+	"errors"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tarantool/go-tarantool/v2/box"
+	"github.com/tarantool/go-tarantool/v2/test_helpers"
 )
 
 func TestNew(t *testing.T) {
-	// Create a box instance with a nil connection. This should lead to a panic later.
-	b := box.New(nil)
+	t.Parallel()
 
-	// Ensure the box instance is not nil (which it shouldn't be), but this is not meaningful
-	// since we will panic when we call the Info method with the nil connection.
-	require.NotNil(t, b)
+	// Create a box instance with a nil connection. This should lead to a panic.
+	require.Panics(t, func() { box.New(nil) })
+}
 
-	// We expect a panic because we are passing a nil connection (nil Doer) to the By function.
-	// The library does not control this zone, and the nil connection would cause a runtime error
-	// when we attempt to call methods (like Info) on it.
-	// This test ensures that such an invalid state is correctly handled by causing a panic,
-	// as it's outside the library's responsibility.
-	require.Panics(t, func() {
+func TestMocked_BoxInfo(t *testing.T) {
+	t.Parallel()
 
-		// Calling Info on a box with a nil connection will result in a panic, since the underlying
-		// connection (Doer) cannot perform the requested action (it's nil).
-		_, _ = b.Info()
-	})
+	data := []interface{}{
+		map[string]interface{}{
+			"version":     "1.0.0",
+			"id":          nil,
+			"ro":          false,
+			"uuid":        "uuid",
+			"pid":         456,
+			"status":      "status",
+			"lsn":         123,
+			"replication": nil,
+		},
+	}
+	mock := test_helpers.NewMockDoer(t,
+		test_helpers.NewMockResponse(t, data),
+	)
+	b := box.New(&mock)
+
+	info, err := b.Info()
+	require.NoError(t, err)
+
+	assert.Equal(t, "1.0.0", info.Version)
+	assert.Equal(t, 456, info.PID)
+}
+
+func TestMocked_BoxSchemaUserInfo(t *testing.T) {
+	t.Parallel()
+
+	data := []interface{}{
+		[]interface{}{
+			[]interface{}{"read,write,execute", "universe", ""},
+		},
+	}
+	mock := test_helpers.NewMockDoer(t,
+		test_helpers.NewMockResponse(t, data),
+	)
+	b := box.New(&mock)
+
+	privs, err := b.Schema().User().Info(context.Background(), "username")
+	require.NoError(t, err)
+
+	assert.Equal(t, []box.Privilege{
+		{
+			Permissions: []box.Permission{
+				box.PermissionRead,
+				box.PermissionWrite,
+				box.PermissionExecute,
+			},
+			Type: box.PrivilegeUniverse,
+			Name: "",
+		},
+	}, privs)
+}
+
+func TestMocked_BoxSessionSu(t *testing.T) {
+	t.Parallel()
+
+	mock := test_helpers.NewMockDoer(t,
+		test_helpers.NewMockResponse(t, []interface{}{}),
+		errors.New("user not found or supplied credentials are invalid"),
+	)
+	b := box.New(&mock)
+
+	err := b.Session().Su(context.Background(), "admin")
+	require.NoError(t, err)
 }
