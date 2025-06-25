@@ -35,57 +35,6 @@ type Stream struct {
 	Conn *Connection
 }
 
-func fillBegin(enc *msgpack.Encoder, txnIsolation TxnIsolationLevel, timeout time.Duration) error {
-	hasTimeout := timeout > 0
-	hasIsolationLevel := txnIsolation != DefaultIsolationLevel
-	mapLen := 0
-	if hasTimeout {
-		mapLen += 1
-	}
-	if hasIsolationLevel {
-		mapLen += 1
-	}
-
-	err := enc.EncodeMapLen(mapLen)
-	if err != nil {
-		return err
-	}
-
-	if hasTimeout {
-		err = enc.EncodeUint(uint64(iproto.IPROTO_TIMEOUT))
-		if err != nil {
-			return err
-		}
-
-		err = enc.Encode(timeout.Seconds())
-		if err != nil {
-			return err
-		}
-	}
-
-	if hasIsolationLevel {
-		err = enc.EncodeUint(uint64(iproto.IPROTO_TXN_ISOLATION))
-		if err != nil {
-			return err
-		}
-
-		err = enc.EncodeUint(uint64(txnIsolation))
-		if err != nil {
-			return err
-		}
-	}
-
-	return err
-}
-
-func fillCommit(enc *msgpack.Encoder) error {
-	return enc.EncodeMapLen(0)
-}
-
-func fillRollback(enc *msgpack.Encoder) error {
-	return enc.EncodeMapLen(0)
-}
-
 // BeginRequest helps you to create a begin request object for execution
 // by a Stream.
 // Begin request can not be processed out of stream.
@@ -117,8 +66,51 @@ func (req *BeginRequest) Timeout(timeout time.Duration) *BeginRequest {
 }
 
 // Body fills an msgpack.Encoder with the begin request body.
-func (req *BeginRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
-	return fillBegin(enc, req.txnIsolation, req.timeout)
+func (req *BeginRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
+	var (
+		mapLen            = 0
+		hasTimeout        = req.timeout > 0
+		hasIsolationLevel = req.txnIsolation != DefaultIsolationLevel
+	)
+
+	if hasTimeout {
+		mapLen++
+	}
+
+	if hasIsolationLevel {
+		mapLen++
+	}
+
+	err := enc.EncodeMapLen(mapLen)
+	if err != nil {
+		return err
+	}
+
+	if hasTimeout {
+		err = enc.EncodeUint(uint64(iproto.IPROTO_TIMEOUT))
+		if err != nil {
+			return err
+		}
+
+		err = enc.Encode(req.timeout.Seconds())
+		if err != nil {
+			return err
+		}
+	}
+
+	if hasIsolationLevel {
+		err = enc.EncodeUint(uint64(iproto.IPROTO_TXN_ISOLATION))
+		if err != nil {
+			return err
+		}
+
+		err = enc.EncodeUint(uint64(req.txnIsolation))
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // Context sets a passed context to the request.
@@ -148,7 +140,7 @@ func NewCommitRequest() *CommitRequest {
 
 // Body fills an msgpack.Encoder with the commit request body.
 func (req *CommitRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
-	return fillCommit(enc)
+	return enc.EncodeMapLen(0)
 }
 
 // Context sets a passed context to the request.
@@ -178,7 +170,7 @@ func NewRollbackRequest() *RollbackRequest {
 
 // Body fills an msgpack.Encoder with the rollback request body.
 func (req *RollbackRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
-	return fillRollback(enc)
+	return enc.EncodeMapLen(0)
 }
 
 // Context sets a passed context to the request.
