@@ -27,7 +27,7 @@ func (req *futureMockRequest) Async() bool {
 	return false
 }
 
-func (req *futureMockRequest) Body(resolver SchemaResolver, enc *msgpack.Encoder) error {
+func (req *futureMockRequest) Body(_ SchemaResolver, _ *msgpack.Encoder) error {
 	return nil
 }
 

@@ -84,9 +84,11 @@ func (req *watchRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 	if err := enc.EncodeMapLen(1); err != nil {
 		return err
 	}
+
 	if err := enc.EncodeUint(uint64(iproto.IPROTO_EVENT_KEY)); err != nil {
 		return err
 	}
+
 	return enc.EncodeString(req.key)
 }
 
@@ -118,9 +120,11 @@ func (req *unwatchRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error 
 	if err := enc.EncodeMapLen(1); err != nil {
 		return err
 	}
+
 	if err := enc.EncodeUint(uint64(iproto.IPROTO_EVENT_KEY)); err != nil {
 		return err
 	}
+
 	return enc.EncodeString(req.key)
 }
 
