@@ -103,160 +103,6 @@ func fillSearch(enc *msgpack.Encoder, spaceEnc spaceEncoder, indexEnc indexEncod
 	return enc.Encode(key)
 }
 
-func fillIterator(enc *msgpack.Encoder, offset, limit uint32, iterator Iter) error {
-	if err := enc.EncodeUint(uint64(iproto.IPROTO_ITERATOR)); err != nil {
-		return err
-	}
-	if err := enc.EncodeUint(uint64(iterator)); err != nil {
-		return err
-	}
-	if err := enc.EncodeUint(uint64(iproto.IPROTO_OFFSET)); err != nil {
-		return err
-	}
-	if err := enc.EncodeUint(uint64(offset)); err != nil {
-		return err
-	}
-	if err := enc.EncodeUint(uint64(iproto.IPROTO_LIMIT)); err != nil {
-		return err
-	}
-	return enc.EncodeUint(uint64(limit))
-}
-
-func fillInsert(enc *msgpack.Encoder, spaceEnc spaceEncoder, tuple interface{}) error {
-	if err := enc.EncodeMapLen(2); err != nil {
-		return err
-	}
-	if err := spaceEnc.Encode(enc); err != nil {
-		return err
-	}
-
-	if err := enc.EncodeUint(uint64(iproto.IPROTO_TUPLE)); err != nil {
-		return err
-	}
-	return enc.Encode(tuple)
-}
-
-func fillSelect(enc *msgpack.Encoder, spaceEnc spaceEncoder, indexEnc indexEncoder,
-	offset, limit uint32, iterator Iter, key, after interface{}, fetchPos bool) error {
-	mapLen := 6
-	if fetchPos {
-		mapLen += 1
-	}
-	if after != nil {
-		mapLen += 1
-	}
-	if err := enc.EncodeMapLen(mapLen); err != nil {
-		return err
-	}
-	if err := fillIterator(enc, offset, limit, iterator); err != nil {
-		return err
-	}
-	if err := fillSearch(enc, spaceEnc, indexEnc, key); err != nil {
-		return err
-	}
-	if fetchPos {
-		if err := enc.EncodeUint(uint64(iproto.IPROTO_FETCH_POSITION)); err != nil {
-			return err
-		}
-		if err := enc.EncodeBool(fetchPos); err != nil {
-			return err
-		}
-	}
-	if after != nil {
-		if pos, ok := after.([]byte); ok {
-			if err := enc.EncodeUint(uint64(iproto.IPROTO_AFTER_POSITION)); err != nil {
-				return err
-			}
-			if err := enc.EncodeString(string(pos)); err != nil {
-				return err
-			}
-		} else {
-			if err := enc.EncodeUint(uint64(iproto.IPROTO_AFTER_TUPLE)); err != nil {
-				return err
-			}
-			if err := enc.Encode(after); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
-func fillUpdate(enc *msgpack.Encoder, spaceEnc spaceEncoder, indexEnc indexEncoder,
-	key interface{}, ops *Operations) error {
-	enc.EncodeMapLen(4)
-	if err := fillSearch(enc, spaceEnc, indexEnc, key); err != nil {
-		return err
-	}
-	enc.EncodeUint(uint64(iproto.IPROTO_TUPLE))
-	if ops == nil {
-		return enc.Encode([]interface{}{})
-	}
-	return enc.Encode(ops)
-}
-
-func fillUpsert(enc *msgpack.Encoder, spaceEnc spaceEncoder, tuple interface{},
-	ops *Operations) error {
-	enc.EncodeMapLen(3)
-	if err := spaceEnc.Encode(enc); err != nil {
-		return err
-	}
-
-	enc.EncodeUint(uint64(iproto.IPROTO_TUPLE))
-	if err := enc.Encode(tuple); err != nil {
-		return err
-	}
-	enc.EncodeUint(uint64(iproto.IPROTO_OPS))
-	if ops == nil {
-		return enc.Encode([]interface{}{})
-	}
-	return enc.Encode(ops)
-}
-
-func fillDelete(enc *msgpack.Encoder, spaceEnc spaceEncoder, indexEnc indexEncoder,
-	key interface{}) error {
-	enc.EncodeMapLen(3)
-	return fillSearch(enc, spaceEnc, indexEnc, key)
-}
-
-func fillCall(enc *msgpack.Encoder, functionName string, args interface{}) error {
-	enc.EncodeMapLen(2)
-	enc.EncodeUint(uint64(iproto.IPROTO_FUNCTION_NAME))
-	enc.EncodeString(functionName)
-	enc.EncodeUint(uint64(iproto.IPROTO_TUPLE))
-	return enc.Encode(args)
-}
-
-func fillEval(enc *msgpack.Encoder, expr string, args interface{}) error {
-	enc.EncodeMapLen(2)
-	enc.EncodeUint(uint64(iproto.IPROTO_EXPR))
-	enc.EncodeString(expr)
-	enc.EncodeUint(uint64(iproto.IPROTO_TUPLE))
-	return enc.Encode(args)
-}
-
-func fillExecute(enc *msgpack.Encoder, expr string, args interface{}) error {
-	enc.EncodeMapLen(2)
-	enc.EncodeUint(uint64(iproto.IPROTO_SQL_TEXT))
-	enc.EncodeString(expr)
-	enc.EncodeUint(uint64(iproto.IPROTO_SQL_BIND))
-	return encodeSQLBind(enc, args)
-}
-
-func fillPing(enc *msgpack.Encoder) error {
-	return enc.EncodeMapLen(0)
-}
-
-func fillWatchOnce(enc *msgpack.Encoder, key string) error {
-	if err := enc.EncodeMapLen(1); err != nil {
-		return err
-	}
-	if err := enc.EncodeUint(uint64(iproto.IPROTO_EVENT_KEY)); err != nil {
-		return err
-	}
-	return enc.EncodeString(key)
-}
-
 // Ping sends empty request to Tarantool to check connection.
 //
 // Deprecated: the method will be removed in the next major version,
@@ -934,28 +780,35 @@ func (req authRequest) Ctx() context.Context {
 }
 
 // Body fills an encoder with the auth request body.
-func (req authRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
+func (req authRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
 	if err := enc.EncodeMapLen(2); err != nil {
 		return err
 	}
+
 	if err := enc.EncodeUint32(uint32(iproto.IPROTO_USER_NAME)); err != nil {
 		return err
 	}
+
 	if err := enc.EncodeString(req.user); err != nil {
 		return err
 	}
+
 	if err := enc.EncodeUint32(uint32(iproto.IPROTO_TUPLE)); err != nil {
 		return err
 	}
+
 	if err := enc.EncodeArrayLen(2); err != nil {
 		return err
 	}
+
 	if err := enc.EncodeString(req.auth.String()); err != nil {
 		return err
 	}
+
 	if err := enc.EncodeString(req.pass); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -978,8 +831,8 @@ func NewPingRequest() *PingRequest {
 }
 
 // Body fills an msgpack.Encoder with the ping request body.
-func (req *PingRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
-	return fillPing(enc)
+func (req *PingRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
+	return enc.EncodeMapLen(0)
 }
 
 // Context sets a passed context to the request.
@@ -1086,13 +939,83 @@ func (req *SelectRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 	if err != nil {
 		return err
 	}
+
 	indexEnc, err := newIndexEncoder(res, req.index, spaceEnc.Id)
 	if err != nil {
 		return err
 	}
 
-	return fillSelect(enc, spaceEnc, indexEnc, req.offset, req.limit, req.iterator,
-		req.key, req.after, req.fetchPos)
+	mapLen := 6
+	if req.fetchPos {
+		mapLen++
+	}
+	if req.after != nil {
+		mapLen++
+	}
+
+	if err := enc.EncodeMapLen(mapLen); err != nil {
+		return err
+	}
+
+	if err := enc.EncodeUint(uint64(iproto.IPROTO_ITERATOR)); err != nil {
+		return err
+	}
+
+	if err := enc.EncodeUint(uint64(req.iterator)); err != nil {
+		return err
+	}
+
+	if err := enc.EncodeUint(uint64(iproto.IPROTO_OFFSET)); err != nil {
+		return err
+	}
+
+	if err := enc.EncodeUint(uint64(req.offset)); err != nil {
+		return err
+	}
+
+	if err := enc.EncodeUint(uint64(iproto.IPROTO_LIMIT)); err != nil {
+		return err
+	}
+
+	if err := enc.EncodeUint(uint64(req.limit)); err != nil {
+		return err
+	}
+
+	if err := fillSearch(enc, spaceEnc, indexEnc, req.key); err != nil {
+		return err
+	}
+
+	if req.fetchPos {
+		if err := enc.EncodeUint(uint64(iproto.IPROTO_FETCH_POSITION)); err != nil {
+			return err
+		}
+
+		if err := enc.EncodeBool(req.fetchPos); err != nil {
+			return err
+		}
+	}
+
+	if req.after != nil {
+		if pos, ok := req.after.([]byte); ok {
+			if err := enc.EncodeUint(uint64(iproto.IPROTO_AFTER_POSITION)); err != nil {
+				return err
+			}
+
+			if err := enc.EncodeString(string(pos)); err != nil {
+				return err
+			}
+		} else {
+			if err := enc.EncodeUint(uint64(iproto.IPROTO_AFTER_TUPLE)); err != nil {
+				return err
+			}
+
+			if err := enc.Encode(req.after); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 // Context sets a passed context to the request.
@@ -1145,7 +1068,19 @@ func (req *InsertRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 		return err
 	}
 
-	return fillInsert(enc, spaceEnc, req.tuple)
+	if err := enc.EncodeMapLen(2); err != nil {
+		return err
+	}
+
+	if err := spaceEnc.Encode(enc); err != nil {
+		return err
+	}
+
+	if err := enc.EncodeUint(uint64(iproto.IPROTO_TUPLE)); err != nil {
+		return err
+	}
+
+	return enc.Encode(req.tuple)
 }
 
 // Context sets a passed context to the request.
@@ -1189,7 +1124,19 @@ func (req *ReplaceRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error 
 		return err
 	}
 
-	return fillInsert(enc, spaceEnc, req.tuple)
+	if err := enc.EncodeMapLen(2); err != nil {
+		return err
+	}
+
+	if err := spaceEnc.Encode(enc); err != nil {
+		return err
+	}
+
+	if err := enc.EncodeUint(uint64(iproto.IPROTO_TUPLE)); err != nil {
+		return err
+	}
+
+	return enc.Encode(req.tuple)
 }
 
 // Context sets a passed context to the request.
@@ -1239,12 +1186,17 @@ func (req *DeleteRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 	if err != nil {
 		return err
 	}
+
 	indexEnc, err := newIndexEncoder(res, req.index, spaceEnc.Id)
 	if err != nil {
 		return err
 	}
 
-	return fillDelete(enc, spaceEnc, indexEnc, req.key)
+	if err := enc.EncodeMapLen(3); err != nil {
+		return err
+	}
+
+	return fillSearch(enc, spaceEnc, indexEnc, req.key)
 }
 
 // Context sets a passed context to the request.
@@ -1302,12 +1254,29 @@ func (req *UpdateRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 	if err != nil {
 		return err
 	}
+
 	indexEnc, err := newIndexEncoder(res, req.index, spaceEnc.Id)
 	if err != nil {
 		return err
 	}
 
-	return fillUpdate(enc, spaceEnc, indexEnc, req.key, req.ops)
+	if err := enc.EncodeMapLen(4); err != nil {
+		return err
+	}
+
+	if err := fillSearch(enc, spaceEnc, indexEnc, req.key); err != nil {
+		return err
+	}
+
+	if err := enc.EncodeUint(uint64(iproto.IPROTO_TUPLE)); err != nil {
+		return err
+	}
+
+	if req.ops == nil {
+		return enc.EncodeArrayLen(0)
+	} else {
+		return enc.Encode(req.ops)
+	}
 }
 
 // Context sets a passed context to the request.
@@ -1359,7 +1328,31 @@ func (req *UpsertRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 		return err
 	}
 
-	return fillUpsert(enc, spaceEnc, req.tuple, req.ops)
+	if err := enc.EncodeMapLen(3); err != nil {
+		return err
+	}
+
+	if err := spaceEnc.Encode(enc); err != nil {
+		return err
+	}
+
+	if err := enc.EncodeUint(uint64(iproto.IPROTO_TUPLE)); err != nil {
+		return err
+	}
+
+	if err := enc.Encode(req.tuple); err != nil {
+		return err
+	}
+
+	if err := enc.EncodeUint(uint64(iproto.IPROTO_OPS)); err != nil {
+		return err
+	}
+
+	if req.ops == nil {
+		return enc.EncodeArrayLen(0)
+	} else {
+		return enc.Encode(req.ops)
+	}
 }
 
 // Context sets a passed context to the request.
@@ -1398,12 +1391,28 @@ func (req *CallRequest) Args(args interface{}) *CallRequest {
 }
 
 // Body fills an encoder with the call request body.
-func (req *CallRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
-	args := req.args
-	if args == nil {
-		args = []interface{}{}
+func (req *CallRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
+	if err := enc.EncodeMapLen(2); err != nil {
+		return err
 	}
-	return fillCall(enc, req.function, args)
+
+	if err := enc.EncodeUint(uint64(iproto.IPROTO_FUNCTION_NAME)); err != nil {
+		return err
+	}
+
+	if err := enc.EncodeString(req.function); err != nil {
+		return err
+	}
+
+	if err := enc.EncodeUint(uint64(iproto.IPROTO_TUPLE)); err != nil {
+		return err
+	}
+
+	if req.args == nil {
+		return enc.EncodeArrayLen(0)
+	} else {
+		return enc.Encode(req.args)
+	}
 }
 
 // Context sets a passed context to the request.
@@ -1459,8 +1468,28 @@ func (req *EvalRequest) Args(args interface{}) *EvalRequest {
 }
 
 // Body fills an msgpack.Encoder with the eval request body.
-func (req *EvalRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
-	return fillEval(enc, req.expr, req.args)
+func (req *EvalRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
+	if err := enc.EncodeMapLen(2); err != nil {
+		return err
+	}
+
+	if err := enc.EncodeUint(uint64(iproto.IPROTO_EXPR)); err != nil {
+		return err
+	}
+
+	if err := enc.EncodeString(req.expr); err != nil {
+		return err
+	}
+
+	if err := enc.EncodeUint(uint64(iproto.IPROTO_TUPLE)); err != nil {
+		return err
+	}
+
+	if req.args == nil {
+		return enc.EncodeArrayLen(0)
+	} else {
+		return enc.Encode(req.args)
+	}
 }
 
 // Context sets a passed context to the request.
@@ -1499,8 +1528,24 @@ func (req *ExecuteRequest) Args(args interface{}) *ExecuteRequest {
 }
 
 // Body fills an msgpack.Encoder with the execute request body.
-func (req *ExecuteRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
-	return fillExecute(enc, req.expr, req.args)
+func (req *ExecuteRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
+	if err := enc.EncodeMapLen(2); err != nil {
+		return err
+	}
+
+	if err := enc.EncodeUint(uint64(iproto.IPROTO_SQL_TEXT)); err != nil {
+		return err
+	}
+
+	if err := enc.EncodeString(req.expr); err != nil {
+		return err
+	}
+
+	if err := enc.EncodeUint(uint64(iproto.IPROTO_SQL_BIND)); err != nil {
+		return err
+	}
+
+	return encodeSQLBind(enc, req.args)
 }
 
 // Context sets a passed context to the request.
@@ -1539,8 +1584,16 @@ func NewWatchOnceRequest(key string) *WatchOnceRequest {
 }
 
 // Body fills an msgpack.Encoder with the watchOnce request body.
-func (req *WatchOnceRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
-	return fillWatchOnce(enc, req.key)
+func (req *WatchOnceRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
+	if err := enc.EncodeMapLen(1); err != nil {
+		return err
+	}
+
+	if err := enc.EncodeUint(uint64(iproto.IPROTO_EVENT_KEY)); err != nil {
+		return err
+	}
+
+	return enc.EncodeString(req.key)
 }
 
 // Context sets a passed context to the request.

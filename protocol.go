@@ -68,30 +68,6 @@ type IdRequest struct {
 	protocolInfo ProtocolInfo
 }
 
-func fillId(enc *msgpack.Encoder, protocolInfo ProtocolInfo) error {
-	enc.EncodeMapLen(2)
-
-	enc.EncodeUint(uint64(iproto.IPROTO_VERSION))
-	if err := enc.Encode(protocolInfo.Version); err != nil {
-		return err
-	}
-
-	enc.EncodeUint(uint64(iproto.IPROTO_FEATURES))
-
-	t := len(protocolInfo.Features)
-	if err := enc.EncodeArrayLen(t); err != nil {
-		return err
-	}
-
-	for _, feature := range protocolInfo.Features {
-		if err := enc.Encode(feature); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 // NewIdRequest returns a new IdRequest.
 func NewIdRequest(protocolInfo ProtocolInfo) *IdRequest {
 	req := new(IdRequest)
@@ -101,8 +77,34 @@ func NewIdRequest(protocolInfo ProtocolInfo) *IdRequest {
 }
 
 // Body fills an msgpack.Encoder with the id request body.
-func (req *IdRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
-	return fillId(enc, req.protocolInfo)
+func (req *IdRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
+	if err := enc.EncodeMapLen(2); err != nil {
+		return err
+	}
+
+	if err := enc.EncodeUint(uint64(iproto.IPROTO_VERSION)); err != nil {
+		return err
+	}
+
+	if err := enc.Encode(req.protocolInfo.Version); err != nil {
+		return err
+	}
+
+	if err := enc.EncodeUint(uint64(iproto.IPROTO_FEATURES)); err != nil {
+		return err
+	}
+
+	if err := enc.EncodeArrayLen(len(req.protocolInfo.Features)); err != nil {
+		return err
+	}
+
+	for _, feature := range req.protocolInfo.Features {
+		if err := enc.Encode(feature); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // Context sets a passed context to the request.

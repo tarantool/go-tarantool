@@ -22,26 +22,6 @@ type Prepared struct {
 	Conn        *Connection
 }
 
-func fillPrepare(enc *msgpack.Encoder, expr string) error {
-	enc.EncodeMapLen(1)
-	enc.EncodeUint(uint64(iproto.IPROTO_SQL_TEXT))
-	return enc.EncodeString(expr)
-}
-
-func fillUnprepare(enc *msgpack.Encoder, stmt Prepared) error {
-	enc.EncodeMapLen(1)
-	enc.EncodeUint(uint64(iproto.IPROTO_STMT_ID))
-	return enc.EncodeUint(uint64(stmt.StatementID))
-}
-
-func fillExecutePrepared(enc *msgpack.Encoder, stmt Prepared, args interface{}) error {
-	enc.EncodeMapLen(2)
-	enc.EncodeUint(uint64(iproto.IPROTO_STMT_ID))
-	enc.EncodeUint(uint64(stmt.StatementID))
-	enc.EncodeUint(uint64(iproto.IPROTO_SQL_BIND))
-	return encodeSQLBind(enc, args)
-}
-
 // NewPreparedFromResponse constructs a Prepared object.
 func NewPreparedFromResponse(conn *Connection, resp Response) (*Prepared, error) {
 	if resp == nil {
@@ -81,8 +61,16 @@ func NewPrepareRequest(expr string) *PrepareRequest {
 }
 
 // Body fills an msgpack.Encoder with the execute request body.
-func (req *PrepareRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
-	return fillPrepare(enc, req.expr)
+func (req *PrepareRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
+	if err := enc.EncodeMapLen(1); err != nil {
+		return err
+	}
+
+	if err := enc.EncodeUint(uint64(iproto.IPROTO_SQL_TEXT)); err != nil {
+		return err
+	}
+
+	return enc.EncodeString(req.expr)
 }
 
 // Context sets a passed context to the request.
@@ -126,8 +114,16 @@ func (req *UnprepareRequest) Conn() *Connection {
 }
 
 // Body fills an msgpack.Encoder with the execute request body.
-func (req *UnprepareRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
-	return fillUnprepare(enc, *req.stmt)
+func (req *UnprepareRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
+	if err := enc.EncodeMapLen(1); err != nil {
+		return err
+	}
+
+	if err := enc.EncodeUint(uint64(iproto.IPROTO_STMT_ID)); err != nil {
+		return err
+	}
+
+	return enc.EncodeUint(uint64(req.stmt.StatementID))
 }
 
 // Context sets a passed context to the request.
@@ -171,8 +167,24 @@ func (req *ExecutePreparedRequest) Args(args interface{}) *ExecutePreparedReques
 }
 
 // Body fills an msgpack.Encoder with the execute request body.
-func (req *ExecutePreparedRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
-	return fillExecutePrepared(enc, *req.stmt, req.args)
+func (req *ExecutePreparedRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
+	if err := enc.EncodeMapLen(2); err != nil {
+		return err
+	}
+
+	if err := enc.EncodeUint(uint64(iproto.IPROTO_STMT_ID)); err != nil {
+		return err
+	}
+
+	if err := enc.EncodeUint(uint64(req.stmt.StatementID)); err != nil {
+		return err
+	}
+
+	if err := enc.EncodeUint(uint64(iproto.IPROTO_SQL_BIND)); err != nil {
+		return err
+	}
+
+	return encodeSQLBind(enc, req.args)
 }
 
 // Context sets a passed context to the request.
