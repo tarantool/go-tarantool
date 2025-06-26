@@ -998,6 +998,9 @@ func ExampleBeginRequest_TxnIsolation() {
 	fmt.Printf("Select after Rollback: response is %#v\n", data)
 }
 
+func ExampleBeginRequest_IsSync() {
+}
+
 func ExampleErrorNo() {
 	conn := exampleConnect(dialer, opts)
 	defer conn.Close()

@@ -42,6 +42,7 @@ type BeginRequest struct {
 	baseRequest
 	txnIsolation TxnIsolationLevel
 	timeout      time.Duration
+	isSync       *bool
 }
 
 // NewBeginRequest returns a new BeginRequest.
@@ -59,9 +60,15 @@ func (req *BeginRequest) TxnIsolation(txnIsolation TxnIsolationLevel) *BeginRequ
 	return req
 }
 
-// WithTimeout allows to set up a timeout for call BeginRequest.
+// Timeout allows to set up a timeout for call BeginRequest.
 func (req *BeginRequest) Timeout(timeout time.Duration) *BeginRequest {
 	req.timeout = timeout
+	return req
+}
+
+// IsSync allows to set up a IsSync flag for call BeginRequest.
+func (req *BeginRequest) IsSync(isSync bool) *BeginRequest {
+	req.isSync = &isSync
 	return req
 }
 
@@ -78,6 +85,10 @@ func (req *BeginRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
 	}
 
 	if hasIsolationLevel {
+		mapLen++
+	}
+
+	if req.isSync != nil {
 		mapLen++
 	}
 
@@ -110,6 +121,18 @@ func (req *BeginRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
 		}
 	}
 
+	if req.isSync != nil {
+		err = enc.EncodeUint(uint64(iproto.IPROTO_IS_SYNC))
+		if err != nil {
+			return err
+		}
+
+		err = enc.EncodeBool(*req.isSync)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -129,6 +152,8 @@ func (req *BeginRequest) Context(ctx context.Context) *BeginRequest {
 // Commit request can not be processed out of stream.
 type CommitRequest struct {
 	baseRequest
+
+	isSync *bool
 }
 
 // NewCommitRequest returns a new CommitRequest.
@@ -138,9 +163,37 @@ func NewCommitRequest() *CommitRequest {
 	return req
 }
 
+// IsSync allows to set up a IsSync flag for call BeginRequest.
+func (req *CommitRequest) IsSync(isSync bool) *CommitRequest {
+	req.isSync = &isSync
+	return req
+}
+
 // Body fills an msgpack.Encoder with the commit request body.
 func (req *CommitRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
-	return enc.EncodeMapLen(0)
+	var (
+		mapLen = 0
+	)
+
+	if req.isSync != nil {
+		mapLen++
+	}
+
+	if err := enc.EncodeMapLen(mapLen); err != nil {
+		return err
+	}
+
+	if req.isSync != nil {
+		if err := enc.EncodeUint(uint64(iproto.IPROTO_IS_SYNC)); err != nil {
+			return err
+		}
+
+		if err := enc.EncodeBool(*req.isSync); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // Context sets a passed context to the request.
