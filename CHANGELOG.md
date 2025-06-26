@@ -14,6 +14,8 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 - Implemented box.session.su request and sugar interface only for current session granting (#426).
 - Defined `ErrConcurrentSchemaUpdate` constant for "concurrent schema update" error.
   Now you can check this error with `errors.Is(err, tarantool.ErrConcurrentSchemaUpdate)`.
+- Implemented support for `IPROTO_IS_SYNC` flag in stream transactions,
+  added `IsSync(bool)` method for `BeginRequest`/`CommitRequest` (#447).
 
 ### Changed
 

@@ -998,6 +998,90 @@ func ExampleBeginRequest_TxnIsolation() {
 	fmt.Printf("Select after Rollback: response is %#v\n", data)
 }
 
+func ExampleBeginRequest_IsSync() {
+	conn := exampleConnect(dialer, opts)
+	defer conn.Close()
+
+	// Tarantool supports IS_SYNC flag for BeginRequest since version 3.1.0.
+	isLess, err := test_helpers.IsTarantoolVersionLess(3, 1, 0)
+	if err != nil || isLess {
+		return
+	}
+
+	stream, err := conn.NewStream()
+	if err != nil {
+		fmt.Printf("error getting the stream: %s\n", err)
+		return
+	}
+
+	// Begin transaction with synchronous mode.
+	req := tarantool.NewBeginRequest().IsSync(true)
+	resp, err := stream.Do(req).GetResponse()
+	switch {
+	case err != nil:
+		fmt.Printf("error getting the response: %s\n", err)
+	case resp.Header().Error != tarantool.ErrorNo:
+		fmt.Printf("response error code: %s\n", resp.Header().Error)
+	default:
+		fmt.Println("Success.")
+	}
+}
+
+func ExampleCommitRequest_IsSync() {
+	conn := exampleConnect(dialer, opts)
+	defer conn.Close()
+
+	// Tarantool supports IS_SYNC flag for CommitRequest since version 3.1.0.
+	isLess, err := test_helpers.IsTarantoolVersionLess(3, 1, 0)
+	if err != nil || isLess {
+		return
+	}
+
+	var req tarantool.Request
+
+	stream, err := conn.NewStream()
+	if err != nil {
+		fmt.Printf("error getting the stream: %s\n", err)
+		return
+	}
+
+	// Begin transaction.
+	req = tarantool.NewBeginRequest()
+	resp, err := stream.Do(req).GetResponse()
+	switch {
+	case err != nil:
+		fmt.Printf("error getting the response: %s\n", err)
+		return
+	case resp.Header().Error != tarantool.ErrorNo:
+		fmt.Printf("response error code: %s\n", resp.Header().Error)
+		return
+	}
+
+	// Insert in stream.
+	req = tarantool.NewReplaceRequest("test").Tuple([]interface{}{1, "test"})
+	resp, err = stream.Do(req).GetResponse()
+	switch {
+	case err != nil:
+		fmt.Printf("error getting the response: %s\n", err)
+		return
+	case resp.Header().Error != tarantool.ErrorNo:
+		fmt.Printf("response error code: %s\n", resp.Header().Error)
+		return
+	}
+
+	// Commit transaction in sync mode.
+	req = tarantool.NewCommitRequest().IsSync(true)
+	resp, err = stream.Do(req).GetResponse()
+	switch {
+	case err != nil:
+		fmt.Printf("error getting the response: %s\n", err)
+	case resp.Header().Error != tarantool.ErrorNo:
+		fmt.Printf("response error code: %s\n", resp.Header().Error)
+	default:
+		fmt.Println("Success.")
+	}
+}
+
 func ExampleErrorNo() {
 	conn := exampleConnect(dialer, opts)
 	defer conn.Close()
