@@ -217,6 +217,14 @@ func SkipIfCrudSpliceBroken(t *testing.T) {
 	SkipIfFeatureUnsupported(t, "crud update splice", 2, 0, 0)
 }
 
+// SkipIfIsSyncUnsupported skips test run if Tarantool without
+// IS_SYNC support is used.
+func SkipIfIsSyncUnsupported(t *testing.T) {
+	t.Helper()
+
+	SkipIfFeatureUnsupported(t, "is sync", 3, 1, 0)
+}
+
 // IsTcsSupported checks if Tarantool supports centralized storage.
 // Tarantool supports centralized storage with Enterprise since 3.3.0 version.
 func IsTcsSupported() (bool, error) {

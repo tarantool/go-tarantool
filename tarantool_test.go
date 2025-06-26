@@ -4199,6 +4199,75 @@ func TestFdDialer(t *testing.T) {
 	require.Equal(t, int8(0), resp[0])
 }
 
+const (
+	errNoSyncTransactionQueue = "The synchronous transaction queue doesn't belong to any instance"
+)
+
+func TestDoBeginRequest_IsSync(t *testing.T) {
+	test_helpers.SkipIfIsSyncUnsupported(t)
+
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
+	defer conn.Close()
+
+	stream, err := conn.NewStream()
+	require.NoError(t, err)
+
+	_, err = stream.Do(NewBeginRequest().IsSync(true)).Get()
+	assert.Nil(t, err)
+
+	_, err = stream.Do(
+		NewReplaceRequest("test").Tuple([]interface{}{1, "foo"}),
+	).Get()
+	require.Nil(t, err)
+
+	_, err = stream.Do(NewCommitRequest()).Get()
+	require.NotNil(t, err)
+	assert.Contains(t, err.Error(), errNoSyncTransactionQueue)
+}
+
+func TestDoCommitRequest_IsSync(t *testing.T) {
+	test_helpers.SkipIfIsSyncUnsupported(t)
+
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
+	defer conn.Close()
+
+	stream, err := conn.NewStream()
+	require.NoError(t, err)
+
+	_, err = stream.Do(NewBeginRequest()).Get()
+	require.Nil(t, err)
+
+	_, err = stream.Do(
+		NewReplaceRequest("test").Tuple([]interface{}{1, "foo"}),
+	).Get()
+	require.Nil(t, err)
+
+	_, err = stream.Do(NewCommitRequest().IsSync(true)).Get()
+	require.NotNil(t, err)
+	assert.Contains(t, err.Error(), errNoSyncTransactionQueue)
+}
+
+func TestDoCommitRequest_NoSync(t *testing.T) {
+	test_helpers.SkipIfIsSyncUnsupported(t)
+
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
+	defer conn.Close()
+
+	stream, err := conn.NewStream()
+	require.NoError(t, err)
+
+	_, err = stream.Do(NewBeginRequest()).Get()
+	require.Nil(t, err)
+
+	_, err = stream.Do(
+		NewReplaceRequest("test").Tuple([]interface{}{1, "foo"}),
+	).Get()
+	require.Nil(t, err)
+
+	_, err = stream.Do(NewCommitRequest()).Get()
+	assert.Nil(t, err)
+}
+
 // runTestMain is a body of TestMain function
 // (see https://pkg.go.dev/testing#hdr-Main).
 // Using defer + os.Exit is not works so TestMain body
