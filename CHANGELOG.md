@@ -15,6 +15,9 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Changed
 
+- Made MessagePack extension encoding and decoding functions exportable, 
+  allowing users to reuse the logic for custom extensions (#421).
+
 ### Fixed
 
 - Fixed panic when calling NewWatcher() during reconnection or after
