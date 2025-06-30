@@ -19,6 +19,10 @@ const (
 	vspaceSpFormatFieldNum = 7
 )
 
+var (
+	ErrConcurrentSchemaUpdate = errors.New("concurrent schema update")
+)
+
 func msgpackIsUint(code byte) bool {
 	return code == msgpcode.Uint8 || code == msgpcode.Uint16 ||
 		code == msgpcode.Uint32 || code == msgpcode.Uint64 ||
@@ -415,7 +419,7 @@ func GetSchema(doer Doer) (Schema, error) {
 			schema.SpacesById[spaceId].IndexesById[index.Id] = index
 			schema.SpacesById[spaceId].Indexes[index.Name] = index
 		} else {
-			return Schema{}, errors.New("concurrent schema update")
+			return Schema{}, ErrConcurrentSchemaUpdate
 		}
 	}
 

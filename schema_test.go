@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/vmihailenco/msgpack/v5"
 
@@ -159,4 +160,8 @@ func TestResolverNotCalledWithNameSupport(t *testing.T) {
 		t.Errorf("ResolveIndex was called %d times instead of 0.",
 			resolver.indexResolverCalls)
 	}
+}
+
+func TestErrConcurrentSchemaUpdate(t *testing.T) {
+	assert.EqualError(t, tarantool.ErrConcurrentSchemaUpdate, "concurrent schema update")
 }
