@@ -3999,14 +3999,13 @@ func TestConnect_schema_update(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		fut := conn.Do(NewCallRequest("create_spaces"))
 
-		if conn, err := Connect(ctx, dialer, opts); err != nil {
-			if err.Error() != "concurrent schema update" {
-				t.Errorf("unexpected error: %s", err)
-			}
-		} else if conn == nil {
-			t.Errorf("conn is nil")
-		} else {
-			conn.Close()
+		switch conn, err := Connect(ctx, dialer, opts); {
+		case err != nil:
+			assert.ErrorIs(t, err, ErrConcurrentSchemaUpdate)
+		case conn == nil:
+			assert.Fail(t, "conn is nil")
+		default:
+			_ = conn.Close()
 		}
 
 		if _, err := fut.Get(); err != nil {
