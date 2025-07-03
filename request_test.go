@@ -9,9 +9,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tarantool/go-iproto"
 	"github.com/vmihailenco/msgpack/v5"
 
-	"github.com/tarantool/go-iproto"
 	. "github.com/tarantool/go-tarantool/v2"
 )
 
