@@ -10,14 +10,23 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [v2.4.0] - 2025-07-11
+
+This release focuses on adding schema/user/session operations, synchronous transaction
+flag handling, and fixes watcher panic.
+
+### Added
+
 - Implemented all box.schema.user operations requests and sugar interface (#426).
 - Implemented box.session.su request and sugar interface only for current session granting (#426).
-- Defined `ErrConcurrentSchemaUpdate` constant for "concurrent schema update" error.
+- Defined `ErrConcurrentSchemaUpdate` constant for "concurrent schema update" error (#404).
   Now you can check this error with `errors.Is(err, tarantool.ErrConcurrentSchemaUpdate)`.
 - Implemented support for `IPROTO_IS_SYNC` flag in stream transactions,
   added `IsSync(bool)` method for `BeginRequest`/`CommitRequest` (#447).
-
-### Changed
 
 ### Fixed
 
