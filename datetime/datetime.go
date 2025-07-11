@@ -1,4 +1,4 @@
-// Package with support of Tarantool's datetime data type.
+// Package datetime provides support for Tarantool's datetime data type.
 //
 // Datetime data type supported in Tarantool since 2.10.
 //
@@ -34,9 +34,10 @@ import (
 // * [optional] all the other fields (nsec, tzoffset, tzindex) if any of them
 // were having not 0 value. They are packed naturally in little-endian order;
 
-// Datetime external type. Supported since Tarantool 2.10. See more details in
+// ExtID represents the Datetime MessagePack extension type identifier.
+// Supported since Tarantool 2.10. See more details in
 // issue https://github.com/tarantool/tarantool/issues/5946.
-const datetimeExtID = 4
+const ExtID = 4
 
 // datetime structure keeps a number of seconds and nanoseconds since Unix Epoch.
 // Time is normalized by UTC, so time-zone offset is informative only.
@@ -242,7 +243,8 @@ func (d *Datetime) ToTime() time.Time {
 	return d.time
 }
 
-func datetimeEncoder(e *msgpack.Encoder, v reflect.Value) ([]byte, error) {
+// EncodeExt encodes a Datetime into a MessagePack extension.
+func EncodeExt(_ *msgpack.Encoder, v reflect.Value) ([]byte, error) {
 	dtime := v.Interface().(Datetime)
 	tm := dtime.ToTime()
 
@@ -275,7 +277,8 @@ func datetimeEncoder(e *msgpack.Encoder, v reflect.Value) ([]byte, error) {
 	return buf, nil
 }
 
-func datetimeDecoder(d *msgpack.Decoder, v reflect.Value, extLen int) error {
+// DecodeExt decodes a MessagePack extension into a Datetime.
+func DecodeExt(d *msgpack.Decoder, v reflect.Value, extLen int) error {
 	if extLen != maxSize && extLen != secondsSize {
 		return fmt.Errorf("invalid data length: got %d, wanted %d or %d",
 			extLen, secondsSize, maxSize)
@@ -333,6 +336,6 @@ func datetimeDecoder(d *msgpack.Decoder, v reflect.Value, extLen int) error {
 }
 
 func init() {
-	msgpack.RegisterExtDecoder(datetimeExtID, Datetime{}, datetimeDecoder)
-	msgpack.RegisterExtEncoder(datetimeExtID, Datetime{}, datetimeEncoder)
+	msgpack.RegisterExtEncoder(ExtID, Datetime{}, EncodeExt)
+	msgpack.RegisterExtDecoder(ExtID, Datetime{}, DecodeExt)
 }
