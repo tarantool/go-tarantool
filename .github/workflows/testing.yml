@@ -273,6 +273,9 @@ jobs:
           cd "${SRCDIR}"
           make deps
 
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
+
       - name: Run regression tests
         run: |
           cd "${SRCDIR}"

@@ -202,8 +202,9 @@ func SetInstanceRO(ctx context.Context, dialer tarantool.Dialer, connOpts tarant
 
 	req := tarantool.NewCallRequest("box.cfg").
 		Args([]interface{}{map[string]bool{"read_only": isReplica}})
-	if _, err := conn.Do(req).Get(); err != nil {
-		return err
+	if resp, err := conn.Do(req).Get(); err != nil {
+		// return err
+		return fmt.Errorf("%w: resp: %v", err, resp)
 	}
 
 	return nil
@@ -250,5 +251,5 @@ func StopTarantoolInstances(instances []*TarantoolInstance) {
 }
 
 func GetPoolConnectContext() (context.Context, context.CancelFunc) {
-	return context.WithTimeout(context.Background(), 500*time.Millisecond)
+	return context.WithTimeout(context.Background(), 1000*time.Millisecond)
 }

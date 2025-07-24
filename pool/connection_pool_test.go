@@ -1128,6 +1128,9 @@ func TestConnectionHandlerOpenUpdateClose(t *testing.T) {
 	connPool, err := pool.ConnectWithOpts(ctx, poolInstances, poolOpts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
+	for _, err := range h.errs {
+		t.Errorf("pool.ConnectWithOpts: unexpected error: %s", err)
+	}
 
 	_, err = connPool.Call17("box.cfg", []interface{}{map[string]bool{
 		"read_only": true,
