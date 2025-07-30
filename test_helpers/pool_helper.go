@@ -212,6 +212,50 @@ func SetInstanceRO(ctx context.Context, dialer tarantool.Dialer, connOpts tarant
 		return err
 	}
 
+	checkRole := func(conn *tarantool.Connection, isReplica bool) string {
+		data, err := conn.Do(tarantool.NewCallRequest("box.info")).Get()
+		switch {
+		case err != nil:
+			return fmt.Sprintf("failed to get box.info: %s", err)
+		case len(data) < 1:
+			return "box.info is empty"
+		}
+
+		boxInfo, ok := data[0].(map[interface{}]interface{})
+		if !ok {
+			return "unexpected type in box.info response"
+		}
+
+		status, statusFound := boxInfo["status"]
+		readonly, readonlyFound := boxInfo["ro"]
+		switch {
+		case !statusFound:
+			return "box.info.status is missing"
+		case status != "running":
+			return fmt.Sprintf("box.info.status='%s' (waiting for 'running')", status)
+		case !readonlyFound:
+			return "box.info.ro is missing"
+		case readonly != isReplica:
+			return fmt.Sprintf("box.info.ro='%v' (waiting for '%v')", readonly, isReplica)
+		default:
+			return ""
+		}
+	}
+
+	problem := "not checked yet"
+
+	// Wait for the role to be applied.
+	for len(problem) != 0 {
+		select {
+		case <-time.After(10 * time.Millisecond):
+		case <-ctx.Done():
+			return fmt.Errorf("%w: failed to apply role, the last problem: %s",
+				ctx.Err(), problem)
+		}
+
+		problem = checkRole(conn, isReplica)
+	}
+
 	return nil
 }
 
