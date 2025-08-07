@@ -1085,7 +1085,12 @@ func (p *ConnectionPool) getConnectionRole(conn *tarantool.Connection) (Role, er
 		return UnknownRole, ErrIncorrectResponse
 	}
 
-	instanceStatus, ok := data[0].(map[interface{}]interface{})["status"]
+	respFields, ok := data[0].(map[interface{}]interface{})
+	if !ok {
+		return UnknownRole, ErrIncorrectResponse
+	}
+
+	instanceStatus, ok := respFields["status"]
 	if !ok {
 		return UnknownRole, ErrIncorrectResponse
 	}
@@ -1093,7 +1098,7 @@ func (p *ConnectionPool) getConnectionRole(conn *tarantool.Connection) (Role, er
 		return UnknownRole, ErrIncorrectStatus
 	}
 
-	replicaRole, ok := data[0].(map[interface{}]interface{})[roFieldName]
+	replicaRole, ok := respFields[roFieldName]
 	if !ok {
 		return UnknownRole, ErrIncorrectResponse
 	}
