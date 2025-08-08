@@ -2,8 +2,10 @@ package test_helpers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
+	"sync"
 	"time"
 
 	"github.com/tarantool/go-tarantool/v2"
@@ -179,16 +181,22 @@ func InsertOnInstances(
 		return fmt.Errorf("fail to set roles for cluster: %s", err.Error())
 	}
 
-	for _, dialer := range dialers {
-		ctx, cancel := GetConnectContext()
-		err := InsertOnInstance(ctx, dialer, connOpts, space, tuple)
-		cancel()
-		if err != nil {
-			return err
-		}
-	}
+	ctx, cancel := GetConnectContext()
+	defer cancel()
 
-	return nil
+	errs := make([]error, len(dialers))
+	var wg sync.WaitGroup
+	wg.Add(len(dialers))
+	for i, dialer := range dialers {
+		// Pass loop variable(s) to avoid its capturing by reference (not needed since Go 1.22).
+		go func(i int, dialer tarantool.Dialer) {
+			defer wg.Done()
+			errs[i] = InsertOnInstance(ctx, dialer, connOpts, space, tuple)
+		}(i, dialer)
+	}
+	wg.Wait()
+
+	return errors.Join(errs...)
 }
 
 func SetInstanceRO(ctx context.Context, dialer tarantool.Dialer, connOpts tarantool.Opts,
@@ -215,16 +223,23 @@ func SetClusterRO(dialers []tarantool.Dialer, connOpts tarantool.Opts,
 		return fmt.Errorf("number of servers should be equal to number of roles")
 	}
 
-	for i, dialer := range dialers {
-		ctx, cancel := GetConnectContext()
-		err := SetInstanceRO(ctx, dialer, connOpts, roles[i])
-		cancel()
-		if err != nil {
-			return err
-		}
-	}
+	ctx, cancel := GetConnectContext()
+	defer cancel()
 
-	return nil
+	// Apply roles in parallel.
+	errs := make([]error, len(dialers))
+	var wg sync.WaitGroup
+	wg.Add(len(dialers))
+	for i, dialer := range dialers {
+		// Pass loop variable(s) to avoid its capturing by reference (not needed since Go 1.22).
+		go func(i int, dialer tarantool.Dialer) {
+			defer wg.Done()
+			errs[i] = SetInstanceRO(ctx, dialer, connOpts, roles[i])
+		}(i, dialer)
+	}
+	wg.Wait()
+
+	return errors.Join(errs...)
 }
 
 func StartTarantoolInstances(instsOpts []StartOpts) ([]*TarantoolInstance, error) {
