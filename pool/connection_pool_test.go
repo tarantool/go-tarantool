@@ -1115,7 +1115,10 @@ func TestConnectionHandlerOpenUpdateClose(t *testing.T) {
 	poolInstances := makeInstances(poolServers, connOpts)
 	roles := []bool{false, true}
 
-	err := test_helpers.SetClusterRO(makeDialers(poolServers), connOpts, roles)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+
+	err := test_helpers.SetClusterRO(ctx, makeDialers(poolServers), connOpts, roles)
 	require.Nilf(t, err, "fail to set roles for cluster")
 
 	h := &testHandler{}
@@ -1123,8 +1126,6 @@ func TestConnectionHandlerOpenUpdateClose(t *testing.T) {
 		CheckTimeout:      100 * time.Microsecond,
 		ConnectionHandler: h,
 	}
-	ctx, cancel := test_helpers.GetPoolConnectContext()
-	defer cancel()
 	connPool, err := pool.ConnectWithOpts(ctx, poolInstances, poolOpts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
@@ -1249,7 +1250,10 @@ func TestConnectionHandlerUpdateError(t *testing.T) {
 	poolInstances := makeInstances(poolServers, connOpts)
 	roles := []bool{false, false}
 
-	err := test_helpers.SetClusterRO(makeDialers(poolServers), connOpts, roles)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+
+	err := test_helpers.SetClusterRO(ctx, makeDialers(poolServers), connOpts, roles)
 	require.Nilf(t, err, "fail to set roles for cluster")
 
 	h := &testUpdateErrorHandler{}
@@ -1257,8 +1261,6 @@ func TestConnectionHandlerUpdateError(t *testing.T) {
 		CheckTimeout:      100 * time.Microsecond,
 		ConnectionHandler: h,
 	}
-	ctx, cancel := test_helpers.GetPoolConnectContext()
-	defer cancel()
 	connPool, err := pool.ConnectWithOpts(ctx, poolInstances, poolOpts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
@@ -1324,7 +1326,10 @@ func TestConnectionHandlerDeactivated_on_remove(t *testing.T) {
 	poolInstances := makeInstances(poolServers, connOpts)
 	roles := []bool{false, false}
 
-	err := test_helpers.SetClusterRO(makeDialers(poolServers), connOpts, roles)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+
+	err := test_helpers.SetClusterRO(ctx, makeDialers(poolServers), connOpts, roles)
 	require.Nilf(t, err, "fail to set roles for cluster")
 
 	h := &testDeactivatedErrorHandler{}
@@ -1332,8 +1337,6 @@ func TestConnectionHandlerDeactivated_on_remove(t *testing.T) {
 		CheckTimeout:      100 * time.Microsecond,
 		ConnectionHandler: h,
 	}
-	ctx, cancel := test_helpers.GetPoolConnectContext()
-	defer cancel()
 	connPool, err := pool.ConnectWithOpts(ctx, poolInstances, poolOpts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
@@ -1413,11 +1416,12 @@ func TestRequestOnClosed(t *testing.T) {
 func TestCall(t *testing.T) {
 	roles := []bool{false, true, false, false, true}
 
-	err := test_helpers.SetClusterRO(dialers, connOpts, roles)
-	require.Nilf(t, err, "fail to set roles for cluster")
-
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
+
+	err := test_helpers.SetClusterRO(ctx, dialers, connOpts, roles)
+	require.Nilf(t, err, "fail to set roles for cluster")
+
 	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
@@ -1472,11 +1476,12 @@ func TestCall(t *testing.T) {
 func TestCall16(t *testing.T) {
 	roles := []bool{false, true, false, false, true}
 
-	err := test_helpers.SetClusterRO(dialers, connOpts, roles)
-	require.Nilf(t, err, "fail to set roles for cluster")
-
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
+
+	err := test_helpers.SetClusterRO(ctx, dialers, connOpts, roles)
+	require.Nilf(t, err, "fail to set roles for cluster")
+
 	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
@@ -1531,11 +1536,12 @@ func TestCall16(t *testing.T) {
 func TestCall17(t *testing.T) {
 	roles := []bool{false, true, false, false, true}
 
-	err := test_helpers.SetClusterRO(dialers, connOpts, roles)
-	require.Nilf(t, err, "fail to set roles for cluster")
-
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
+
+	err := test_helpers.SetClusterRO(ctx, dialers, connOpts, roles)
+	require.Nilf(t, err, "fail to set roles for cluster")
+
 	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
@@ -1590,11 +1596,12 @@ func TestCall17(t *testing.T) {
 func TestEval(t *testing.T) {
 	roles := []bool{false, true, false, false, true}
 
-	err := test_helpers.SetClusterRO(dialers, connOpts, roles)
-	require.Nilf(t, err, "fail to set roles for cluster")
-
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
+
+	err := test_helpers.SetClusterRO(ctx, dialers, connOpts, roles)
+	require.Nilf(t, err, "fail to set roles for cluster")
+
 	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
@@ -1670,11 +1677,12 @@ func TestExecute(t *testing.T) {
 
 	roles := []bool{false, true, false, false, true}
 
-	err := test_helpers.SetClusterRO(dialers, connOpts, roles)
-	require.Nilf(t, err, "fail to set roles for cluster")
-
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
+
+	err := test_helpers.SetClusterRO(ctx, dialers, connOpts, roles)
+	require.Nilf(t, err, "fail to set roles for cluster")
+
 	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
@@ -1728,11 +1736,12 @@ func TestRoundRobinStrategy(t *testing.T) {
 
 	serversNumber := len(servers)
 
-	err := test_helpers.SetClusterRO(dialers, connOpts, roles)
-	require.Nilf(t, err, "fail to set roles for cluster")
-
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
+
+	err := test_helpers.SetClusterRO(ctx, dialers, connOpts, roles)
+	require.Nilf(t, err, "fail to set roles for cluster")
+
 	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
@@ -1807,11 +1816,12 @@ func TestRoundRobinStrategy_NoReplica(t *testing.T) {
 		servers[4]: true,
 	}
 
-	err := test_helpers.SetClusterRO(dialers, connOpts, roles)
-	require.Nilf(t, err, "fail to set roles for cluster")
-
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
+
+	err := test_helpers.SetClusterRO(ctx, dialers, connOpts, roles)
+	require.Nilf(t, err, "fail to set roles for cluster")
+
 	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
@@ -1880,11 +1890,12 @@ func TestRoundRobinStrategy_NoMaster(t *testing.T) {
 		servers[4]: true,
 	}
 
-	err := test_helpers.SetClusterRO(dialers, connOpts, roles)
-	require.Nilf(t, err, "fail to set roles for cluster")
-
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
+
+	err := test_helpers.SetClusterRO(ctx, dialers, connOpts, roles)
+	require.Nilf(t, err, "fail to set roles for cluster")
+
 	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
@@ -1965,11 +1976,12 @@ func TestUpdateInstancesRoles(t *testing.T) {
 
 	serversNumber := len(servers)
 
-	err := test_helpers.SetClusterRO(dialers, connOpts, roles)
-	require.Nilf(t, err, "fail to set roles for cluster")
-
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
+
+	err := test_helpers.SetClusterRO(ctx, dialers, connOpts, roles)
+	require.Nilf(t, err, "fail to set roles for cluster")
+
 	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
@@ -2044,7 +2056,9 @@ func TestUpdateInstancesRoles(t *testing.T) {
 		servers[3]: true,
 	}
 
-	err = test_helpers.SetClusterRO(dialers, connOpts, roles)
+	ctxSetRoles, cancelSetRoles := test_helpers.GetPoolConnectContext()
+	err = test_helpers.SetClusterRO(ctxSetRoles, dialers, connOpts, roles)
+	cancelSetRoles()
 	require.Nilf(t, err, "fail to set roles for cluster")
 
 	// ANY
@@ -2111,11 +2125,12 @@ func TestUpdateInstancesRoles(t *testing.T) {
 func TestInsert(t *testing.T) {
 	roles := []bool{true, true, false, true, true}
 
-	err := test_helpers.SetClusterRO(dialers, connOpts, roles)
-	require.Nilf(t, err, "fail to set roles for cluster")
-
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
+
+	err := test_helpers.SetClusterRO(ctx, dialers, connOpts, roles)
+	require.Nilf(t, err, "fail to set roles for cluster")
+
 	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
@@ -2210,11 +2225,12 @@ func TestInsert(t *testing.T) {
 func TestDelete(t *testing.T) {
 	roles := []bool{true, true, false, true, true}
 
-	err := test_helpers.SetClusterRO(dialers, connOpts, roles)
-	require.Nilf(t, err, "fail to set roles for cluster")
-
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
+
+	err := test_helpers.SetClusterRO(ctx, dialers, connOpts, roles)
+	require.Nilf(t, err, "fail to set roles for cluster")
+
 	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
@@ -2274,11 +2290,12 @@ func TestDelete(t *testing.T) {
 func TestUpsert(t *testing.T) {
 	roles := []bool{true, true, false, true, true}
 
-	err := test_helpers.SetClusterRO(dialers, connOpts, roles)
-	require.Nilf(t, err, "fail to set roles for cluster")
-
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
+
+	err := test_helpers.SetClusterRO(ctx, dialers, connOpts, roles)
+	require.Nilf(t, err, "fail to set roles for cluster")
+
 	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
@@ -2346,11 +2363,12 @@ func TestUpsert(t *testing.T) {
 func TestUpdate(t *testing.T) {
 	roles := []bool{true, true, false, true, true}
 
-	err := test_helpers.SetClusterRO(dialers, connOpts, roles)
-	require.Nilf(t, err, "fail to set roles for cluster")
-
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
+
+	err := test_helpers.SetClusterRO(ctx, dialers, connOpts, roles)
+	require.Nilf(t, err, "fail to set roles for cluster")
+
 	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
@@ -2435,11 +2453,12 @@ func TestUpdate(t *testing.T) {
 func TestReplace(t *testing.T) {
 	roles := []bool{true, true, false, true, true}
 
-	err := test_helpers.SetClusterRO(dialers, connOpts, roles)
-	require.Nilf(t, err, "fail to set roles for cluster")
-
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
+
+	err := test_helpers.SetClusterRO(ctx, dialers, connOpts, roles)
+	require.Nilf(t, err, "fail to set roles for cluster")
+
 	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
@@ -2520,11 +2539,12 @@ func TestReplace(t *testing.T) {
 func TestSelect(t *testing.T) {
 	roles := []bool{true, true, false, true, false}
 
-	err := test_helpers.SetClusterRO(dialers, connOpts, roles)
-	require.Nilf(t, err, "fail to set roles for cluster")
-
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
+
+	err := test_helpers.SetClusterRO(ctx, dialers, connOpts, roles)
+	require.Nilf(t, err, "fail to set roles for cluster")
+
 	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
@@ -2543,13 +2563,13 @@ func TestSelect(t *testing.T) {
 	rwKey := []interface{}{"rw_select_key"}
 	anyKey := []interface{}{"any_select_key"}
 
-	err = test_helpers.InsertOnInstances(makeDialers(roServers), connOpts, spaceNo, roTpl)
+	err = test_helpers.InsertOnInstances(ctx, makeDialers(roServers), connOpts, spaceNo, roTpl)
 	require.Nil(t, err)
 
-	err = test_helpers.InsertOnInstances(makeDialers(rwServers), connOpts, spaceNo, rwTpl)
+	err = test_helpers.InsertOnInstances(ctx, makeDialers(rwServers), connOpts, spaceNo, rwTpl)
 	require.Nil(t, err)
 
-	err = test_helpers.InsertOnInstances(makeDialers(allServers), connOpts, spaceNo, anyTpl)
+	err = test_helpers.InsertOnInstances(ctx, makeDialers(allServers), connOpts, spaceNo, anyTpl)
 	require.Nil(t, err)
 
 	//default: ANY
@@ -2642,11 +2662,12 @@ func TestSelect(t *testing.T) {
 func TestPing(t *testing.T) {
 	roles := []bool{true, true, false, true, false}
 
-	err := test_helpers.SetClusterRO(dialers, connOpts, roles)
-	require.Nilf(t, err, "fail to set roles for cluster")
-
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
+
+	err := test_helpers.SetClusterRO(ctx, dialers, connOpts, roles)
+	require.Nilf(t, err, "fail to set roles for cluster")
+
 	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
@@ -2681,11 +2702,12 @@ func TestPing(t *testing.T) {
 func TestDo(t *testing.T) {
 	roles := []bool{true, true, false, true, false}
 
-	err := test_helpers.SetClusterRO(dialers, connOpts, roles)
-	require.Nilf(t, err, "fail to set roles for cluster")
-
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
+
+	err := test_helpers.SetClusterRO(ctx, dialers, connOpts, roles)
+	require.Nilf(t, err, "fail to set roles for cluster")
+
 	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
@@ -2717,11 +2739,12 @@ func TestDo(t *testing.T) {
 func TestDo_concurrent(t *testing.T) {
 	roles := []bool{true, true, false, true, false}
 
-	err := test_helpers.SetClusterRO(dialers, connOpts, roles)
-	require.Nilf(t, err, "fail to set roles for cluster")
-
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
+
+	err := test_helpers.SetClusterRO(ctx, dialers, connOpts, roles)
+	require.Nilf(t, err, "fail to set roles for cluster")
+
 	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
@@ -2766,11 +2789,11 @@ func TestDoInstance(t *testing.T) {
 func TestDoInstance_not_found(t *testing.T) {
 	roles := []bool{true, true, false, true, false}
 
-	err := test_helpers.SetClusterRO(dialers, connOpts, roles)
-	require.Nilf(t, err, "fail to set roles for cluster")
-
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
+
+	err := test_helpers.SetClusterRO(ctx, dialers, connOpts, roles)
+	require.Nilf(t, err, "fail to set roles for cluster")
 
 	connPool, err := pool.Connect(ctx, []pool.Instance{})
 	require.Nilf(t, err, "failed to connect")
@@ -2820,11 +2843,12 @@ func TestNewPrepared(t *testing.T) {
 
 	roles := []bool{true, true, false, true, false}
 
-	err := test_helpers.SetClusterRO(dialers, connOpts, roles)
-	require.Nilf(t, err, "fail to set roles for cluster")
-
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
+
+	err := test_helpers.SetClusterRO(ctx, dialers, connOpts, roles)
+	require.Nilf(t, err, "fail to set roles for cluster")
+
 	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
@@ -2892,11 +2916,12 @@ func TestDoWithStrangerConn(t *testing.T) {
 
 	roles := []bool{true, true, false, true, false}
 
-	err := test_helpers.SetClusterRO(dialers, connOpts, roles)
-	require.Nilf(t, err, "fail to set roles for cluster")
-
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
+
+	err := test_helpers.SetClusterRO(ctx, dialers, connOpts, roles)
+	require.Nilf(t, err, "fail to set roles for cluster")
+
 	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
@@ -2922,11 +2947,12 @@ func TestStream_Commit(t *testing.T) {
 
 	roles := []bool{true, true, false, true, true}
 
-	err = test_helpers.SetClusterRO(dialers, connOpts, roles)
-	require.Nilf(t, err, "fail to set roles for cluster")
-
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
+
+	err = test_helpers.SetClusterRO(ctx, dialers, connOpts, roles)
+	require.Nilf(t, err, "fail to set roles for cluster")
+
 	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
@@ -3013,11 +3039,12 @@ func TestStream_Rollback(t *testing.T) {
 
 	roles := []bool{true, true, false, true, true}
 
-	err = test_helpers.SetClusterRO(dialers, connOpts, roles)
-	require.Nilf(t, err, "fail to set roles for cluster")
-
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
+
+	err = test_helpers.SetClusterRO(ctx, dialers, connOpts, roles)
+	require.Nilf(t, err, "fail to set roles for cluster")
+
 	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
@@ -3103,11 +3130,12 @@ func TestStream_TxnIsolationLevel(t *testing.T) {
 
 	roles := []bool{true, true, false, true, true}
 
-	err = test_helpers.SetClusterRO(dialers, connOpts, roles)
-	require.Nilf(t, err, "fail to set roles for cluster")
-
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
+
+	err = test_helpers.SetClusterRO(ctx, dialers, connOpts, roles)
+	require.Nilf(t, err, "fail to set roles for cluster")
+
 	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
@@ -3214,11 +3242,12 @@ func TestConnectionPool_NewWatcher_modes(t *testing.T) {
 
 	roles := []bool{true, false, false, true, true}
 
-	err := test_helpers.SetClusterRO(dialers, connOpts, roles)
-	require.Nilf(t, err, "fail to set roles for cluster")
-
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
+
+	err := test_helpers.SetClusterRO(ctx, dialers, connOpts, roles)
+	require.Nilf(t, err, "fail to set roles for cluster")
+
 	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
@@ -3291,14 +3320,15 @@ func TestConnectionPool_NewWatcher_update(t *testing.T) {
 	const initCnt = 2
 	roles := []bool{true, false, false, true, true}
 
-	err := test_helpers.SetClusterRO(dialers, connOpts, roles)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+
+	err := test_helpers.SetClusterRO(ctx, dialers, connOpts, roles)
 	require.Nilf(t, err, "fail to set roles for cluster")
 
 	poolOpts := pool.Opts{
 		CheckTimeout: 500 * time.Millisecond,
 	}
-	ctx, cancel := test_helpers.GetPoolConnectContext()
-	defer cancel()
 	pool, err := pool.ConnectWithOpts(ctx, instances, poolOpts)
 
 	require.Nilf(t, err, "failed to connect")
@@ -3338,7 +3368,9 @@ func TestConnectionPool_NewWatcher_update(t *testing.T) {
 	for i, role := range roles {
 		roles[i] = !role
 	}
-	err = test_helpers.SetClusterRO(dialers, connOpts, roles)
+	ctxSetRoles, cancelSetRoles := test_helpers.GetPoolConnectContext()
+	err = test_helpers.SetClusterRO(ctxSetRoles, dialers, connOpts, roles)
+	cancelSetRoles()
 	require.Nilf(t, err, "fail to set roles for cluster")
 
 	// Wait for all updated events.
@@ -3376,11 +3408,12 @@ func TestWatcher_Unregister(t *testing.T) {
 	const expectedCnt = 2
 	roles := []bool{true, false, false, true, true}
 
-	err := test_helpers.SetClusterRO(dialers, connOpts, roles)
-	require.Nilf(t, err, "fail to set roles for cluster")
-
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
+
+	err := test_helpers.SetClusterRO(ctx, dialers, connOpts, roles)
+	require.Nilf(t, err, "fail to set roles for cluster")
+
 	pool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, pool, "conn is nil after Connect")
@@ -3433,11 +3466,12 @@ func TestConnectionPool_NewWatcher_concurrent(t *testing.T) {
 
 	roles := []bool{true, false, false, true, true}
 
-	err := test_helpers.SetClusterRO(dialers, connOpts, roles)
-	require.Nilf(t, err, "fail to set roles for cluster")
-
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
+
+	err := test_helpers.SetClusterRO(ctx, dialers, connOpts, roles)
+	require.Nilf(t, err, "fail to set roles for cluster")
+
 	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
@@ -3471,11 +3505,12 @@ func TestWatcher_Unregister_concurrent(t *testing.T) {
 
 	roles := []bool{true, false, false, true, true}
 
-	err := test_helpers.SetClusterRO(dialers, connOpts, roles)
-	require.Nilf(t, err, "fail to set roles for cluster")
-
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
+
+	err := test_helpers.SetClusterRO(ctx, dialers, connOpts, roles)
+	require.Nilf(t, err, "fail to set roles for cluster")
+
 	connPool, err := pool.Connect(ctx, instances)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
