@@ -954,7 +954,9 @@ func runTestMain(m *testing.M) int {
 			})
 		}
 
-		err = test_helpers.SetClusterRO(dialers, connOpts, roles)
+		ctx, cancel := test_helpers.GetPoolConnectContext()
+		err = test_helpers.SetClusterRO(ctx, dialers, connOpts, roles)
+		cancel()
 		if err == nil {
 			break
 		}

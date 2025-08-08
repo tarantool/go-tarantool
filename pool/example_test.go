@@ -23,12 +23,12 @@ var testRoles = []bool{true, true, false, true, true}
 
 func examplePool(roles []bool,
 	connOpts tarantool.Opts) (*pool.ConnectionPool, error) {
-	err := test_helpers.SetClusterRO(dialers, connOpts, roles)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	err := test_helpers.SetClusterRO(ctx, dialers, connOpts, roles)
 	if err != nil {
 		return nil, fmt.Errorf("ConnectionPool is not established")
 	}
-	ctx, cancel := test_helpers.GetPoolConnectContext()
-	defer cancel()
 	connPool, err := pool.Connect(ctx, instances)
 	if err != nil || connPool == nil {
 		return nil, fmt.Errorf("ConnectionPool is not established")
@@ -55,12 +55,12 @@ func exampleFeaturesPool(roles []bool, connOpts tarantool.Opts,
 		})
 		poolDialers = append(poolDialers, dialer)
 	}
-	err := test_helpers.SetClusterRO(poolDialers, connOpts, roles)
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	err := test_helpers.SetClusterRO(ctx, poolDialers, connOpts, roles)
 	if err != nil {
 		return nil, fmt.Errorf("ConnectionPool is not established")
 	}
-	ctx, cancel := test_helpers.GetPoolConnectContext()
-	defer cancel()
 	connPool, err := pool.Connect(ctx, poolInstances)
 	if err != nil || connPool == nil {
 		return nil, fmt.Errorf("ConnectionPool is not established")

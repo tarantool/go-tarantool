@@ -212,7 +212,9 @@ func Example_connectionPool() {
 	// Switch a master instance in the pool.
 	roles := []bool{true, false}
 	for {
-		err := test_helpers.SetClusterRO(poolDialers, connOpts, roles)
+		ctx, cancel := test_helpers.GetPoolConnectContext()
+		err := test_helpers.SetClusterRO(ctx, poolDialers, connOpts, roles)
+		cancel()
 		if err == nil {
 			break
 		}

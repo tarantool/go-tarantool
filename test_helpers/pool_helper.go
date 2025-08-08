@@ -166,6 +166,7 @@ func InsertOnInstance(ctx context.Context, dialer tarantool.Dialer, connOpts tar
 }
 
 func InsertOnInstances(
+	ctx context.Context,
 	dialers []tarantool.Dialer,
 	connOpts tarantool.Opts,
 	space interface{},
@@ -176,13 +177,10 @@ func InsertOnInstances(
 		roles[i] = false
 	}
 
-	err := SetClusterRO(dialers, connOpts, roles)
+	err := SetClusterRO(ctx, dialers, connOpts, roles)
 	if err != nil {
 		return fmt.Errorf("fail to set roles for cluster: %s", err.Error())
 	}
-
-	ctx, cancel := GetConnectContext()
-	defer cancel()
 
 	errs := make([]error, len(dialers))
 	var wg sync.WaitGroup
@@ -217,14 +215,11 @@ func SetInstanceRO(ctx context.Context, dialer tarantool.Dialer, connOpts tarant
 	return nil
 }
 
-func SetClusterRO(dialers []tarantool.Dialer, connOpts tarantool.Opts,
+func SetClusterRO(ctx context.Context, dialers []tarantool.Dialer, connOpts tarantool.Opts,
 	roles []bool) error {
 	if len(dialers) != len(roles) {
 		return fmt.Errorf("number of servers should be equal to number of roles")
 	}
-
-	ctx, cancel := GetConnectContext()
-	defer cancel()
 
 	// Apply roles in parallel.
 	errs := make([]error, len(dialers))
