@@ -76,6 +76,7 @@ const (
 
 const maxSize = secondsSize + nsecSize + tzIndexSize + tzOffsetSize
 
+//go:generate go tool gentypes -ext-code 4 Datetime
 type Datetime struct {
 	time time.Time
 }
@@ -183,6 +184,89 @@ func addMonth(ival Interval, delta int64, adjust Adjust) Interval {
 	return ival
 }
 
+// MarshalMsgpack implements a custom msgpack marshaler.
+func (d Datetime) MarshalMsgpack() ([]byte, error) {
+	tm := d.ToTime()
+
+	var dt datetime
+	dt.seconds = tm.Unix()
+	dt.nsec = int32(tm.Nanosecond())
+
+	zone := tm.Location().String()
+	_, offset := tm.Zone()
+	if zone != NoTimezone {
+		// The zone value already checked in MakeDatetime() or
+		// UnmarshalMsgpack() calls.
+		dt.tzIndex = int16(timezoneToIndex[zone])
+	}
+	dt.tzOffset = int16(offset / 60)
+
+	var bytesSize = secondsSize
+	if dt.nsec != 0 || dt.tzOffset != 0 || dt.tzIndex != 0 {
+		bytesSize += nsecSize + tzIndexSize + tzOffsetSize
+	}
+
+	buf := make([]byte, bytesSize)
+	binary.LittleEndian.PutUint64(buf, uint64(dt.seconds))
+	if bytesSize == maxSize {
+		binary.LittleEndian.PutUint32(buf[secondsSize:], uint32(dt.nsec))
+		binary.LittleEndian.PutUint16(buf[secondsSize+nsecSize:], uint16(dt.tzOffset))
+		binary.LittleEndian.PutUint16(buf[secondsSize+nsecSize+tzOffsetSize:], uint16(dt.tzIndex))
+	}
+
+	return buf, nil
+}
+
+// UnmarshalMsgpack implements a custom msgpack unmarshaler.
+func (d *Datetime) UnmarshalMsgpack(data []byte) error {
+	var dt datetime
+
+	sec := binary.LittleEndian.Uint64(data)
+	dt.seconds = int64(sec)
+	dt.nsec = 0
+	if len(data) == maxSize {
+		dt.nsec = int32(binary.LittleEndian.Uint32(data[secondsSize:]))
+		dt.tzOffset = int16(binary.LittleEndian.Uint16(data[secondsSize+nsecSize:]))
+		dt.tzIndex = int16(binary.LittleEndian.Uint16(data[secondsSize+nsecSize+tzOffsetSize:]))
+	}
+
+	tt := time.Unix(dt.seconds, int64(dt.nsec))
+
+	loc := noTimezoneLoc
+	if dt.tzIndex != 0 || dt.tzOffset != 0 {
+		zone := NoTimezone
+		offset := int(dt.tzOffset) * 60
+
+		if dt.tzIndex != 0 {
+			if _, ok := indexToTimezone[int(dt.tzIndex)]; !ok {
+				return fmt.Errorf("unknown timezone index %d", dt.tzIndex)
+			}
+			zone = indexToTimezone[int(dt.tzIndex)]
+		}
+		if zone != NoTimezone {
+			if loadLoc, err := time.LoadLocation(zone); err == nil {
+				loc = loadLoc
+			} else {
+				// Unable to load location.
+				loc = time.FixedZone(zone, offset)
+			}
+		} else {
+			// Only offset.
+			loc = time.FixedZone(zone, offset)
+		}
+	}
+	tt = tt.In(loc)
+
+	newDatetime, err := MakeDatetime(tt)
+	if err != nil {
+		return err
+	}
+
+	*d = newDatetime
+
+	return nil
+}
+
 func (d Datetime) add(ival Interval, positive bool) (Datetime, error) {
 	newVal := intervalFromDatetime(d)
 
@@ -244,35 +328,8 @@ func (d *Datetime) ToTime() time.Time {
 
 func datetimeEncoder(e *msgpack.Encoder, v reflect.Value) ([]byte, error) {
 	dtime := v.Interface().(Datetime)
-	tm := dtime.ToTime()
 
-	var dt datetime
-	dt.seconds = tm.Unix()
-	dt.nsec = int32(tm.Nanosecond())
-
-	zone := tm.Location().String()
-	_, offset := tm.Zone()
-	if zone != NoTimezone {
-		// The zone value already checked in MakeDatetime() or
-		// UnmarshalMsgpack() calls.
-		dt.tzIndex = int16(timezoneToIndex[zone])
-	}
-	dt.tzOffset = int16(offset / 60)
-
-	var bytesSize = secondsSize
-	if dt.nsec != 0 || dt.tzOffset != 0 || dt.tzIndex != 0 {
-		bytesSize += nsecSize + tzIndexSize + tzOffsetSize
-	}
-
-	buf := make([]byte, bytesSize)
-	binary.LittleEndian.PutUint64(buf, uint64(dt.seconds))
-	if bytesSize == maxSize {
-		binary.LittleEndian.PutUint32(buf[secondsSize:], uint32(dt.nsec))
-		binary.LittleEndian.PutUint16(buf[secondsSize+nsecSize:], uint16(dt.tzOffset))
-		binary.LittleEndian.PutUint16(buf[secondsSize+nsecSize+tzOffsetSize:], uint16(dt.tzIndex))
-	}
-
-	return buf, nil
+	return dtime.MarshalMsgpack()
 }
 
 func datetimeDecoder(d *msgpack.Decoder, v reflect.Value, extLen int) error {
@@ -282,54 +339,15 @@ func datetimeDecoder(d *msgpack.Decoder, v reflect.Value, extLen int) error {
 	}
 
 	b := make([]byte, extLen)
-	n, err := d.Buffered().Read(b)
-	if err != nil {
+	switch n, err := d.Buffered().Read(b); {
+	case err != nil:
 		return err
-	}
-	if n < extLen {
+	case n < extLen:
 		return fmt.Errorf("msgpack: unexpected end of stream after %d datetime bytes", n)
 	}
 
-	var dt datetime
-	sec := binary.LittleEndian.Uint64(b)
-	dt.seconds = int64(sec)
-	dt.nsec = 0
-	if extLen == maxSize {
-		dt.nsec = int32(binary.LittleEndian.Uint32(b[secondsSize:]))
-		dt.tzOffset = int16(binary.LittleEndian.Uint16(b[secondsSize+nsecSize:]))
-		dt.tzIndex = int16(binary.LittleEndian.Uint16(b[secondsSize+nsecSize+tzOffsetSize:]))
-	}
-
-	tt := time.Unix(dt.seconds, int64(dt.nsec))
-
-	loc := noTimezoneLoc
-	if dt.tzIndex != 0 || dt.tzOffset != 0 {
-		zone := NoTimezone
-		offset := int(dt.tzOffset) * 60
-
-		if dt.tzIndex != 0 {
-			if _, ok := indexToTimezone[int(dt.tzIndex)]; !ok {
-				return fmt.Errorf("unknown timezone index %d", dt.tzIndex)
-			}
-			zone = indexToTimezone[int(dt.tzIndex)]
-		}
-		if zone != NoTimezone {
-			if loadLoc, err := time.LoadLocation(zone); err == nil {
-				loc = loadLoc
-			} else {
-				// Unable to load location.
-				loc = time.FixedZone(zone, offset)
-			}
-		} else {
-			// Only offset.
-			loc = time.FixedZone(zone, offset)
-		}
-	}
-	tt = tt.In(loc)
-
 	ptr := v.Addr().Interface().(*Datetime)
-	*ptr, err = MakeDatetime(tt)
-	return err
+	return ptr.UnmarshalMsgpack(b)
 }
 
 func init() {

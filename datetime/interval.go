@@ -2,7 +2,6 @@ package datetime
 
 import (
 	"bytes"
-	"fmt"
 	"reflect"
 
 	"github.com/vmihailenco/msgpack/v5"
@@ -23,6 +22,8 @@ const (
 )
 
 // Interval type is GoLang implementation of Tarantool intervals.
+//
+//go:generate go tool gentypes -ext-code 6 Interval
 type Interval struct {
 	Year   int64
 	Month  int64
@@ -33,6 +34,21 @@ type Interval struct {
 	Sec    int64
 	Nsec   int64
 	Adjust Adjust
+}
+
+func (ival Interval) countNonZeroFields() int {
+	count := 0
+
+	for _, field := range []int64{
+		ival.Year, ival.Month, ival.Week, ival.Day, ival.Hour,
+		ival.Min, ival.Sec, ival.Nsec, adjustToDt[ival.Adjust],
+	} {
+		if field != 0 {
+			count++
+		}
+	}
+
+	return count
 }
 
 // We use int64 for every field to avoid changes in the future, see:
@@ -66,115 +82,134 @@ func (ival Interval) Sub(sub Interval) Interval {
 	return ival
 }
 
-func encodeIntervalValue(e *msgpack.Encoder, typ uint64, value int64) (err error) {
-	if value == 0 {
-		return
+// MarshalMsgpack implements a custom msgpack marshaler.
+func (ival Interval) MarshalMsgpack() ([]byte, error) {
+	var buf bytes.Buffer
+	enc := msgpack.NewEncoder(&buf)
+
+	if err := ival.MarshalMsgpackTo(enc); err != nil {
+		return nil, err
 	}
-	err = e.EncodeUint(typ)
-	if err == nil {
-		if value > 0 {
-			err = e.EncodeUint(uint64(value))
-		} else if value < 0 {
-			err = e.EncodeInt(value)
+
+	return buf.Bytes(), nil
+}
+
+// MarshalMsgpackTo implements a custom msgpack marshaler.
+func (ival Interval) MarshalMsgpackTo(e *msgpack.Encoder) error {
+	var fieldNum = uint64(ival.countNonZeroFields())
+	if err := e.EncodeUint(fieldNum); err != nil {
+		return err
+	}
+
+	if err := encodeIntervalValue(e, fieldYear, ival.Year); err != nil {
+		return err
+	}
+	if err := encodeIntervalValue(e, fieldMonth, ival.Month); err != nil {
+		return err
+	}
+	if err := encodeIntervalValue(e, fieldWeek, ival.Week); err != nil {
+		return err
+	}
+	if err := encodeIntervalValue(e, fieldDay, ival.Day); err != nil {
+		return err
+	}
+	if err := encodeIntervalValue(e, fieldHour, ival.Hour); err != nil {
+		return err
+	}
+	if err := encodeIntervalValue(e, fieldMin, ival.Min); err != nil {
+		return err
+	}
+	if err := encodeIntervalValue(e, fieldSec, ival.Sec); err != nil {
+		return err
+	}
+	if err := encodeIntervalValue(e, fieldNSec, ival.Nsec); err != nil {
+		return err
+	}
+	if err := encodeIntervalValue(e, fieldAdjust, adjustToDt[ival.Adjust]); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// UnmarshalMsgpackFrom implements a custom msgpack unmarshaler.
+func (ival *Interval) UnmarshalMsgpackFrom(d *msgpack.Decoder) error {
+	fieldNum, err := d.DecodeUint()
+	if err != nil {
+		return err
+	}
+
+	ival.Adjust = dtToAdjust[int64(NoneAdjust)]
+
+	for i := 0; i < int(fieldNum); i++ {
+		var fieldType uint
+		if fieldType, err = d.DecodeUint(); err != nil {
+			return err
+		}
+
+		var fieldVal int64
+		if fieldVal, err = d.DecodeInt64(); err != nil {
+			return err
+		}
+
+		switch fieldType {
+		case fieldYear:
+			ival.Year = fieldVal
+		case fieldMonth:
+			ival.Month = fieldVal
+		case fieldWeek:
+			ival.Week = fieldVal
+		case fieldDay:
+			ival.Day = fieldVal
+		case fieldHour:
+			ival.Hour = fieldVal
+		case fieldMin:
+			ival.Min = fieldVal
+		case fieldSec:
+			ival.Sec = fieldVal
+		case fieldNSec:
+			ival.Nsec = fieldVal
+		case fieldAdjust:
+			ival.Adjust = dtToAdjust[fieldVal]
 		}
 	}
-	return
+
+	return nil
+}
+
+// UnmarshalMsgpack implements a custom msgpack unmarshaler.
+func (ival *Interval) UnmarshalMsgpack(data []byte) error {
+	dec := msgpack.NewDecoder(bytes.NewReader(data))
+	return ival.UnmarshalMsgpackFrom(dec)
+}
+
+func encodeIntervalValue(e *msgpack.Encoder, typ uint64, value int64) error {
+	if value == 0 {
+		return nil
+	}
+
+	err := e.EncodeUint(typ)
+	if err != nil {
+		return err
+	}
+
+	switch {
+	case value > 0:
+		return e.EncodeUint(uint64(value))
+	default:
+		return e.EncodeInt(value)
+	}
 }
 
 func encodeInterval(e *msgpack.Encoder, v reflect.Value) (err error) {
 	val := v.Interface().(Interval)
-
-	var fieldNum uint64
-	for _, val := range []int64{val.Year, val.Month, val.Week, val.Day,
-		val.Hour, val.Min, val.Sec, val.Nsec,
-		adjustToDt[val.Adjust]} {
-		if val != 0 {
-			fieldNum++
-		}
-	}
-	if err = e.EncodeUint(fieldNum); err != nil {
-		return
-	}
-
-	if err = encodeIntervalValue(e, fieldYear, val.Year); err != nil {
-		return
-	}
-	if err = encodeIntervalValue(e, fieldMonth, val.Month); err != nil {
-		return
-	}
-	if err = encodeIntervalValue(e, fieldWeek, val.Week); err != nil {
-		return
-	}
-	if err = encodeIntervalValue(e, fieldDay, val.Day); err != nil {
-		return
-	}
-	if err = encodeIntervalValue(e, fieldHour, val.Hour); err != nil {
-		return
-	}
-	if err = encodeIntervalValue(e, fieldMin, val.Min); err != nil {
-		return
-	}
-	if err = encodeIntervalValue(e, fieldSec, val.Sec); err != nil {
-		return
-	}
-	if err = encodeIntervalValue(e, fieldNSec, val.Nsec); err != nil {
-		return
-	}
-	if err = encodeIntervalValue(e, fieldAdjust, adjustToDt[val.Adjust]); err != nil {
-		return
-	}
-	return nil
+	return val.MarshalMsgpackTo(e)
 }
 
 func decodeInterval(d *msgpack.Decoder, v reflect.Value) (err error) {
-	var fieldNum uint
-	if fieldNum, err = d.DecodeUint(); err != nil {
+	val := Interval{}
+	if err = val.UnmarshalMsgpackFrom(d); err != nil {
 		return
-	}
-
-	var val Interval
-
-	hasAdjust := false
-	for i := 0; i < int(fieldNum); i++ {
-		var fieldType uint
-		if fieldType, err = d.DecodeUint(); err != nil {
-			return
-		}
-		var fieldVal int64
-		if fieldVal, err = d.DecodeInt64(); err != nil {
-			return
-		}
-		switch fieldType {
-		case fieldYear:
-			val.Year = fieldVal
-		case fieldMonth:
-			val.Month = fieldVal
-		case fieldWeek:
-			val.Week = fieldVal
-		case fieldDay:
-			val.Day = fieldVal
-		case fieldHour:
-			val.Hour = fieldVal
-		case fieldMin:
-			val.Min = fieldVal
-		case fieldSec:
-			val.Sec = fieldVal
-		case fieldNSec:
-			val.Nsec = fieldVal
-		case fieldAdjust:
-			hasAdjust = true
-			if adjust, ok := dtToAdjust[fieldVal]; ok {
-				val.Adjust = adjust
-			} else {
-				return fmt.Errorf("unsupported Adjust: %d", fieldVal)
-			}
-		default:
-			return fmt.Errorf("unsupported interval field type: %d", fieldType)
-		}
-	}
-
-	if !hasAdjust {
-		val.Adjust = dtToAdjust[0]
 	}
 
 	v.Set(reflect.ValueOf(val))
