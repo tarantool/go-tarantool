@@ -44,13 +44,14 @@ const (
 )
 
 var (
-	one decimal.Decimal = decimal.NewFromInt(1)
+	one = decimal.NewFromInt(1)
 	// -10^decimalPrecision - 1
-	minSupportedDecimal decimal.Decimal = maxSupportedDecimal.Neg().Sub(one)
+	minSupportedDecimal = maxSupportedDecimal.Neg().Sub(one)
 	// 10^decimalPrecision - 1
-	maxSupportedDecimal decimal.Decimal = decimal.New(1, decimalPrecision).Sub(one)
+	maxSupportedDecimal = decimal.New(1, decimalPrecision).Sub(one)
 )
 
+//go:generate go tool gentypes -ext-code 1 Decimal
 type Decimal struct {
 	decimal.Decimal
 }
@@ -71,37 +72,20 @@ func MakeDecimalFromString(src string) (Decimal, error) {
 	return result, nil
 }
 
-func decimalEncoder(e *msgpack.Encoder, v reflect.Value) ([]byte, error) {
-	dec := v.Interface().(Decimal)
-	if dec.GreaterThan(maxSupportedDecimal) {
-		return nil,
-			fmt.Errorf(
-				"msgpack: decimal number is bigger than maximum supported number (10^%d - 1)",
-				decimalPrecision)
-	}
-	if dec.LessThan(minSupportedDecimal) {
-		return nil,
-			fmt.Errorf(
-				"msgpack: decimal number is lesser than minimum supported number (-10^%d - 1)",
-				decimalPrecision)
-	}
+var (
+	ErrDecimalOverflow = fmt.Errorf("msgpack: decimal number is bigger than"+
+		" maximum supported number (10^%d - 1)", decimalPrecision)
+	ErrDecimalUnderflow = fmt.Errorf("msgpack: decimal number is lesser than"+
+		" minimum supported number (-10^%d - 1)", decimalPrecision)
+)
 
-	strBuf := dec.String()
-	bcdBuf, err := encodeStringToBCD(strBuf)
-	if err != nil {
-		return nil, fmt.Errorf("msgpack: can't encode string (%s) to a BCD buffer: %w", strBuf, err)
-	}
-	return bcdBuf, nil
-}
-
-func decimalDecoder(d *msgpack.Decoder, v reflect.Value, extLen int) error {
-	b := make([]byte, extLen)
-	n, err := d.Buffered().Read(b)
-	if err != nil {
-		return err
-	}
-	if n < extLen {
-		return fmt.Errorf("msgpack: unexpected end of stream after %d decimal bytes", n)
+// MarshalMsgpack implements a custom msgpack marshaler.
+func (d Decimal) MarshalMsgpack() ([]byte, error) {
+	switch {
+	case d.GreaterThan(maxSupportedDecimal):
+		return nil, ErrDecimalOverflow
+	case d.LessThan(minSupportedDecimal):
+		return nil, ErrDecimalUnderflow
 	}
 
 	// Decimal values can be encoded to fixext MessagePack, where buffer
@@ -112,9 +96,19 @@ func decimalDecoder(d *msgpack.Decoder, v reflect.Value, extLen int) error {
 	//  +--------+-------------------+------------+===============+
 	//  | MP_EXT | length (optional) | MP_DECIMAL | PackedDecimal |
 	//  +--------+-------------------+------------+===============+
-	digits, exp, err := decodeStringFromBCD(b)
+	strBuf := d.String()
+	bcdBuf, err := encodeStringToBCD(strBuf)
 	if err != nil {
-		return fmt.Errorf("msgpack: can't decode string from BCD buffer (%x): %w", b, err)
+		return nil, fmt.Errorf("msgpack: can't encode string (%s) to a BCD buffer: %w", strBuf, err)
+	}
+	return bcdBuf, nil
+}
+
+// UnmarshalMsgpack implements a custom msgpack unmarshaler.
+func (d *Decimal) UnmarshalMsgpack(data []byte) error {
+	digits, exp, err := decodeStringFromBCD(data)
+	if err != nil {
+		return fmt.Errorf("msgpack: can't decode string from BCD buffer (%x): %w", data, err)
 	}
 
 	dec, err := decimal.NewFromString(digits)
@@ -125,9 +119,29 @@ func decimalDecoder(d *msgpack.Decoder, v reflect.Value, extLen int) error {
 	if exp != 0 {
 		dec = dec.Shift(int32(exp))
 	}
-	ptr := v.Addr().Interface().(*Decimal)
-	*ptr = MakeDecimal(dec)
+
+	*d = MakeDecimal(dec)
 	return nil
+}
+
+func decimalEncoder(e *msgpack.Encoder, v reflect.Value) ([]byte, error) {
+	dec := v.Interface().(Decimal)
+
+	return dec.MarshalMsgpack()
+}
+
+func decimalDecoder(d *msgpack.Decoder, v reflect.Value, extLen int) error {
+	b := make([]byte, extLen)
+
+	switch n, err := d.Buffered().Read(b); {
+	case err != nil:
+		return err
+	case n < extLen:
+		return fmt.Errorf("msgpack: unexpected end of stream after %d decimal bytes", n)
+	}
+
+	ptr := v.Addr().Interface().(*Decimal)
+	return ptr.UnmarshalMsgpack(b)
 }
 
 func init() {

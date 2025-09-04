@@ -9,6 +9,8 @@ import (
 
 const errorExtID = 3
 
+//go:generate go tool gentypes -ext-code 3 BoxError
+
 const (
 	keyErrorStack   = 0x00
 	keyErrorType    = 0x00
