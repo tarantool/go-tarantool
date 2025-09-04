@@ -1,4 +1,4 @@
-// Package with support of Tarantool's UUID data type.
+// Package uuid with support of Tarantool's UUID data type.
 //
 // UUID data type supported in Tarantool since 2.4.1.
 //
@@ -26,6 +26,16 @@ import (
 
 // UUID external type.
 const uuid_extID = 2
+
+//go:generate go run github.com/tarantool/go-option/cmd/gentypes -ext-code 2 -marshal-func marshalUUID -unmarshal-func unmarshalUUID -imports "github.com/google/uuid" uuid.UUID
+
+func marshalUUID(id uuid.UUID) ([]byte, error) {
+	return id.MarshalBinary()
+}
+
+func unmarshalUUID(uuid *uuid.UUID, data []byte) error {
+	return uuid.UnmarshalBinary(data)
+}
 
 func encodeUUID(e *msgpack.Encoder, v reflect.Value) error {
 	id := v.Interface().(uuid.UUID)

@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/tarantool/go-tarantool/v2"
 	_ "github.com/tarantool/go-tarantool/v2/uuid"
 )

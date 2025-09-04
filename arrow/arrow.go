@@ -7,6 +7,8 @@ import (
 	"github.com/vmihailenco/msgpack/v5"
 )
 
+//go:generate go run github.com/tarantool/go-option/cmd/gentypes -ext-code 8 Arrow
+
 // Arrow MessagePack extension type.
 const arrowExtId = 8
 
@@ -24,6 +26,15 @@ func MakeArrow(arrow []byte) (Arrow, error) {
 // Raw returns a []byte that contains Arrow raw data.
 func (a Arrow) Raw() []byte {
 	return a.data
+}
+
+func (a Arrow) MarshalMsgpack() ([]byte, error) {
+	return a.data, nil
+}
+
+func (a *Arrow) UnmarshalMsgpack(data []byte) error {
+	a.data = data
+	return nil
 }
 
 func arrowDecoder(d *msgpack.Decoder, v reflect.Value, extLen int) error {
