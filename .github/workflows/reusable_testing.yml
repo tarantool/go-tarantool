@@ -36,7 +36,7 @@ jobs:
       - name: Setup golang for connector and tests
         uses: actions/setup-go@v5
         with:
-          go-version: '1.20'
+          go-version: '1.24'
 
       - name: Setup tt
         run: |

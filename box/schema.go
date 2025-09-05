@@ -1,6 +1,8 @@
 package box
 
-import "github.com/tarantool/go-tarantool/v2"
+import (
+	"github.com/tarantool/go-tarantool/v3"
+)
 
 // Schema represents the schema-related operations in Tarantool.
 // It holds a connection to interact with the Tarantool instance.

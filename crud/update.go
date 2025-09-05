@@ -5,7 +5,7 @@ import (
 
 	"github.com/vmihailenco/msgpack/v5"
 
-	"github.com/tarantool/go-tarantool/v2"
+	"github.com/tarantool/go-tarantool/v3"
 )
 
 // UpdateOpts describes options for `crud.update` method.
@@ -21,7 +21,7 @@ type UpdateRequest struct {
 }
 
 type updateArgs struct {
-	_msgpack   struct{} `msgpack:",asArray"` //nolint: structcheck,unused
+	_msgpack   struct{} `msgpack:",asArray"` // nolint: structcheck,unused
 	Space      string
 	Key        Tuple
 	Operations []Operation

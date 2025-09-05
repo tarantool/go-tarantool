@@ -6,15 +6,15 @@ import (
 
 	"github.com/tarantool/go-iproto"
 
-	"github.com/tarantool/go-tarantool/v2"
-	"github.com/tarantool/go-tarantool/v2/pool"
-	"github.com/tarantool/go-tarantool/v2/test_helpers"
+	"github.com/tarantool/go-tarantool/v3"
+	"github.com/tarantool/go-tarantool/v3/pool"
+	"github.com/tarantool/go-tarantool/v3/test_helpers"
 )
 
 type Tuple struct {
 	// Instruct msgpack to pack this struct as array, so no custom packer
 	// is needed.
-	_msgpack struct{} `msgpack:",asArray"` //nolint: structcheck,unused
+	_msgpack struct{} `msgpack:",asArray"` // nolint: structcheck,unused
 	Key      string
 	Value    string
 }

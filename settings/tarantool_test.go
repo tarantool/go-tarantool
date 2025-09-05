@@ -7,9 +7,10 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tarantool/go-tarantool/v2"
-	. "github.com/tarantool/go-tarantool/v2/settings"
-	"github.com/tarantool/go-tarantool/v2/test_helpers"
+
+	"github.com/tarantool/go-tarantool/v3"
+	. "github.com/tarantool/go-tarantool/v3/settings"
+	"github.com/tarantool/go-tarantool/v3/test_helpers"
 )
 
 // There is no way to skip tests in testing.M,

@@ -5,7 +5,7 @@ import (
 
 	"github.com/vmihailenco/msgpack/v5"
 
-	"github.com/tarantool/go-tarantool/v2"
+	"github.com/tarantool/go-tarantool/v3"
 )
 
 // SelectOpts describes options for `crud.select` method.
@@ -90,7 +90,7 @@ type SelectRequest struct {
 }
 
 type selectArgs struct {
-	_msgpack   struct{} `msgpack:",asArray"` //nolint: structcheck,unused
+	_msgpack   struct{} `msgpack:",asArray"` // nolint: structcheck,unused
 	Space      string
 	Conditions []Condition
 	Opts       SelectOpts

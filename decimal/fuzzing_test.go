@@ -7,7 +7,8 @@ import (
 	"testing"
 
 	"github.com/shopspring/decimal"
-	. "github.com/tarantool/go-tarantool/v2/decimal"
+
+	. "github.com/tarantool/go-tarantool/v3/decimal"
 )
 
 func strToDecimal(t *testing.T, buf string, exp int) decimal.Decimal {

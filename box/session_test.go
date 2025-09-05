@@ -5,8 +5,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/tarantool/go-tarantool/v2/box"
-	th "github.com/tarantool/go-tarantool/v2/test_helpers"
+	"github.com/tarantool/go-tarantool/v3/box"
+	th "github.com/tarantool/go-tarantool/v3/test_helpers"
 )
 
 func TestBox_Session(t *testing.T) {

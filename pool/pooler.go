@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/tarantool/go-tarantool/v2"
+	"github.com/tarantool/go-tarantool/v3"
 )
 
 // TopologyEditor is the interface that must be implemented by a connection pool.

@@ -5,7 +5,7 @@ import (
 
 	"github.com/vmihailenco/msgpack/v5"
 
-	"github.com/tarantool/go-tarantool/v2"
+	"github.com/tarantool/go-tarantool/v3"
 )
 
 // InsertManyOpts describes options for `crud.insert_many` method.
@@ -20,7 +20,7 @@ type InsertManyRequest struct {
 }
 
 type insertManyArgs struct {
-	_msgpack struct{} `msgpack:",asArray"` //nolint: structcheck,unused
+	_msgpack struct{} `msgpack:",asArray"` // nolint: structcheck,unused
 	Space    string
 	Tuples   Tuples
 	Opts     InsertManyOpts
@@ -78,7 +78,7 @@ type InsertObjectManyRequest struct {
 }
 
 type insertObjectManyArgs struct {
-	_msgpack struct{} `msgpack:",asArray"` //nolint: structcheck,unused
+	_msgpack struct{} `msgpack:",asArray"` // nolint: structcheck,unused
 	Space    string
 	Objects  Objects
 	Opts     InsertObjectManyOpts
