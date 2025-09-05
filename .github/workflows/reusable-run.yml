@@ -1,0 +1,98 @@
+name: Reusable Test Run
+
+on:
+  workflow_call:
+    inputs:
+      os:
+        required: true
+        type: string
+      tarantool-version:
+        required: true
+        type: string
+      go-version:
+        required: true
+        type: string
+      coveralls:
+        required: false
+        type: boolean
+        default: false
+      fuzzing:
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  run-tests:
+    runs-on: ${{ inputs.os }}
+    steps:
+      - name: Clone the connector
+        uses: actions/checkout@v5
+
+      - name: Setup tt
+        run: |
+          curl -L https://tarantool.io/release/3/installer.sh | sudo bash
+          sudo apt install -y tt
+
+      - name: Setup tt environment
+        run: tt init
+
+      - name: Setup Tarantool ${{ inputs.tarantool-version }}
+        if: inputs.tarantool-version != 'master'
+        uses: tarantool/setup-tarantool@v4
+        with:
+          tarantool-version: ${{ inputs.tarantool-version }}
+
+      - name: Get Tarantool master commit
+        if: inputs.tarantool-version == 'master'
+        run: |
+          commit_hash=$(git ls-remote https://github.com/tarantool/tarantool.git --branch master | head -c 8)
+          echo "LATEST_COMMIT=${commit_hash}" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Cache Tarantool master
+        if: inputs.tarantool-version == 'master'
+        id: cache-latest
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ github.workspace }}/bin
+            ${{ github.workspace }}/include
+          key: cache-latest-${{ env.LATEST_COMMIT }}
+
+      - name: Setup Tarantool master
+        if: inputs.tarantool-version == 'master' && steps.cache-latest.outputs.cache-hit != 'true'
+        run: |
+          sudo tt install tarantool master
+
+      - name: Add Tarantool master to PATH
+        if: inputs.tarantool-version == 'master'
+        run: echo "${GITHUB_WORKSPACE}/bin" >> $GITHUB_PATH
+
+      - name: Setup golang for the connector and tests
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ inputs.go-version }}
+
+      - name: Install test dependencies
+        run: make deps
+
+      - name: Run regression tests
+        run: make test
+
+      - name: Run race tests
+        run: make testrace
+
+      - name: Run fuzzing tests
+        if: ${{ inputs.fuzzing }}
+        run: make fuzzing TAGS="go_tarantool_decimal_fuzzing"
+
+      - name: Run tests, collect code coverage data and send to Coveralls
+        if: ${{ inputs.coveralls }}
+        env:
+          COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          make coveralls
+
+      - name: Check workability of benchmark tests
+        if: inputs.go-version == 'stable'
+        run: make bench-deps bench DURATION=1x COUNT=1

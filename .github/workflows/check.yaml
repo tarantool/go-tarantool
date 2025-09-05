@@ -6,22 +6,22 @@ on:
 
 jobs:
   luacheck:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     if: |
       github.event_name == 'push' ||
       github.event_name == 'pull_request' &&
       github.event.pull_request.head.repo.full_name != github.repository
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@v5
 
     - name: Setup Tarantool
-      uses: tarantool/setup-tarantool@v2
+      uses: tarantool/setup-tarantool@v4
       with:
-        tarantool-version: '2.8'
+        tarantool-version: '3.4'
 
     - name: Setup tt
       run: |
-        curl -L https://tarantool.io/release/2/installer.sh | sudo bash
+        curl -L https://tarantool.io/release/3/installer.sh | sudo bash
         sudo apt install -y tt
         tt version
 
@@ -32,15 +32,15 @@ jobs:
       run: ./.rocks/bin/luacheck .
 
   golangci-lint:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     if: |
       github.event_name == 'push' ||
       github.event_name == 'pull_request' &&
       github.event.pull_request.head.repo.full_name != github.repository
     steps:
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@v5
 
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v5
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v3
@@ -57,13 +57,13 @@ jobs:
           args: --out-${NO_FUTURE}format colored-line-number --config=.golangci.yaml
 
   codespell:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     if: |
       github.event_name == 'push' ||
       github.event_name == 'pull_request' &&
       github.event.pull_request.head.repo.full_name != github.repository
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@v5
 
       - name: Install codespell
         run: pip3 install codespell
