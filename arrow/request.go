@@ -5,8 +5,9 @@ import (
 	"io"
 
 	"github.com/tarantool/go-iproto"
-	"github.com/tarantool/go-tarantool/v2"
 	"github.com/vmihailenco/msgpack/v5"
+
+	"github.com/tarantool/go-tarantool/v3"
 )
 
 // InsertRequest helps you to create an insert request object for execution

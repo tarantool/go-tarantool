@@ -23,8 +23,8 @@ import (
 	"github.com/tarantool/go-iproto"
 	"github.com/vmihailenco/msgpack/v5"
 
-	. "github.com/tarantool/go-tarantool/v2"
-	"github.com/tarantool/go-tarantool/v2/test_helpers"
+	. "github.com/tarantool/go-tarantool/v3"
+	"github.com/tarantool/go-tarantool/v3/test_helpers"
 )
 
 var startOpts test_helpers.StartOpts = test_helpers.StartOpts{
@@ -89,8 +89,8 @@ var indexNo = uint32(0)
 var indexName = "primary"
 var opts = Opts{
 	Timeout: 5 * time.Second,
-	//Concurrency: 32,
-	//RateLimit: 4*1024,
+	// Concurrency: 32,
+	// RateLimit: 4*1024,
 }
 
 const N = 500
@@ -888,7 +888,7 @@ func TestFutureMultipleGetTypedWithError(t *testing.T) {
 	}
 }
 
-///////////////////
+// /////////////////
 
 func TestClient(t *testing.T) {
 	var err error
@@ -2716,7 +2716,7 @@ func TestCallRequest(t *testing.T) {
 func TestClientRequestObjectsWithNilContext(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
-	req := NewPingRequest().Context(nil) //nolint
+	req := NewPingRequest().Context(nil) // nolint
 	data, err := conn.Do(req).Get()
 	if err != nil {
 		t.Fatalf("Failed to Ping: %s", err)
@@ -3269,7 +3269,7 @@ func TestClientIdRequestObjectWithNilContext(t *testing.T) {
 	req := NewIdRequest(ProtocolInfo{
 		Version:  ProtocolVersion(1),
 		Features: []iproto.Feature{iproto.IPROTO_FEATURE_STREAMS},
-	}).Context(nil) //nolint
+	}).Context(nil) // nolint
 	data, err := conn.Do(req).Get()
 	require.Nilf(t, err, "No errors on Id request execution")
 	require.NotNilf(t, data, "Response data not empty")
@@ -3293,7 +3293,7 @@ func TestClientIdRequestObjectWithPassedCanceledContext(t *testing.T) {
 	req := NewIdRequest(ProtocolInfo{
 		Version:  ProtocolVersion(1),
 		Features: []iproto.Feature{iproto.IPROTO_FEATURE_STREAMS},
-	}).Context(ctx) //nolint
+	}).Context(ctx) // nolint
 	cancel()
 	resp, err := conn.Do(req).Get()
 	require.Nilf(t, resp, "Response is empty")

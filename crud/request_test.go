@@ -9,8 +9,8 @@ import (
 	"github.com/tarantool/go-iproto"
 	"github.com/vmihailenco/msgpack/v5"
 
-	"github.com/tarantool/go-tarantool/v2"
-	"github.com/tarantool/go-tarantool/v2/crud"
+	"github.com/tarantool/go-tarantool/v3"
+	"github.com/tarantool/go-tarantool/v3/crud"
 )
 
 const validSpace = "test" // Any valid value != default.

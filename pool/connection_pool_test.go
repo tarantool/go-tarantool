@@ -15,12 +15,12 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/vmihailenco/msgpack/v5"
 
-	"github.com/stretchr/testify/require"
-	"github.com/tarantool/go-tarantool/v2"
-	"github.com/tarantool/go-tarantool/v2/pool"
-	"github.com/tarantool/go-tarantool/v2/test_helpers"
+	"github.com/tarantool/go-tarantool/v3"
+	"github.com/tarantool/go-tarantool/v3/pool"
+	"github.com/tarantool/go-tarantool/v3/test_helpers"
 )
 
 var user = "test"
@@ -2572,7 +2572,7 @@ func TestSelect(t *testing.T) {
 	err = test_helpers.InsertOnInstances(ctx, makeDialers(allServers), connOpts, spaceNo, anyTpl)
 	require.Nil(t, err)
 
-	//default: ANY
+	// default: ANY
 	data, err := connPool.Select(spaceNo, indexNo, 0, 1, tarantool.IterEq, anyKey)
 	require.Nilf(t, err, "failed to Select")
 	require.NotNilf(t, data, "response is nil after Select")

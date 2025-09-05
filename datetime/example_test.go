@@ -13,8 +13,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tarantool/go-tarantool/v2"
-	. "github.com/tarantool/go-tarantool/v2/datetime"
+	"github.com/tarantool/go-tarantool/v3"
+	. "github.com/tarantool/go-tarantool/v3/datetime"
 )
 
 // Example demonstrates how to use tuples with datetime. To enable support of

@@ -3,7 +3,7 @@ package pool
 import (
 	"testing"
 
-	"github.com/tarantool/go-tarantool/v2"
+	"github.com/tarantool/go-tarantool/v3"
 )
 
 const (

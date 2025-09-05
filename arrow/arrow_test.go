@@ -6,8 +6,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tarantool/go-tarantool/v2/arrow"
 	"github.com/vmihailenco/msgpack/v5"
+
+	"github.com/tarantool/go-tarantool/v3/arrow"
 )
 
 var longArrow, _ = hex.DecodeString("ffffffff70000000040000009effffff0400010004000000" +

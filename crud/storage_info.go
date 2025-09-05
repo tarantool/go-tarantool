@@ -5,7 +5,7 @@ import (
 
 	"github.com/vmihailenco/msgpack/v5"
 
-	"github.com/tarantool/go-tarantool/v2"
+	"github.com/tarantool/go-tarantool/v3"
 )
 
 // StatusTable describes information for instance.
@@ -98,7 +98,7 @@ type StorageInfoRequest struct {
 }
 
 type storageInfoArgs struct {
-	_msgpack struct{} `msgpack:",asArray"` //nolint: structcheck,unused
+	_msgpack struct{} `msgpack:",asArray"` // nolint: structcheck,unused
 	Opts     StorageInfoOpts
 }
 

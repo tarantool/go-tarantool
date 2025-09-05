@@ -15,8 +15,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/tarantool/go-tarantool/v2"
-	_ "github.com/tarantool/go-tarantool/v2/uuid"
+
+	"github.com/tarantool/go-tarantool/v3"
+	_ "github.com/tarantool/go-tarantool/v3/uuid"
 )
 
 var exampleOpts = tarantool.Opts{

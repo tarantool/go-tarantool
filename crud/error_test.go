@@ -4,7 +4,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tarantool/go-tarantool/v2/crud"
+
+	"github.com/tarantool/go-tarantool/v3/crud"
 )
 
 func TestErrorMany(t *testing.T) {

@@ -5,7 +5,7 @@ import (
 
 	"github.com/vmihailenco/msgpack/v5"
 
-	"github.com/tarantool/go-tarantool/v2"
+	"github.com/tarantool/go-tarantool/v3"
 )
 
 // InsertOpts describes options for `crud.insert` method.
@@ -20,7 +20,7 @@ type InsertRequest struct {
 }
 
 type insertArgs struct {
-	_msgpack struct{} `msgpack:",asArray"` //nolint: structcheck,unused
+	_msgpack struct{} `msgpack:",asArray"` // nolint: structcheck,unused
 	Space    string
 	Tuple    Tuple
 	Opts     InsertOpts
@@ -78,7 +78,7 @@ type InsertObjectRequest struct {
 }
 
 type insertObjectArgs struct {
-	_msgpack struct{} `msgpack:",asArray"` //nolint: structcheck,unused
+	_msgpack struct{} `msgpack:",asArray"` // nolint: structcheck,unused
 	Space    string
 	Object   Object
 	Opts     InsertObjectOpts

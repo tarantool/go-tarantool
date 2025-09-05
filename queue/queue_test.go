@@ -10,9 +10,9 @@ import (
 
 	"github.com/vmihailenco/msgpack/v5"
 
-	. "github.com/tarantool/go-tarantool/v2"
-	"github.com/tarantool/go-tarantool/v2/queue"
-	"github.com/tarantool/go-tarantool/v2/test_helpers"
+	. "github.com/tarantool/go-tarantool/v3"
+	"github.com/tarantool/go-tarantool/v3/queue"
+	"github.com/tarantool/go-tarantool/v3/test_helpers"
 )
 
 const (
@@ -31,8 +31,8 @@ var dialer = NetDialer{
 
 var opts = Opts{
 	Timeout: 5 * time.Second,
-	//Concurrency: 32,
-	//RateLimit: 4*1024,
+	// Concurrency: 32,
+	// RateLimit: 4*1024,
 }
 
 func createQueue(t *testing.T, conn *Connection, name string, cfg queue.Cfg) queue.Queue {
@@ -54,7 +54,7 @@ func dropQueue(t *testing.T, q queue.Queue) {
 	}
 }
 
-/////////QUEUE/////////
+// ///////QUEUE/////////
 
 func TestFifoQueue(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)

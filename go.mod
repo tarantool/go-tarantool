@@ -1,6 +1,6 @@
-module github.com/tarantool/go-tarantool/v2
+module github.com/tarantool/go-tarantool/v3
 
-go 1.20
+go 1.24
 
 require (
 	github.com/google/uuid v1.3.0

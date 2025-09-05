@@ -65,7 +65,7 @@ import (
 	"github.com/tarantool/go-iproto"
 	"github.com/vmihailenco/msgpack/v5"
 
-	"github.com/tarantool/go-tarantool/v2"
+	"github.com/tarantool/go-tarantool/v3"
 )
 
 // SetRequest helps to set session settings.
