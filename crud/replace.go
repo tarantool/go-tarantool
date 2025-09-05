@@ -5,7 +5,7 @@ import (
 
 	"github.com/vmihailenco/msgpack/v5"
 
-	"github.com/tarantool/go-tarantool/v2"
+	"github.com/tarantool/go-tarantool/v3"
 )
 
 // ReplaceOpts describes options for `crud.replace` method.
@@ -20,7 +20,7 @@ type ReplaceRequest struct {
 }
 
 type replaceArgs struct {
-	_msgpack struct{} `msgpack:",asArray"` //nolint: structcheck,unused
+	_msgpack struct{} `msgpack:",asArray"` // nolint: structcheck,unused
 	Space    string
 	Tuple    Tuple
 	Opts     ReplaceOpts
@@ -78,7 +78,7 @@ type ReplaceObjectRequest struct {
 }
 
 type replaceObjectArgs struct {
-	_msgpack struct{} `msgpack:",asArray"` //nolint: structcheck,unused
+	_msgpack struct{} `msgpack:",asArray"` // nolint: structcheck,unused
 	Space    string
 	Object   Object
 	Opts     ReplaceObjectOpts

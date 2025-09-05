@@ -5,7 +5,7 @@ import (
 
 	"github.com/vmihailenco/msgpack/v5"
 
-	"github.com/tarantool/go-tarantool/v2"
+	"github.com/tarantool/go-tarantool/v3"
 )
 
 // CountResult describes result for `crud.count` method.
@@ -73,7 +73,7 @@ type CountRequest struct {
 }
 
 type countArgs struct {
-	_msgpack   struct{} `msgpack:",asArray"` //nolint: structcheck,unused
+	_msgpack   struct{} `msgpack:",asArray"` // nolint: structcheck,unused
 	Space      string
 	Conditions []Condition
 	Opts       CountOpts

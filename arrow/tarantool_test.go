@@ -11,9 +11,9 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tarantool/go-iproto"
 
-	"github.com/tarantool/go-tarantool/v2"
-	"github.com/tarantool/go-tarantool/v2/arrow"
-	"github.com/tarantool/go-tarantool/v2/test_helpers"
+	"github.com/tarantool/go-tarantool/v3"
+	"github.com/tarantool/go-tarantool/v3/arrow"
+	"github.com/tarantool/go-tarantool/v3/test_helpers"
 )
 
 var isArrowSupported = false

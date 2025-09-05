@@ -5,7 +5,7 @@ import (
 
 	"github.com/vmihailenco/msgpack/v5"
 
-	"github.com/tarantool/go-tarantool/v2"
+	"github.com/tarantool/go-tarantool/v3"
 )
 
 // GetOpts describes options for `crud.get` method.
@@ -66,7 +66,7 @@ type GetRequest struct {
 }
 
 type getArgs struct {
-	_msgpack struct{} `msgpack:",asArray"` //nolint: structcheck,unused
+	_msgpack struct{} `msgpack:",asArray"` // nolint: structcheck,unused
 	Space    string
 	Key      Tuple
 	Opts     GetOpts

@@ -12,9 +12,9 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/vmihailenco/msgpack/v5"
 
-	. "github.com/tarantool/go-tarantool/v2"
-	. "github.com/tarantool/go-tarantool/v2/decimal"
-	"github.com/tarantool/go-tarantool/v2/test_helpers"
+	. "github.com/tarantool/go-tarantool/v3"
+	. "github.com/tarantool/go-tarantool/v3/decimal"
+	"github.com/tarantool/go-tarantool/v3/test_helpers"
 )
 
 var isDecimalSupported = false

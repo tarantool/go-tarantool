@@ -8,7 +8,7 @@ import (
 
 	"github.com/vmihailenco/msgpack/v5"
 
-	"github.com/tarantool/go-tarantool/v2"
+	"github.com/tarantool/go-tarantool/v3"
 )
 
 type Tuple2 struct {
@@ -19,7 +19,7 @@ type Tuple2 struct {
 
 // Same effect in a "magic" way, but slower.
 type Tuple3 struct {
-	_msgpack struct{} `msgpack:",asArray"` //nolint: structcheck,unused
+	_msgpack struct{} `msgpack:",asArray"` // nolint: structcheck,unused
 
 	Cid     uint
 	Orig    string

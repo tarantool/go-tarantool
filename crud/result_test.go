@@ -6,8 +6,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tarantool/go-tarantool/v2/crud"
 	"github.com/vmihailenco/msgpack/v5"
+
+	"github.com/tarantool/go-tarantool/v3/crud"
 )
 
 func TestResult_DecodeMsgpack(t *testing.T) {

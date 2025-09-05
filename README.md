@@ -36,10 +36,10 @@ faster than other packages according to public benchmarks.
 We assume that you have Tarantool version 1.10+ and a modern Linux or BSD
 operating system.
 
-You need a current version of `go`, version 1.20 or later (use `go version` to
+You need a current version of `go`, version 1.24 or later (use `go version` to
 check the version number). Do not use `gccgo-go`.
 
-**Note:** If your `go` version is older than 1.20 or if `go` is not installed,
+**Note:** If your `go` version is older than 1.24 or if `go` is not installed,
 download and run the latest tarball from [golang.org][golang-dl].
 
 The package `go-tarantool` is located in [tarantool/go-tarantool][go-tarantool]
@@ -98,10 +98,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tarantool/go-tarantool/v2"
-	_ "github.com/tarantool/go-tarantool/v2/datetime"
-	_ "github.com/tarantool/go-tarantool/v2/decimal"
-	_ "github.com/tarantool/go-tarantool/v2/uuid"
+	"github.com/tarantool/go-tarantool/v3"
+	_ "github.com/tarantool/go-tarantool/v3/datetime"
+	_ "github.com/tarantool/go-tarantool/v3/decimal"
+	_ "github.com/tarantool/go-tarantool/v3/uuid"
 )
 
 func main() {
@@ -184,10 +184,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tarantool/go-tarantool/v2"
-	_ "github.com/tarantool/go-tarantool/v2/datetime"
-	_ "github.com/tarantool/go-tarantool/v2/decimal"
-	_ "github.com/tarantool/go-tarantool/v2/uuid"
+	"github.com/tarantool/go-tarantool/v3"
+	_ "github.com/tarantool/go-tarantool/v3/datetime"
+	_ "github.com/tarantool/go-tarantool/v3/decimal"
+	_ "github.com/tarantool/go-tarantool/v3/uuid"
 	"github.com/tarantool/go-tlsdialer"
 )
 

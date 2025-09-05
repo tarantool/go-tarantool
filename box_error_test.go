@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/vmihailenco/msgpack/v5"
 
-	. "github.com/tarantool/go-tarantool/v2"
-	"github.com/tarantool/go-tarantool/v2/test_helpers"
+	. "github.com/tarantool/go-tarantool/v3"
+	"github.com/tarantool/go-tarantool/v3/test_helpers"
 )
 
 var samples = map[string]BoxError{

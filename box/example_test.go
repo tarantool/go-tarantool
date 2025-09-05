@@ -15,8 +15,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/tarantool/go-tarantool/v2"
-	"github.com/tarantool/go-tarantool/v2/box"
+	"github.com/tarantool/go-tarantool/v3"
+	"github.com/tarantool/go-tarantool/v3/box"
 )
 
 func ExampleBox_Info() {

@@ -10,9 +10,9 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tarantool/go-iproto"
 
-	"github.com/tarantool/go-tarantool/v2"
-	"github.com/tarantool/go-tarantool/v2/crud"
-	"github.com/tarantool/go-tarantool/v2/test_helpers"
+	"github.com/tarantool/go-tarantool/v3"
+	"github.com/tarantool/go-tarantool/v3/crud"
+	"github.com/tarantool/go-tarantool/v3/test_helpers"
 )
 
 var server = "127.0.0.1:3013"
@@ -182,7 +182,7 @@ func connect(t testing.TB) *tarantool.Connection {
 		}
 
 		ret := struct {
-			_msgpack struct{} `msgpack:",asArray"` //nolint: structcheck,unused
+			_msgpack struct{} `msgpack:",asArray"` // nolint: structcheck,unused
 			Result   bool
 		}{}
 		err = conn.Do(tarantool.NewCall17Request("is_ready")).GetTyped(&ret)

@@ -7,8 +7,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tarantool/go-tarantool/v2/box"
-	"github.com/tarantool/go-tarantool/v2/test_helpers"
+
+	"github.com/tarantool/go-tarantool/v3/box"
+	"github.com/tarantool/go-tarantool/v3/test_helpers"
 )
 
 func TestNew(t *testing.T) {
