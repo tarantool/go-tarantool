@@ -8,34 +8,36 @@ on:
   workflow_dispatch:
 
 jobs:
-  run-tests-ce:
-    # We want to run on external PRs, but not on our own internal
-    # PRs as they'll be run by the push to the branch.
-    #
-    # The main trick is described here:
-    # https://github.com/Dart-Code/Dart-Code/pull/2375
-    #
-    # Also we want to run it always for manually triggered workflows.
+  run-tests-tarantool-1-10:
     if: (github.event_name == 'push') ||
       (github.event_name == 'pull_request' &&
         github.event.pull_request.head.repo.full_name != github.repository) ||
       (github.event_name == 'workflow_dispatch')
-
-    # We could replace it with ubuntu-latest after fixing the bug:
-    # https://github.com/tarantool/setup-tarantool/issues/37
-    runs-on: ubuntu-22.04
-
     strategy:
       fail-fast: false
       matrix:
-        golang:
-          - '1.20'
-          - 'stable'
-        tarantool:
-          - '1.10'
-          - '2.8'
-          - '2.10'
-          - 'master'
+        golang: ['1.20', 'stable']
+        tarantool: ['1.10']
+        coveralls: [false]
+        fuzzing: [false]
+    uses: ./.github/workflows/reusable-run.yml
+    with:
+      os: ubuntu-22.04
+      go-version: ${{ matrix.golang }}
+      tarantool-version: ${{ matrix.tarantool }}
+      coveralls: ${{ matrix.coveralls }}
+      fuzzing: ${{ matrix.fuzzing }}
+
+  run-tests:
+    if: (github.event_name == 'push') ||
+      (github.event_name == 'pull_request' &&
+        github.event.pull_request.head.repo.full_name != github.repository) ||
+      (github.event_name == 'workflow_dispatch')
+    strategy:
+      fail-fast: false
+      matrix:
+        golang: ['1.20', 'stable']
+        tarantool: ['2.11', '3.4', 'master']
         coveralls: [false]
         fuzzing: [false]
         include:
@@ -46,84 +48,13 @@ jobs:
             fuzzing: true
             golang: '1.20'
             coveralls: false
-
-    steps:
-      - name: Clone the connector
-        uses: actions/checkout@v3
-
-      - name: Setup tt
-        run: |
-          curl -L https://tarantool.io/release/2/installer.sh | sudo bash
-          sudo apt install -y tt
-
-      - name: Setup tt environment
-        run: tt init
-
-      # https://github.com/tarantool/checks/issues/64
-      - name: Install specific CMake version
-        run: pip3 install cmake==3.15.3
-
-      - name: Setup Tarantool ${{ matrix.tarantool }}
-        if: matrix.tarantool != 'master'
-        uses: tarantool/setup-tarantool@v2
-        with:
-          tarantool-version: ${{ matrix.tarantool }}
-
-      - name: Get Tarantool master commit
-        if: matrix.tarantool == 'master'
-        run: |
-          commit_hash=$(git ls-remote https://github.com/tarantool/tarantool.git --branch master | head -c 8)
-          echo "LATEST_COMMIT=${commit_hash}" >> $GITHUB_ENV
-        shell: bash
-
-      - name: Cache Tarantool master
-        if: matrix.tarantool == 'master'
-        id: cache-latest
-        uses: actions/cache@v3
-        with:
-          path: |
-            ${{ github.workspace }}/bin
-            ${{ github.workspace }}/include
-          key: cache-latest-${{ env.LATEST_COMMIT }}
-
-      - name: Setup Tarantool master
-        if: matrix.tarantool == 'master' && steps.cache-latest.outputs.cache-hit != 'true'
-        run: |
-          sudo pip3 install cmake==3.15.3
-          sudo tt install tarantool master
-
-      - name: Add Tarantool master to PATH
-        if: matrix.tarantool == 'master'
-        run: echo "${GITHUB_WORKSPACE}/bin" >> $GITHUB_PATH
-
-      - name: Setup golang for the connector and tests
-        uses: actions/setup-go@v3
-        with:
-          go-version: ${{ matrix.golang }}
-
-      - name: Install test dependencies
-        run: make deps
-
-      - name: Run regression tests
-        run: make test
-
-      - name: Run race tests
-        run: make testrace
-
-      - name: Run fuzzing tests
-        if: ${{ matrix.fuzzing }}
-        run: make fuzzing TAGS="go_tarantool_decimal_fuzzing"
-
-      - name: Run tests, collect code coverage data and send to Coveralls
-        if: ${{ matrix.coveralls }}
-        env:
-          COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          make coveralls
-
-      - name: Check workability of benchmark tests
-        if: matrix.golang == 'stable'
-        run: make bench-deps bench DURATION=1x COUNT=1
+    uses: ./.github/workflows/reusable-run.yml
+    with:
+      os: ubuntu-24.04
+      go-version: ${{ matrix.golang }}
+      tarantool-version: ${{ matrix.tarantool }}
+      coveralls: ${{ matrix.coveralls }}
+      fuzzing: ${{ matrix.fuzzing }}
 
   testing_mac_os:
     # We want to run on external PRs, but not on our own internal
@@ -165,12 +96,12 @@ jobs:
     runs-on: ${{ matrix.runs-on }}
     steps:
       - name: Clone the connector
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
         with:
           path: ${{ env.SRCDIR }}
 
       - name: Restore cache of tarantool ${{ env.T_VERSION }}
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         id: cache
         with:
           path: ${{ env.T_TARDIR }}
@@ -186,7 +117,7 @@ jobs:
         if: matrix.tarantool != 'brew' && steps.cache.outputs.cache-hit != 'true'
 
       - name: Clone tarantool ${{ env.T_VERSION }}
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
         with:
           repository: tarantool/tarantool
           ref: ${{ env.T_VERSION }}
@@ -257,7 +188,7 @@ jobs:
         if: matrix.tarantool != 'brew' && matrix.tarantool != 'master'
 
       - name: Setup golang for the connector and tests
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ matrix.golang }}
 
