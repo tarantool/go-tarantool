@@ -12,6 +12,8 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Changed
 
+* Required Go version is `1.24` now.
+
 ### Fixed
 
 ## [v2.4.0] - 2025-07-11

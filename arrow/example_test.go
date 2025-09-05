@@ -15,8 +15,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/tarantool/go-tarantool/v2"
-	"github.com/tarantool/go-tarantool/v2/arrow"
+	"github.com/tarantool/go-tarantool/v3"
+	"github.com/tarantool/go-tarantool/v3/arrow"
 )
 
 var arrowBinData, _ = hex.DecodeString("ffffffff70000000040000009effffff0400010004000000" +

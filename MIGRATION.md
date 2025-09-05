@@ -1,8 +1,18 @@
 # Migration guide
 
+## Migration from v2.x.x to v3.x.x
+
+* [Major changes](#major-changes-v3)
+
+TODO
+
+### <a id="major-changes-v3">Major changes</a>
+
+* Required Go version is `1.24` now.
+
 ## Migration from v1.x.x to v2.x.x
 
-* [Major changes](#major-changes)
+* [Major changes](#major-changes-v2)
 * [Main package](#main-package)
   * [Go version](#go-version)
   * [msgpack/v5](#msgpackv5)
@@ -25,7 +35,7 @@
 * [crud package](#crud-package)
 * [test_helpers package](#test_helpers-package)
 
-### Major changes
+### <a id="major-changes-v2">Major changes</a>
 
 * The `go_tarantool_call_17` build tag is no longer needed, since by default
   the `CallRequest` is `Call17Request`.
@@ -50,9 +60,9 @@ import (
 	"fmt"
 
 	"github.com/tarantool/go-tarantool"
-	_ "github.com/tarantool/go-tarantool/v2/datetime"
-	_ "github.com/tarantool/go-tarantool/v2/decimal"
-	_ "github.com/tarantool/go-tarantool/v2/uuid"
+	_ "github.com/tarantool/go-tarantool/v3/datetime"
+	_ "github.com/tarantool/go-tarantool/v3/decimal"
+	_ "github.com/tarantool/go-tarantool/v3/uuid"
 )
 
 func main() {
@@ -82,10 +92,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tarantool/go-tarantool/v2"
-	_ "github.com/tarantool/go-tarantool/v2/datetime"
-	_ "github.com/tarantool/go-tarantool/v2/decimal"
-	_ "github.com/tarantool/go-tarantool/v2/uuid"
+	"github.com/tarantool/go-tarantool/v3"
+	_ "github.com/tarantool/go-tarantool/v3/datetime"
+	_ "github.com/tarantool/go-tarantool/v3/decimal"
+	_ "github.com/tarantool/go-tarantool/v3/uuid"
 )
 
 func main() {

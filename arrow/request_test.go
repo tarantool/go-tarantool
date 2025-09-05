@@ -8,9 +8,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/tarantool/go-iproto"
-	"github.com/tarantool/go-tarantool/v2"
-	"github.com/tarantool/go-tarantool/v2/arrow"
 	"github.com/vmihailenco/msgpack/v5"
+
+	"github.com/tarantool/go-tarantool/v3"
+	"github.com/tarantool/go-tarantool/v3/arrow"
 )
 
 const validSpace uint32 = 1 // Any valid value != default.

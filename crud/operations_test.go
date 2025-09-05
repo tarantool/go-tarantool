@@ -6,7 +6,7 @@ import (
 
 	"github.com/vmihailenco/msgpack/v5"
 
-	"github.com/tarantool/go-tarantool/v2/crud"
+	"github.com/tarantool/go-tarantool/v3/crud"
 )
 
 func TestOperation_EncodeMsgpack(t *testing.T) {

@@ -13,8 +13,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/tarantool/go-tarantool/v2"
-	. "github.com/tarantool/go-tarantool/v2/decimal"
+	"github.com/tarantool/go-tarantool/v3"
+	. "github.com/tarantool/go-tarantool/v3/decimal"
 )
 
 // To enable support of decimal in msgpack with
