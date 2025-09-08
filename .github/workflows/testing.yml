@@ -41,12 +41,13 @@ jobs:
         coveralls: [false]
         fuzzing: [false]
         include:
-          - tarantool: 'master'
+          - golang: '1.20'
+            tarantool: 'master'
             coveralls: true
-            golang: '1.20'
-          - tarantool: 'master'
+            fuzzing: false
+          - golang: '1.20'
+            tarantool: 'master'
             fuzzing: true
-            golang: '1.20'
             coveralls: false
     uses: ./.github/workflows/reusable-run.yml
     with:
