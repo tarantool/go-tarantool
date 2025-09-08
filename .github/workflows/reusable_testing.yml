@@ -32,7 +32,7 @@ jobs:
         run: |
           TNT_VERSION=$(tarantool --version | grep -e '^Tarantool')
           echo "TNT_VERSION=$TNT_VERSION" >> $GITHUB_ENV
-п
+
       - name: Setup golang for connector and tests
         uses: actions/setup-go@v5
         with:
