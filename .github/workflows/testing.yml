@@ -75,8 +75,9 @@ jobs:
           - '1.20'
           - 'stable'
         runs-on:
-          - macos-13
           - macos-14
+          - macos-15
+          - macos-26
         tarantool:
           - brew
           - 1.10.15
