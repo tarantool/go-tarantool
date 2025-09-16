@@ -105,6 +105,14 @@ jobs:
       - name: cmake version
         run: cmake --version
 
+      - name: Setup cmake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.x'
+
+      - name: cmake version after
+        run: cmake --version
+
       - name: Restore cache of tarantool ${{ env.T_VERSION }}
         uses: actions/cache@v4
         id: cache
