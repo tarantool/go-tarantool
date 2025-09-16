@@ -115,7 +115,7 @@ jobs:
         if: matrix.tarantool == 'brew'
 
       - name: Install tarantool build dependencies
-        run: brew install autoconf automake libtool openssl@1.1
+        run: brew install autoconf automake libtool openssl
         if: matrix.tarantool != 'brew' && steps.cache.outputs.cache-hit != 'true'
 
       - name: Clone tarantool ${{ env.T_VERSION }}
