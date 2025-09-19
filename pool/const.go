@@ -1,4 +1,4 @@
-//go:generate stringer -type Role -linecomment
+//go:generate go tool stringer -type Role -linecomment
 package pool
 
 /*
