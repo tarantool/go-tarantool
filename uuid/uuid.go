@@ -1,4 +1,4 @@
-// Package with support of Tarantool's UUID data type.
+// Package uuid provides support for Tarantool's UUID data type.
 //
 // UUID data type supported in Tarantool since 2.4.1.
 //
@@ -24,8 +24,8 @@ import (
 	"github.com/vmihailenco/msgpack/v5"
 )
 
-// UUID external type.
-const uuid_extID = 2
+// ExtID represents the UUID MessagePack extension type identifier.
+const ExtID = 2
 
 func encodeUUID(e *msgpack.Encoder, v reflect.Value) error {
 	id := v.Interface().(uuid.UUID)
@@ -64,15 +64,19 @@ func decodeUUID(d *msgpack.Decoder, v reflect.Value) error {
 	return nil
 }
 
+// EncodeExt encodes a UUID into a MessagePack extension.
+func EncodeExt(_ *msgpack.Encoder, v reflect.Value) ([]byte, error) {
+	u := v.Interface().(uuid.UUID)
+	return u.MarshalBinary()
+}
+
+// DecodeExt decodes a MessagePack extension into a UUID.
+func DecodeExt(d *msgpack.Decoder, v reflect.Value, _ int) error {
+	return decodeUUID(d, v)
+}
+
 func init() {
 	msgpack.Register(reflect.TypeOf((*uuid.UUID)(nil)).Elem(), encodeUUID, decodeUUID)
-	msgpack.RegisterExtEncoder(uuid_extID, uuid.UUID{},
-		func(e *msgpack.Encoder, v reflect.Value) ([]byte, error) {
-			uuid := v.Interface().(uuid.UUID)
-			return uuid.MarshalBinary()
-		})
-	msgpack.RegisterExtDecoder(uuid_extID, uuid.UUID{},
-		func(d *msgpack.Decoder, v reflect.Value, extLen int) error {
-			return decodeUUID(d, v)
-		})
+	msgpack.RegisterExtEncoder(ExtID, uuid.UUID{}, EncodeExt)
+	msgpack.RegisterExtDecoder(ExtID, uuid.UUID{}, DecodeExt)
 }

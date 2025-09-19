@@ -8,7 +8,8 @@ import (
 	"github.com/vmihailenco/msgpack/v5"
 )
 
-const interval_extId = 6
+// IntervalExtID represents the Interval MessagePack extension type identifier.
+const IntervalExtID = 6
 
 const (
 	fieldYear   = 0
@@ -74,7 +75,7 @@ func encodeIntervalValue(e *msgpack.Encoder, typ uint64, value int64) (err error
 	if err == nil {
 		if value > 0 {
 			err = e.EncodeUint(uint64(value))
-		} else if value < 0 {
+		} else {
 			err = e.EncodeInt(value)
 		}
 	}
@@ -181,20 +182,24 @@ func decodeInterval(d *msgpack.Decoder, v reflect.Value) (err error) {
 	return nil
 }
 
+// EncodeIntervalExt encodes an Interval into a MessagePack extension.
+func EncodeIntervalExt(_ *msgpack.Encoder, v reflect.Value) (ret []byte, err error) {
+	var b bytes.Buffer
+
+	enc := msgpack.NewEncoder(&b)
+	if err = encodeInterval(enc, v); err == nil {
+		ret = b.Bytes()
+	}
+
+	return
+}
+
+// DecodeIntervalExt decodes a MessagePack extension into an Interval.
+func DecodeIntervalExt(d *msgpack.Decoder, v reflect.Value, _ int) error {
+	return decodeInterval(d, v)
+}
+
 func init() {
-	msgpack.RegisterExtEncoder(interval_extId, Interval{},
-		func(e *msgpack.Encoder, v reflect.Value) (ret []byte, err error) {
-			var b bytes.Buffer
-
-			enc := msgpack.NewEncoder(&b)
-			if err = encodeInterval(enc, v); err == nil {
-				ret = b.Bytes()
-			}
-
-			return
-		})
-	msgpack.RegisterExtDecoder(interval_extId, Interval{},
-		func(d *msgpack.Decoder, v reflect.Value, extLen int) error {
-			return decodeInterval(d, v)
-		})
+	msgpack.RegisterExtEncoder(IntervalExtID, Interval{}, EncodeIntervalExt)
+	msgpack.RegisterExtDecoder(IntervalExtID, Interval{}, DecodeIntervalExt)
 }
