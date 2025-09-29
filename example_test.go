@@ -16,7 +16,7 @@ import (
 type Tuple struct {
 	// Instruct msgpack to pack this struct as array, so no custom packer
 	// is needed.
-	_msgpack struct{} `msgpack:",asArray"` //nolint: structcheck,unused
+	_msgpack struct{} `msgpack:",asArray"` // nolint: structcheck,unused
 	Id       uint
 	Msg      string
 	Name     string
@@ -167,7 +167,7 @@ func ExamplePingRequest_Context() {
 	fmt.Println("Ping Error", regexp.MustCompile("[0-9]+").ReplaceAllString(err.Error(), "N"))
 	// Output:
 	// Ping Resp data []
-	// Ping Error context is done (request ID N)
+	// Ping Error context is done (request ID N): context deadline exceeded
 }
 
 func ExampleSelectRequest() {

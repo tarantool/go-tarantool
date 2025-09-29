@@ -984,7 +984,10 @@ func (conn *Connection) newFuture(req Request) (fut *Future) {
 	if ctx != nil {
 		select {
 		case <-ctx.Done():
-			fut.SetError(fmt.Errorf("context is done (request ID %d)", fut.requestId))
+			fut.SetError(fmt.Errorf(
+				"context is done (request ID %d): %w",
+				fut.requestId, context.Cause(ctx),
+			))
 			shard.rmut.Unlock()
 			return
 		default:
@@ -1026,7 +1029,10 @@ func (conn *Connection) contextWatchdog(fut *Future, ctx context.Context) {
 	case <-fut.done:
 		return
 	default:
-		conn.cancelFuture(fut, fmt.Errorf("context is done (request ID %d)", fut.requestId))
+		conn.cancelFuture(fut, fmt.Errorf(
+			"context is done (request ID %d): %w",
+			fut.requestId, context.Cause(ctx),
+		))
 	}
 }
 
