@@ -14,6 +14,11 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Fixed
 
+## [v2.4.1] - 2025-10-16
+
+This maintenance release marks the end of active development on the `v2`
+branch.
+
 ## [v2.4.0] - 2025-07-11
 
 This release focuses on adding schema/user/session operations, synchronous transaction
