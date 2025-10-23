@@ -13,9 +13,9 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
-	"runtime"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -97,611 +97,319 @@ var opts = Opts{
 
 const N = 500
 
-func BenchmarkClientSerial(b *testing.B) {
+func BenchmarkSync_naive(b *testing.B) {
 	var err error
 
 	conn := test_helpers.ConnectWithValidation(b, dialer, opts)
 	defer conn.Close()
 
-	_, err = conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
+	_, err = conn.Do(
+		NewReplaceRequest(spaceNo).
+			Tuple([]interface{}{uint(1111), "hello", "world"}),
+	).Get()
 	if err != nil {
-		b.Errorf("No connection available")
+		b.Fatalf("failed to initialize database: %s", err)
 	}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_, err = conn.Select(spaceNo, indexNo, 0, 1, IterEq, []interface{}{uint(1111)})
-		if err != nil {
-			b.Errorf("No connection available")
-		}
-	}
-}
 
-func BenchmarkClientSerialRequestObject(b *testing.B) {
-	var err error
-
-	conn := test_helpers.ConnectWithValidation(b, dialer, opts)
-	defer conn.Close()
-
-	_, err = conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
-	if err != nil {
-		b.Error(err)
-	}
-	req := NewSelectRequest(spaceNo).
-		Index(indexNo).
-		Offset(0).
-		Limit(1).
-		Iterator(IterEq).
-		Key([]interface{}{uint(1111)})
-
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
-		_, err := conn.Do(req).Get()
-		if err != nil {
-			b.Error(err)
-		}
-	}
-}
-
-func BenchmarkClientSerialRequestObjectWithContext(b *testing.B) {
-	var err error
-
-	conn := test_helpers.ConnectWithValidation(b, dialer, opts)
-	defer conn.Close()
-
-	_, err = conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
-	if err != nil {
-		b.Error(err)
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		req := NewSelectRequest(spaceNo).
 			Index(indexNo).
-			Limit(1).
 			Iterator(IterEq).
-			Key([]interface{}{uint(1111)}).
-			Context(ctx)
-		_, err := conn.Do(req).Get()
+			Key([]interface{}{uint(1111)})
+		data, err := conn.Do(req).Get()
 		if err != nil {
-			b.Error(err)
+			b.Errorf("request error: %s", err)
+		}
+
+		tuple := data[0].([]any)
+		if tuple[0].(uint16) != uint16(1111) {
+			b.Errorf("invalid result")
 		}
 	}
 }
 
-func BenchmarkClientSerialTyped(b *testing.B) {
+func BenchmarkSync_naive_with_single_request(b *testing.B) {
 	var err error
 
 	conn := test_helpers.ConnectWithValidation(b, dialer, opts)
 	defer conn.Close()
 
-	_, err = conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
+	_, err = conn.Do(
+		NewReplaceRequest(spaceNo).
+			Tuple([]interface{}{uint(1111), "hello", "world"}),
+	).Get()
 	if err != nil {
-		b.Fatal("No connection available")
-	}
-
-	var r []Tuple
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		err = conn.SelectTyped(spaceNo, indexNo, 0, 1, IterEq, IntKey{1111}, &r)
-		if err != nil {
-			b.Errorf("No connection available")
-		}
-	}
-}
-
-func BenchmarkClientSerialSQL(b *testing.B) {
-	test_helpers.SkipIfSQLUnsupported(b)
-
-	conn := test_helpers.ConnectWithValidation(b, dialer, opts)
-	defer conn.Close()
-
-	_, err := conn.Replace("SQL_TEST", []interface{}{uint(1111), "hello", "world"})
-	if err != nil {
-		b.Errorf("Failed to replace: %s", err)
-	}
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_, err := conn.Execute("SELECT NAME0,NAME1,NAME2 FROM SQL_TEST WHERE NAME0=?",
-			[]interface{}{uint(1111)})
-		if err != nil {
-			b.Errorf("Select failed: %s", err.Error())
-			break
-		}
-	}
-}
-
-func BenchmarkClientSerialSQLPrepared(b *testing.B) {
-	test_helpers.SkipIfSQLUnsupported(b)
-
-	conn := test_helpers.ConnectWithValidation(b, dialer, opts)
-	defer conn.Close()
-
-	_, err := conn.Replace("SQL_TEST", []interface{}{uint(1111), "hello", "world"})
-	if err != nil {
-		b.Errorf("Failed to replace: %s", err)
-	}
-
-	stmt, err := conn.NewPrepared("SELECT NAME0,NAME1,NAME2 FROM SQL_TEST WHERE NAME0=?")
-	if err != nil {
-		b.Fatalf("failed to prepare a SQL statement")
-	}
-	executeReq := NewExecutePreparedRequest(stmt)
-	unprepareReq := NewUnprepareRequest(stmt)
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_, err := conn.Do(executeReq.Args([]interface{}{uint(1111)})).Get()
-		if err != nil {
-			b.Errorf("Select failed: %s", err.Error())
-			break
-		}
-	}
-	_, err = conn.Do(unprepareReq).Get()
-	if err != nil {
-		b.Fatalf("failed to unprepare a SQL statement")
-	}
-}
-
-func BenchmarkClientFuture(b *testing.B) {
-	var err error
-
-	conn := test_helpers.ConnectWithValidation(b, dialer, opts)
-	defer conn.Close()
-
-	_, err = conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
-	if err != nil {
-		b.Error(err)
-	}
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i += N {
-		var fs [N]*Future
-		for j := 0; j < N; j++ {
-			fs[j] = conn.SelectAsync(spaceNo, indexNo, 0, 1, IterEq, []interface{}{uint(1111)})
-		}
-		for j := 0; j < N; j++ {
-			_, err = fs[j].Get()
-			if err != nil {
-				b.Error(err)
-			}
-		}
-
-	}
-}
-
-func BenchmarkClientFutureTyped(b *testing.B) {
-	var err error
-
-	conn := test_helpers.ConnectWithValidation(b, dialer, opts)
-	defer conn.Close()
-
-	_, err = conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
-	if err != nil {
-		b.Errorf("No connection available")
-	}
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i += N {
-		var fs [N]*Future
-		for j := 0; j < N; j++ {
-			fs[j] = conn.SelectAsync(spaceNo, indexNo, 0, 1, IterEq, IntKey{1111})
-		}
-		var r []Tuple
-		for j := 0; j < N; j++ {
-			err = fs[j].GetTyped(&r)
-			if err != nil {
-				b.Error(err)
-			}
-			if len(r) != 1 || r[0].Id != 1111 {
-				b.Errorf("Doesn't match %v", r)
-			}
-		}
-	}
-}
-
-func BenchmarkClientFutureParallel(b *testing.B) {
-	var err error
-
-	conn := test_helpers.ConnectWithValidation(b, dialer, opts)
-	defer conn.Close()
-
-	_, err = conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
-	if err != nil {
-		b.Errorf("No connection available")
-	}
-
-	b.ResetTimer()
-	b.RunParallel(func(pb *testing.PB) {
-		exit := false
-		for !exit {
-			var fs [N]*Future
-			var j int
-			for j = 0; j < N && pb.Next(); j++ {
-				fs[j] = conn.SelectAsync(spaceNo, indexNo, 0, 1, IterEq, []interface{}{uint(1111)})
-			}
-			exit = j < N
-			for j > 0 {
-				j--
-				_, err := fs[j].Get()
-				if err != nil {
-					b.Error(err)
-					break
-				}
-			}
-		}
-	})
-}
-
-func BenchmarkClientFutureParallelTyped(b *testing.B) {
-	var err error
-
-	conn := test_helpers.ConnectWithValidation(b, dialer, opts)
-	defer conn.Close()
-
-	_, err = conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
-	if err != nil {
-		b.Fatal("No connection available")
-	}
-
-	b.ResetTimer()
-	b.RunParallel(func(pb *testing.PB) {
-		exit := false
-		for !exit {
-			var fs [N]*Future
-			var j int
-			for j = 0; j < N && pb.Next(); j++ {
-				fs[j] = conn.SelectAsync(spaceNo, indexNo, 0, 1, IterEq, IntKey{1111})
-			}
-			exit = j < N
-			var r []Tuple
-			for j > 0 {
-				j--
-				err := fs[j].GetTyped(&r)
-				if err != nil {
-					b.Error(err)
-					break
-				}
-				if len(r) != 1 || r[0].Id != 1111 {
-					b.Errorf("Doesn't match %v", r)
-					break
-				}
-			}
-		}
-	})
-}
-
-func BenchmarkClientParallel(b *testing.B) {
-	conn := test_helpers.ConnectWithValidation(b, dialer, opts)
-	defer conn.Close()
-
-	_, err := conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
-	if err != nil {
-		b.Fatal("No connection available")
-	}
-
-	b.ResetTimer()
-	b.RunParallel(func(pb *testing.PB) {
-		for pb.Next() {
-			_, err := conn.Select(spaceNo, indexNo, 0, 1, IterEq, []interface{}{uint(1111)})
-			if err != nil {
-				b.Errorf("No connection available")
-				break
-			}
-		}
-	})
-}
-
-func benchmarkClientParallelRequestObject(multiplier int, b *testing.B) {
-	conn := test_helpers.ConnectWithValidation(b, dialer, opts)
-	defer conn.Close()
-
-	_, err := conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
-	if err != nil {
-		b.Fatal("No connection available")
+		b.Fatalf("failed to initialize database: %s", err)
 	}
 
 	req := NewSelectRequest(spaceNo).
 		Index(indexNo).
-		Limit(1).
 		Iterator(IterEq).
-		Key([]interface{}{uint(1111)})
-
-	b.SetParallelism(multiplier)
-	b.ResetTimer()
-	b.RunParallel(func(pb *testing.PB) {
-		for pb.Next() {
-			_ = conn.Do(req)
-			_, err := conn.Do(req).Get()
-			if err != nil {
-				b.Error(err)
-			}
-		}
-	})
-}
-
-func benchmarkClientParallelRequestObjectWithContext(multiplier int, b *testing.B) {
-	conn := test_helpers.ConnectWithValidation(b, dialer, opts)
-	defer conn.Close()
-
-	_, err := conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
-	if err != nil {
-		b.Fatal("No connection available")
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	req := NewSelectRequest(spaceNo).
-		Index(indexNo).
-		Limit(1).
-		Iterator(IterEq).
-		Key([]interface{}{uint(1111)}).
-		Context(ctx)
-
-	b.SetParallelism(multiplier)
-	b.ResetTimer()
-	b.RunParallel(func(pb *testing.PB) {
-		for pb.Next() {
-			_ = conn.Do(req)
-			_, err := conn.Do(req).Get()
-			if err != nil {
-				b.Error(err)
-			}
-		}
-	})
-}
-
-func benchmarkClientParallelRequestObjectMixed(multiplier int, b *testing.B) {
-	conn := test_helpers.ConnectWithValidation(b, dialer, opts)
-	defer conn.Close()
-
-	_, err := conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
-	if err != nil {
-		b.Fatal("No connection available")
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	req := NewSelectRequest(spaceNo).
-		Index(indexNo).
-		Limit(1).
-		Iterator(IterEq).
-		Key([]interface{}{uint(1111)})
-
-	reqWithCtx := NewSelectRequest(spaceNo).
-		Index(indexNo).
-		Limit(1).
-		Iterator(IterEq).
-		Key([]interface{}{uint(1111)}).
-		Context(ctx)
-
-	b.SetParallelism(multiplier)
-	b.ResetTimer()
-	b.RunParallel(func(pb *testing.PB) {
-		for pb.Next() {
-			_ = conn.Do(req)
-			_, err := conn.Do(reqWithCtx).Get()
-			if err != nil {
-				b.Error(err)
-			}
-		}
-	})
-}
-
-func BenchmarkClientParallelRequestObject(b *testing.B) {
-	multipliers := []int{10, 50, 500, 1000}
-	conn := test_helpers.ConnectWithValidation(b, dialer, opts)
-	defer conn.Close()
-
-	_, err := conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
-	if err != nil {
-		b.Fatal("No connection available")
-	}
-
-	for _, m := range multipliers {
-		goroutinesNum := runtime.GOMAXPROCS(0) * m
-
-		b.Run(fmt.Sprintf("Plain        %d goroutines", goroutinesNum), func(b *testing.B) {
-			benchmarkClientParallelRequestObject(m, b)
-		})
-
-		b.Run(fmt.Sprintf("With Context %d goroutines", goroutinesNum), func(b *testing.B) {
-			benchmarkClientParallelRequestObjectWithContext(m, b)
-		})
-
-		b.Run(fmt.Sprintf("Mixed        %d goroutines", goroutinesNum), func(b *testing.B) {
-			benchmarkClientParallelRequestObjectMixed(m, b)
-		})
-	}
-}
-
-func BenchmarkClientParallelMassive(b *testing.B) {
-	conn := test_helpers.ConnectWithValidation(b, dialer, opts)
-	defer conn.Close()
-
-	_, err := conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
-	if err != nil {
-		b.Fatal("No connection available")
-	}
-
-	var wg sync.WaitGroup
-	limit := make(chan struct{}, 128*1024)
-	for i := 0; i < 512; i++ {
-		go func() {
-			var r []Tuple
-			for {
-				if _, ok := <-limit; !ok {
-					break
-				}
-				err = conn.SelectTyped(spaceNo, indexNo, 0, 1, IterEq, IntKey{1111}, &r)
-				wg.Done()
-				if err != nil {
-					b.Errorf("No connection available")
-				}
-			}
-		}()
-	}
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		wg.Add(1)
-		limit <- struct{}{}
-	}
-	wg.Wait()
-	close(limit)
-}
-
-func BenchmarkClientParallelMassiveUntyped(b *testing.B) {
-	conn := test_helpers.ConnectWithValidation(b, dialer, opts)
-	defer conn.Close()
-
-	_, err := conn.Replace(spaceNo, []interface{}{uint(1111), "hello", "world"})
-	if err != nil {
-		b.Errorf("No connection available")
-	}
-
-	var wg sync.WaitGroup
-	limit := make(chan struct{}, 128*1024)
-	for i := 0; i < 512; i++ {
-		go func() {
-			for {
-				if _, ok := <-limit; !ok {
-					break
-				}
-				_, err = conn.Select(spaceNo, indexNo, 0, 1, IterEq, []interface{}{uint(1111)})
-				wg.Done()
-				if err != nil {
-					b.Errorf("No connection available")
-				}
-			}
-		}()
-	}
+		Key(UintKey{I: 1111})
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		wg.Add(1)
-		limit <- struct{}{}
-	}
-	wg.Wait()
-	close(limit)
-}
 
-func BenchmarkClientReplaceParallel(b *testing.B) {
-	conn := test_helpers.ConnectWithValidation(b, dialer, opts)
-	defer conn.Close()
-
-	b.ResetTimer()
-	b.RunParallel(func(pb *testing.PB) {
-		for pb.Next() {
-			_, err := conn.Replace("test_perf", []interface{}{uint(1), "hello", []interface{}{}})
-			if err != nil {
-				b.Error(err)
-			}
-		}
-	})
-}
-
-func BenchmarkClientLargeSelectParallel(b *testing.B) {
-	conn := test_helpers.ConnectWithValidation(b, dialer, opts)
-	defer conn.Close()
-
-	offset, limit := uint32(0), uint32(1000)
-	b.ResetTimer()
-	b.RunParallel(func(pb *testing.PB) {
-		for pb.Next() {
-			_, err := conn.Select("test_perf", "secondary", offset, limit, IterEq,
-				[]interface{}{"test_name"})
-			if err != nil {
-				b.Fatal(err)
-			}
-		}
-	})
-}
-
-func BenchmarkClientParallelSQL(b *testing.B) {
-	test_helpers.SkipIfSQLUnsupported(b)
-
-	conn := test_helpers.ConnectWithValidation(b, dialer, opts)
-	defer conn.Close()
-
-	_, err := conn.Replace("SQL_TEST", []interface{}{uint(1111), "hello", "world"})
-	if err != nil {
-		b.Errorf("No connection available")
-	}
-
-	b.ResetTimer()
-	b.RunParallel(func(pb *testing.PB) {
-		for pb.Next() {
-			_, err := conn.Execute("SELECT NAME0,NAME1,NAME2 FROM SQL_TEST WHERE NAME0=?",
-				[]interface{}{uint(1111)})
-			if err != nil {
-				b.Errorf("Select failed: %s", err.Error())
-				break
-			}
-		}
-	})
-}
-
-func BenchmarkClientParallelSQLPrepared(b *testing.B) {
-	test_helpers.SkipIfSQLUnsupported(b)
-
-	conn := test_helpers.ConnectWithValidation(b, dialer, opts)
-	defer conn.Close()
-
-	_, err := conn.Replace("SQL_TEST", []interface{}{uint(1111), "hello", "world"})
-	if err != nil {
-		b.Errorf("No connection available")
-	}
-
-	stmt, err := conn.NewPrepared("SELECT NAME0,NAME1,NAME2 FROM SQL_TEST WHERE NAME0=?")
-	if err != nil {
-		b.Fatalf("failed to prepare a SQL statement")
-	}
-	executeReq := NewExecutePreparedRequest(stmt)
-	unprepareReq := NewUnprepareRequest(stmt)
-
-	b.ResetTimer()
-	b.RunParallel(func(pb *testing.PB) {
-		for pb.Next() {
-			_, err := conn.Do(executeReq.Args([]interface{}{uint(1111)})).Get()
-			if err != nil {
-				b.Errorf("Select failed: %s", err.Error())
-				break
-			}
-		}
-	})
-	_, err = conn.Do(unprepareReq).Get()
-	if err != nil {
-		b.Fatalf("failed to unprepare a SQL statement")
-	}
-}
-
-func BenchmarkSQLSerial(b *testing.B) {
-	test_helpers.SkipIfSQLUnsupported(b)
-
-	conn := test_helpers.ConnectWithValidation(b, dialer, opts)
-	defer conn.Close()
-
-	_, err := conn.Replace("SQL_TEST", []interface{}{uint(1111), "hello", "world"})
-	if err != nil {
-		b.Errorf("Failed to replace: %s", err)
-	}
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_, err := conn.Execute("SELECT NAME0,NAME1,NAME2 FROM SQL_TEST WHERE NAME0=?",
-			[]interface{}{uint(1111)})
+	for b.Loop() {
+		data, err := conn.Do(req).Get()
 		if err != nil {
-			b.Errorf("Select failed: %s", err.Error())
-			break
+			b.Errorf("request error: %s", err)
+		}
+
+		tuple := data[0].([]any)
+		if tuple[0].(uint16) != uint16(1111) {
+			b.Errorf("invalid result")
 		}
 	}
+}
+
+type benchTuple struct {
+	id uint
+}
+
+func (t *benchTuple) DecodeMsgpack(dec *msgpack.Decoder) error {
+	l, err := dec.DecodeArrayLen()
+	if err != nil {
+		return fmt.Errorf("failed to decode tuples array: %w", err)
+	}
+
+	if l != 1 {
+		return fmt.Errorf("unexpected tuples array with len %d", l)
+	}
+
+	l, err = dec.DecodeArrayLen()
+	if err != nil {
+		return fmt.Errorf("failed to decode tuple array: %w", err)
+	}
+
+	if l < 1 {
+		return fmt.Errorf("too small tuple have 0 fields")
+	}
+
+	t.id, err = dec.DecodeUint()
+	if err != nil {
+		return fmt.Errorf("failed to decode id: %w", err)
+	}
+
+	return nil
+}
+
+func BenchmarkSync_naive_with_custom_type(b *testing.B) {
+	var err error
+
+	conn := test_helpers.ConnectWithValidation(b, dialer, opts)
+	defer conn.Close()
+
+	_, err = conn.Do(
+		NewReplaceRequest(spaceNo).
+			Tuple([]interface{}{uint(1111), "hello", "world"}),
+	).Get()
+	if err != nil {
+		b.Fatalf("failed to initialize database: %s", err)
+	}
+
+	req := NewSelectRequest(spaceNo).
+		Index(indexNo).
+		Iterator(IterEq).
+		Key(UintKey{I: 1111})
+
+	var tuple benchTuple
+
+	b.ResetTimer()
+
+	for b.Loop() {
+		err := conn.Do(req).GetTyped(&tuple)
+		if err != nil {
+			b.Errorf("request error: %s", err)
+		}
+
+		if tuple.id != 1111 {
+			b.Errorf("invalid result")
+		}
+	}
+}
+
+func BenchmarkSync_multithread(b *testing.B) {
+	var err error
+
+	conn := test_helpers.ConnectWithValidation(b, dialer, opts)
+	defer conn.Close()
+
+	_, err = conn.Do(
+		NewReplaceRequest(spaceNo).
+			Tuple([]interface{}{uint(1111), "hello", "world"}),
+	).Get()
+	if err != nil {
+		b.Fatalf("failed to initialize database: %s", err)
+	}
+
+	req := NewSelectRequest(spaceNo).
+		Index(indexNo).
+		Iterator(IterEq).
+		Key(UintKey{I: 1111})
+
+	b.ResetTimer()
+
+	b.RunParallel(func(pb *testing.PB) {
+		var tuple benchTuple
+
+		for pb.Next() {
+			err := conn.Do(req).GetTyped(&tuple)
+			if err != nil {
+				b.Errorf("request error: %s", err)
+			}
+
+			if tuple.id != 1111 {
+				b.Errorf("invalid result")
+			}
+		}
+	})
+}
+
+func BenchmarkAsync_multithread_parallelism(b *testing.B) {
+	var err error
+
+	conn := test_helpers.ConnectWithValidation(b, dialer, opts)
+	defer conn.Close()
+
+	_, err = conn.Do(
+		NewReplaceRequest(spaceNo).
+			Tuple([]interface{}{uint(1111), "hello", "world"}),
+	).Get()
+	if err != nil {
+		b.Fatalf("failed to initialize database: %s", err)
+	}
+
+	req := NewSelectRequest(spaceNo).
+		Index(indexNo).
+		Iterator(IterEq).
+		Key(UintKey{I: 1111})
+
+	b.ResetTimer()
+
+	for p := 1; p <= 1024; p *= 2 {
+		b.Run(fmt.Sprintf("%d", p), func(b *testing.B) {
+			b.SetParallelism(p)
+			b.ResetTimer()
+
+			b.RunParallel(func(pb *testing.PB) {
+				var tuple benchTuple
+
+				for pb.Next() {
+					err := conn.Do(req).GetTyped(&tuple)
+					if err != nil {
+						b.Errorf("request error: %s", err)
+					}
+
+					if tuple.id != 1111 {
+						b.Errorf("invalid result")
+					}
+				}
+			})
+		})
+	}
+}
+
+// TestBenchmarkAsync is a benchmark for the async API that is unable to
+// implement with a Go-benchmark. It can be used to test performance with
+// different numbers of connections and processing goroutines.
+func TestBenchmarkAsync(t *testing.T) {
+	t.Skip()
+
+	requests := int64(10_000_000)
+	connections := 16
+
+	ops := opts
+	// ops.Concurrency = 2 // 4 max. // 2 max.
+
+	conns := make([]*Connection, 0, connections)
+	for range connections {
+		conn := test_helpers.ConnectWithValidation(t, dialer, ops)
+		defer conn.Close()
+
+		conns = append(conns, conn)
+	}
+
+	_, err := conns[0].Do(
+		NewReplaceRequest(spaceNo).
+			Tuple([]interface{}{uint(1111), "hello", "world"}),
+	).Get()
+	if err != nil {
+		t.Fatalf("failed to initialize database: %s", err)
+	}
+
+	req := NewSelectRequest(spaceNo).
+		Index(indexNo).
+		Iterator(IterEq).
+		Key(UintKey{I: 1111})
+
+	maxRps := float64(0)
+	maxConnections := 0
+	maxConcurrency := 0
+
+	for cn := 1; cn <= connections; cn *= 2 {
+		for cc := 1; cc <= 512; cc *= 2 {
+			var wg sync.WaitGroup
+
+			curRequests := requests
+
+			start := time.Now()
+
+			for i := range cc {
+				wg.Add(1)
+
+				ch := make(chan *Future, 1024)
+
+				go func(i int) {
+					defer close(ch)
+
+					for atomic.AddInt64(&curRequests, -1) >= 0 {
+						ch <- conns[i%cn].Do(req)
+					}
+				}(i)
+
+				go func() {
+					defer wg.Done()
+
+					var tuple benchTuple
+
+					for fut := range ch {
+						err := fut.GetTyped(&tuple)
+						if err != nil {
+							t.Errorf("request error: %s", err)
+						}
+
+						if tuple.id != 1111 {
+							t.Errorf("invalid result")
+						}
+					}
+				}()
+			}
+
+			wg.Wait()
+
+			duration := time.Since(start)
+
+			rps := float64(requests) / duration.Seconds()
+			t.Log("requests   :", requests)
+			t.Log("concurrency:", cc)
+			t.Log("connections:", cn)
+			t.Logf("duration   : %.2f\n", duration.Seconds())
+			t.Logf("requests/s : %.2f\n", rps)
+			t.Log("============")
+
+			if maxRps < rps {
+				maxRps = rps
+				maxConnections = cn
+				maxConcurrency = cc
+			}
+		}
+	}
+
+	t.Log("max connections:", maxConnections)
+	t.Log("max concurrency:", maxConcurrency)
+	t.Logf("max requests/s : %.2f\n", maxRps)
 }
 
 type mockRequest struct {
@@ -2564,7 +2272,7 @@ func TestConnectionDoSelectRequest(t *testing.T) {
 
 	req := NewSelectRequest(spaceNo).
 		Index(indexNo).
-		Limit(20).
+		Limit(10).
 		Iterator(IterGe).
 		Key([]interface{}{uint(1010)})
 	resp, err := conn.Do(req).GetResponse()
