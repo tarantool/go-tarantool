@@ -1,6 +1,8 @@
 package box
 
 import (
+	"errors"
+
 	"github.com/tarantool/go-tarantool/v3"
 )
 
@@ -11,16 +13,25 @@ type Box struct {
 }
 
 // New returns a new instance of the box structure, which implements the Box interface.
-func New(conn tarantool.Doer) *Box {
+func New(conn tarantool.Doer) (*Box, error) {
 	if conn == nil {
-		// Check if the provided Tarantool connection is nil, and if it is, panic with an error
-		// message. panic early helps to catch and fix nil pointer issues in the code.
-		panic("tarantool connection cannot be nil")
+		return nil, errors.New("tarantool connection cannot be nil")
 	}
 
 	return &Box{
 		conn: conn, // Assigns the provided Tarantool connection.
+	}, nil
+}
+
+// MustNew returns a new instance of the box structure, which implements the Box interface.
+func MustNew(conn tarantool.Doer) *Box {
+	b, err := New(conn)
+	if err != nil {
+		// Check if the provided Tarantool connection is nil, and if it is, panic with an error
+		// message. panic early helps to catch and fix nil pointer issues in the code
+		panic(err)
 	}
+	return b
 }
 
 // Schema returns a new Schema instance, providing access to schema-related operations.

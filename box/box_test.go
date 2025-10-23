@@ -15,8 +15,15 @@ import (
 func TestNew(t *testing.T) {
 	t.Parallel()
 
+	_, err := box.New(nil)
+	require.Error(t, err)
+}
+
+func TestMustNew(t *testing.T) {
+	t.Parallel()
+
 	// Create a box instance with a nil connection. This should lead to a panic.
-	require.Panics(t, func() { box.New(nil) })
+	require.Panics(t, func() { box.MustNew(nil) })
 }
 
 func TestMocked_BoxInfo(t *testing.T) {
@@ -37,7 +44,8 @@ func TestMocked_BoxInfo(t *testing.T) {
 	mock := test_helpers.NewMockDoer(t,
 		test_helpers.NewMockResponse(t, data),
 	)
-	b := box.New(&mock)
+	b, err := box.New(&mock)
+	require.NoError(t, err)
 
 	info, err := b.Info()
 	require.NoError(t, err)
@@ -57,7 +65,8 @@ func TestMocked_BoxSchemaUserInfo(t *testing.T) {
 	mock := test_helpers.NewMockDoer(t,
 		test_helpers.NewMockResponse(t, data),
 	)
-	b := box.New(&mock)
+	b, err := box.New(&mock)
+	require.NoError(t, err)
 
 	privs, err := b.Schema().User().Info(context.Background(), "username")
 	require.NoError(t, err)
@@ -82,8 +91,9 @@ func TestMocked_BoxSessionSu(t *testing.T) {
 		test_helpers.NewMockResponse(t, []interface{}{}),
 		errors.New("user not found or supplied credentials are invalid"),
 	)
-	b := box.New(&mock)
+	b, err := box.New(&mock)
+	require.NoError(t, err)
 
-	err := b.Session().Su(context.Background(), "admin")
+	err = b.Session().Su(context.Background(), "admin")
 	require.NoError(t, err)
 }
