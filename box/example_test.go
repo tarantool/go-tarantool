@@ -45,7 +45,10 @@ func ExampleBox_Info() {
 
 	// Or use simple Box implementation.
 
-	b := box.New(client)
+	b, err := box.New(client)
+	if err != nil {
+		log.Fatalf("Failed get box info: %s", err)
+	}
 
 	info, err := b.Info()
 	if err != nil {
@@ -88,7 +91,11 @@ func ExampleSchemaUser_Exists() {
 	}
 
 	// Or use simple User implementation.
-	b := box.New(client)
+	b, err := box.New(client)
+	if err != nil {
+		log.Fatalf("Failed get box info: %s", err)
+	}
+
 	exists, err := b.Schema().User().Exists(ctx, "user")
 	if err != nil {
 		log.Fatalf("Failed get box schema user exists with error: %s", err)
@@ -120,7 +127,11 @@ func ExampleSchemaUser_Create() {
 	}
 
 	// Create SchemaUser.
-	schemaUser := box.New(client).Schema().User()
+	b, err := box.New(client)
+	if err != nil {
+		log.Fatalf("Failed to connect: %s", err)
+	}
+	schemaUser := b.Schema().User()
 
 	// Create a new user.
 	username := "new_user"
@@ -153,7 +164,11 @@ func ExampleSchemaUser_Drop() {
 	}
 
 	// Create SchemaUser.
-	schemaUser := box.New(client).Schema().User()
+	b, err := box.New(client)
+	if err != nil {
+		log.Fatalf("Failed to connect: %s", err)
+	}
+	schemaUser := b.Schema().User()
 
 	// Drop an existing user.
 	username := "new_user"
@@ -192,7 +207,11 @@ func ExampleSchemaUser_Password() {
 	}
 
 	// Create SchemaUser.
-	schemaUser := box.New(client).Schema().User()
+	b, err := box.New(client)
+	if err != nil {
+		log.Fatalf("Failed to connect: %s", err)
+	}
+	schemaUser := b.Schema().User()
 
 	// Get the password hash.
 	password := "my-password"
@@ -221,7 +240,11 @@ func ExampleSchemaUser_Info() {
 	}
 
 	// Create SchemaUser.
-	schemaUser := box.New(client).Schema().User()
+	b, err := box.New(client)
+	if err != nil {
+		log.Fatalf("Failed to connect: %s", err)
+	}
+	schemaUser := b.Schema().User()
 
 	info, err := schemaUser.Info(ctx, "test")
 	if err != nil {

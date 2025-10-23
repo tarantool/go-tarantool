@@ -11,12 +11,15 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 ### Added
 
 * New types for MessagePack extensions compatible with go-option (#459).
+* Added `box.MustNew` wrapper for `box.New`: panics when `box.New` returns an error (#448).
 
 ### Changed
 
 * Required Go version is `1.24` now (#456).
 
 ### Fixed
+
+* `box.New` returns an error instead of panic (#448).
 
 ## [v2.4.1] - 2025-10-16
 

@@ -48,7 +48,10 @@ func TestBox_Sugar_Info(t *testing.T) {
 	conn, err := tarantool.Connect(ctx, dialer, tarantool.Opts{})
 	require.NoError(t, err)
 
-	info, err := box.New(conn).Info()
+	b, err := box.New(conn)
+	require.NoError(t, err)
+
+	info, err := b.Info()
 	require.NoError(t, err)
 
 	validateInfo(t, info)
@@ -70,6 +73,10 @@ func TestBox_Info(t *testing.T) {
 	validateInfo(t, resp.Info)
 }
 
+func TestBox_Connection_NotNil(t *testing.T) {
+
+}
+
 func TestBox_Sugar_Schema_UserCreate_NoError(t *testing.T) {
 	const (
 		username = "user_create_no_error"
@@ -83,7 +90,8 @@ func TestBox_Sugar_Schema_UserCreate_NoError(t *testing.T) {
 	conn, err := tarantool.Connect(ctx, dialer, tarantool.Opts{})
 	require.NoError(t, err)
 
-	b := box.New(conn)
+	b, err := box.New(conn)
+	require.NoError(t, err)
 
 	// Create new user.
 	err = b.Schema().User().Create(ctx, username, box.UserCreateOptions{Password: password})
@@ -103,7 +111,8 @@ func TestBox_Sugar_Schema_UserCreate_CanConnectWithNewCred(t *testing.T) {
 	conn, err := tarantool.Connect(ctx, dialer, tarantool.Opts{})
 	require.NoError(t, err)
 
-	b := box.New(conn)
+	b, err := box.New(conn)
+	require.NoError(t, err)
 
 	// Create new user.
 	err = b.Schema().User().Create(ctx, username, box.UserCreateOptions{Password: password})
@@ -137,7 +146,8 @@ func TestBox_Sugar_Schema_UserCreate_AlreadyExists(t *testing.T) {
 	conn, err := tarantool.Connect(ctx, dialer, tarantool.Opts{})
 	require.NoError(t, err)
 
-	b := box.New(conn)
+	b, err := box.New(conn)
+	require.NoError(t, err)
 
 	// Create new user.
 	err = b.Schema().User().Create(ctx, username, box.UserCreateOptions{Password: password})
@@ -167,7 +177,8 @@ func TestBox_Sugar_Schema_UserCreate_ExistsTrue(t *testing.T) {
 	conn, err := tarantool.Connect(ctx, dialer, tarantool.Opts{})
 	require.NoError(t, err)
 
-	b := box.New(conn)
+	b, err := box.New(conn)
+	require.NoError(t, err)
 
 	// Create new user.
 	err = b.Schema().User().Create(ctx, username, box.UserCreateOptions{Password: password})
@@ -193,7 +204,8 @@ func TestBox_Sugar_Schema_UserCreate_IfNotExistsNoErr(t *testing.T) {
 	conn, err := tarantool.Connect(ctx, dialer, tarantool.Opts{})
 	require.NoError(t, err)
 
-	b := box.New(conn)
+	b, err := box.New(conn)
+	require.NoError(t, err)
 
 	// Create new user.
 	err = b.Schema().User().Create(ctx, username, box.UserCreateOptions{Password: password})
@@ -217,7 +229,8 @@ func TestBox_Sugar_Schema_UserPassword(t *testing.T) {
 	conn, err := tarantool.Connect(ctx, dialer, tarantool.Opts{})
 	require.NoError(t, err)
 
-	b := box.New(conn)
+	b, err := box.New(conn)
+	require.NoError(t, err)
 
 	// Require password hash.
 	hash, err := b.Schema().User().Password(ctx, password)
@@ -236,7 +249,8 @@ func TestBox_Sugar_Schema_UserDrop_AfterCreate(t *testing.T) {
 	conn, err := tarantool.Connect(ctx, dialer, tarantool.Opts{})
 	require.NoError(t, err)
 
-	b := box.New(conn)
+	b, err := box.New(conn)
+	require.NoError(t, err)
 
 	// Create new user
 	err = b.Schema().User().Create(ctx, username, box.UserCreateOptions{Password: password})
@@ -258,7 +272,8 @@ func TestBox_Sugar_Schema_UserDrop_DoubleDrop(t *testing.T) {
 	conn, err := tarantool.Connect(ctx, dialer, tarantool.Opts{})
 	require.NoError(t, err)
 
-	b := box.New(conn)
+	b, err := box.New(conn)
+	require.NoError(t, err)
 
 	// Create new user
 	err = b.Schema().User().Create(ctx, username, box.UserCreateOptions{Password: password})
@@ -286,7 +301,8 @@ func TestBox_Sugar_Schema_UserDrop_UnknownUser(t *testing.T) {
 	conn, err := tarantool.Connect(ctx, dialer, tarantool.Opts{})
 	require.NoError(t, err)
 
-	b := box.New(conn)
+	b, err := box.New(conn)
+	require.NoError(t, err)
 
 	// Require error cause user not exists
 	err = b.Schema().User().Drop(ctx, "some_strange_not_existing_name", box.UserDropOptions{})
@@ -305,7 +321,8 @@ func TestSchemaUser_Passwd_NotFound(t *testing.T) {
 	conn, err := tarantool.Connect(ctx, dialer, tarantool.Opts{})
 	require.NoError(t, err)
 
-	b := box.New(conn)
+	b, err := box.New(conn)
+	require.NoError(t, err)
 
 	err = b.Schema().User().Passwd(ctx, "not-exists-passwd", "new_password")
 	require.Error(t, err)
@@ -329,7 +346,8 @@ func TestSchemaUser_Passwd_Ok(t *testing.T) {
 	conn, err := tarantool.Connect(ctx, dialer, tarantool.Opts{})
 	require.NoError(t, err)
 
-	b := box.New(conn)
+	b, err := box.New(conn)
+	require.NoError(t, err)
 
 	// New user change password and connect
 
@@ -367,7 +385,8 @@ func TestSchemaUser_Passwd_WithoutGrants(t *testing.T) {
 	conn, err := tarantool.Connect(ctx, dialer, tarantool.Opts{})
 	require.NoError(t, err)
 
-	b := box.New(conn)
+	b, err := box.New(conn)
+	require.NoError(t, err)
 
 	err = b.Schema().User().Create(ctx, username,
 		box.UserCreateOptions{Password: startPassword, IfNotExists: true})
@@ -381,7 +400,8 @@ func TestSchemaUser_Passwd_WithoutGrants(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, conn2Fail)
 
-	bFail := box.New(conn2Fail)
+	bFail, err := box.New(conn2Fail)
+	require.NoError(t, err)
 	// can't change self user password without grants
 	err = bFail.Schema().User().Passwd(ctx, endPassword)
 	require.Error(t, err)
@@ -401,7 +421,8 @@ func TestSchemaUser_Info_TestUserCorrect(t *testing.T) {
 	conn, err := tarantool.Connect(ctx, dialer, tarantool.Opts{})
 	require.NoError(t, err)
 
-	b := box.New(conn)
+	b, err := box.New(conn)
+	require.NoError(t, err)
 
 	privileges, err := b.Schema().User().Info(ctx, dialer.User)
 	require.NoError(t, err)
@@ -418,7 +439,8 @@ func TestSchemaUser_Info_NonExistsUser(t *testing.T) {
 	conn, err := tarantool.Connect(ctx, dialer, tarantool.Opts{})
 	require.NoError(t, err)
 
-	b := box.New(conn)
+	b, err := box.New(conn)
+	require.NoError(t, err)
 
 	privileges, err := b.Schema().User().Info(ctx, "non-existing")
 	require.Error(t, err)
@@ -438,7 +460,8 @@ func TestBox_Sugar_Schema_UserGrant_NoSu(t *testing.T) {
 	conn, err := tarantool.Connect(ctx, dialer, tarantool.Opts{})
 	require.NoError(t, err)
 
-	b := box.New(conn)
+	b, err := box.New(conn)
+	require.NoError(t, err)
 
 	err = b.Schema().User().Create(ctx, username, box.UserCreateOptions{Password: password})
 	require.NoError(t, err)
@@ -471,7 +494,8 @@ func TestBox_Sugar_Schema_UserGrant_WithSu(t *testing.T) {
 	conn, err := tarantool.Connect(ctx, dialer, tarantool.Opts{})
 	require.NoError(t, err)
 
-	b := box.New(conn)
+	b, err := box.New(conn)
+	require.NoError(t, err)
 
 	err = b.Schema().User().Create(ctx, username, box.UserCreateOptions{Password: password})
 	require.NoError(t, err)
@@ -521,7 +545,8 @@ func TestSchemaUser_Revoke_WithoutSu(t *testing.T) {
 	conn, err := tarantool.Connect(ctx, dialer, tarantool.Opts{})
 	require.NoError(t, err)
 
-	b := box.New(conn)
+	b, err := box.New(conn)
+	require.NoError(t, err)
 
 	err = b.Schema().User().Create(ctx, username, box.UserCreateOptions{Password: password})
 	require.NoError(t, err)
@@ -555,7 +580,8 @@ func TestSchemaUser_Revoke_WithSu(t *testing.T) {
 	conn, err := tarantool.Connect(ctx, dialer, tarantool.Opts{})
 	require.NoError(t, err)
 
-	b := box.New(conn)
+	b, err := box.New(conn)
+	require.NoError(t, err)
 
 	err = b.Schema().User().Create(ctx, username, box.UserCreateOptions{Password: password})
 	require.NoError(t, err)
@@ -603,7 +629,8 @@ func TestSchemaUser_Revoke_NonExistsPermission(t *testing.T) {
 	conn, err := tarantool.Connect(ctx, dialer, tarantool.Opts{})
 	require.NoError(t, err)
 
-	b := box.New(conn)
+	b, err := box.New(conn)
+	require.NoError(t, err)
 
 	err = b.Schema().User().Create(ctx, username, box.UserCreateOptions{Password: password})
 	require.NoError(t, err)
@@ -639,7 +666,8 @@ func TestSession_Su_AdminPermissions(t *testing.T) {
 	conn, err := tarantool.Connect(ctx, dialer, tarantool.Opts{})
 	require.NoError(t, err)
 
-	b := box.New(conn)
+	b, err := box.New(conn)
+	require.NoError(t, err)
 
 	err = b.Session().Su(ctx, "admin")
 	require.NoError(t, err)
@@ -652,7 +680,11 @@ func cleanupUser(username string) {
 		log.Fatal(err)
 	}
 
-	b := box.New(conn)
+	b, err := box.New(conn)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	err = b.Schema().User().Drop(ctx, username, box.UserDropOptions{})
 	if err != nil {
 		log.Fatal(err)
