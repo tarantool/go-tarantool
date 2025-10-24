@@ -17,6 +17,8 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 * Required Go version is `1.24` now (#456).
 * `box.New` returns an error instead of panic (#448).
+* Now cases of `<-ctx.Done()` returns wrapped error provided by `ctx.Cause()`.
+  Allows you compare it using `errors.Is/As` (#457).
 
 ### Fixed
 
