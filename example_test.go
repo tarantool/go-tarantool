@@ -167,7 +167,7 @@ func ExamplePingRequest_Context() {
 	fmt.Println("Ping Error", regexp.MustCompile("[0-9]+").ReplaceAllString(err.Error(), "N"))
 	// Output:
 	// Ping Resp data []
-	// Ping Error context is done (request ID N)
+	// Ping Error context is done (request ID N): context deadline exceeded
 }
 
 func ExampleSelectRequest() {

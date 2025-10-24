@@ -3,6 +3,7 @@ package tarantool_test
 import (
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -48,7 +49,8 @@ type Member struct {
 	Val   uint
 }
 
-var contextDoneErrRegexp = regexp.MustCompile(`^context is done \(request ID [0-9]+\)$`)
+var contextDoneErrRegexp = regexp.MustCompile(
+	`^context is done \(request ID [0-9]+\): context canceled$`)
 
 func (m *Member) EncodeMsgpack(e *msgpack.Encoder) error {
 	if err := e.EncodeArrayLen(2); err != nil {
@@ -2740,6 +2742,45 @@ func TestClientRequestObjectsWithPassedCanceledContext(t *testing.T) {
 	if resp != nil {
 		t.Fatalf("Response is not nil after the occurred error")
 	}
+}
+
+// Checking comparable with simple context.WithCancel.
+func TestComparableErrorsCanceledContext(t *testing.T) {
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
+	defer conn.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	req := NewPingRequest().Context(ctx)
+	cancel()
+	_, err := conn.Do(req).Get()
+	require.True(t, errors.Is(err, context.Canceled), err.Error())
+}
+
+// Checking comparable with simple context.WithTimeout.
+func TestComparableErrorsTimeoutContext(t *testing.T) {
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
+	defer conn.Close()
+
+	timeout := time.Nanosecond
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	req := NewPingRequest().Context(ctx)
+	defer cancel()
+	_, err := conn.Do(req).Get()
+	require.True(t, errors.Is(err, context.DeadlineExceeded), err.Error())
+}
+
+// Checking comparable with context.WithCancelCause.
+// Shows ability to compare with custom errors (also with ClientError).
+func TestComparableErrorsCancelCauseContext(t *testing.T) {
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
+	defer conn.Close()
+
+	ctxCause, cancelCause := context.WithCancelCause(context.Background())
+	req := NewPingRequest().Context(ctxCause)
+	cancelCause(ClientError{ErrConnectionClosed, "something went wrong"})
+	_, err := conn.Do(req).Get()
+	var tmpErr ClientError
+	require.True(t, errors.As(err, &tmpErr), tmpErr.Error())
 }
 
 // waitCtxRequest waits for the WaitGroup in Body() call and returns
