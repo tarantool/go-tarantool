@@ -3,6 +3,7 @@ package tarantool_test
 import (
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -48,7 +49,8 @@ type Member struct {
 	Val   uint
 }
 
-var contextDoneErrRegexp = regexp.MustCompile(`^context is done \(request ID [0-9]+\)$`)
+var contextDoneErrRegexp = regexp.MustCompile(
+	fmt.Sprintf(`^context is done \(request ID [0-9]+\) \(%s\)$`, ErrCancelledCtx.Error()))
 
 func (m *Member) EncodeMsgpack(e *msgpack.Encoder) error {
 	if err := e.EncodeArrayLen(2); err != nil {
@@ -2737,6 +2739,8 @@ func TestClientRequestObjectsWithPassedCanceledContext(t *testing.T) {
 	if !contextDoneErrRegexp.Match([]byte(err.Error())) {
 		t.Fatalf("Failed to catch an error from done context")
 	}
+	// checking that we could use errors.Is to get known about error.
+	require.True(t, errors.Is(err, ErrCancelledCtx))
 	if resp != nil {
 		t.Fatalf("Response is not nil after the occurred error")
 	}
@@ -3298,6 +3302,7 @@ func TestClientIdRequestObjectWithPassedCanceledContext(t *testing.T) {
 	resp, err := conn.Do(req).Get()
 	require.Nilf(t, resp, "Response is empty")
 	require.NotNilf(t, err, "Error is not empty")
+	require.True(t, errors.Is(err, ErrCancelledCtx))
 	require.Regexp(t, contextDoneErrRegexp, err.Error())
 }
 

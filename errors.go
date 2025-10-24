@@ -25,13 +25,13 @@ func (tnterr Error) Error() string {
 // ClientError is connection error produced by this client,
 // i.e. connection failures or timeouts.
 type ClientError struct {
-	Code uint32
+	Code CodeError
 	Msg  string
 }
 
 // Error converts a ClientError to a string.
 func (clierr ClientError) Error() string {
-	return fmt.Sprintf("%s (0x%x)", clierr.Msg, clierr.Code)
+	return fmt.Sprintf("%s (%#x)", clierr.Msg, uint32(clierr.Code))
 }
 
 // Temporary returns true if next attempt to perform request may succeeded.
@@ -52,13 +52,23 @@ func (clierr ClientError) Temporary() bool {
 	}
 }
 
+// CodeError is an error providing code of failure.
+// Allows to differ them and returning error using errors.Is.
+type CodeError uint32
+
+// Error converts CodeError to a string.
+func (err CodeError) Error() string {
+	return fmt.Sprintf("%#x", uint32(err))
+}
+
 // Tarantool client error codes.
 const (
-	ErrConnectionNotReady = 0x4000 + iota
-	ErrConnectionClosed   = 0x4000 + iota
-	ErrProtocolError      = 0x4000 + iota
-	ErrTimeouted          = 0x4000 + iota
-	ErrRateLimited        = 0x4000 + iota
-	ErrConnectionShutdown = 0x4000 + iota
-	ErrIoError            = 0x4000 + iota
+	ErrConnectionNotReady CodeError = 0x4000 + iota
+	ErrConnectionClosed
+	ErrProtocolError
+	ErrTimeouted
+	ErrRateLimited
+	ErrConnectionShutdown
+	ErrIoError
+	ErrCancelledCtx
 )
