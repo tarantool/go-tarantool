@@ -26,6 +26,22 @@ func TestMustNew(t *testing.T) {
 	require.Panics(t, func() { box.MustNew(nil) })
 }
 
+func TestMocked_BoxNew(t *testing.T) {
+	t.Parallel()
+
+	mock := test_helpers.NewMockDoer(t,
+		test_helpers.NewMockResponse(t, "valid"),
+	)
+
+	b, err := box.New(&mock)
+	require.NoError(t, err)
+	require.NotNil(t, b)
+
+	assert.Len(t, mock.Requests, 0)
+	b.Schema().User().Exists(box.NewInfoRequest().Ctx(), "")
+	require.Len(t, mock.Requests, 1)
+}
+
 func TestMocked_BoxInfo(t *testing.T) {
 	t.Parallel()
 
@@ -44,8 +60,7 @@ func TestMocked_BoxInfo(t *testing.T) {
 	mock := test_helpers.NewMockDoer(t,
 		test_helpers.NewMockResponse(t, data),
 	)
-	b, err := box.New(&mock)
-	require.NoError(t, err)
+	b := box.MustNew(&mock)
 
 	info, err := b.Info()
 	require.NoError(t, err)
@@ -65,8 +80,7 @@ func TestMocked_BoxSchemaUserInfo(t *testing.T) {
 	mock := test_helpers.NewMockDoer(t,
 		test_helpers.NewMockResponse(t, data),
 	)
-	b, err := box.New(&mock)
-	require.NoError(t, err)
+	b := box.MustNew(&mock)
 
 	privs, err := b.Schema().User().Info(context.Background(), "username")
 	require.NoError(t, err)
@@ -91,9 +105,8 @@ func TestMocked_BoxSessionSu(t *testing.T) {
 		test_helpers.NewMockResponse(t, []interface{}{}),
 		errors.New("user not found or supplied credentials are invalid"),
 	)
-	b, err := box.New(&mock)
-	require.NoError(t, err)
+	b := box.MustNew(&mock)
 
-	err = b.Session().Su(context.Background(), "admin")
+	err := b.Session().Su(context.Background(), "admin")
 	require.NoError(t, err)
 }
