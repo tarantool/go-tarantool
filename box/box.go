@@ -24,11 +24,10 @@ func New(conn tarantool.Doer) (*Box, error) {
 }
 
 // MustNew returns a new instance of the box structure, which implements the Box interface.
+// It panics if conn == nil.
 func MustNew(conn tarantool.Doer) *Box {
 	b, err := New(conn)
 	if err != nil {
-		// Check if the provided Tarantool connection is nil, and if it is, panic with an error
-		// message. panic early helps to catch and fix nil pointer issues in the code
 		panic(err)
 	}
 	return b

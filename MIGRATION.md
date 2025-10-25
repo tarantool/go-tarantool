@@ -9,6 +9,8 @@ TODO
 ### <a id="major-changes-v3">Major changes</a>
 
 * Required Go version is `1.24` now.
+* `box.New` returns an error instead of panic
+* Added `box.MustNew` wrapper for `box.New` without an error
 
 ## Migration from v1.x.x to v2.x.x
 
