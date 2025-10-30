@@ -58,6 +58,8 @@ var clientProtocolInfo ProtocolInfo = ProtocolInfo{
 		iproto.IPROTO_FEATURE_PAGINATION,
 		iproto.IPROTO_FEATURE_SPACE_AND_INDEX_NAMES,
 		iproto.IPROTO_FEATURE_WATCH_ONCE,
+		iproto.IPROTO_FEATURE_IS_SYNC,
+		iproto.IPROTO_FEATURE_INSERT_ARROW,
 	},
 }
 
