@@ -9,6 +9,17 @@
 [![GitHub Discussions][discussions-badge]][discussions-url]
 [![Stack Overflow][stackoverflow-badge]][stackoverflow-url]
 
+# ⚠️ Development Status Notice
+
+**The current `main` branch is under active development for the next major
+release (v3).**
+
+The API on this branch is **unstable and subject to change**.
+
+**For production use and stable API, please use the
+[`v2`](https://github.com/tarantool/go-tarantool/tree/v2) branch of the
+repository.**
+
 # Client in Go for Tarantool
 
 The package `go-tarantool` contains everything you need to connect to
