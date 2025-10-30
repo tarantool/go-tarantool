@@ -46,7 +46,7 @@ The package `go-tarantool` is located in [tarantool/go-tarantool][go-tarantool]
 repository. To download and install, say:
 
 ```
-$ go get github.com/tarantool/go-tarantool/v2
+$ go get github.com/tarantool/go-tarantool/v3
 ```
 
 This should put the source and binary files in subdirectories of
@@ -131,7 +131,7 @@ func main() {
 }
 ```
 
-**Observation 1:** The line "`github.com/tarantool/go-tarantool/v2`" in the
+**Observation 1:** The line "`github.com/tarantool/go-tarantool/v3`" in the
 `import(...)` section brings in all Tarantool-related functions and structures.
 
 **Observation 2:** Unused import lines are required to initialize encoders and
@@ -245,8 +245,8 @@ There are two other connectors available from the open source community:
 See feature comparison in the [documentation][tarantool-doc-connectors-comparison].
 
 [tarantool-site]: https://tarantool.io/
-[godoc-badge]: https://pkg.go.dev/badge/github.com/tarantool/go-tarantool/v2.svg
-[godoc-url]: https://pkg.go.dev/github.com/tarantool/go-tarantool/v2
+[godoc-badge]: https://pkg.go.dev/badge/github.com/tarantool/go-tarantool/v3.svg
+[godoc-url]: https://pkg.go.dev/github.com/tarantool/go-tarantool/v3
 [actions-badge]: https://github.com/tarantool/go-tarantool/actions/workflows/testing.yml/badge.svg
 [actions-url]: https://github.com/tarantool/go-tarantool/actions/workflows/testing.yml
 [coverage-badge]: https://coveralls.io/repos/github/tarantool/go-tarantool/badge.svg?branch=master
@@ -261,5 +261,5 @@ See feature comparison in the [documentation][tarantool-doc-connectors-compariso
 [go-tarantool]: https://github.com/tarantool/go-tarantool
 [tarantool-doc-data-model-url]: https://www.tarantool.io/en/doc/latest/book/box/data_model/
 [tarantool-doc-box-space-url]: https://www.tarantool.io/en/doc/latest/reference/reference_lua/box_space/
-[godoc-opts-url]: https://pkg.go.dev/github.com/tarantool/go-tarantool/v2#Opts
+[godoc-opts-url]: https://pkg.go.dev/github.com/tarantool/go-tarantool/v3#Opts
 [tarantool-doc-connectors-comparison]: https://www.tarantool.io/en/doc/latest/book/connectors/#go-feature-comparison
