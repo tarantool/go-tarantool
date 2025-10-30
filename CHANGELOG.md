@@ -36,6 +36,8 @@ flag handling, and fixes watcher panic.
   Now you can check this error with `errors.Is(err, tarantool.ErrConcurrentSchemaUpdate)`.
 - Implemented support for `IPROTO_IS_SYNC` flag in stream transactions,
   added `IsSync(bool)` method for `BeginRequest`/`CommitRequest` (#447).
+- Added missing IPROTO feature flags to greeting negotiation
+  (iproto.IPROTO_FEATURE_IS_SYNC, iproto.IPROTO_FEATURE_INSERT_ARROW) (#466).
 
 ### Fixed
 
