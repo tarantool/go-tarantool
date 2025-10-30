@@ -11,6 +11,7 @@ TODO
 * Required Go version is `1.24` now.
 * `box.New` returns an error instead of panic
 * Added `box.MustNew` wrapper for `box.New` without an error
+* Removed deprecated `pool` methods, related interfaces and tests are updated.
 
 ## Migration from v1.x.x to v2.x.x
 
