@@ -179,7 +179,8 @@ func (d Decimal) String() string {
 // StringFromInt64 is an internal method for converting int64
 // and scale to a string (for numbers up to 19 digits)
 func (d Decimal) stringFromInt64(value int64, scale int) string {
-	var buf [32]byte
+
+	var buf [48]byte
 	pos := 0
 
 	negative := value < 0
@@ -196,12 +197,21 @@ func (d Decimal) stringFromInt64(value int64, scale int) string {
 	length := len(str)
 
 	if scale == 0 {
+		if pos+length > len(buf) {
+			return d.Decimal.String()
+		}
 		copy(buf[pos:], str)
 		pos += length
 		return string(buf[:pos])
 	}
 
 	if scale >= length {
+
+		required := 2 + (scale - length) + length
+		if pos+required > len(buf) {
+			return d.Decimal.String()
+		}
+
 		buf[pos] = '0'
 		buf[pos+1] = '.'
 		pos += 2
@@ -215,34 +225,30 @@ func (d Decimal) stringFromInt64(value int64, scale int) string {
 		copy(buf[pos:], str)
 		pos += length
 	} else {
+
 		integerLen := length - scale
+
+		required := integerLen + 1 + scale
+		if pos+required > len(buf) {
+			return d.Decimal.String()
+		}
+
 		copy(buf[pos:], str[:integerLen])
 		pos += integerLen
 
-		fractionalPart := str[integerLen:]
+		buf[pos] = '.'
+		pos++
 
-		fractionalPart = strings.TrimRight(fractionalPart, "0")
-
-		if len(fractionalPart) > 0 {
-			buf[pos] = '.'
-			pos++
-			copy(buf[pos:], fractionalPart)
-			pos += len(fractionalPart)
-		}
+		copy(buf[pos:], str[integerLen:])
+		pos += scale
 	}
 
 	return string(buf[:pos])
 }
-
 func (d Decimal) handleMinInt64(scale int) string {
-
 	const minInt64Str = "9223372036854775808"
 
-	if scale == 0 {
-		return "-" + minInt64Str
-	}
-
-	var buf [32]byte
+	var buf [48]byte
 	pos := 0
 
 	buf[pos] = '-'
@@ -250,7 +256,23 @@ func (d Decimal) handleMinInt64(scale int) string {
 
 	length := len(minInt64Str)
 
+	if scale == 0 {
+		if pos+length > len(buf) {
+			return "-" + minInt64Str // Fallback.
+		}
+		copy(buf[pos:], minInt64Str)
+		pos += length
+		return string(buf[:pos])
+	}
+
 	if scale >= length {
+		required := 2 + (scale - length) + length
+		if pos+required > len(buf) {
+			// Fallback.
+			result := "0." + strings.Repeat("0", scale-length) + minInt64Str
+			return "-" + result
+		}
+
 		buf[pos] = '0'
 		buf[pos+1] = '.'
 		pos += 2
@@ -265,6 +287,11 @@ func (d Decimal) handleMinInt64(scale int) string {
 		pos += length
 	} else {
 		integerLen := length - scale
+		required := integerLen + 1 + scale
+		if pos+required > len(buf) {
+			return d.Decimal.String() // Fallback
+		}
+
 		copy(buf[pos:], minInt64Str[:integerLen])
 		pos += integerLen
 
