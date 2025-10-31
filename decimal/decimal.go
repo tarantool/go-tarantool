@@ -21,7 +21,10 @@ package decimal
 
 import (
 	"fmt"
+	"math"
 	"reflect"
+	"strconv"
+	"strings"
 
 	"github.com/shopspring/decimal"
 	"github.com/vmihailenco/msgpack/v5"
@@ -142,6 +145,145 @@ func decimalDecoder(d *msgpack.Decoder, v reflect.Value, extLen int) error {
 
 	ptr := v.Addr().Interface().(*Decimal)
 	return ptr.UnmarshalMsgpack(b)
+}
+
+// This method converts the decimal type to a string.
+// Use shopspring/decimal by default.
+// StringOptimized - optimized version for Tarantool Decimal
+// taking into account the limitations of int64 and support for large numbers via fallback
+// Tarantool decimal has 38 digits, which can exceed int64.
+// Therefore, we cannot use int64 for all cases.
+// For the general case, use shopspring/decimal.String().
+// For cases where it is known that numbers contain less than 26 characters,
+// you can use the optimized version.
+func (d Decimal) String() string {
+	coefficient := d.Decimal.Coefficient() // Note: In shopspring/decimal, the number is stored as coefficient *10^exponent, where exponent can be negative.
+	exponent := d.Decimal.Exponent()
+
+	// If exponent is positive, then we use the standard method.
+	if exponent > 0 {
+		return d.Decimal.String()
+	}
+
+	scale := -exponent
+
+	if !coefficient.IsInt64() {
+		return d.Decimal.String()
+	}
+
+	int64Value := coefficient.Int64()
+
+	return d.stringFromInt64(int64Value, int(scale))
+}
+
+// StringFromInt64 is an internal method for converting int64
+// and scale to a string (for numbers up to 19 digits)
+func (d Decimal) stringFromInt64(value int64, scale int) string {
+	var buf [32]byte
+	pos := 0
+
+	negative := value < 0
+	if negative {
+		if value == math.MinInt64 {
+			return d.handleMinInt64(scale)
+		}
+		buf[pos] = '-'
+		pos++
+		value = -value
+	}
+
+	str := strconv.FormatInt(value, 10)
+	length := len(str)
+
+	if scale == 0 {
+		copy(buf[pos:], str)
+		pos += length
+		return string(buf[:pos])
+	}
+
+	if scale >= length {
+		buf[pos] = '0'
+		buf[pos+1] = '.'
+		pos += 2
+
+		zeros := scale - length
+		for i := 0; i < zeros; i++ {
+			buf[pos] = '0'
+			pos++
+		}
+
+		copy(buf[pos:], str)
+		pos += length
+	} else {
+		integerLen := length - scale
+		copy(buf[pos:], str[:integerLen])
+		pos += integerLen
+
+		fractionalPart := str[integerLen:]
+
+		fractionalPart = strings.TrimRight(fractionalPart, "0")
+
+		if len(fractionalPart) > 0 {
+			buf[pos] = '.'
+			pos++
+			copy(buf[pos:], fractionalPart)
+			pos += len(fractionalPart)
+		}
+	}
+
+	return string(buf[:pos])
+}
+
+func (d Decimal) handleMinInt64(scale int) string {
+
+	const minInt64Str = "9223372036854775808"
+
+	if scale == 0 {
+		return "-" + minInt64Str
+	}
+
+	var buf [32]byte
+	pos := 0
+
+	buf[pos] = '-'
+	pos++
+
+	length := len(minInt64Str)
+
+	if scale >= length {
+		buf[pos] = '0'
+		buf[pos+1] = '.'
+		pos += 2
+
+		zeros := scale - length
+		for i := 0; i < zeros; i++ {
+			buf[pos] = '0'
+			pos++
+		}
+
+		copy(buf[pos:], minInt64Str)
+		pos += length
+	} else {
+		integerLen := length - scale
+		copy(buf[pos:], minInt64Str[:integerLen])
+		pos += integerLen
+
+		buf[pos] = '.'
+		pos++
+
+		copy(buf[pos:], minInt64Str[integerLen:])
+		pos += scale
+	}
+
+	return string(buf[:pos])
+}
+
+func MustMakeDecimal(src string) Decimal {
+	dec, err := MakeDecimalFromString(src)
+	if err != nil {
+		panic(fmt.Sprintf("MustMakeDecimalFromString: %v", err))
+	}
+	return dec
 }
 
 func init() {
