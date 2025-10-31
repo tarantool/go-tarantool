@@ -853,3 +853,16 @@ func TestRealTarantoolUsage(t *testing.T) {
 		})
 	}
 }
+
+func Test100_00(t *testing.T) {
+	dec := MustMakeDecimal("100.00")
+	coefficient := dec.Decimal.Coefficient()
+	exponent := dec.Decimal.Exponent()
+	t.Logf("Coefficient: %v, Exponent: %v", coefficient, exponent)
+	t.Logf("Coefficient.IsInt64: %v", coefficient.IsInt64())
+	if coefficient.IsInt64() {
+		t.Logf("Int64: %v", coefficient.Int64())
+	}
+	result := dec.StringOptimized()
+	t.Logf("StringOptimized: %q", result)
+}
