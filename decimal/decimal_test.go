@@ -770,7 +770,7 @@ func TestDecimalStringOptimized(t *testing.T) {
 			dec, err := MakeDecimalFromString(tt.input)
 			assert.NoError(t, err)
 
-			result := dec.String()
+			result := dec.StringOptimized()
 
 			assert.Equal(t, tt.expected, result)
 
@@ -802,8 +802,8 @@ func TestTarantoolBCDCompatibility(t *testing.T) {
 			err = dec2.UnmarshalMsgpack(msgpackData)
 			assert.NoError(t, err)
 
-			originalStr := dec.String()
-			roundtripStr := dec2.String()
+			originalStr := dec.StringOptimized()
+			roundtripStr := dec2.StringOptimized()
 
 			assert.Equal(t, originalStr, roundtripStr,
 				"BCD roundtrip failed for input: %s", input)

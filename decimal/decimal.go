@@ -156,7 +156,7 @@ func decimalDecoder(d *msgpack.Decoder, v reflect.Value, extLen int) error {
 // For the general case, use shopspring/decimal.String().
 // For cases where it is known that numbers contain less than 26 characters,
 // you can use the optimized version.
-func (d Decimal) String() string {
+func (d Decimal) StringOptimized() string {
 	coefficient := d.Decimal.Coefficient() // Note: In shopspring/decimal, the number is stored as coefficient *10^exponent, where exponent can be negative.
 	exponent := d.Decimal.Exponent()
 
