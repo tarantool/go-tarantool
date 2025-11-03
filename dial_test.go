@@ -658,8 +658,21 @@ func TestFdDialer_Dial(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			sock, err := net.Dial("tcp", addr)
 			require.NoError(t, err)
+			defer sock.Close()
+
+			// It seems that the file descriptor is not always fully ready
+			// after the connection is created. These lines help to avoid the
+			// "bad file descriptor" errors.
+			//
+			// We already tried to use the SyscallConn(), but it has the same
+			// issue.
+			time.Sleep(time.Millisecond)
+			sock.(*net.TCPConn).SetLinger(0)
+
 			f, err := sock.(*net.TCPConn).File()
 			require.NoError(t, err)
+			defer f.Close()
+
 			dialer := tarantool.FdDialer{
 				Fd: f.Fd(),
 			}
@@ -676,8 +689,21 @@ func TestFdDialer_Dial_requirements(t *testing.T) {
 
 	sock, err := net.Dial("tcp", addr)
 	require.NoError(t, err)
+	defer sock.Close()
+
+	// It seems that the file descriptor is not always fully ready after the
+	// connection is created. These lines help to avoid the
+	// "bad file descriptor" errors.
+	//
+	// We already tried to use the SyscallConn(), but it has the same
+	// issue.
+	time.Sleep(time.Millisecond)
+	sock.(*net.TCPConn).SetLinger(0)
+
 	f, err := sock.(*net.TCPConn).File()
 	require.NoError(t, err)
+	defer f.Close()
+
 	dialer := tarantool.FdDialer{
 		Fd: f.Fd(),
 		RequiredProtocolInfo: tarantool.ProtocolInfo{
@@ -688,6 +714,7 @@ func TestFdDialer_Dial_requirements(t *testing.T) {
 	testDialAccept(testDialOpts{}, l)
 	ctx, cancel := test_helpers.GetConnectContext()
 	defer cancel()
+
 	conn, err := dialer.Dial(ctx, tarantool.DialOpts{})
 	if err == nil {
 		conn.Close()
