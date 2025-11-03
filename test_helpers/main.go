@@ -569,5 +569,5 @@ func ConvertUint64(v interface{}) (result uint64, err error) {
 }
 
 func GetConnectContext() (context.Context, context.CancelFunc) {
-	return context.WithTimeout(context.Background(), 500*time.Millisecond)
+	return context.WithTimeout(context.Background(), time.Second)
 }

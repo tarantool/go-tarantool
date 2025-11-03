@@ -304,5 +304,5 @@ func StopTarantoolInstances(instances []*TarantoolInstance) {
 }
 
 func GetPoolConnectContext() (context.Context, context.CancelFunc) {
-	return context.WithTimeout(context.Background(), 500*time.Millisecond)
+	return context.WithTimeout(context.Background(), time.Second)
 }
