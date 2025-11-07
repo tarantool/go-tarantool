@@ -61,8 +61,8 @@ const (
 	LogUnexpectedResultId
 	// LogWatchEventReadFailed is logged when failed to read a watch event.
 	LogWatchEventReadFailed
-	// LogAppendPushFailed is logged when failed to append a push response.
-	LogAppendPushFailed
+	// LogBoxSessionPushUnsupported is logged when response type turned IPROTO_CHUNK.
+	LogBoxSessionPushUnsupported
 )
 
 // ConnEvent is sent throw Notify channel specified in Opts.
@@ -118,9 +118,9 @@ func (d defaultLogger) Report(event ConnLogKind, conn *Connection, v ...interfac
 	case LogWatchEventReadFailed:
 		err := v[0].(error)
 		log.Printf("tarantool: unable to parse watch event: %s", err)
-	case LogAppendPushFailed:
-		err := v[0].(error)
-		log.Printf("tarantool: unable to append a push response: %s", err)
+	case LogBoxSessionPushUnsupported:
+		header := v[0].(Header)
+		log.Printf("tarantool: unsupported box.session.push() for request %d", header.RequestId)
 	default:
 		args := append([]interface{}{"tarantool: unexpected event ", event, conn}, v...)
 		log.Print(args...)
@@ -882,15 +882,7 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 			}
 			continue
 		} else if code == iproto.IPROTO_CHUNK {
-			if fut = conn.peekFuture(header.RequestId); fut != nil {
-				if err := fut.AppendPush(header, &buf); err != nil {
-					err = ClientError{
-						ErrProtocolError,
-						fmt.Sprintf("failed to append push response: %s", err),
-					}
-					conn.opts.Logger.Report(LogAppendPushFailed, conn, err)
-				}
-			}
+			conn.opts.Logger.Report(LogBoxSessionPushUnsupported, conn, header)
 		} else {
 			if fut = conn.fetchFuture(header.RequestId); fut != nil {
 				if err := fut.SetResponse(header, &buf); err != nil {
@@ -1129,26 +1121,6 @@ func (conn *Connection) markDone(fut *Future) {
 		<-conn.rlimit
 	}
 	conn.decrementRequestCnt()
-}
-
-func (conn *Connection) peekFuture(reqid uint32) (fut *Future) {
-	shard := &conn.shard[reqid&(conn.opts.Concurrency-1)]
-	pos := (reqid / conn.opts.Concurrency) & (requestsMap - 1)
-	shard.rmut.Lock()
-	defer shard.rmut.Unlock()
-
-	if conn.opts.Timeout > 0 {
-		if fut = conn.getFutureImp(reqid, true); fut != nil {
-			pair := &shard.requests[pos]
-			*pair.last = fut
-			pair.last = &fut.next
-			fut.timeout = time.Since(epoch) + conn.opts.Timeout
-		}
-	} else {
-		fut = conn.getFutureImp(reqid, false)
-	}
-
-	return fut
 }
 
 func (conn *Connection) fetchFuture(reqid uint32) (fut *Future) {

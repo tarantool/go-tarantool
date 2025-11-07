@@ -12,6 +12,8 @@ TODO
 * `box.New` returns an error instead of panic
 * Added `box.MustNew` wrapper for `box.New` without an error
 * Removed deprecated `pool` methods, related interfaces and tests are updated.
+* Removed `box.session.push()` support: Future.AppendPush() and Future.GetIterator()
+  methods, ResponseIterator and TimeoutResponseIterator types.
 
 ## Migration from v1.x.x to v2.x.x
 
