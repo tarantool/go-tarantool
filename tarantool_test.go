@@ -1,6 +1,7 @@
 package tarantool_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/binary"
 	"errors"
@@ -870,127 +871,6 @@ func TestClient(t *testing.T) {
 	}
 	if val, err := test_helpers.ConvertUint64(data[0]); err != nil || val != 11 {
 		t.Errorf("5 + 6 == 11, but got %v", val)
-	}
-}
-
-func TestClientSessionPush(t *testing.T) {
-	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
-
-	var it ResponseIterator
-	const pushMax = 3
-	// It will be iterated immediately.
-	fut0 := conn.Call17Async("push_func", []interface{}{pushMax})
-	respCnt := 0
-	for it = fut0.GetIterator(); it.Next(); {
-		err := it.Err()
-		resp := it.Value()
-		if err != nil {
-			t.Errorf("Unexpected error after it.Next() == true: %q", err.Error())
-			break
-		}
-		if resp == nil {
-			t.Errorf("Response is empty after it.Next() == true")
-			break
-		}
-		respCnt += 1
-	}
-	if err := it.Err(); err != nil {
-		t.Errorf("An unexpected iteration error: %s", err.Error())
-	}
-	if respCnt > pushMax+1 {
-		t.Errorf("Unexpected respCnt = %d, expected 0 <= respCnt <= %d", respCnt, pushMax+1)
-	}
-	_, _ = fut0.Get()
-
-	// It will wait a response before iteration.
-	fut1 := conn.Call17Async("push_func", []interface{}{pushMax})
-	// Future.Get ignores push messages.
-	data, err := fut1.Get()
-	if err != nil {
-		t.Errorf("Failed to Call17: %s", err)
-	} else if len(data) < 1 {
-		t.Errorf("Response.Data is empty after Call17Async")
-	} else if val, err := test_helpers.ConvertUint64(data[0]); err != nil || val != pushMax {
-		t.Errorf("Result is not %d: %v", pushMax, data)
-	}
-
-	// It will will be iterated with a timeout.
-	fut2 := conn.Call17Async("push_func", []interface{}{pushMax})
-
-	var its = []ResponseIterator{
-		fut1.GetIterator(),
-		fut2.GetIterator().WithTimeout(5 * time.Second),
-	}
-
-	for i := 0; i < len(its); i++ {
-		pushCnt := uint64(0)
-		respCnt := uint64(0)
-
-		it = its[i]
-		for it.Next() {
-			resp := it.Value()
-			if resp == nil {
-				t.Errorf("Response is empty after it.Next() == true")
-				break
-			}
-			data, err := resp.Decode()
-			if err != nil {
-				t.Errorf("Failed to Decode: %s", err)
-				break
-			}
-			if len(data) < 1 {
-				t.Errorf("Response.Data is empty after CallAsync")
-				break
-			}
-			if it.IsPush() {
-				pushCnt += 1
-				val, err := test_helpers.ConvertUint64(data[0])
-				if err != nil || val != pushCnt {
-					t.Errorf("Unexpected push data = %v", data)
-				}
-			} else {
-				respCnt += 1
-				val, err := test_helpers.ConvertUint64(data[0])
-				if err != nil || val != pushMax {
-					t.Errorf("Result is not %d: %v", pushMax, data)
-				}
-			}
-		}
-
-		if err = it.Err(); err != nil {
-			t.Errorf("An unexpected iteration error: %s", err.Error())
-		}
-
-		if pushCnt != pushMax {
-			t.Errorf("Expect %d pushes but got %d", pushMax, pushCnt)
-		}
-
-		if respCnt != 1 {
-			t.Errorf("Expect %d responses but got %d", 1, respCnt)
-		}
-	}
-
-	// We can collect original responses after iterations.
-	for _, fut := range []*Future{fut0, fut1, fut2} {
-		data, err := fut.Get()
-		if err != nil {
-			t.Errorf("Unable to call fut.Get(): %s", err)
-		}
-		val, err := test_helpers.ConvertUint64(data[0])
-		if err != nil || val != pushMax {
-			t.Errorf("Result is not %d: %v", pushMax, data)
-		}
-
-		tpl := struct {
-			Val int
-		}{}
-		err = fut.GetTyped(&tpl)
-		if err != nil {
-			t.Errorf("Unable to call fut.GetTyped(): %s", err)
-		} else if tpl.Val != pushMax {
-			t.Errorf("Result is not %d: %d", pushMax, tpl.Val)
-		}
 	}
 }
 
@@ -2929,6 +2809,24 @@ func TestStream_DoWithClosedConn(t *testing.T) {
 	if !strings.Contains(err.Error(), expectedErr.Error()) {
 		t.Fatalf("Unexpected error has been caught: %s", err.Error())
 	}
+}
+
+func TestConnectionBoxSessionPushUnsupported(t *testing.T) {
+	old := log.Writer()
+	defer log.SetOutput(old)
+
+	var buf bytes.Buffer
+	log.SetOutput(&buf)
+
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
+	defer conn.Close()
+
+	_, err := conn.Do(NewCallRequest("push_func").Args([]interface{}{1})).Get()
+	require.NoError(t, err)
+
+	actualLog := buf.String()
+	expectedLog := "unsupported box.session.push()"
+	require.Contains(t, actualLog, expectedLog)
 }
 
 func TestConnectionProtocolInfoSupported(t *testing.T) {

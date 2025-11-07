@@ -1102,41 +1102,6 @@ func ExampleErrorNo() {
 	// Success.
 }
 
-func ExampleFuture_GetIterator() {
-	conn := exampleConnect(dialer, opts)
-	defer conn.Close()
-
-	const timeout = 3 * time.Second
-	fut := conn.Do(tarantool.NewCallRequest("push_func").
-		Args([]interface{}{4}),
-	)
-
-	var it tarantool.ResponseIterator
-	for it = fut.GetIterator().WithTimeout(timeout); it.Next(); {
-		resp := it.Value()
-		data, _ := resp.Decode()
-		if it.IsPush() {
-			// It is a push message.
-			fmt.Printf("push message: %v\n", data[0])
-		} else if resp.Header().Error == tarantool.ErrorNo {
-			// It is a regular response.
-			fmt.Printf("response: %v", data[0])
-		} else {
-			fmt.Printf("an unexpected response code %d", resp.Header().Error)
-		}
-	}
-	if err := it.Err(); err != nil {
-		fmt.Printf("error in call of push_func is %v", err)
-		return
-	}
-	// Output:
-	// push message: 1
-	// push message: 2
-	// push message: 3
-	// push message: 4
-	// response: 4
-}
-
 func ExampleConnect() {
 	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	defer cancel()
