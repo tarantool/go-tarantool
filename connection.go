@@ -936,7 +936,7 @@ func (conn *Connection) newFuture(req Request) (fut *Future) {
 				ErrRateLimited,
 				"Request is rate limited on client",
 			}
-			fut.done = nil
+			fut.finish()
 			return
 		}
 	}
@@ -950,7 +950,7 @@ func (conn *Connection) newFuture(req Request) (fut *Future) {
 			ErrConnectionClosed,
 			"using closed connection",
 		}
-		fut.done = nil
+		fut.finish()
 		shard.rmut.Unlock()
 		return
 	case connDisconnected:
@@ -958,7 +958,7 @@ func (conn *Connection) newFuture(req Request) (fut *Future) {
 			ErrConnectionNotReady,
 			"client connection is not ready",
 		}
-		fut.done = nil
+		fut.finish()
 		shard.rmut.Unlock()
 		return
 	case connShutdown:
@@ -966,7 +966,7 @@ func (conn *Connection) newFuture(req Request) (fut *Future) {
 			ErrConnectionShutdown,
 			"server shutdown in progress",
 		}
-		fut.done = nil
+		fut.finish()
 		shard.rmut.Unlock()
 		return
 	}
@@ -995,7 +995,7 @@ func (conn *Connection) newFuture(req Request) (fut *Future) {
 			runtime.Gosched()
 			select {
 			case conn.rlimit <- struct{}{}:
-			case <-fut.done:
+			case <-fut.WaitChan():
 				if fut.err == nil {
 					panic("fut.done is closed, but err is nil")
 				}
@@ -1009,12 +1009,12 @@ func (conn *Connection) newFuture(req Request) (fut *Future) {
 // is "done" before the response is come.
 func (conn *Connection) contextWatchdog(fut *Future, ctx context.Context) {
 	select {
-	case <-fut.done:
+	case <-fut.WaitChan():
 	case <-ctx.Done():
 	}
 
 	select {
-	case <-fut.done:
+	case <-fut.WaitChan():
 		return
 	default:
 		conn.cancelFuture(fut, fmt.Errorf("context is done (request ID %d): %w",
@@ -1036,7 +1036,8 @@ func (conn *Connection) send(req Request, streamId uint64) *Future {
 	conn.incrementRequestCnt()
 
 	fut := conn.newFuture(req)
-	if fut.done == nil {
+
+	if fut.finished {
 		conn.decrementRequestCnt()
 		return fut
 	}
@@ -1059,12 +1060,12 @@ func (conn *Connection) putFuture(fut *Future, req Request, streamId uint64) {
 	shardn := fut.requestId & (conn.opts.Concurrency - 1)
 	shard := &conn.shard[shardn]
 	shard.bufmut.Lock()
-	select {
-	case <-fut.done:
+
+	if fut.finished {
 		shard.bufmut.Unlock()
 		return
-	default:
 	}
+
 	firstWritten := shard.buf.Len() == 0
 	if shard.buf.Cap() == 0 {
 		shard.buf.b = make([]byte, 0, 128)
