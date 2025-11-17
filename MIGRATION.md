@@ -14,6 +14,22 @@ TODO
 * Removed deprecated `pool` methods, related interfaces and tests are updated.
 * Removed `box.session.push()` support: Future.AppendPush() and Future.GetIterator()
   methods, ResponseIterator and TimeoutResponseIterator types.
+* Removed deprecated `Connection` methods, related interfaces and tests are updated.
+  *NOTE*: due to Future.GetTyped() doesn't decode SelectRequest into structure, substitute Connection.GetTyped() following the example:
+  ```Go
+  var singleTpl = Tuple{}
+  err = conn.GetTyped(space, index, key, &singleTpl)
+  ```
+  At now became:
+  ```Go
+  var tpl []Tuple
+	err = conn.Do(NewSelectRequest(space).
+		Index(index).
+		Limit(1).
+		Key(key)
+  ).GetTyped(&tpl)
+  singleTpl := tpl[0]
+  ```
 
 ## Migration from v1.x.x to v2.x.x
 

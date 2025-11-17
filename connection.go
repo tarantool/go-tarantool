@@ -739,7 +739,7 @@ func (conn *Connection) pinger() {
 			return
 		case <-t.C:
 		}
-		conn.Ping()
+		conn.Do(NewPingRequest())
 	}
 }
 
