@@ -3,9 +3,8 @@ package crud
 import (
 	"context"
 
-	"github.com/vmihailenco/msgpack/v5"
-
 	"github.com/tarantool/go-tarantool/v3"
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 // InsertOpts describes options for `crud.insert` method.
