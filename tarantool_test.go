@@ -528,7 +528,7 @@ func TestFutureMultipleGetGetTyped(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
-	fut := conn.Call17Async("simple_concat", []interface{}{"1"})
+	fut := conn.Do(NewCall17Request("simple_concat").Args([]interface{}{"1"}))
 
 	for i := 0; i < 30; i++ {
 		// [0, 10) fut.Get()
@@ -566,7 +566,7 @@ func TestFutureMultipleGetWithError(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
-	fut := conn.Call17Async("non_exist", []interface{}{"1"})
+	fut := conn.Do(NewCall17Request("non_exist").Args([]interface{}{"1"}))
 
 	for i := 0; i < 2; i++ {
 		if _, err := fut.Get(); err == nil {
@@ -579,7 +579,7 @@ func TestFutureMultipleGetTypedWithError(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
-	fut := conn.Call17Async("simple_concat", []interface{}{"1"})
+	fut := conn.Do(NewCall17Request("simple_concat").Args([]interface{}{"1"}))
 
 	wrongTpl := struct {
 		Val int
@@ -600,279 +600,6 @@ func TestFutureMultipleGetTypedWithError(t *testing.T) {
 }
 
 // /////////////////
-
-func TestClient(t *testing.T) {
-	var err error
-
-	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
-
-	// Ping
-	data, err := conn.Ping()
-	if err != nil {
-		t.Fatalf("Failed to Ping: %s", err)
-	}
-	if data != nil {
-		t.Fatalf("Response data is not nil after Ping")
-	}
-
-	// Insert
-	data, err = conn.Insert(spaceNo, []interface{}{uint(1), "hello", "world"})
-	if err != nil {
-		t.Fatalf("Failed to Insert: %s", err)
-	}
-	if len(data) != 1 {
-		t.Errorf("Response Body len != 1")
-	}
-	if tpl, ok := data[0].([]interface{}); !ok {
-		t.Errorf("Unexpected body of Insert")
-	} else {
-		if len(tpl) != 3 {
-			t.Errorf("Unexpected body of Insert (tuple len)")
-		}
-		if id, err := test_helpers.ConvertUint64(tpl[0]); err != nil || id != 1 {
-			t.Errorf("Unexpected body of Insert (0)")
-		}
-		if h, ok := tpl[1].(string); !ok || h != "hello" {
-			t.Errorf("Unexpected body of Insert (1)")
-		}
-	}
-	data, err = conn.Insert(spaceNo, &Tuple{Id: 1, Msg: "hello", Name: "world"})
-	if tntErr, ok := err.(Error); !ok || tntErr.Code != iproto.ER_TUPLE_FOUND {
-		t.Errorf("Expected %s but got: %v", iproto.ER_TUPLE_FOUND, err)
-	}
-	if len(data) != 0 {
-		t.Errorf("Response Body len != 0")
-	}
-
-	// Delete
-	data, err = conn.Delete(spaceNo, indexNo, []interface{}{uint(1)})
-	if err != nil {
-		t.Fatalf("Failed to Delete: %s", err)
-	}
-	if len(data) != 1 {
-		t.Errorf("Response Body len != 1")
-	}
-	if tpl, ok := data[0].([]interface{}); !ok {
-		t.Errorf("Unexpected body of Delete")
-	} else {
-		if len(tpl) != 3 {
-			t.Errorf("Unexpected body of Delete (tuple len)")
-		}
-		if id, err := test_helpers.ConvertUint64(tpl[0]); err != nil || id != 1 {
-			t.Errorf("Unexpected body of Delete (0)")
-		}
-		if h, ok := tpl[1].(string); !ok || h != "hello" {
-			t.Errorf("Unexpected body of Delete (1)")
-		}
-	}
-	data, err = conn.Delete(spaceNo, indexNo, []interface{}{uint(101)})
-	if err != nil {
-		t.Fatalf("Failed to Delete: %s", err)
-	}
-	if len(data) != 0 {
-		t.Errorf("Response Data len != 0")
-	}
-
-	// Replace
-	data, err = conn.Replace(spaceNo, []interface{}{uint(2), "hello", "world"})
-	if err != nil {
-		t.Fatalf("Failed to Replace: %s", err)
-	}
-	if data == nil {
-		t.Fatalf("Response is nil after Replace")
-	}
-	data, err = conn.Replace(spaceNo, []interface{}{uint(2), "hi", "planet"})
-	if err != nil {
-		t.Fatalf("Failed to Replace (duplicate): %s", err)
-	}
-	if len(data) != 1 {
-		t.Errorf("Response Data len != 1")
-	}
-	if tpl, ok := data[0].([]interface{}); !ok {
-		t.Errorf("Unexpected body of Replace")
-	} else {
-		if len(tpl) != 3 {
-			t.Errorf("Unexpected body of Replace (tuple len)")
-		}
-		if id, err := test_helpers.ConvertUint64(tpl[0]); err != nil || id != 2 {
-			t.Errorf("Unexpected body of Replace (0)")
-		}
-		if h, ok := tpl[1].(string); !ok || h != "hi" {
-			t.Errorf("Unexpected body of Replace (1)")
-		}
-	}
-
-	// Update
-	data, err = conn.Update(spaceNo, indexNo, []interface{}{uint(2)},
-		NewOperations().Assign(1, "bye").Delete(2, 1))
-	if err != nil {
-		t.Fatalf("Failed to Update: %s", err)
-	}
-	if len(data) != 1 {
-		t.Errorf("Response Data len != 1")
-	}
-	if tpl, ok := data[0].([]interface{}); !ok {
-		t.Errorf("Unexpected body of Update")
-	} else {
-		if len(tpl) != 2 {
-			t.Errorf("Unexpected body of Update (tuple len)")
-		}
-		if id, err := test_helpers.ConvertUint64(tpl[0]); err != nil || id != 2 {
-			t.Errorf("Unexpected body of Update (0)")
-		}
-		if h, ok := tpl[1].(string); !ok || h != "bye" {
-			t.Errorf("Unexpected body of Update (1)")
-		}
-	}
-
-	// Upsert
-	data, err = conn.Upsert(spaceNo, []interface{}{uint(3), 1},
-		NewOperations().Add(1, 1))
-	if err != nil {
-		t.Fatalf("Failed to Upsert (insert): %s", err)
-	}
-	if data == nil {
-		t.Fatalf("Response is nil after Upsert (insert)")
-	}
-	data, err = conn.Upsert(spaceNo, []interface{}{uint(3), 1},
-		NewOperations().Add(1, 1))
-	if err != nil {
-		t.Fatalf("Failed to Upsert (update): %s", err)
-	}
-	if data == nil {
-		t.Errorf("Response is nil after Upsert (update)")
-	}
-
-	// Select
-	for i := 10; i < 20; i++ {
-		data, err = conn.Replace(spaceNo, []interface{}{uint(i), fmt.Sprintf("val %d", i), "bla"})
-		if err != nil {
-			t.Fatalf("Failed to Replace: %s", err)
-		}
-		if data == nil {
-			t.Errorf("Response is nil after Replace")
-		}
-	}
-	data, err = conn.Select(spaceNo, indexNo, 0, 1, IterEq, []interface{}{uint(10)})
-	if err != nil {
-		t.Fatalf("Failed to Select: %s", err)
-	}
-	if len(data) != 1 {
-		t.Fatalf("Response Data len != 1")
-	}
-	if tpl, ok := data[0].([]interface{}); !ok {
-		t.Errorf("Unexpected body of Select")
-	} else {
-		if id, err := test_helpers.ConvertUint64(tpl[0]); err != nil || id != 10 {
-			t.Errorf("Unexpected body of Select (0)")
-		}
-		if h, ok := tpl[1].(string); !ok || h != "val 10" {
-			t.Errorf("Unexpected body of Select (1)")
-		}
-	}
-
-	// Select empty
-	data, err = conn.Select(spaceNo, indexNo, 0, 1, IterEq, []interface{}{uint(30)})
-	if err != nil {
-		t.Fatalf("Failed to Select: %s", err)
-	}
-	if len(data) != 0 {
-		t.Errorf("Response Data len != 0")
-	}
-
-	// Select Typed
-	var tpl []Tuple
-	err = conn.SelectTyped(spaceNo, indexNo, 0, 1, IterEq, []interface{}{uint(10)}, &tpl)
-	if err != nil {
-		t.Fatalf("Failed to SelectTyped: %s", err)
-	}
-	if len(tpl) != 1 {
-		t.Errorf("Result len of SelectTyped != 1")
-	} else if tpl[0].Id != 10 {
-		t.Errorf("Bad value loaded from SelectTyped")
-	}
-
-	// Get Typed
-	var singleTpl = Tuple{}
-	err = conn.GetTyped(spaceNo, indexNo, []interface{}{uint(10)}, &singleTpl)
-	if err != nil {
-		t.Fatalf("Failed to GetTyped: %s", err)
-	}
-	if singleTpl.Id != 10 {
-		t.Errorf("Bad value loaded from GetTyped")
-	}
-
-	// Select Typed for one tuple
-	var tpl1 [1]Tuple
-	err = conn.SelectTyped(spaceNo, indexNo, 0, 1, IterEq, []interface{}{uint(10)}, &tpl1)
-	if err != nil {
-		t.Fatalf("Failed to SelectTyped: %s", err)
-	}
-	if len(tpl) != 1 {
-		t.Errorf("Result len of SelectTyped != 1")
-	} else if tpl[0].Id != 10 {
-		t.Errorf("Bad value loaded from SelectTyped")
-	}
-
-	// Get Typed Empty
-	var singleTpl2 Tuple
-	err = conn.GetTyped(spaceNo, indexNo, []interface{}{uint(30)}, &singleTpl2)
-	if err != nil {
-		t.Fatalf("Failed to GetTyped: %s", err)
-	}
-	if singleTpl2.Id != 0 {
-		t.Errorf("Bad value loaded from GetTyped")
-	}
-
-	// Select Typed Empty
-	var tpl2 []Tuple
-	err = conn.SelectTyped(spaceNo, indexNo, 0, 1, IterEq, []interface{}{uint(30)}, &tpl2)
-	if err != nil {
-		t.Fatalf("Failed to SelectTyped: %s", err)
-	}
-	if len(tpl2) != 0 {
-		t.Errorf("Result len of SelectTyped != 1")
-	}
-
-	// Call16
-	data, err = conn.Call16("box.info", []interface{}{"box.schema.SPACE_ID"})
-	if err != nil {
-		t.Fatalf("Failed to Call16: %s", err)
-	}
-	if len(data) < 1 {
-		t.Errorf("Response.Data is empty after Eval")
-	}
-
-	// Call16 vs Call17
-	data, err = conn.Call16("simple_concat", []interface{}{"1"})
-	if err != nil {
-		t.Errorf("Failed to use Call16")
-	}
-	if val, ok := data[0].([]interface{})[0].(string); !ok || val != "11" {
-		t.Errorf("result is not {{1}} : %v", data)
-	}
-
-	data, err = conn.Call17("simple_concat", []interface{}{"1"})
-	if err != nil {
-		t.Errorf("Failed to use Call")
-	}
-	if val, ok := data[0].(string); !ok || val != "11" {
-		t.Errorf("result is not {{1}} : %v", data)
-	}
-
-	// Eval
-	data, err = conn.Eval("return 5 + 6", []interface{}{})
-	if err != nil {
-		t.Fatalf("Failed to Eval: %s", err)
-	}
-	if len(data) < 1 {
-		t.Errorf("Response.Data is empty after Eval")
-	}
-	if val, err := test_helpers.ConvertUint64(data[0]); err != nil || val != 11 {
-		t.Errorf("5 + 6 == 11, but got %v", val)
-	}
-}
 
 const (
 	createTableQuery = "CREATE TABLE SQL_SPACE (ID STRING PRIMARY KEY, NAME " +
@@ -1069,7 +796,19 @@ func TestSQLTyped(t *testing.T) {
 	defer conn.Close()
 
 	mem := []Member{}
-	info, meta, err := conn.ExecuteTyped(selectTypedQuery, []interface{}{1}, &mem)
+	fut := conn.Do(NewExecuteRequest(selectTypedQuery).
+		Args([]interface{}{1}),
+	)
+	fut.GetTyped(&mem)
+	resp, err := fut.GetResponse()
+	assert.NoError(t, err, "Error while getting Response")
+	exResp, ok := resp.(*ExecuteResponse)
+	assert.True(t, ok, "Got wrong response type")
+
+	info, err := exResp.SQLInfo()
+	assert.NoError(t, err, "Error while getting SQLInfo")
+	meta, err := exResp.MetaData()
+	assert.NoError(t, err, "Error while getting MetaData")
 	if info.AffectedCount != 0 {
 		t.Errorf("Rows affected count must be 0")
 	}
@@ -1713,98 +1452,6 @@ func TestNewPreparedFromResponse(t *testing.T) {
 		})
 	}
 }
-
-func TestClientNamed(t *testing.T) {
-	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
-
-	// Insert
-	data, err := conn.Insert(spaceName, []interface{}{uint(1001), "hello2", "world2"})
-	if err != nil {
-		t.Fatalf("Failed to Insert: %s", err)
-	}
-	if data == nil {
-		t.Errorf("Response is nil after Insert")
-	}
-
-	// Delete
-	data, err = conn.Delete(spaceName, indexName, []interface{}{uint(1001)})
-	if err != nil {
-		t.Fatalf("Failed to Delete: %s", err)
-	}
-	if data == nil {
-		t.Errorf("Response is nil after Delete")
-	}
-
-	// Replace
-	data, err = conn.Replace(spaceName, []interface{}{uint(1002), "hello", "world"})
-	if err != nil {
-		t.Fatalf("Failed to Replace: %s", err)
-	}
-	if data == nil {
-		t.Errorf("Response is nil after Replace")
-	}
-
-	// Update
-	data, err = conn.Update(spaceName, indexName,
-		[]interface{}{
-			uint(1002)},
-		NewOperations().Assign(1, "buy").Delete(2, 1))
-	if err != nil {
-		t.Fatalf("Failed to Update: %s", err)
-	}
-	if data == nil {
-		t.Errorf("Response is nil after Update")
-	}
-
-	// Upsert
-	data, err = conn.Upsert(spaceName,
-		[]interface{}{uint(1003), 1}, NewOperations().Add(1, 1))
-	if err != nil {
-		t.Fatalf("Failed to Upsert (insert): %s", err)
-	}
-	if data == nil {
-		t.Errorf("Response is nil after Upsert (insert)")
-	}
-	data, err = conn.Upsert(spaceName,
-		[]interface{}{uint(1003), 1}, NewOperations().Add(1, 1))
-	if err != nil {
-		t.Fatalf("Failed to Upsert (update): %s", err)
-	}
-	if data == nil {
-		t.Errorf("Response is nil after Upsert (update)")
-	}
-
-	// Select
-	for i := 1010; i < 1020; i++ {
-		data, err = conn.Replace(spaceName,
-			[]interface{}{uint(i), fmt.Sprintf("val %d", i), "bla"})
-		if err != nil {
-			t.Fatalf("Failed to Replace: %s", err)
-		}
-		if data == nil {
-			t.Errorf("Response is nil after Replace")
-		}
-	}
-	data, err = conn.Select(spaceName, indexName, 0, 1, IterEq, []interface{}{uint(1010)})
-	if err != nil {
-		t.Fatalf("Failed to Select: %s", err)
-	}
-	if data == nil {
-		t.Errorf("Response is nil after Select")
-	}
-
-	// Select Typed
-	var tpl []Tuple
-	err = conn.SelectTyped(spaceName, indexName, 0, 1, IterEq, []interface{}{uint(1010)}, &tpl)
-	if err != nil {
-		t.Fatalf("Failed to SelectTyped: %s", err)
-	}
-	if len(tpl) != 1 {
-		t.Errorf("Result len of SelectTyped != 1")
-	}
-}
-
 func TestClientRequestObjects(t *testing.T) {
 	var (
 		req Request
@@ -1826,7 +1473,7 @@ func TestClientRequestObjects(t *testing.T) {
 
 	// The code prepares data.
 	for i := 1010; i < 1020; i++ {
-		conn.Delete(spaceName, nil, []interface{}{uint(i)})
+		conn.Do(NewDeleteRequest(spaceName).Index(nil).Key([]interface{}{uint(i)}))
 	}
 
 	// Insert
@@ -2274,19 +1921,6 @@ func TestConnectionDoSelectRequest_pagination_pos(t *testing.T) {
 	testConnectionDoSelectRequestCheck(t, selResp, err, true, 2, 1012)
 }
 
-func TestConnection_Call(t *testing.T) {
-	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
-
-	data, err := conn.Call("simple_concat", []interface{}{"1"})
-	if err != nil {
-		t.Errorf("Failed to use Call")
-	}
-	if val, ok := data[0].(string); !ok || val != "11" {
-		t.Errorf("result is not {{1}} : %v", data)
-	}
-}
-
 func TestCallRequest(t *testing.T) {
 	var err error
 
@@ -2446,13 +2080,18 @@ func TestComplexStructs(t *testing.T) {
 	defer conn.Close()
 
 	tuple := Tuple2{Cid: 777, Orig: "orig", Members: []Member{{"lol", "", 1}, {"wut", "", 3}}}
-	_, err = conn.Replace(spaceNo, &tuple)
+	_, err = conn.Do(NewReplaceRequest(spaceNo).Tuple(&tuple)).Get()
 	if err != nil {
 		t.Fatalf("Failed to insert: %s", err)
 	}
 
 	var tuples [1]Tuple2
-	err = conn.SelectTyped(spaceNo, indexNo, 0, 1, IterEq, []interface{}{777}, &tuples)
+	err = conn.Do(NewSelectRequest(spaceNo).
+		Index(indexNo).
+		Limit(1).
+		Iterator(IterEq).
+		Key([]interface{}{777}),
+	).GetTyped(&tuples)
 	if err != nil {
 		t.Fatalf("Failed to selectTyped: %s", err)
 	}
@@ -3072,7 +2711,7 @@ func TestErrorExtendedInfoBasic(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
-	_, err := conn.Eval("not a Lua code", []interface{}{})
+	_, err := conn.Do(NewEvalRequest("not a Lua code").Args([]interface{}{})).Get()
 	require.NotNilf(t, err, "expected error on invalid Lua code")
 
 	ttErr, ok := err.(Error)
@@ -3100,7 +2739,7 @@ func TestErrorExtendedInfoStack(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
-	_, err := conn.Eval("error(chained_error)", []interface{}{})
+	_, err := conn.Do(NewEvalRequest("error(chained_error)").Args([]interface{}{})).Get()
 	require.NotNilf(t, err, "expected error on explicit error raise")
 
 	ttErr, ok := err.(Error)
@@ -3136,7 +2775,7 @@ func TestErrorExtendedInfoFields(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer conn.Close()
 
-	_, err := conn.Eval("error(access_denied_error)", []interface{}{})
+	_, err := conn.Do(NewEvalRequest("error(access_denied_error)").Args([]interface{}{})).Get()
 	require.NotNilf(t, err, "expected error on forbidden action")
 
 	ttErr, ok := err.(Error)
@@ -3839,7 +3478,7 @@ func TestFdDialer(t *testing.T) {
 	`, sidecarExe)
 
 	var resp []interface{}
-	err = conn.EvalTyped(evalBody, []interface{}{}, &resp)
+	err = conn.Do(NewEvalRequest(evalBody).Args([]interface{}{})).GetTyped(&resp)
 	require.NoError(t, err)
 	require.Equal(t, "", resp[1], resp[1])
 	require.Equal(t, "", resp[2], resp[2])

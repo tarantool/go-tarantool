@@ -53,7 +53,9 @@ func testGracefulShutdown(t *testing.T, conn *Connection, inst *test_helpers.Tar
 	// Set a big timeout so it would be easy to differ
 	// if server went down on timeout or after all connections were terminated.
 	serverShutdownTimeout := 60 // in seconds
-	_, err = conn.Call("box.ctl.set_on_shutdown_timeout", []interface{}{serverShutdownTimeout})
+	_, err = conn.Do(NewCallRequest("box.ctl.set_on_shutdown_timeout").
+		Args([]interface{}{serverShutdownTimeout}),
+	).Get()
 	require.Nil(t, err)
 
 	// Send request with sleep.
@@ -284,7 +286,9 @@ func TestGracefulShutdownRespectsClose(t *testing.T) {
 	// Set a big timeout so it would be easy to differ
 	// if server went down on timeout or after all connections were terminated.
 	serverShutdownTimeout := 60 // in seconds
-	_, err = conn.Call("box.ctl.set_on_shutdown_timeout", []interface{}{serverShutdownTimeout})
+	_, err = conn.Do(NewCallRequest("box.ctl.set_on_shutdown_timeout").
+		Args([]interface{}{serverShutdownTimeout}),
+	).Get()
 	require.Nil(t, err)
 
 	// Send request with sleep.
@@ -358,7 +362,9 @@ func TestGracefulShutdownNotRacesWithRequestReconnect(t *testing.T) {
 
 	// Set a small timeout so server will shutdown before requesst finishes.
 	serverShutdownTimeout := 1 // in seconds
-	_, err = conn.Call("box.ctl.set_on_shutdown_timeout", []interface{}{serverShutdownTimeout})
+	_, err = conn.Do(NewCallRequest("box.ctl.set_on_shutdown_timeout").
+		Args([]interface{}{serverShutdownTimeout}),
+	).Get()
 	require.Nil(t, err)
 
 	// Send request with sleep.
@@ -425,7 +431,9 @@ func TestGracefulShutdownCloseConcurrent(t *testing.T) {
 	// Set a big timeout so it would be easy to differ
 	// if server went down on timeout or after all connections were terminated.
 	serverShutdownTimeout := 60 // in seconds
-	_, err = conn.Call("box.ctl.set_on_shutdown_timeout", []interface{}{serverShutdownTimeout})
+	_, err = conn.Do(NewCallRequest("box.ctl.set_on_shutdown_timeout").
+		Args([]interface{}{serverShutdownTimeout}),
+	).Get()
 	require.Nil(t, err)
 	conn.Close()
 
@@ -500,7 +508,9 @@ func TestGracefulShutdownConcurrent(t *testing.T) {
 	// Set a big timeout so it would be easy to differ
 	// if server went down on timeout or after all connections were terminated.
 	serverShutdownTimeout := 60 // in seconds
-	_, err = conn.Call("box.ctl.set_on_shutdown_timeout", []interface{}{serverShutdownTimeout})
+	_, err = conn.Do(NewCallRequest("box.ctl.set_on_shutdown_timeout").
+		Args([]interface{}{serverShutdownTimeout}),
+	).Get()
 	require.Nil(t, err)
 	conn.Close()
 
