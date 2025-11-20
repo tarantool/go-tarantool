@@ -15,7 +15,6 @@ type Future struct {
 	mutex     sync.Mutex
 	resp      Response
 	err       error
-	ready     chan struct{}
 	done      chan struct{}
 }
 
@@ -41,7 +40,6 @@ func (fut *Future) isDone() bool {
 // NewFuture creates a new empty Future for a given Request.
 func NewFuture(req Request) (fut *Future) {
 	fut = &Future{}
-	fut.ready = make(chan struct{}, 1000000000)
 	fut.done = make(chan struct{})
 	fut.req = req
 	return fut
@@ -62,7 +60,6 @@ func (fut *Future) SetResponse(header Header, body io.Reader) error {
 	}
 	fut.resp = resp
 
-	close(fut.ready)
 	close(fut.done)
 	return nil
 }
@@ -77,7 +74,6 @@ func (fut *Future) SetError(err error) {
 	}
 	fut.err = err
 
-	close(fut.ready)
 	close(fut.done)
 }
 

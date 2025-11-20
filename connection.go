@@ -934,7 +934,6 @@ func (conn *Connection) newFuture(req Request) (fut *Future) {
 				ErrRateLimited,
 				"Request is rate limited on client",
 			}
-			fut.ready = nil
 			fut.done = nil
 			return
 		}
@@ -949,7 +948,6 @@ func (conn *Connection) newFuture(req Request) (fut *Future) {
 			ErrConnectionClosed,
 			"using closed connection",
 		}
-		fut.ready = nil
 		fut.done = nil
 		shard.rmut.Unlock()
 		return
@@ -958,7 +956,6 @@ func (conn *Connection) newFuture(req Request) (fut *Future) {
 			ErrConnectionNotReady,
 			"client connection is not ready",
 		}
-		fut.ready = nil
 		fut.done = nil
 		shard.rmut.Unlock()
 		return
@@ -967,7 +964,6 @@ func (conn *Connection) newFuture(req Request) (fut *Future) {
 			ErrConnectionShutdown,
 			"server shutdown in progress",
 		}
-		fut.ready = nil
 		fut.done = nil
 		shard.rmut.Unlock()
 		return
@@ -1038,7 +1034,7 @@ func (conn *Connection) send(req Request, streamId uint64) *Future {
 	conn.incrementRequestCnt()
 
 	fut := conn.newFuture(req)
-	if fut.ready == nil {
+	if fut.done == nil {
 		conn.decrementRequestCnt()
 		return fut
 	}
