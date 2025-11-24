@@ -55,6 +55,10 @@ func (resp *futureMockResponse) Header() Header {
 	return resp.header
 }
 
+func (resp *futureMockResponse) Release() {
+	// Nothing to do.
+}
+
 func (resp *futureMockResponse) Decode() ([]interface{}, error) {
 	resp.decodeCnt++
 
@@ -217,6 +221,10 @@ func (f *futureMock) GetResponse() (Response, error) {
 
 func (*futureMock) WaitChan() <-chan struct{} {
 	return nil
+}
+
+func (f *futureMock) Release() {
+	// Nothing to do.
 }
 
 func TestFuture(t *testing.T) {

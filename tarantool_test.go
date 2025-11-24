@@ -197,12 +197,10 @@ func (t *benchTuple) DecodeMsgpack(dec *msgpack.Decoder) error {
 }
 
 func BenchmarkSync_naive_with_custom_type(b *testing.B) {
-	var err error
-
 	conn := test_helpers.ConnectWithValidation(b, dialer, opts)
 	defer conn.Close()
 
-	_, err = conn.Do(
+	_, err := conn.Do(
 		NewReplaceRequest(spaceNo).
 			Tuple([]interface{}{uint(1111), "hello", "world"}),
 	).Get()
@@ -228,6 +226,40 @@ func BenchmarkSync_naive_with_custom_type(b *testing.B) {
 		if tuple.id != 1111 {
 			b.Errorf("invalid result")
 		}
+	}
+}
+
+func BenchmarkSync_naive_with_custom_type_with_Release(b *testing.B) {
+	conn := test_helpers.ConnectWithValidation(b, dialer, opts)
+	defer conn.Close()
+
+	_, err := conn.Do(
+		NewReplaceRequest(spaceNo).
+			Tuple([]interface{}{uint(1111), "hello", "world"}),
+	).Get()
+	if err != nil {
+		b.Fatalf("failed to initialize database: %s", err)
+	}
+
+	req := NewSelectRequest(spaceNo).
+		Index(indexNo).
+		Iterator(IterEq).
+		Key(UintKey{I: 1111})
+
+	var tuple benchTuple
+
+	b.ResetTimer()
+
+	for b.Loop() {
+		fut := conn.Do(req)
+		if err := fut.GetTyped(&tuple); err != nil {
+			b.Errorf("request error: %s", err)
+		}
+
+		if tuple.id != 1111 {
+			b.Errorf("invalid result")
+		}
+		fut.Release()
 	}
 }
 
