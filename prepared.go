@@ -91,7 +91,7 @@ func (req *PrepareRequest) Response(header Header, body io.Reader) (Response, er
 		return nil, err
 	}
 
-	return &PrepareResponse{baseResponse: baseResp}, nil
+	return &PrepareResponse{baseResponse: *baseResp}, nil
 }
 
 // UnprepareRequest helps you to create an unprepare request object for
@@ -206,5 +206,5 @@ func (req *ExecutePreparedRequest) Response(header Header, body io.Reader) (Resp
 		return nil, err
 	}
 
-	return &ExecuteResponse{baseResponse: baseResp}, nil
+	return &ExecuteResponse{baseResponse: *baseResp}, nil
 }
