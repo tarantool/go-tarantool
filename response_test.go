@@ -93,3 +93,64 @@ func TestSelectResponseRelease(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, tarantool.SelectResponse{}, *selResp)
 }
+
+func TestSelectResponseReleaseReuse(t *testing.T) {
+	req := tarantool.NewSelectRequest(nil)
+
+	header1 := tarantool.Header{RequestId: 100}
+	buf1 := []byte{'d', 'a', 't', 'a', '1'}
+	resp1, err := req.Response(header1, encodeResponseData(t, buf1))
+	require.NoError(t, err)
+
+	data1, err := resp1.Decode()
+	require.NoError(t, err)
+	require.Equal(t, []interface{}{buf1}, data1)
+
+	resp1.Release()
+
+	header2 := tarantool.Header{RequestId: 200}
+	buf2 := []byte{'d', 'a', 't', 'a', '2'}
+	resp2, err := req.Response(header2, encodeResponseData(t, buf2))
+	require.NoError(t, err)
+
+	data2, err := resp2.Decode()
+	require.NoError(t, err)
+	require.Equal(t, []interface{}{buf2}, data2)
+	require.Equal(t, header2, resp2.Header())
+	require.Equal(t, []interface{}{buf2}, data2)
+}
+
+func TestSelectResponseReleaseMultipleObjects(t *testing.T) {
+	req := tarantool.NewSelectRequest(nil)
+
+	header1 := tarantool.Header{RequestId: 1}
+	buf1 := []byte{'o', 'n', 'e'}
+	resp1, err := req.Response(header1, encodeResponseData(t, buf1))
+	require.NoError(t, err)
+
+	header2 := tarantool.Header{RequestId: 2}
+	buf2 := []byte{'t', 'w', 'o'}
+	resp2, err := req.Response(header2, encodeResponseData(t, buf2))
+	require.NoError(t, err)
+
+	data1, err := resp1.Decode()
+	require.NoError(t, err)
+	require.Equal(t, []interface{}{buf1}, data1)
+
+	data2, err := resp2.Decode()
+	require.NoError(t, err)
+	require.Equal(t, []interface{}{buf2}, data2)
+
+	resp1.Release()
+	resp2.Release()
+
+	header3 := tarantool.Header{RequestId: 3}
+	buf3 := []byte{'t', 'h', 'r', 'e', 'e'}
+	resp3, err := req.Response(header3, encodeResponseData(t, buf3))
+	require.NoError(t, err)
+
+	data3, err := resp3.Decode()
+	require.NoError(t, err)
+	require.Equal(t, []interface{}{buf3}, data3)
+	require.Equal(t, header3, resp3.Header())
+}

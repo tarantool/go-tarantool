@@ -681,7 +681,10 @@ func (resp *baseResponse) Header() Header {
 
 func (resp *SelectResponse) Release() {
 	resp.baseResponse.Release()
-	resp.pos = nil
+
+	*resp = SelectResponse{}
+
+	selectsPool.Put(resp)
 }
 
 // Pos returns a position descriptor of the last selected tuple for the SelectResponse.
