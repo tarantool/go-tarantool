@@ -12,6 +12,7 @@ type Future struct {
 	req       Request
 	next      *Future
 	timeout   time.Duration
+	pool      *sync.Pool
 	mutex     sync.Mutex
 	resp      Response
 	err       error
@@ -38,10 +39,15 @@ func (fut *Future) isDone() bool {
 }
 
 // NewFuture creates a new empty Future for a given Request.
-func NewFuture(req Request) (fut *Future) {
+func NewFuture(req Request, conn ...*Connection) (fut *Future) {
 	fut = &Future{}
 	fut.done = make(chan struct{})
 	fut.req = req
+	if len(conn) == 0 {
+		fut.pool = nil
+	} else {
+		fut.pool = conn[0].slicePool
+	}
 	return fut
 }
 
@@ -89,12 +95,28 @@ func (fut *Future) GetResponse() (Response, error) {
 }
 
 // Get waits for Future to be filled and returns the data of the Response and error.
+// Also Release Future's data. After this, Future becomes invalid.
 //
 // The data will be []interface{}, so if you want more performance, use GetTyped method.
 //
 // "error" could be Error, if it is error returned by Tarantool,
 // or ClientError, if something bad happens in a client process.
 func (fut *Future) Get() ([]interface{}, error) {
+	defer fut.Release()
+	fut.wait()
+	if fut.err != nil {
+		return nil, fut.err
+	}
+	return fut.resp.Decode()
+}
+
+// Get waits for Future to be filled and returns the data of the Response and error.
+//
+// The data will be []interface{}, so if you want more performance, use GetTyped method.
+//
+// "error" could be Error, if it is error returned by Tarantool,
+// or ClientError, if something bad happens in a client process.
+func (fut *Future) GetResult() ([]interface{}, error) {
 	fut.wait()
 	if fut.err != nil {
 		return nil, fut.err
@@ -105,8 +127,23 @@ func (fut *Future) Get() ([]interface{}, error) {
 // GetTyped waits for Future and calls msgpack.Decoder.Decode(result) if no error happens.
 // It is could be much faster than Get() function.
 //
+// Also Release Future's data. After this, Future becomes invalid.
+//
 // Note: Tarantool usually returns array of tuples (except for Eval and Call17 actions).
 func (fut *Future) GetTyped(result interface{}) error {
+	defer fut.Release()
+	fut.wait()
+	if fut.err != nil {
+		return fut.err
+	}
+	return fut.resp.DecodeTyped(result)
+}
+
+// GetTyped waits for Future and calls msgpack.Decoder.Decode(result) if no error happens.
+// It is could be much faster than Get() function.
+//
+// Note: Tarantool usually returns array of tuples (except for Eval and Call17 actions).
+func (fut *Future) GetTypedResult(result interface{}) error {
 	fut.wait()
 	if fut.err != nil {
 		return fut.err
@@ -126,4 +163,13 @@ func (fut *Future) WaitChan() <-chan struct{} {
 		return closedChan
 	}
 	return fut.done
+}
+
+// Release is freeing the Future resources.
+// After this, using this Future becomes invalid.
+func (fut *Future) Release() {
+	if fut.pool != nil && fut.resp != nil {
+		ptr := fut.resp.Release()
+		fut.pool.Put(ptr)
+	}
 }
