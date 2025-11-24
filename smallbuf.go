@@ -6,8 +6,10 @@ import (
 )
 
 type smallBuf struct {
-	b []byte
-	p int
+	b    []byte
+	p    int
+	ptr  *[]byte
+	pool allocator
 }
 
 func (s *smallBuf) Read(d []byte) (l int, err error) {
@@ -64,6 +66,21 @@ func (s *smallBuf) Seek(offset int) error {
 	}
 	s.p = offset
 	return nil
+}
+
+func CreateBuf(a allocator, size int) smallBuf {
+	if a == nil {
+		return smallBuf{b: make([]byte, size)}
+	}
+
+	ptr := a.getSlice(size)
+	return smallBuf{ptr: ptr, pool: a, b: *ptr}
+}
+
+func (s *smallBuf) Release() {
+	if s.pool != nil && s.ptr != nil {
+		s.pool.putSlice(s.ptr)
+	}
 }
 
 type smallWBuf struct {

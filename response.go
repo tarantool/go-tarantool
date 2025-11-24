@@ -51,6 +51,7 @@ func createBaseResponse(header Header, body io.Reader) (baseResponse, error) {
 }
 
 func (resp *baseResponse) Release() {
+	resp.buf.Release()
 	*resp = baseResponse{}
 }
 

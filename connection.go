@@ -210,6 +210,8 @@ type Connection struct {
 	shutdownWatcher Watcher
 	// requestCnt is a counter of active requests.
 	requestCnt int64
+
+	pool allocator
 }
 
 var _ = Connector(&Connection{}) // Check compatibility with connector interface.
@@ -327,6 +329,9 @@ type Opts struct {
 	Handle interface{}
 	// Logger is user specified logger used for error messages.
 	Logger Logger
+	// PoolSizes is a list of pool sizes (power-of-two) for each connection,
+	// nil value means default -- not using pool inside.
+	PoolSizes []int
 }
 
 // Connect creates and configures a new Connection.
@@ -393,6 +398,10 @@ func Connect(ctx context.Context, dialer Dialer, opts Opts) (conn *Connection, e
 	go conn.pinger()
 	if conn.opts.Timeout > 0 {
 		go conn.timeouts()
+	}
+
+	if conn.opts.PoolSizes != nil {
+		conn.pool = newPooler(conn.opts.PoolSizes)
 	}
 
 	// TODO: reload schema after reconnect.
@@ -864,12 +873,13 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 		for r = range resps {
 			fut := conn.fetchFuture(r.header.RequestId)
 			if fut == nil {
+				r.buf.Release()
 				conn.opts.Logger.Report(LogUnexpectedResultId, conn, r.header)
-
 				continue
 			}
 
 			if err := fut.setResponse(r.header, &r.buf); err != nil {
+				r.buf.Release()
 				fut.setError(fmt.Errorf("failed to set response: %w", err))
 			}
 			conn.markDone()
@@ -879,7 +889,10 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 	buf := smallBuf{}
 
 	for atomic.LoadUint32(&conn.state) != connClosed {
-		respBytes, err := read(r, conn.lenbuf[:])
+		var err error
+
+		buf, err = read(r, conn.lenbuf[:], conn.pool)
+
 		if err != nil {
 			err = ClientError{
 				ErrIoError,
@@ -889,7 +902,6 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 			return
 		}
 
-		buf = smallBuf{b: respBytes}
 		header, code, err := decodeHeader(conn.dec, &buf)
 
 		if err != nil {
@@ -897,6 +909,7 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 				ErrProtocolError,
 				fmt.Sprintf("failed to decode IPROTO header: %s", err),
 			}
+			buf.Release()
 			conn.reconnect(err, c)
 			return
 		}
@@ -912,7 +925,9 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 				}
 				conn.opts.Logger.Report(LogWatchEventReadFailed, conn, err)
 			}
+			buf.Release()
 		case iproto.IPROTO_CHUNK:
+			buf.Release()
 			conn.opts.Logger.Report(LogBoxSessionPushUnsupported, conn, header)
 		default:
 			resps <- resp{header: header, buf: buf}
@@ -1210,7 +1225,9 @@ func (conn *Connection) timeouts() {
 	}
 }
 
-func read(r io.Reader, lenbuf []byte) (response []byte, err error) {
+// read uses args to allocate slices for responses using sync.Pool.
+// data must be released later using Release.
+func read(r io.Reader, lenbuf []byte, pool allocator) (buf smallBuf, err error) {
 	var length uint64
 
 	if _, err = io.ReadFull(r, lenbuf); err != nil {
@@ -1234,8 +1251,8 @@ func read(r io.Reader, lenbuf []byte) (response []byte, err error) {
 		return
 	}
 
-	response = make([]byte, length)
-	_, err = io.ReadFull(r, response)
+	buf = CreateBuf(pool, int(length))
+	_, err = io.ReadFull(r, buf.b)
 
 	return
 }

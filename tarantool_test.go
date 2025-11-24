@@ -24,6 +24,7 @@ import (
 	"github.com/tarantool/go-iproto"
 	"github.com/vmihailenco/msgpack/v5"
 
+	"github.com/tarantool/go-tarantool/v3"
 	. "github.com/tarantool/go-tarantool/v3"
 	"github.com/tarantool/go-tarantool/v3/test_helpers"
 )
@@ -195,7 +196,7 @@ func (t *benchTuple) DecodeMsgpack(dec *msgpack.Decoder) error {
 	return nil
 }
 
-func BenchmarkSync_naive_with_custom_type(b *testing.B) {
+func BenchmarkSync_naive_with_custom_type_without_Release(b *testing.B) {
 	conn := test_helpers.ConnectWithValidation(b, dialer, opts)
 	defer func() { _ = conn.Close() }()
 
@@ -229,7 +230,9 @@ func BenchmarkSync_naive_with_custom_type(b *testing.B) {
 }
 
 func BenchmarkSync_naive_with_custom_type_with_Release(b *testing.B) {
-	conn := test_helpers.ConnectWithValidation(b, dialer, opts)
+	releasedOpts := opts
+	releasedOpts.PoolSizes = tarantool.DefaultPool // []int{8, 12, 16}
+	conn := test_helpers.ConnectWithValidation(b, dialer, releasedOpts)
 	defer func() { _ = conn.Close() }()
 
 	_, err := conn.Do(
