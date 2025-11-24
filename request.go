@@ -620,14 +620,23 @@ func (req *SelectRequest) Context(ctx context.Context) *SelectRequest {
 	return req
 }
 
+var selectsPool *sync.Pool = &sync.Pool{
+	New: func() interface{} {
+		return &SelectResponse{}
+	},
+}
+
 // Response creates a response for the SelectRequest.
 func (req *SelectRequest) Response(header Header, body io.Reader) (Response, error) {
-	baseResp, err := createBaseResponse(header, body)
+	base, err := createBaseResponse(header, body)
 	if err != nil {
 		return nil, err
 	}
 
-	return &SelectResponse{baseResponse: baseResp}, nil
+	s := selectsPool.Get().(*SelectResponse)
+	s.baseResponse = base
+
+	return s, nil
 }
 
 // InsertRequest helps you to create an insert request object for execution
