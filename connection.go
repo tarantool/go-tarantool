@@ -39,6 +39,18 @@ var (
 		"to the current connection or connection pool")
 )
 
+var smallBufPool = &sync.Pool{
+	New: func() interface{} {
+		return &smallBuf{}
+	},
+}
+
+var slicePool = &sync.Pool{
+	New: func() interface{} {
+		return make([]byte, 1024)
+	},
+}
+
 const (
 	// Connected signals that connection is established or reestablished.
 	Connected ConnEventKind = iota + 1
@@ -373,7 +385,6 @@ func Connect(ctx context.Context, dialer Dialer, opts Opts) (conn *Connection, e
 	}
 
 	conn.cond = sync.NewCond(&conn.mutex)
-
 	if conn.opts.Reconnect > 0 {
 		// We don't need these mutex.Lock()/mutex.Unlock() here, but
 		// runReconnects() expects mutex.Lock() to be set, so it's
@@ -858,8 +869,9 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 			conn.reconnect(err, c)
 			return
 		}
-		buf := smallBuf{b: respBytes}
-		header, code, err := decodeHeader(conn.dec, &buf)
+		buf := smallBufPool.Get().(*smallBuf)
+		buf.b = respBytes
+		header, code, err := decodeHeader(conn.dec, buf)
 		if err != nil {
 			err = ClientError{
 				ErrProtocolError,
@@ -871,7 +883,7 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 
 		var fut *Future = nil
 		if code == iproto.IPROTO_EVENT {
-			if event, err := readWatchEvent(&buf); err == nil {
+			if event, err := readWatchEvent(buf); err == nil {
 				events <- event
 			} else {
 				err = ClientError{
@@ -885,7 +897,7 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 			conn.opts.Logger.Report(LogBoxSessionPushUnsupported, conn, header)
 		} else {
 			if fut = conn.fetchFuture(header.RequestId); fut != nil {
-				if err := fut.SetResponse(header, &buf); err != nil {
+				if err := fut.SetResponse(header, buf); err != nil {
 					fut.SetError(fmt.Errorf("failed to set response: %w", err))
 				}
 				conn.markDone(fut)
@@ -1187,6 +1199,8 @@ func (conn *Connection) timeouts() {
 	}
 }
 
+// read uses args to allocate slices for responses using sync.Pool.
+// data could be released later using Release.
 func read(r io.Reader, lenbuf []byte) (response []byte, err error) {
 	var length uint64
 
@@ -1211,7 +1225,14 @@ func read(r io.Reader, lenbuf []byte) (response []byte, err error) {
 		return
 	}
 
-	response = make([]byte, length)
+	ptr := slicePool.Get().([]byte)
+	if cap(ptr) < int(length) {
+		response = make([]byte, length)
+		slicePool.Put(ptr) // nolint
+	} else {
+		response = ptr
+		response = response[:length]
+	}
 	_, err = io.ReadFull(r, response)
 
 	return
