@@ -48,6 +48,9 @@ func createBaseResponse(header Header, body io.Reader) (*baseResponse, error) {
 }
 
 func (resp *baseResponse) Release() {
+	if resp.buf.ptr != nil {
+		slicePool.putSlice(resp.buf.ptr)
+	}
 	*resp = baseResponse{}
 }
 

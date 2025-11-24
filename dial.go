@@ -623,17 +623,17 @@ func readResponse(ctx context.Context, conn Conn, req Request) (Response, error)
 		return nil, fmt.Errorf("read error: %w", err)
 	}
 
-	buf := smallBuf{b: respBytes, p: 0}
+	buf := &smallBuf{b: *respBytes, p: 0}
 
-	d := getDecoder(&buf)
+	d := getDecoder(buf)
 	defer putDecoder(d)
 
-	header, _, err := decodeHeader(d, &buf)
+	header, _, err := decodeHeader(d, buf)
 	if err != nil {
 		return nil, fmt.Errorf("decode response header error: %w", err)
 	}
 
-	resp, err := req.Response(header, &buf)
+	resp, err := req.Response(header, buf)
 	if err != nil {
 		return nil, fmt.Errorf("creating response error: %w", err)
 	}

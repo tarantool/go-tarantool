@@ -860,8 +860,9 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 			return
 		}
 
-		buf := smallBuf{b: respBytes}
-		header, code, err := decodeHeader(conn.dec, &buf)
+		buf := &smallBuf{b: *respBytes, ptr: respBytes}
+
+		header, code, err := decodeHeader(conn.dec, buf)
 
 		if err != nil {
 			err = ClientError{
@@ -874,7 +875,7 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 
 		var fut *future = nil
 		if code == iproto.IPROTO_EVENT {
-			if event, err := readWatchEvent(&buf); err == nil {
+			if event, err := readWatchEvent(buf); err == nil {
 				events <- event
 			} else {
 				err = ClientError{
@@ -888,7 +889,7 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 			conn.opts.Logger.Report(LogBoxSessionPushUnsupported, conn, header)
 		} else {
 			if fut = conn.fetchFuture(header.RequestId); fut != nil {
-				if err := fut.setResponse(header, &buf); err != nil {
+				if err := fut.setResponse(header, buf); err != nil {
 					fut.setError(fmt.Errorf("failed to set response: %w", err))
 				}
 				conn.markDone(fut)
@@ -1191,7 +1192,9 @@ func (conn *Connection) timeouts() {
 	}
 }
 
-func read(r io.Reader, lenbuf []byte) (response []byte, err error) {
+// read uses args to allocate slices for responses using sync.Pool.
+// data must be released later using Release.
+func read(r io.Reader, lenbuf []byte) (response *[]byte, err error) {
 	var length uint64
 
 	if _, err = io.ReadFull(r, lenbuf); err != nil {
@@ -1215,8 +1218,8 @@ func read(r io.Reader, lenbuf []byte) (response []byte, err error) {
 		return
 	}
 
-	response = make([]byte, length)
-	_, err = io.ReadFull(r, response)
+	response = slicePool.getSlice(int(length))
+	_, err = io.ReadFull(r, *response)
 
 	return
 }
