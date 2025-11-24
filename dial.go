@@ -612,7 +612,7 @@ func readResponse(ctx context.Context, conn Conn, req Request) (Response, error)
 
 	doneRead, doneWait := ioWaiter(ctx, conn)
 
-	respBytes, err := read(conn, lenbuf[:])
+	buf, err := read(conn, lenbuf[:], nil)
 
 	close(doneRead)
 
@@ -623,8 +623,6 @@ func readResponse(ctx context.Context, conn Conn, req Request) (Response, error)
 	if err != nil {
 		return nil, fmt.Errorf("read error: %w", err)
 	}
-
-	buf := smallBuf{b: respBytes, p: 0}
 
 	d := getDecoder(&buf)
 	defer putDecoder(d)
@@ -645,7 +643,8 @@ func readResponse(ctx context.Context, conn Conn, req Request) (Response, error)
 		case Error:
 			return resp, err
 		default:
-			return resp, fmt.Errorf("decode response body error: %w", err)
+			resp.Release()
+			return nil, fmt.Errorf("decode response body error: %w", err)
 		}
 	}
 
