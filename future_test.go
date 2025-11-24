@@ -49,10 +49,15 @@ type futureMockResponse struct {
 
 	decodeCnt      int
 	decodeTypedCnt int
+	released       bool
 }
 
 func (resp *futureMockResponse) Header() Header {
 	return resp.header
+}
+
+func (resp *futureMockResponse) Release() {
+	resp.released = true
 }
 
 func (resp *futureMockResponse) Decode() ([]interface{}, error) {
@@ -131,6 +136,23 @@ func TestFuture_GetResponse(t *testing.T) {
 	data, err := resp.Decode()
 	assert.NoError(t, err)
 	assert.Equal(t, []interface{}{uint8('v'), uint8('2')}, data)
+}
+
+func TestFuture_Release(t *testing.T) {
+	fut, err := NewFutureWithResponse(&futureMockRequest{},
+		Header{}, bytes.NewReader([]byte{'v', '3'}))
+	assert.NoError(t, err)
+
+	resp, err := fut.GetResponse()
+	assert.NoError(t, err)
+	mockResp, ok := resp.(*futureMockResponse)
+	assert.True(t, ok)
+	assert.False(t, mockResp.released)
+
+	// Doing efficient work.
+
+	fut.Release()
+	assert.True(t, mockResp.released)
 }
 
 func BenchmarkFuture_Get(b *testing.B) {
@@ -217,6 +239,10 @@ func (f *futureMock) GetResponse() (Response, error) {
 
 func (*futureMock) WaitChan() <-chan struct{} {
 	return nil
+}
+
+func (*futureMock) Release() {
+	// Nothing to do.
 }
 
 func TestFuture(t *testing.T) {
