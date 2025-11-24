@@ -1313,6 +1313,7 @@ func ExampleConnection_Do_failure() {
 
 	// We got a future, the request actually not performed yet.
 	future := conn.Do(req)
+	defer future.Release()
 
 	// When the future receives the response, the result of the Future is set
 	// and becomes available. We could wait for that moment with Future.Get(),

@@ -12,6 +12,8 @@ import (
 type Response interface {
 	// Header returns a response header.
 	Header() Header
+	// Release free responses data.
+	Release()
 	// Decode decodes a response.
 	Decode() ([]interface{}, error)
 	// DecodeTyped decodes a response into a given container res.
@@ -31,24 +33,28 @@ type baseResponse struct {
 	err          error
 }
 
-func createBaseResponse(header Header, body io.Reader) (baseResponse, error) {
+func createBaseResponse(header Header, body io.Reader) (*baseResponse, error) {
 	if body == nil {
-		return baseResponse{header: header}, nil
+		return &baseResponse{header: header}, nil
 	}
 	if buf, ok := body.(*smallBuf); ok {
-		return baseResponse{header: header, buf: *buf}, nil
+		return &baseResponse{header: header, buf: *buf}, nil
 	}
 	data, err := io.ReadAll(body)
 	if err != nil {
-		return baseResponse{}, err
+		return nil, err
 	}
-	return baseResponse{header: header, buf: smallBuf{b: data}}, nil
+	return &baseResponse{header: header, buf: smallBuf{b: data}}, nil
+}
+
+func (resp *baseResponse) Release() {
+	*resp = baseResponse{}
 }
 
 // DecodeBaseResponse parse response header and body.
 func DecodeBaseResponse(header Header, body io.Reader) (Response, error) {
 	resp, err := createBaseResponse(header, body)
-	return &resp, err
+	return resp, err
 }
 
 // SelectResponse is used for the select requests.
@@ -668,6 +674,11 @@ func (resp *ExecuteResponse) DecodeTyped(res interface{}) error {
 
 func (resp *baseResponse) Header() Header {
 	return resp.header
+}
+
+func (resp *SelectResponse) Release() {
+	resp.baseResponse.Release()
+	resp.pos = nil
 }
 
 // Pos returns a position descriptor of the last selected tuple for the SelectResponse.

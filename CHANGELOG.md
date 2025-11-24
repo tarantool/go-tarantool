@@ -17,6 +17,8 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 * Added Future.cond (sync.Cond) and Future.finished bool. Added Future.finish() marks Future as done (#496).
 * Added function String() for type datetime (#322).
 * New `Future` interface (#470).
+* Method `Release` for `Future` and `Response` interface that allows
+  to free used data directly by calling (#493).
 
 ### Changed
 

@@ -54,3 +54,42 @@ func TestDecodeBaseResponse(t *testing.T) {
 		})
 	}
 }
+
+func TestBaseResponseRelease(t *testing.T) {
+	header := tarantool.Header{RequestId: 123}
+	buf := []byte{'v', '3'}
+
+	resp, err := tarantool.DecodeBaseResponse(header, encodeResponseData(t, buf))
+	require.NoError(t, err)
+
+	data, err := resp.Decode()
+	require.NoError(t, err)
+	require.Equal(t, resp.Header(), header)
+	require.Equal(t, []interface{}{buf}, data)
+
+	resp.Release()
+
+	data, err = resp.Decode()
+	require.NoError(t, err)
+	require.Equal(t, []interface{}(nil), data)
+}
+
+func TestSelectResponseRelease(t *testing.T) {
+	header := tarantool.Header{RequestId: 123}
+	buf := []byte{'v', '3'}
+	req := tarantool.NewSelectRequest(nil)
+
+	resp, err := req.Response(header, encodeResponseData(t, buf))
+	require.NoError(t, err)
+
+	data, err := resp.Decode()
+	require.NoError(t, err)
+	require.Equal(t, resp.Header(), header)
+	require.Equal(t, []interface{}{buf}, data)
+
+	resp.Release()
+
+	selResp, ok := resp.(*tarantool.SelectResponse)
+	require.True(t, ok)
+	require.Equal(t, tarantool.SelectResponse{}, *selResp)
+}

@@ -373,7 +373,6 @@ func Connect(ctx context.Context, dialer Dialer, opts Opts) (conn *Connection, e
 	}
 
 	conn.cond = sync.NewCond(&conn.mutex)
-
 	if conn.opts.Reconnect > 0 {
 		// We don't need these mutex.Lock()/mutex.Unlock() here, but
 		// runReconnects() expects mutex.Lock() to be set, so it's
@@ -860,8 +859,10 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 			conn.reconnect(err, c)
 			return
 		}
+
 		buf := smallBuf{b: respBytes}
 		header, code, err := decodeHeader(conn.dec, &buf)
+
 		if err != nil {
 			err = ClientError{
 				ErrProtocolError,

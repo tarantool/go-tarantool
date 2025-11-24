@@ -54,6 +54,11 @@ func (resp *MockResponse) Header() tarantool.Header {
 	return resp.header
 }
 
+// Release free used data.
+func (resp *MockResponse) Release() {
+	*resp = MockResponse{}
+}
+
 // Decode returns the result of decoding the response data as slice.
 func (resp *MockResponse) Decode() ([]interface{}, error) {
 	if resp.data == nil {
