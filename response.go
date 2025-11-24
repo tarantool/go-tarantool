@@ -3,6 +3,7 @@ package tarantool
 import (
 	"fmt"
 	"io"
+	"sync"
 
 	"github.com/tarantool/go-iproto"
 	"github.com/vmihailenco/msgpack/v5"
@@ -676,9 +677,38 @@ func (resp *baseResponse) Header() Header {
 	return resp.header
 }
 
+var selectResponsePool *sync.Pool = &sync.Pool{
+	New: func() interface{} {
+		return &SelectResponse{}
+	},
+}
+
+func createSelectResponse(header Header, body io.Reader) (*SelectResponse, error) {
+	resp := selectResponsePool.Get().(*SelectResponse)
+	if body == nil {
+		resp.header = header
+		return resp, nil
+	}
+	if buf, ok := body.(*smallBuf); ok {
+		resp.header = header
+		resp.buf.b = buf.b
+		resp.buf.p = buf.p
+		return resp, nil
+	}
+	data, err := io.ReadAll(body)
+	if err != nil {
+		return resp, err
+	}
+	resp.header = header
+	resp.buf.b = data
+	return resp, nil
+}
+
 func (resp *SelectResponse) Release() {
 	resp.baseResponse.Release()
 	resp.pos = nil
+
+	selectResponsePool.Put(resp)
 }
 
 // Pos returns a position descriptor of the last selected tuple for the SelectResponse.
