@@ -529,6 +529,7 @@ func TestFutureMultipleGetGetTyped(t *testing.T) {
 	defer conn.Close()
 
 	fut := conn.Do(NewCall17Request("simple_concat").Args([]interface{}{"1"}))
+	defer fut.Release()
 
 	for i := 0; i < 30; i++ {
 		// [0, 10) fut.Get()
@@ -540,7 +541,7 @@ func TestFutureMultipleGetGetTyped(t *testing.T) {
 		}
 
 		if get {
-			data, err := fut.Get()
+			data, err := fut.GetResult()
 			if err != nil {
 				t.Errorf("Failed to call Get(): %s", err)
 			}
@@ -551,7 +552,7 @@ func TestFutureMultipleGetGetTyped(t *testing.T) {
 			tpl := struct {
 				Val string
 			}{}
-			err := fut.GetTyped(&tpl)
+			err := fut.GetTypedResult(&tpl)
 			if err != nil {
 				t.Errorf("Failed to call GetTyped(): %s", err)
 			}
@@ -567,9 +568,10 @@ func TestFutureMultipleGetWithError(t *testing.T) {
 	defer conn.Close()
 
 	fut := conn.Do(NewCall17Request("non_exist").Args([]interface{}{"1"}))
+	defer fut.Release()
 
 	for i := 0; i < 2; i++ {
-		if _, err := fut.Get(); err == nil {
+		if _, err := fut.GetResult(); err == nil {
 			t.Fatalf("An error expected")
 		}
 	}
@@ -580,6 +582,7 @@ func TestFutureMultipleGetTypedWithError(t *testing.T) {
 	defer conn.Close()
 
 	fut := conn.Do(NewCall17Request("simple_concat").Args([]interface{}{"1"}))
+	defer fut.Release()
 
 	wrongTpl := struct {
 		Val int
@@ -588,10 +591,10 @@ func TestFutureMultipleGetTypedWithError(t *testing.T) {
 		Val string
 	}{}
 
-	if err := fut.GetTyped(&wrongTpl); err == nil {
+	if err := fut.GetTypedResult(&wrongTpl); err == nil {
 		t.Fatalf("An error expected")
 	}
-	if err := fut.GetTyped(&goodTpl); err != nil {
+	if err := fut.GetTypedResult(&goodTpl); err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
 	if goodTpl.Val != "11" {

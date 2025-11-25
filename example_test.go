@@ -1291,6 +1291,7 @@ func ExampleConnection_Do_failure() {
 
 	// We got a future, the request actually not performed yet.
 	future := conn.Do(req)
+	defer future.Release()
 
 	// When the future receives the response, the result of the Future is set
 	// and becomes available. We could wait for that moment with Future.Get(),
@@ -1305,7 +1306,7 @@ func ExampleConnection_Do_failure() {
 		fmt.Printf("Response error: %s\n", resp.Header().Error)
 	}
 
-	data, err := future.Get()
+	data, err := future.GetResult()
 	if err != nil {
 		fmt.Printf("Data: %v\n", data)
 	}

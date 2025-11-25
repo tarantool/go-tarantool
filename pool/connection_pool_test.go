@@ -1744,12 +1744,12 @@ func TestDoWithExecuteRequest(t *testing.T) {
 	mem := []Member{}
 
 	fut := connPool.Do(tarantool.NewExecuteRequest(request).Args([]interface{}{}), pool.ANY)
-	data, err := fut.Get()
+	data, err := fut.GetResult()
 	require.Nilf(t, err, "failed to Do with ExecuteRequest")
 	require.NotNilf(t, data, "response is nil after Execute")
 	require.GreaterOrEqualf(t, len(data), 1, "response.Data is empty after Do with ExecuteRequest")
 	require.Equalf(t, len(data[0].([]interface{})), 2, "unexpected response")
-	err = fut.GetTyped(&mem)
+	err = fut.GetTypedResult(&mem)
 	require.Nilf(t, err, "Unable to GetTyped of fut")
 	require.Equalf(t, len(mem), 1, "wrong count of result")
 }

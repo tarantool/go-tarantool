@@ -175,11 +175,12 @@ func (d defaultLogger) Report(event ConnLogKind, conn *Connection, v ...interfac
 // More on graceful shutdown:
 // https://www.tarantool.io/en/doc/latest/dev_guide/internals/iproto/graceful_shutdown/
 type Connection struct {
-	addr   net.Addr
-	dialer Dialer
-	c      Conn
-	mutex  sync.Mutex
-	cond   *sync.Cond
+	addr      net.Addr
+	dialer    Dialer
+	c         Conn
+	mutex     sync.Mutex
+	cond      *sync.Cond
+	slicePool *sync.Pool
 	// schemaResolver contains a SchemaResolver implementation.
 	schemaResolver SchemaResolver
 	// requestId contains the last request ID for requests with nil context.
@@ -373,7 +374,12 @@ func Connect(ctx context.Context, dialer Dialer, opts Opts) (conn *Connection, e
 	}
 
 	conn.cond = sync.NewCond(&conn.mutex)
-
+	conn.slicePool = &sync.Pool{
+		New: func() any {
+			buf := make([]byte, 0, 4096)
+			return &buf
+		},
+	}
 	if conn.opts.Reconnect > 0 {
 		// We don't need these mutex.Lock()/mutex.Unlock() here, but
 		// runReconnects() expects mutex.Lock() to be set, so it's
@@ -848,8 +854,9 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 
 	go conn.eventer(events)
 
+	buf := smallBuf{}
 	for atomic.LoadUint32(&conn.state) != connClosed {
-		respBytes, err := read(r, conn.lenbuf[:])
+		respBytes, err := read(r, conn.lenbuf[:], conn)
 		if err != nil {
 			err = ClientError{
 				ErrIoError,
@@ -858,7 +865,7 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 			conn.reconnect(err, c)
 			return
 		}
-		buf := smallBuf{b: respBytes}
+		buf.b, buf.p = respBytes, 0
 		header, code, err := decodeHeader(conn.dec, &buf)
 		if err != nil {
 			err = ClientError{
@@ -925,7 +932,7 @@ func (conn *Connection) eventer(events <-chan connWatchEvent) {
 
 func (conn *Connection) newFuture(req Request) (fut *Future) {
 	ctx := req.Ctx()
-	fut = NewFuture(req)
+	fut = NewFuture(req, conn)
 	if conn.rlimit != nil && conn.opts.RLimitAction == RLimitDrop {
 		select {
 		case conn.rlimit <- struct{}{}:
@@ -1187,7 +1194,7 @@ func (conn *Connection) timeouts() {
 	}
 }
 
-func read(r io.Reader, lenbuf []byte) (response []byte, err error) {
+func read(r io.Reader, lenbuf []byte, conn ...*Connection) (response []byte, err error) {
 	var length uint64
 
 	if _, err = io.ReadFull(r, lenbuf); err != nil {
@@ -1211,7 +1218,15 @@ func read(r io.Reader, lenbuf []byte) (response []byte, err error) {
 		return
 	}
 
-	response = make([]byte, length)
+	if len(conn) == 0 {
+		response = make([]byte, length)
+	} else {
+		response = *conn[0].slicePool.Get().(*[]byte)
+		if cap(response) < int(length) {
+			response = make([]byte, length)
+		}
+		response = response[:length]
+	}
 	_, err = io.ReadFull(r, response)
 
 	return
@@ -1232,7 +1247,7 @@ func (conn *Connection) nextRequestId(context bool) (requestId uint32) {
 func (conn *Connection) Do(req Request) *Future {
 	if connectedReq, ok := req.(ConnectedRequest); ok {
 		if connectedReq.Conn() != conn {
-			fut := NewFuture(req)
+			fut := NewFuture(req, conn)
 			fut.SetError(errUnknownRequest)
 			return fut
 		}
