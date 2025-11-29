@@ -38,7 +38,7 @@ func TestMocked_BoxNew(t *testing.T) {
 	require.NotNil(t, b)
 
 	assert.Len(t, mock.Requests, 0)
-	b.Schema().User().Exists(box.NewInfoRequest().Ctx(), "")
+	_, _ = b.Schema().User().Exists(box.NewInfoRequest().Ctx(), "")
 	require.Len(t, mock.Requests, 1)
 }
 

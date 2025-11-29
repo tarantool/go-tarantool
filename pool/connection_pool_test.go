@@ -1359,8 +1359,8 @@ func TestConnectionHandlerDeactivated_on_remove(t *testing.T) {
 	require.Nil(t, err)
 
 	for _, server := range poolServers {
-		connPool.Remove(server)
-		connPool.Remove(server)
+		err = connPool.Remove(server)
+		require.NoError(t, err)
 	}
 
 	args = test_helpers.CheckStatusesArgs{
@@ -3315,7 +3315,7 @@ func TestConnectionPool_NewWatcher_no_watchers(t *testing.T) {
 	defer connPool.Close()
 
 	ch := make(chan struct{})
-	connPool.NewWatcher(key, func(event tarantool.WatchEvent) {
+	_, _ = connPool.NewWatcher(key, func(event tarantool.WatchEvent) {
 		close(ch)
 	}, pool.ANY)
 

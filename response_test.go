@@ -18,11 +18,11 @@ func encodeResponseData(t *testing.T, data interface{}) io.Reader {
 	buf := bytes.NewBuffer([]byte{})
 	enc := msgpack.NewEncoder(buf)
 
-	enc.EncodeMapLen(1)
-	enc.EncodeUint8(uint8(iproto.IPROTO_DATA))
-	enc.Encode([]interface{}{data})
-	return buf
+	require.NoError(t, enc.EncodeMapLen(1))
+	require.NoError(t, enc.EncodeUint8(uint8(iproto.IPROTO_DATA)))
+	require.NoError(t, enc.Encode([]interface{}{data}))
 
+	return buf
 }
 
 func TestDecodeBaseResponse(t *testing.T) {

@@ -463,25 +463,25 @@ func testDialAccept(opts testDialOpts, l net.Listener) chan dialServerActual {
 		}
 		defer client.Close()
 		if opts.isErrGreeting {
-			client.Write(errResponse)
+			_, _ = client.Write(errResponse)
 			return
 		} else {
 			// Write greeting.
-			client.Write(testDialVersion[:])
-			client.Write(testDialSalt[:])
+			_, _ = client.Write(testDialVersion[:])
+			_, _ = client.Write(testDialSalt[:])
 		}
 
 		// Read Id request.
 		idRequestActual := make([]byte, len(idRequestExpected))
-		client.Read(idRequestActual)
+		_, _ = client.Read(idRequestActual)
 
 		// Make Id response.
 		if opts.isErrId {
-			client.Write(errResponse)
+			_, _ = client.Write(errResponse)
 		} else if opts.isIdUnsupported {
-			client.Write(idResponseNotSupported)
+			_, _ = client.Write(idResponseNotSupported)
 		} else {
-			client.Write(idResponse)
+			_, _ = client.Write(idResponse)
 		}
 
 		// Read Auth request.
@@ -490,13 +490,13 @@ func testDialAccept(opts testDialOpts, l net.Listener) chan dialServerActual {
 			authRequestExpected = []byte{}
 		}
 		authRequestActual := make([]byte, len(authRequestExpected))
-		client.Read(authRequestActual)
+		_, _ = client.Read(authRequestActual)
 
 		// Make Auth response.
 		if opts.isErrAuth {
-			client.Write(errResponse)
+			_, _ = client.Write(errResponse)
 		} else {
-			client.Write(okResponse)
+			_, _ = client.Write(okResponse)
 		}
 		ch <- dialServerActual{
 			IdRequest:   idRequestActual,
@@ -667,7 +667,7 @@ func TestFdDialer_Dial(t *testing.T) {
 			// We already tried to use the SyscallConn(), but it has the same
 			// issue.
 			time.Sleep(time.Millisecond)
-			sock.(*net.TCPConn).SetLinger(0)
+			_ = sock.(*net.TCPConn).SetLinger(0)
 
 			f, err := sock.(*net.TCPConn).File()
 			require.NoError(t, err)
@@ -698,7 +698,7 @@ func TestFdDialer_Dial_requirements(t *testing.T) {
 	// We already tried to use the SyscallConn(), but it has the same
 	// issue.
 	time.Sleep(time.Millisecond)
-	sock.(*net.TCPConn).SetLinger(0)
+	_ = sock.(*net.TCPConn).SetLinger(0)
 
 	f, err := sock.(*net.TCPConn).File()
 	require.NoError(t, err)

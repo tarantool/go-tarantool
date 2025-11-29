@@ -171,7 +171,7 @@ func (t *TarantoolInstance) Stop() error {
 			return fmt.Errorf("failed to kill tarantool %q (pid %d), got %s",
 				t.Opts.Listen, t.Cmd.Process.Pid, err)
 		}
-		t.Wait()
+		_ = t.Wait()
 	}
 	return nil
 }

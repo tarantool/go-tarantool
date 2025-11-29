@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/shopspring/decimal"
+	"github.com/stretchr/testify/assert"
 	"github.com/vmihailenco/msgpack/v5"
 
 	. "github.com/tarantool/go-tarantool/v3"
@@ -507,7 +508,8 @@ func BenchmarkEncodeStringToBCD(b *testing.B) {
 		b.Run(testcase.numString, func(b *testing.B) {
 			b.ResetTimer()
 			for n := 0; n < b.N; n++ {
-				EncodeStringToBCD(testcase.numString)
+				_, err := EncodeStringToBCD(testcase.numString)
+				assert.NoError(b, err)
 			}
 		})
 	}
@@ -520,7 +522,8 @@ func BenchmarkDecodeStringFromBCD(b *testing.B) {
 			bcdBuf := trimMPHeader(buf, testcase.fixExt)
 			b.ResetTimer()
 			for n := 0; n < b.N; n++ {
-				DecodeStringFromBCD(bcdBuf)
+				_, _, err := DecodeStringFromBCD(bcdBuf)
+				assert.NoError(b, err)
 			}
 		})
 	}

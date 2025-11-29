@@ -39,10 +39,11 @@ func ExampleIntKey() {
 	const space = "test"
 	const index = "primary"
 	tuple := []interface{}{int(1111), "hello", "world"}
-	conn.Do(tarantool.NewReplaceRequest(space).Tuple(tuple)).Get()
+	_, err := conn.Do(tarantool.NewReplaceRequest(space).Tuple(tuple)).Get()
+	fmt.Println("Error", err)
 
 	var t []Tuple
-	err := conn.Do(tarantool.NewSelectRequest(space).
+	err = conn.Do(tarantool.NewSelectRequest(space).
 		Index(index).
 		Iterator(tarantool.IterEq).
 		Key(tarantool.IntKey{1111}),
@@ -50,6 +51,7 @@ func ExampleIntKey() {
 	fmt.Println("Error", err)
 	fmt.Println("Data", t)
 	// Output:
+	// Error <nil>
 	// Error <nil>
 	// Data [{{} 1111 hello world}]
 }
@@ -61,10 +63,11 @@ func ExampleUintKey() {
 	const space = "test"
 	const index = "primary"
 	tuple := []interface{}{uint(1111), "hello", "world"}
-	conn.Do(tarantool.NewReplaceRequest(space).Tuple(tuple)).Get()
+	_, err := conn.Do(tarantool.NewReplaceRequest(space).Tuple(tuple)).Get()
+	fmt.Println("Error", err)
 
 	var t []Tuple
-	err := conn.Do(tarantool.NewSelectRequest(space).
+	err = conn.Do(tarantool.NewSelectRequest(space).
 		Index(index).
 		Iterator(tarantool.IterEq).
 		Key(tarantool.UintKey{1111}),
@@ -72,6 +75,7 @@ func ExampleUintKey() {
 	fmt.Println("Error", err)
 	fmt.Println("Data", t)
 	// Output:
+	// Error <nil>
 	// Error <nil>
 	// Data [{{} 1111 hello world}]
 }
@@ -83,13 +87,14 @@ func ExampleStringKey() {
 	const space = "teststring"
 	const index = "primary"
 	tuple := []interface{}{"any", []byte{0x01, 0x02}}
-	conn.Do(tarantool.NewReplaceRequest(space).Tuple(tuple)).Get()
+	_, err := conn.Do(tarantool.NewReplaceRequest(space).Tuple(tuple)).Get()
+	fmt.Println("Error", err)
 
 	t := []struct {
 		Key   string
 		Value []byte
 	}{}
-	err := conn.Do(tarantool.NewSelectRequest(space).
+	err = conn.Do(tarantool.NewSelectRequest(space).
 		Index(index).
 		Iterator(tarantool.IterEq).
 		Key(tarantool.StringKey{"any"}),
@@ -97,6 +102,7 @@ func ExampleStringKey() {
 	fmt.Println("Error", err)
 	fmt.Println("Data", t)
 	// Output:
+	// Error <nil>
 	// Error <nil>
 	// Data [{any [1 2]}]
 }
@@ -108,14 +114,15 @@ func ExampleIntIntKey() {
 	const space = "testintint"
 	const index = "primary"
 	tuple := []interface{}{1, 2, "foo"}
-	conn.Do(tarantool.NewReplaceRequest(space).Tuple(tuple)).Get()
+	_, err := conn.Do(tarantool.NewReplaceRequest(space).Tuple(tuple)).Get()
+	fmt.Println("Error", err)
 
 	t := []struct {
 		Key1  int
 		Key2  int
 		Value string
 	}{}
-	err := conn.Do(tarantool.NewSelectRequest(space).
+	err = conn.Do(tarantool.NewSelectRequest(space).
 		Index(index).
 		Iterator(tarantool.IterEq).
 		Key(tarantool.IntIntKey{1, 2}),
@@ -123,6 +130,7 @@ func ExampleIntIntKey() {
 	fmt.Println("Error", err)
 	fmt.Println("Data", t)
 	// Output:
+	// Error <nil>
 	// Error <nil>
 	// Data [{1 2 foo}]
 }
@@ -175,9 +183,10 @@ func ExampleSelectRequest() {
 	defer conn.Close()
 
 	for i := 1111; i <= 1112; i++ {
-		conn.Do(tarantool.NewReplaceRequest(spaceNo).
+		_, err := conn.Do(tarantool.NewReplaceRequest(spaceNo).
 			Tuple([]interface{}{uint(i), "hello", "world"}),
 		).Get()
+		fmt.Println("Error", err)
 	}
 
 	key := []interface{}{uint(1111)}
@@ -225,6 +234,8 @@ func ExampleSelectRequest() {
 	fmt.Printf("response is %v\n", res)
 
 	// Output:
+	// Error <nil>
+	// Error <nil>
 	// pos for Select is []
 	// response is []interface {}{[]interface {}{0x457, "hello", "world"}}
 	// response is [{{} 1111 hello world}]
@@ -265,15 +276,17 @@ func ExampleInsertRequest() {
 	fmt.Println("Data", data)
 
 	// Delete tuple with primary key { 31 }.
-	conn.Do(tarantool.NewDeleteRequest("test").
+	_, err = conn.Do(tarantool.NewDeleteRequest("test").
 		Index("primary").
 		Key([]interface{}{uint(31)}),
 	).Get()
+	fmt.Println("Error", err)
 	// Delete tuple with primary key { 32 }.
-	conn.Do(tarantool.NewDeleteRequest("test").
+	_, err = conn.Do(tarantool.NewDeleteRequest("test").
 		Index(indexNo).
 		Key([]interface{}{uint(31)}),
 	).Get()
+	fmt.Println("Error", err)
 	// Output:
 	// Insert 31
 	// Error <nil>
@@ -281,6 +294,8 @@ func ExampleInsertRequest() {
 	// Insert 32
 	// Error <nil>
 	// Data [[32 test one]]
+	// Error <nil>
+	// Error <nil>
 }
 
 func ExampleInsertRequest_spaceAndIndexNames() {
@@ -302,13 +317,15 @@ func ExampleDeleteRequest() {
 	defer conn.Close()
 
 	// Insert a new tuple { 35, 1 }.
-	conn.Do(tarantool.NewInsertRequest(spaceNo).
+	_, err := conn.Do(tarantool.NewInsertRequest(spaceNo).
 		Tuple([]interface{}{uint(35), "test", "one"}),
 	).Get()
+	fmt.Println("Error", err)
 	// Insert a new tuple { 36, 1 }.
-	conn.Do(tarantool.NewInsertRequest("test").
+	_, err = conn.Do(tarantool.NewInsertRequest("test").
 		Tuple(&Tuple{Id: 36, Msg: "test", Name: "one"}),
 	).Get()
+	fmt.Println("Error", err)
 
 	// Delete tuple with primary key { 35 }.
 	data, err := conn.Do(tarantool.NewDeleteRequest(spaceNo).
@@ -328,6 +345,8 @@ func ExampleDeleteRequest() {
 	fmt.Println("Error", err)
 	fmt.Println("Data", data)
 	// Output:
+	// Error <nil>
+	// Error <nil>
 	// Delete 35
 	// Error <nil>
 	// Data [[35 test one]]
@@ -356,7 +375,7 @@ func ExampleReplaceRequest() {
 	defer conn.Close()
 
 	// Insert a new tuple { 13, 1 }.
-	conn.Do(tarantool.NewInsertRequest(spaceNo).
+	_, _ = conn.Do(tarantool.NewInsertRequest(spaceNo).
 		Tuple([]interface{}{uint(13), "test", "one"}),
 	).Get()
 
@@ -421,9 +440,10 @@ func ExampleUpdateRequest() {
 	defer conn.Close()
 
 	for i := 1111; i <= 1112; i++ {
-		conn.Do(tarantool.NewReplaceRequest(spaceNo).
+		_, err := conn.Do(tarantool.NewReplaceRequest(spaceNo).
 			Tuple([]interface{}{uint(i), "text", 1, 1, 1, 1, 1}),
 		).Get()
+		fmt.Println("Error", err)
 	}
 
 	req := tarantool.NewUpdateRequest(617).
@@ -444,6 +464,8 @@ func ExampleUpdateRequest() {
 	}
 	fmt.Printf("response is %#v\n", data)
 	// Output:
+	// Error <nil>
+	// Error <nil>
 	// response is []interface {}{[]interface {}{0x457, "t!!t", 2, 0, 1, 1, 0, "updated"}}
 }
 
@@ -1426,7 +1448,7 @@ func ExampleConnection_NewWatcher() {
 	}
 	defer watcher.Unregister()
 
-	conn.Do(tarantool.NewBroadcastRequest(key).Value(value)).Get()
+	_, _ = conn.Do(tarantool.NewBroadcastRequest(key).Value(value)).Get()
 	time.Sleep(time.Second)
 }
 
@@ -1444,7 +1466,7 @@ func ExampleConnection_CloseGraceful_force() {
 
 	done := make(chan struct{})
 	go func() {
-		conn.CloseGraceful()
+		_ = conn.CloseGraceful()
 		fmt.Println("Connection.CloseGraceful() done!")
 		close(done)
 	}()
@@ -1479,7 +1501,7 @@ func ExampleWatchOnceRequest() {
 	conn := exampleConnect(dialer, opts)
 	defer conn.Close()
 
-	conn.Do(tarantool.NewBroadcastRequest(key).Value(value)).Get()
+	_, _ = conn.Do(tarantool.NewBroadcastRequest(key).Value(value)).Get()
 
 	data, err := conn.Do(tarantool.NewWatchOnceRequest(key)).Get()
 	if err != nil {

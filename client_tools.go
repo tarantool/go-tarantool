@@ -11,8 +11,12 @@ type IntKey struct {
 }
 
 func (k IntKey) EncodeMsgpack(enc *msgpack.Encoder) error {
-	enc.EncodeArrayLen(1)
-	enc.EncodeInt(int64(k.I))
+	if err := enc.EncodeArrayLen(1); err != nil {
+		return err
+	}
+	if err := enc.EncodeInt(int64(k.I)); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -24,8 +28,12 @@ type UintKey struct {
 }
 
 func (k UintKey) EncodeMsgpack(enc *msgpack.Encoder) error {
-	enc.EncodeArrayLen(1)
-	enc.EncodeUint(uint64(k.I))
+	if err := enc.EncodeArrayLen(1); err != nil {
+		return err
+	}
+	if err := enc.EncodeUint(uint64(k.I)); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -36,8 +44,12 @@ type StringKey struct {
 }
 
 func (k StringKey) EncodeMsgpack(enc *msgpack.Encoder) error {
-	enc.EncodeArrayLen(1)
-	enc.EncodeString(k.S)
+	if err := enc.EncodeArrayLen(1); err != nil {
+		return err
+	}
+	if err := enc.EncodeString(k.S); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -48,9 +60,15 @@ type IntIntKey struct {
 }
 
 func (k IntIntKey) EncodeMsgpack(enc *msgpack.Encoder) error {
-	enc.EncodeArrayLen(2)
-	enc.EncodeInt(int64(k.I1))
-	enc.EncodeInt(int64(k.I2))
+	if err := enc.EncodeArrayLen(2); err != nil {
+		return err
+	}
+	if err := enc.EncodeInt(int64(k.I1)); err != nil {
+		return err
+	}
+	if err := enc.EncodeInt(int64(k.I2)); err != nil {
+		return err
+	}
 	return nil
 }
 

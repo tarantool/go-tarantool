@@ -61,7 +61,7 @@ func (doer *MockDoer) Do(req tarantool.Request) *tarantool.Future {
 	if response.err != nil {
 		fut.SetError(response.err)
 	} else {
-		fut.SetResponse(response.resp.header, bytes.NewBuffer(response.resp.data))
+		_ = fut.SetResponse(response.resp.header, bytes.NewBuffer(response.resp.data))
 	}
 	doer.responses = doer.responses[1:]
 

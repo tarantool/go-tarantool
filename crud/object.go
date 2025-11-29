@@ -20,5 +20,5 @@ type Objects = interface{}
 type MapObject map[string]interface{}
 
 func (o MapObject) EncodeMsgpack(enc *msgpack.Encoder) {
-	enc.Encode(o)
+	_ = enc.Encode(o)
 }

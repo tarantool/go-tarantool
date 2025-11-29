@@ -2,9 +2,8 @@ run:
   timeout: 3m
 
 linters:
-  disable:
-    - errcheck
   enable:
+    - errcheck
     - forbidigo
     - gocritic
     - goimports

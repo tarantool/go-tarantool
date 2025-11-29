@@ -1124,7 +1124,8 @@ func TestSQLTyped(t *testing.T) {
 	fut := conn.Do(NewExecuteRequest(selectTypedQuery).
 		Args([]interface{}{1}),
 	)
-	fut.GetTyped(&mem)
+	err := fut.GetTyped(&mem)
+	assert.NoError(t, err, "Error while GetTyped")
 	resp, err := fut.GetResponse()
 	assert.NoError(t, err, "Error while getting Response")
 	exResp, ok := resp.(*ExecuteResponse)
