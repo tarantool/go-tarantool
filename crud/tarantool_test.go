@@ -559,7 +559,7 @@ func TestCrudGenerateData(t *testing.T) {
 			for i := 1010; i < 1020; i++ {
 				req := tarantool.NewDeleteRequest(spaceName).
 					Key([]interface{}{uint(i)})
-				conn.Do(req).Get()
+				_, _ = conn.Do(req).Get()
 			}
 
 			data, err := conn.Do(testCase.req).Get()
@@ -571,7 +571,7 @@ func TestCrudGenerateData(t *testing.T) {
 			for i := 1010; i < 1020; i++ {
 				req := tarantool.NewDeleteRequest(spaceName).
 					Key([]interface{}{uint(i)})
-				conn.Do(req).Get()
+				_, _ = conn.Do(req).Get()
 			}
 		})
 	}
@@ -590,7 +590,7 @@ func TestCrudProcessData(t *testing.T) {
 			for i := 1010; i < 1020; i++ {
 				req := tarantool.NewDeleteRequest(spaceName).
 					Key([]interface{}{uint(i)})
-				conn.Do(req).Get()
+				_, _ = conn.Do(req).Get()
 			}
 		})
 	}
@@ -799,7 +799,7 @@ func TestBoolResult(t *testing.T) {
 	for i := 1010; i < 1020; i++ {
 		req := tarantool.NewDeleteRequest(spaceName).
 			Key([]interface{}{uint(i)})
-		conn.Do(req).Get()
+		_, _ = conn.Do(req).Get()
 	}
 }
 
@@ -824,7 +824,7 @@ func TestNumberResult(t *testing.T) {
 	for i := 1010; i < 1020; i++ {
 		req := tarantool.NewDeleteRequest(spaceName).
 			Key([]interface{}{uint(i)})
-		conn.Do(req).Get()
+		_, _ = conn.Do(req).Get()
 	}
 }
 
@@ -869,7 +869,7 @@ func TestBaseResult(t *testing.T) {
 	for i := 1010; i < 1020; i++ {
 		req := tarantool.NewDeleteRequest(spaceName).
 			Key([]interface{}{uint(i)})
-		conn.Do(req).Get()
+		_, _ = conn.Do(req).Get()
 	}
 }
 
@@ -914,7 +914,7 @@ func TestManyResult(t *testing.T) {
 	for i := 1010; i < 1020; i++ {
 		req := tarantool.NewDeleteRequest(spaceName).
 			Key([]interface{}{uint(i)})
-		conn.Do(req).Get()
+		_, _ = conn.Do(req).Get()
 	}
 }
 
@@ -1130,7 +1130,7 @@ func TestFetchLatestMetadataOption(t *testing.T) {
 			for i := 1010; i < 1020; i++ {
 				req := tarantool.NewDeleteRequest(spaceName).
 					Key([]interface{}{uint(i)})
-				conn.Do(req).Get()
+				_, _ = conn.Do(req).Get()
 			}
 
 			resp := crud.Result{}
@@ -1147,7 +1147,7 @@ func TestFetchLatestMetadataOption(t *testing.T) {
 			for i := 1010; i < 1020; i++ {
 				req := tarantool.NewDeleteRequest(spaceName).
 					Key([]interface{}{uint(i)})
-				conn.Do(req).Get()
+				_, _ = conn.Do(req).Get()
 			}
 		})
 	}
@@ -1283,7 +1283,7 @@ func TestNoreturnOption(t *testing.T) {
 			for i := 1010; i < 1020; i++ {
 				req := tarantool.NewDeleteRequest(spaceName).
 					Key([]interface{}{uint(i)})
-				conn.Do(req).Get()
+				_, _ = conn.Do(req).Get()
 			}
 
 			data, err := conn.Do(testCase.req).Get()
@@ -1306,7 +1306,7 @@ func TestNoreturnOption(t *testing.T) {
 			for i := 1010; i < 1020; i++ {
 				req := tarantool.NewDeleteRequest(spaceName).
 					Key([]interface{}{uint(i)})
-				conn.Do(req).Get()
+				_, _ = conn.Do(req).Get()
 			}
 		})
 	}
@@ -1321,7 +1321,7 @@ func TestNoreturnOptionTyped(t *testing.T) {
 			for i := 1010; i < 1020; i++ {
 				req := tarantool.NewDeleteRequest(spaceName).
 					Key([]interface{}{uint(i)})
-				conn.Do(req).Get()
+				_, _ = conn.Do(req).Get()
 			}
 
 			resp := crud.Result{}
@@ -1342,7 +1342,7 @@ func TestNoreturnOptionTyped(t *testing.T) {
 			for i := 1010; i < 1020; i++ {
 				req := tarantool.NewDeleteRequest(spaceName).
 					Key([]interface{}{uint(i)})
-				conn.Do(req).Get()
+				_, _ = conn.Do(req).Get()
 			}
 		})
 	}

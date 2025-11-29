@@ -258,7 +258,7 @@ func Example_connectionPool() {
 		} else if task.Data() == nil {
 			fmt.Println("task.Data() == nil")
 		} else {
-			task.Ack()
+			_ = task.Ack()
 			fmt.Println("Got data:", task.Data())
 		}
 		break

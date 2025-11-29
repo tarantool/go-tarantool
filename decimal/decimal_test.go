@@ -507,7 +507,7 @@ func BenchmarkEncodeStringToBCD(b *testing.B) {
 		b.Run(testcase.numString, func(b *testing.B) {
 			b.ResetTimer()
 			for n := 0; n < b.N; n++ {
-				EncodeStringToBCD(testcase.numString)
+				_, _ = EncodeStringToBCD(testcase.numString)
 			}
 		})
 	}
@@ -520,7 +520,7 @@ func BenchmarkDecodeStringFromBCD(b *testing.B) {
 			bcdBuf := trimMPHeader(buf, testcase.fixExt)
 			b.ResetTimer()
 			for n := 0; n < b.N; n++ {
-				DecodeStringFromBCD(bcdBuf)
+				_, _, _ = DecodeStringFromBCD(bcdBuf)
 			}
 		})
 	}

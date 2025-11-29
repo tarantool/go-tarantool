@@ -169,7 +169,7 @@ func TestCloseGraceful(t *testing.T) {
 
 	go func() {
 		// CloseGraceful closes the connection gracefully.
-		conn.CloseGraceful()
+		_ = conn.CloseGraceful()
 		// Connection is closed.
 		assert.Equal(t, true, conn.ClosedNow())
 	}()

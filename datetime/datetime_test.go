@@ -855,7 +855,7 @@ func (c *Tuple2) EncodeMsgpack(e *msgpack.Encoder) error {
 	if err := e.EncodeString(c.Orig); err != nil {
 		return err
 	}
-	e.Encode(c.Events)
+	_ = e.Encode(c.Events)
 	return nil
 }
 
@@ -879,7 +879,7 @@ func (c *Tuple2) DecodeMsgpack(d *msgpack.Decoder) error {
 	}
 	c.Events = make([]Event, l)
 	for i := 0; i < l; i++ {
-		d.Decode(&c.Events[i])
+		_ = d.Decode(&c.Events[i])
 	}
 	return nil
 }

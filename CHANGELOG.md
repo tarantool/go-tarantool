@@ -12,6 +12,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 * New types for MessagePack extensions compatible with go-option (#459).
 * Added `box.MustNew` wrapper for `box.New` without an error (#448).
+* Enabled `errcheck` in linter.
 
 ### Changed
 

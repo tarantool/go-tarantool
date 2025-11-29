@@ -29,7 +29,7 @@ func writeConfig(name string, port int) error {
 	}
 	defer cfg.Close()
 
-	cfg.Chmod(0644)
+	_ = cfg.Chmod(0644)
 
 	t := template.Must(template.New("config").Parse(string(tcsConfig)))
 	return t.Execute(cfg, map[string]interface{}{

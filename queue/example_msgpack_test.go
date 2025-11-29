@@ -101,7 +101,7 @@ func Example_simpleQueueCustomMsgPack() {
 		return
 	}
 	fmt.Println("Data is", task.Data())
-	task.Ack()
+	_ = task.Ack()
 
 	// Take typed example.
 	putData := dummyData{}
@@ -129,7 +129,7 @@ func Example_simpleQueueCustomMsgPack() {
 		fmt.Printf("Put failed: %s", err)
 		return
 	}
-	task.Bury()
+	_ = task.Bury()
 
 	task, err = que.TakeTimeout(2 * time.Second)
 	if err != nil {
@@ -140,7 +140,7 @@ func Example_simpleQueueCustomMsgPack() {
 		fmt.Println("Task is nil")
 	}
 
-	que.Drop()
+	_ = que.Drop()
 
 	// Unordered output:
 	// Task id is 0
