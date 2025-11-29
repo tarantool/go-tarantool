@@ -169,7 +169,7 @@ func smallInt(d *msgpack.Decoder, buf *smallBuf) (i int, err error) {
 	if b <= 127 {
 		return int(b), nil
 	}
-	buf.UnreadByte()
+	_ = buf.UnreadByte()
 	return d.DecodeInt()
 }
 
@@ -324,7 +324,9 @@ func (resp *baseResponse) Decode() ([]interface{}, error) {
 	var err error
 	if resp.buf.Len() > 2 {
 		offset := resp.buf.Offset()
-		defer resp.buf.Seek(offset)
+		defer func() {
+			_ = resp.buf.Seek(offset)
+		}()
 
 		var l int
 		info := &decodeInfo{}
@@ -377,7 +379,9 @@ func (resp *SelectResponse) Decode() ([]interface{}, error) {
 	var err error
 	if resp.buf.Len() > 2 {
 		offset := resp.buf.Offset()
-		defer resp.buf.Seek(offset)
+		defer func() {
+			_ = resp.buf.Seek(offset)
+		}()
 
 		var l int
 		info := &decodeInfo{}
@@ -438,7 +442,9 @@ func (resp *ExecuteResponse) Decode() ([]interface{}, error) {
 	var err error
 	if resp.buf.Len() > 2 {
 		offset := resp.buf.Offset()
-		defer resp.buf.Seek(offset)
+		defer func() {
+			_ = resp.buf.Seek(offset)
+		}()
 
 		var l int
 		info := &decodeInfo{}
@@ -524,7 +530,9 @@ func (resp *baseResponse) DecodeTyped(res interface{}) error {
 	var err error
 	if resp.buf.Len() > 0 {
 		offset := resp.buf.Offset()
-		defer resp.buf.Seek(offset)
+		defer func() {
+			_ = resp.buf.Seek(offset)
+		}()
 
 		info := &decodeInfo{}
 		var l int
@@ -563,7 +571,9 @@ func (resp *SelectResponse) DecodeTyped(res interface{}) error {
 	var err error
 	if resp.buf.Len() > 0 {
 		offset := resp.buf.Offset()
-		defer resp.buf.Seek(offset)
+		defer func() {
+			_ = resp.buf.Seek(offset)
+		}()
 
 		info := &decodeInfo{}
 		var l int
@@ -609,8 +619,9 @@ func (resp *ExecuteResponse) DecodeTyped(res interface{}) error {
 	var err error
 	if resp.buf.Len() > 0 {
 		offset := resp.buf.Offset()
-		defer resp.buf.Seek(offset)
-
+		defer func() {
+			_ = resp.buf.Seek(offset)
+		}()
 		info := &decodeInfo{}
 		var l int
 
@@ -661,7 +672,7 @@ func (resp *baseResponse) Header() Header {
 // If the response was not decoded, this method will call Decode().
 func (resp *SelectResponse) Pos() ([]byte, error) {
 	if !resp.decoded && !resp.decodedTyped {
-		resp.Decode()
+		_, _ = resp.Decode()
 	}
 	return resp.pos, resp.err
 }
@@ -670,7 +681,7 @@ func (resp *SelectResponse) Pos() ([]byte, error) {
 // If the response was not decoded, this method will call Decode().
 func (resp *ExecuteResponse) MetaData() ([]ColumnMetaData, error) {
 	if !resp.decoded && !resp.decodedTyped {
-		resp.Decode()
+		_, _ = resp.Decode()
 	}
 	return resp.metaData, resp.err
 }
@@ -679,7 +690,7 @@ func (resp *ExecuteResponse) MetaData() ([]ColumnMetaData, error) {
 // If the response was not decoded, this method will call Decode().
 func (resp *ExecuteResponse) SQLInfo() (SQLInfo, error) {
 	if !resp.decoded && !resp.decodedTyped {
-		resp.Decode()
+		_, _ = resp.Decode()
 	}
 	return resp.sqlInfo, resp.err
 }

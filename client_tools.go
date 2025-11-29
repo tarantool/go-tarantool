@@ -11,8 +11,8 @@ type IntKey struct {
 }
 
 func (k IntKey) EncodeMsgpack(enc *msgpack.Encoder) error {
-	enc.EncodeArrayLen(1)
-	enc.EncodeInt(int64(k.I))
+	_ = enc.EncodeArrayLen(1)
+	_ = enc.EncodeInt(int64(k.I))
 	return nil
 }
 
@@ -24,8 +24,8 @@ type UintKey struct {
 }
 
 func (k UintKey) EncodeMsgpack(enc *msgpack.Encoder) error {
-	enc.EncodeArrayLen(1)
-	enc.EncodeUint(uint64(k.I))
+	_ = enc.EncodeArrayLen(1)
+	_ = enc.EncodeUint(uint64(k.I))
 	return nil
 }
 
@@ -36,8 +36,8 @@ type StringKey struct {
 }
 
 func (k StringKey) EncodeMsgpack(enc *msgpack.Encoder) error {
-	enc.EncodeArrayLen(1)
-	enc.EncodeString(k.S)
+	_ = enc.EncodeArrayLen(1)
+	_ = enc.EncodeString(k.S)
 	return nil
 }
 
@@ -48,9 +48,9 @@ type IntIntKey struct {
 }
 
 func (k IntIntKey) EncodeMsgpack(enc *msgpack.Encoder) error {
-	enc.EncodeArrayLen(2)
-	enc.EncodeInt(int64(k.I1))
-	enc.EncodeInt(int64(k.I2))
+	_ = enc.EncodeArrayLen(2)
+	_ = enc.EncodeInt(int64(k.I1))
+	_ = enc.EncodeInt(int64(k.I2))
 	return nil
 }
 

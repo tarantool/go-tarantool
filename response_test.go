@@ -18,9 +18,9 @@ func encodeResponseData(t *testing.T, data interface{}) io.Reader {
 	buf := bytes.NewBuffer([]byte{})
 	enc := msgpack.NewEncoder(buf)
 
-	enc.EncodeMapLen(1)
-	enc.EncodeUint8(uint8(iproto.IPROTO_DATA))
-	enc.Encode([]interface{}{data})
+	_ = enc.EncodeMapLen(1)
+	_ = enc.EncodeUint8(uint8(iproto.IPROTO_DATA))
+	_ = enc.Encode([]interface{}{data})
 	return buf
 
 }

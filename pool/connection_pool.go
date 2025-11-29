@@ -630,7 +630,7 @@ func (p *ConnectionPool) deleteConnection(name string) {
 		p.watcherContainer.mutex.RLock()
 		defer p.watcherContainer.mutex.RUnlock()
 
-		p.watcherContainer.foreach(func(watcher *poolWatcher) error {
+		_ = p.watcherContainer.foreach(func(watcher *poolWatcher) error {
 			watcher.unwatch(conn)
 			return nil
 		})
