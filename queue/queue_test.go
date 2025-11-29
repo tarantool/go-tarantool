@@ -117,7 +117,10 @@ func TestQueue_ReIdentify(t *testing.T) {
 		Opts:      queue.Opts{Ttl: 5 * time.Second},
 	}
 	q := createQueue(t, conn, name, cfg)
-	q.Cfg(queue.CfgOpts{InReplicaset: false, Ttr: 5 * time.Second})
+	err := q.Cfg(queue.CfgOpts{InReplicaset: false, Ttr: 5 * time.Second})
+	if err != nil {
+		t.Fatalf("Cfg failed: %s", err)
+	}
 	defer func() {
 		dropQueue(t, q)
 	}()

@@ -42,9 +42,9 @@ func TestResponseDecode(t *testing.T) {
 	buf := bytes.NewBuffer([]byte{})
 	enc := msgpack.NewEncoder(buf)
 
-	enc.EncodeMapLen(1)
-	enc.EncodeUint8(uint8(iproto.IPROTO_DATA))
-	enc.Encode([]interface{}{'v', '2'})
+	require.NoError(t, enc.EncodeMapLen(1))
+	require.NoError(t, enc.EncodeUint8(uint8(iproto.IPROTO_DATA)))
+	require.NoError(t, enc.Encode([]interface{}{'v', '2'}))
 
 	request := arrow.NewInsertRequest(validSpace, arrow.Arrow{})
 	resp, err := request.Response(header, bytes.NewBuffer(buf.Bytes()))
@@ -61,9 +61,9 @@ func TestResponseDecodeTyped(t *testing.T) {
 	buf := bytes.NewBuffer([]byte{})
 	enc := msgpack.NewEncoder(buf)
 
-	enc.EncodeMapLen(1)
-	enc.EncodeUint8(uint8(iproto.IPROTO_DATA))
-	enc.EncodeBytes([]byte{'v', '2'})
+	require.NoError(t, enc.EncodeMapLen(1))
+	require.NoError(t, enc.EncodeUint8(uint8(iproto.IPROTO_DATA)))
+	require.NoError(t, enc.EncodeBytes([]byte{'v', '2'}))
 
 	request := arrow.NewInsertRequest(validSpace, arrow.Arrow{})
 	resp, err := request.Response(header, bytes.NewBuffer(buf.Bytes()))

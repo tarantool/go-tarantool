@@ -204,7 +204,7 @@ func TestMessagePackDecode(t *testing.T) {
 func TestMessagePackUnmarshalToNil(t *testing.T) {
 	var val *BoxError = nil
 	require.PanicsWithValue(t, "cannot unmarshal to a nil pointer",
-		func() { val.UnmarshalMsgpack(mpDecodeSamples["InnerMapExtraKey"].b) })
+		func() { _ = val.UnmarshalMsgpack(mpDecodeSamples["InnerMapExtraKey"].b) })
 }
 
 func TestMessagePackEncodeNil(t *testing.T) {
