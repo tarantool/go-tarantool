@@ -36,7 +36,9 @@ func (c *Tuple2) EncodeMsgpack(e *msgpack.Encoder) error {
 	if err := e.EncodeString(c.Orig); err != nil {
 		return err
 	}
-	e.Encode(c.Members)
+	if err := e.Encode(c.Members); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -60,7 +62,9 @@ func (c *Tuple2) DecodeMsgpack(d *msgpack.Decoder) error {
 	}
 	c.Members = make([]Member, l)
 	for i := 0; i < l; i++ {
-		d.Decode(&c.Members[i])
+		if err = d.Decode(&c.Members[i]); err != nil {
+			return err
+		}
 	}
 	return nil
 }

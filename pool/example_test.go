@@ -145,7 +145,7 @@ func ExampleConnectionPool_NewWatcher() {
 	}
 	defer watcher.Unregister()
 
-	connPool.Do(tarantool.NewBroadcastRequest(key).Value(value), mode).Get()
+	_, _ = connPool.Do(tarantool.NewBroadcastRequest(key).Value(value), mode).Get()
 	time.Sleep(time.Second)
 }
 

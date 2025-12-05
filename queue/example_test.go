@@ -50,7 +50,9 @@ func Example_simpleQueue() {
 		return
 	}
 
-	defer q.Drop()
+	defer func() {
+		_ = q.Drop()
+	}()
 
 	testData_1 := "test_data_1"
 	if _, err = q.Put(testData_1); err != nil {
@@ -70,7 +72,11 @@ func Example_simpleQueue() {
 		fmt.Printf("error in take with is %v", err)
 		return
 	}
-	task.Ack()
+	err = task.Ack()
+	if err != nil {
+		fmt.Printf("error in Ack: %s", err)
+		return
+	}
 	fmt.Println("data_1: ", task.Data())
 
 	err = task_2.Bury()

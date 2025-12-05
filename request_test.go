@@ -319,9 +319,9 @@ func TestResponseDecode(t *testing.T) {
 		buf := bytes.NewBuffer([]byte{})
 		enc := msgpack.NewEncoder(buf)
 
-		enc.EncodeMapLen(1)
-		enc.EncodeUint8(uint8(iproto.IPROTO_DATA))
-		enc.Encode([]interface{}{'v', '2'})
+		assert.NoError(t, enc.EncodeMapLen(1))
+		assert.NoError(t, enc.EncodeUint8(uint8(iproto.IPROTO_DATA)))
+		assert.NoError(t, enc.Encode([]interface{}{'v', '2'}))
 
 		resp, err := test.req.Response(header, bytes.NewBuffer(buf.Bytes()))
 		assert.NoError(t, err)
@@ -372,9 +372,9 @@ func TestResponseDecodeTyped(t *testing.T) {
 		buf := bytes.NewBuffer([]byte{})
 		enc := msgpack.NewEncoder(buf)
 
-		enc.EncodeMapLen(1)
-		enc.EncodeUint8(uint8(iproto.IPROTO_DATA))
-		enc.EncodeBytes([]byte{'v', '2'})
+		assert.NoError(t, enc.EncodeMapLen(1))
+		assert.NoError(t, enc.EncodeUint8(uint8(iproto.IPROTO_DATA)))
+		assert.NoError(t, enc.EncodeBytes([]byte{'v', '2'}))
 
 		resp, err := test.req.Response(header, bytes.NewBuffer(buf.Bytes()))
 		assert.NoError(t, err)

@@ -559,7 +559,8 @@ func TestCrudGenerateData(t *testing.T) {
 			for i := 1010; i < 1020; i++ {
 				req := tarantool.NewDeleteRequest(spaceName).
 					Key([]interface{}{uint(i)})
-				conn.Do(req).Get()
+				_, err := conn.Do(req).Get()
+				require.NoError(t, err)
 			}
 
 			data, err := conn.Do(testCase.req).Get()
@@ -571,7 +572,8 @@ func TestCrudGenerateData(t *testing.T) {
 			for i := 1010; i < 1020; i++ {
 				req := tarantool.NewDeleteRequest(spaceName).
 					Key([]interface{}{uint(i)})
-				conn.Do(req).Get()
+				_, err := conn.Do(req).Get()
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -590,7 +592,8 @@ func TestCrudProcessData(t *testing.T) {
 			for i := 1010; i < 1020; i++ {
 				req := tarantool.NewDeleteRequest(spaceName).
 					Key([]interface{}{uint(i)})
-				conn.Do(req).Get()
+				_, err := conn.Do(req).Get()
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -799,7 +802,8 @@ func TestBoolResult(t *testing.T) {
 	for i := 1010; i < 1020; i++ {
 		req := tarantool.NewDeleteRequest(spaceName).
 			Key([]interface{}{uint(i)})
-		conn.Do(req).Get()
+		_, err := conn.Do(req).Get()
+		require.NoError(t, err)
 	}
 }
 
@@ -824,7 +828,8 @@ func TestNumberResult(t *testing.T) {
 	for i := 1010; i < 1020; i++ {
 		req := tarantool.NewDeleteRequest(spaceName).
 			Key([]interface{}{uint(i)})
-		conn.Do(req).Get()
+		_, err = conn.Do(req).Get()
+		require.NoError(t, err)
 	}
 }
 
@@ -869,7 +874,8 @@ func TestBaseResult(t *testing.T) {
 	for i := 1010; i < 1020; i++ {
 		req := tarantool.NewDeleteRequest(spaceName).
 			Key([]interface{}{uint(i)})
-		conn.Do(req).Get()
+		_, err = conn.Do(req).Get()
+		require.NoError(t, err)
 	}
 }
 
@@ -914,7 +920,8 @@ func TestManyResult(t *testing.T) {
 	for i := 1010; i < 1020; i++ {
 		req := tarantool.NewDeleteRequest(spaceName).
 			Key([]interface{}{uint(i)})
-		conn.Do(req).Get()
+		_, err := conn.Do(req).Get()
+		require.NoError(t, err)
 	}
 }
 
@@ -1130,7 +1137,8 @@ func TestFetchLatestMetadataOption(t *testing.T) {
 			for i := 1010; i < 1020; i++ {
 				req := tarantool.NewDeleteRequest(spaceName).
 					Key([]interface{}{uint(i)})
-				conn.Do(req).Get()
+				_, err := conn.Do(req).Get()
+				require.NoError(t, err)
 			}
 
 			resp := crud.Result{}
@@ -1147,7 +1155,8 @@ func TestFetchLatestMetadataOption(t *testing.T) {
 			for i := 1010; i < 1020; i++ {
 				req := tarantool.NewDeleteRequest(spaceName).
 					Key([]interface{}{uint(i)})
-				conn.Do(req).Get()
+				_, err = conn.Do(req).Get()
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -1283,7 +1292,8 @@ func TestNoreturnOption(t *testing.T) {
 			for i := 1010; i < 1020; i++ {
 				req := tarantool.NewDeleteRequest(spaceName).
 					Key([]interface{}{uint(i)})
-				conn.Do(req).Get()
+				_, err := conn.Do(req).Get()
+				require.NoError(t, err)
 			}
 
 			data, err := conn.Do(testCase.req).Get()
@@ -1306,7 +1316,8 @@ func TestNoreturnOption(t *testing.T) {
 			for i := 1010; i < 1020; i++ {
 				req := tarantool.NewDeleteRequest(spaceName).
 					Key([]interface{}{uint(i)})
-				conn.Do(req).Get()
+				_, err = conn.Do(req).Get()
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -1321,7 +1332,8 @@ func TestNoreturnOptionTyped(t *testing.T) {
 			for i := 1010; i < 1020; i++ {
 				req := tarantool.NewDeleteRequest(spaceName).
 					Key([]interface{}{uint(i)})
-				conn.Do(req).Get()
+				_, err := conn.Do(req).Get()
+				require.NoError(t, err)
 			}
 
 			resp := crud.Result{}
@@ -1342,7 +1354,8 @@ func TestNoreturnOptionTyped(t *testing.T) {
 			for i := 1010; i < 1020; i++ {
 				req := tarantool.NewDeleteRequest(spaceName).
 					Key([]interface{}{uint(i)})
-				conn.Do(req).Get()
+				_, err = conn.Do(req).Get()
+				require.NoError(t, err)
 			}
 		})
 	}

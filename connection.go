@@ -401,7 +401,7 @@ func Connect(ctx context.Context, dialer Dialer, opts Opts) (conn *Connection, e
 		if err != nil {
 			conn.mutex.Lock()
 			defer conn.mutex.Unlock()
-			conn.closeConnection(err, true)
+			_ = conn.closeConnection(err, true)
 			return nil, err
 		}
 		conn.SetSchema(schema)
@@ -562,7 +562,9 @@ func pack(h *smallWBuf, enc *msgpack.Encoder, reqid uint32,
 		byte(reqid >> 8), byte(reqid),
 	}, streamBytes[:streamBytesLen]...)
 
-	h.Write(hBytes)
+	if _, err = h.Write(hBytes); err != nil {
+		return
+	}
 
 	if err = req.Body(res, enc); err != nil {
 		return
@@ -695,13 +697,13 @@ func (conn *Connection) runReconnects(ctx context.Context) error {
 func (conn *Connection) reconnectImpl(neterr error, c Conn) {
 	if conn.opts.Reconnect > 0 {
 		if c == conn.c {
-			conn.closeConnection(neterr, false)
+			_ = conn.closeConnection(neterr, false)
 			if err := conn.runReconnects(context.Background()); err != nil {
-				conn.closeConnection(err, true)
+				_ = conn.closeConnection(err, true)
 			}
 		}
 	} else {
-		conn.closeConnection(neterr, true)
+		_ = conn.closeConnection(neterr, true)
 	}
 }
 
@@ -1106,7 +1108,7 @@ func (conn *Connection) putFuture(fut *Future, req Request, streamId uint64) {
 				RequestId: reqid,
 				Error:     ErrorNo,
 			}
-			fut.SetResponse(header, nil)
+			_ = fut.SetResponse(header, nil)
 			conn.markDone(fut)
 		}
 	}
@@ -1482,7 +1484,9 @@ func (conn *Connection) newWatcherImpl(key string, callback WatchCallback) (Watc
 					// request will not be finished by a small per-request
 					// timeout.
 					req := newWatchRequest(key).Context(context.Background())
-					conn.Do(req).Get()
+					if _, err = conn.Do(req).Get(); err != nil {
+						return
+					}
 				}
 			}
 
@@ -1505,7 +1509,9 @@ func (conn *Connection) newWatcherImpl(key string, callback WatchCallback) (Watc
 						// not be finished by a small per-request timeout to
 						// avoid lost of the request.
 						req := newUnwatchRequest(key).Context(context.Background())
-						conn.Do(req).Get()
+						if _, err = conn.Do(req).Get(); err != nil {
+							return
+						}
 					}
 					conn.watchMap.Delete(key)
 					close(state.unready)
@@ -1538,7 +1544,9 @@ func shutdownEventCallback(event WatchEvent) {
 	// step 2.
 	val, ok := event.Value.(bool)
 	if ok && val {
-		go event.Conn.shutdown(false)
+		go func() {
+			_ = event.Conn.shutdown(false)
+		}()
 	}
 }
 

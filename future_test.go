@@ -78,7 +78,8 @@ func createFutureMockResponse(header Header, body io.Reader) (Response, error) {
 
 func TestFuture_Get(t *testing.T) {
 	fut := NewFuture(&futureMockRequest{})
-	fut.SetResponse(Header{}, bytes.NewReader([]byte{'v', '2'}))
+	err := fut.SetResponse(Header{}, bytes.NewReader([]byte{'v', '2'}))
+	assert.NoError(t, err)
 
 	resp, err := fut.GetResponse()
 	assert.NoError(t, err)
@@ -94,7 +95,8 @@ func TestFuture_Get(t *testing.T) {
 
 func TestFuture_GetTyped(t *testing.T) {
 	fut := NewFuture(&futureMockRequest{})
-	fut.SetResponse(Header{}, bytes.NewReader([]byte{'v', '2'}))
+	assert.NoError(t,
+		fut.SetResponse(Header{}, bytes.NewReader([]byte{'v', '2'})))
 
 	resp, err := fut.GetResponse()
 	assert.NoError(t, err)
@@ -115,7 +117,8 @@ func TestFuture_GetResponse(t *testing.T) {
 	assert.NoError(t, err)
 
 	fut := NewFuture(&futureMockRequest{})
-	fut.SetResponse(Header{}, bytes.NewReader([]byte{'v', '2'}))
+	assert.NoError(t,
+		fut.SetResponse(Header{}, bytes.NewReader([]byte{'v', '2'})))
 
 	resp, err := fut.GetResponse()
 	assert.NoError(t, err)

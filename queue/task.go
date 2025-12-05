@@ -31,7 +31,7 @@ func (t *Task) DecodeMsgpack(d *msgpack.Decoder) error {
 		return err
 	}
 	if t.data != nil {
-		d.Decode(t.data)
+		_ = d.Decode(t.data)
 	} else if t.data, err = d.DecodeInterface(); err != nil {
 		return err
 	}

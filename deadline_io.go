@@ -12,7 +12,9 @@ type deadlineIO struct {
 
 func (d *deadlineIO) Write(b []byte) (n int, err error) {
 	if d.to > 0 {
-		d.c.SetWriteDeadline(time.Now().Add(d.to))
+		if err = d.c.SetWriteDeadline(time.Now().Add(d.to)); err != nil {
+			return
+		}
 	}
 	n, err = d.c.Write(b)
 	return
@@ -20,7 +22,9 @@ func (d *deadlineIO) Write(b []byte) (n int, err error) {
 
 func (d *deadlineIO) Read(b []byte) (n int, err error) {
 	if d.to > 0 {
-		d.c.SetReadDeadline(time.Now().Add(d.to))
+		if err = d.c.SetReadDeadline(time.Now().Add(d.to)); err != nil {
+			return
+		}
 	}
 	n, err = d.c.Read(b)
 	return

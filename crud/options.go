@@ -398,8 +398,12 @@ func encodeOptions(enc *msgpack.Encoder,
 	if mapLen > 0 {
 		for i, name := range names {
 			if exists[i] {
-				enc.EncodeString(name)
-				enc.Encode(values[i])
+				if err := enc.EncodeString(name); err != nil {
+					return err
+				}
+				if err := enc.Encode(values[i]); err != nil {
+					return err
+				}
 			}
 		}
 	}
