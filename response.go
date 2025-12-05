@@ -3,6 +3,7 @@ package tarantool
 import (
 	"fmt"
 	"io"
+	"sync"
 
 	"github.com/tarantool/go-iproto"
 	"github.com/vmihailenco/msgpack/v5"
@@ -12,6 +13,8 @@ import (
 type Response interface {
 	// Header returns a response header.
 	Header() Header
+	// Release free responses data.
+	Release()
 	// Decode decodes a response.
 	Decode() ([]interface{}, error)
 	// DecodeTyped decodes a response into a given container res.
@@ -31,24 +34,42 @@ type baseResponse struct {
 	err          error
 }
 
-func createBaseResponse(header Header, body io.Reader) (baseResponse, error) {
+func createBaseResponse(header Header, body io.Reader) (*baseResponse, error) {
+	resp := &baseResponse{}
 	if body == nil {
-		return baseResponse{header: header}, nil
+		resp.header = header
+		return resp, nil
 	}
 	if buf, ok := body.(*smallBuf); ok {
-		return baseResponse{header: header, buf: *buf}, nil
+		resp.header = header
+		resp.buf.b = buf.b
+		resp.buf.p = buf.p
+		return resp, nil
 	}
 	data, err := io.ReadAll(body)
 	if err != nil {
-		return baseResponse{}, err
+		return resp, err
 	}
-	return baseResponse{header: header, buf: smallBuf{b: data}}, nil
+	resp.header = header
+	resp.buf.b = data
+	return resp, nil
+}
+
+func (resp *baseResponse) clear() {
+	*resp = baseResponse{}
+}
+
+func (resp *baseResponse) Release() {
+	slicePool.Put(resp.buf.b) // nolint
+	resp.buf.b = nil
+	resp.buf.p = 0
+	smallBufPool.Put(&resp.buf)
 }
 
 // DecodeBaseResponse parse response header and body.
 func DecodeBaseResponse(header Header, body io.Reader) (Response, error) {
 	resp, err := createBaseResponse(header, body)
-	return &resp, err
+	return resp, err
 }
 
 // SelectResponse is used for the select requests.
@@ -655,6 +676,41 @@ func (resp *ExecuteResponse) DecodeTyped(res interface{}) error {
 
 func (resp *baseResponse) Header() Header {
 	return resp.header
+}
+
+var selectResponsePool *sync.Pool = &sync.Pool{
+	New: func() interface{} {
+		return &SelectResponse{}
+	},
+}
+
+func createSelectResponse(header Header, body io.Reader) (*SelectResponse, error) {
+	resp := selectResponsePool.Get().(*SelectResponse)
+	if body == nil {
+		resp.header = header
+		return resp, nil
+	}
+	if buf, ok := body.(*smallBuf); ok {
+		resp.header = header
+		resp.buf.b = buf.b
+		resp.buf.p = buf.p
+		return resp, nil
+	}
+	data, err := io.ReadAll(body)
+	if err != nil {
+		return resp, err
+	}
+	resp.header = header
+	resp.buf.b = data
+	return resp, nil
+}
+
+func (resp *SelectResponse) Release() {
+	resp.baseResponse.Release()
+	resp.baseResponse.clear()
+	resp.pos = nil
+
+	selectResponsePool.Put(resp)
 }
 
 // Pos returns a position descriptor of the last selected tuple for the SelectResponse.
