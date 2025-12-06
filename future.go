@@ -3,6 +3,7 @@ package tarantool
 import (
 	"io"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -15,32 +16,43 @@ type Future struct {
 	mutex     sync.Mutex
 	resp      Response
 	err       error
+	cond      sync.Cond
+	finished  atomic.Bool
 	done      chan struct{}
 }
 
 func (fut *Future) wait() {
-	if fut.done == nil {
-		return
+	fut.mutex.Lock()
+	defer fut.mutex.Unlock()
+
+	for !fut.isDone() {
+		fut.cond.Wait()
 	}
-	<-fut.done
 }
 
 func (fut *Future) isDone() bool {
-	if fut.done == nil {
-		return true
+	return fut.finished.Load()
+}
+
+func (fut *Future) finish() {
+	fut.mutex.Lock()
+	defer fut.mutex.Unlock()
+
+	fut.finished.Store(true)
+
+	if fut.done != nil {
+		close(fut.done)
 	}
-	select {
-	case <-fut.done:
-		return true
-	default:
-		return false
-	}
+
+	fut.cond.Broadcast()
 }
 
 // NewFuture creates a new empty Future for a given Request.
 func NewFuture(req Request) (fut *Future) {
 	fut = &Future{}
-	fut.done = make(chan struct{})
+	fut.done = nil
+	fut.finished.Store(false)
+	fut.cond = *sync.NewCond(&fut.mutex)
 	fut.req = req
 	return fut
 }
@@ -60,7 +72,14 @@ func (fut *Future) SetResponse(header Header, body io.Reader) error {
 	}
 	fut.resp = resp
 
-	close(fut.done)
+	fut.finished.Store(true)
+
+	if fut.done != nil {
+		close(fut.done)
+	}
+
+	fut.cond.Broadcast()
+
 	return nil
 }
 
@@ -74,7 +93,13 @@ func (fut *Future) SetError(err error) {
 	}
 	fut.err = err
 
-	close(fut.done)
+	fut.finished.Store(true)
+
+	if fut.done != nil {
+		close(fut.done)
+	}
+
+	fut.cond.Broadcast()
 }
 
 // GetResponse waits for Future to be filled and returns Response and error.
@@ -122,8 +147,16 @@ func init() {
 
 // WaitChan returns channel which becomes closed when response arrived or error occurred.
 func (fut *Future) WaitChan() <-chan struct{} {
-	if fut.done == nil {
+	fut.mutex.Lock()
+	defer fut.mutex.Unlock()
+
+	if fut.isDone() {
 		return closedChan
 	}
+
+	if fut.done == nil {
+		fut.done = make(chan struct{})
+	}
+
 	return fut.done
 }
