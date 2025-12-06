@@ -237,6 +237,16 @@ func IsTarantoolVersionLess(majorMin uint64, minorMin uint64, patchMin uint64) (
 
 	out, err := exec.Command(getTarantoolExec(), "--version").Output()
 
+	// if err != nil {
+	// 	return true, err
+	// }
+
+	// // It seems that is the --version output sometimes goes to Stderr instead of Stdout.
+	// // trying to get version again
+	// if len(out) == 0 {
+	// 	out, err = exec.Command(getTarantoolExec(), "--version").Output()
+	// }
+
 	if err != nil {
 		return true, err
 	}
