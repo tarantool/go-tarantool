@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/tarantool/go-tarantool/v3"
@@ -235,7 +236,19 @@ func getTarantoolExec() string {
 func IsTarantoolVersionLess(majorMin uint64, minorMin uint64, patchMin uint64) (bool, error) {
 	var major, minor, patch uint64
 
-	out, err := exec.Command(getTarantoolExec(), "--version").Output()
+	var (
+		out []byte
+		err error
+	)
+	for range 10 {
+		out, err = exec.Command(getTarantoolExec(), "--version").Output()
+		if err == nil || !strings.Contains(err.Error(), "bad file descriptor") {
+			break
+		}
+		// Skip "bad file descriptor" error and try again.
+		// For unknown reason it sometimes happens on CI.
+		time.Sleep(time.Second)
+	}
 
 	if err != nil {
 		return true, err
