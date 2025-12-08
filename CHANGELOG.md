@@ -25,8 +25,9 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 * Removed deprecated `box.session.push()` support: Future.AppendPush()
   and Future.GetIterator() methods, ResponseIterator and TimeoutResponseIterator types,
   Future.pushes[], Future.ready (#480, #497).
-* `LogAppendPushFailed` replaced with `LogBoxSessionPushUnsupported` (#480)
-* Removed deprecated `Connection` methods, related interfaces and tests are updated (#479)
+* `LogAppendPushFailed` replaced with `LogBoxSessionPushUnsupported` (#480).
+* Removed deprecated `Connection` methods, related interfaces and tests are updated (#479).
+* Replaced the use of optional types in crud with go-option library (#492).
 
 ### Fixed
 

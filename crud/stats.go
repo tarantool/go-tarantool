@@ -3,6 +3,7 @@ package crud
 import (
 	"context"
 
+	"github.com/tarantool/go-option"
 	"github.com/vmihailenco/msgpack/v5"
 
 	"github.com/tarantool/go-tarantool/v3"
@@ -12,7 +13,7 @@ import (
 // for execution by a Connection.
 type StatsRequest struct {
 	baseRequest
-	space OptString
+	space option.String
 }
 
 // MakeStatsRequest returns a new empty StatsRequest.
@@ -25,7 +26,7 @@ func MakeStatsRequest() StatsRequest {
 // Space sets the space name for the StatsRequest request.
 // Note: default value is nil.
 func (req StatsRequest) Space(space string) StatsRequest {
-	req.space = MakeOptString(space)
+	req.space = option.SomeString(space)
 	return req
 }
 

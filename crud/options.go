@@ -1,6 +1,7 @@
 package crud
 
 import (
+	"github.com/tarantool/go-option"
 	"github.com/vmihailenco/msgpack/v5"
 )
 
@@ -26,124 +27,14 @@ const (
 	cachedOptName                        = "cached"
 )
 
-// OptUint is an optional uint.
-type OptUint struct {
-	value uint
-	exist bool
-}
-
-// MakeOptUint creates an optional uint from value.
-func MakeOptUint(value uint) OptUint {
-	return OptUint{
-		value: value,
-		exist: true,
-	}
-}
-
-// Get returns the integer value or an error if not present.
-func (opt OptUint) Get() (uint, bool) {
-	return opt.value, opt.exist
-}
-
-// OptInt is an optional int.
-type OptInt struct {
-	value int
-	exist bool
-}
-
-// MakeOptInt creates an optional int from value.
-func MakeOptInt(value int) OptInt {
-	return OptInt{
-		value: value,
-		exist: true,
-	}
-}
-
-// Get returns the integer value or an error if not present.
-func (opt OptInt) Get() (int, bool) {
-	return opt.value, opt.exist
-}
-
-// OptFloat64 is an optional float64.
-type OptFloat64 struct {
-	value float64
-	exist bool
-}
-
-// MakeOptFloat64 creates an optional float64 from value.
-func MakeOptFloat64(value float64) OptFloat64 {
-	return OptFloat64{
-		value: value,
-		exist: true,
-	}
-}
-
-// Get returns the float64 value or an error if not present.
-func (opt OptFloat64) Get() (float64, bool) {
-	return opt.value, opt.exist
-}
-
-// OptString is an optional string.
-type OptString struct {
-	value string
-	exist bool
-}
-
-// MakeOptString creates an optional string from value.
-func MakeOptString(value string) OptString {
-	return OptString{
-		value: value,
-		exist: true,
-	}
-}
-
-// Get returns the string value or an error if not present.
-func (opt OptString) Get() (string, bool) {
-	return opt.value, opt.exist
-}
-
-// OptBool is an optional bool.
-type OptBool struct {
-	value bool
-	exist bool
-}
-
-// MakeOptBool creates an optional bool from value.
-func MakeOptBool(value bool) OptBool {
-	return OptBool{
-		value: value,
-		exist: true,
-	}
-}
-
-// Get returns the boolean value or an error if not present.
-func (opt OptBool) Get() (bool, bool) {
-	return opt.value, opt.exist
-}
-
-// OptTuple is an optional tuple.
-type OptTuple struct {
-	tuple interface{}
-}
-
-// MakeOptTuple creates an optional tuple from tuple.
-func MakeOptTuple(tuple interface{}) OptTuple {
-	return OptTuple{tuple}
-}
-
-// Get returns the tuple value or an error if not present.
-func (o *OptTuple) Get() (interface{}, bool) {
-	return o.tuple, o.tuple != nil
-}
-
 // BaseOpts describes base options for CRUD operations.
 type BaseOpts struct {
 	// Timeout is a `vshard.call` timeout and vshard
 	// master discovery timeout (in seconds).
-	Timeout OptFloat64
+	Timeout option.Float64
 	// VshardRouter is cartridge vshard group name or
 	// vshard router instance.
-	VshardRouter OptString
+	VshardRouter option.String
 }
 
 // EncodeMsgpack provides custom msgpack encoder.
@@ -164,22 +55,22 @@ func (opts BaseOpts) EncodeMsgpack(enc *msgpack.Encoder) error {
 type SimpleOperationOpts struct {
 	// Timeout is a `vshard.call` timeout and vshard
 	// master discovery timeout (in seconds).
-	Timeout OptFloat64
+	Timeout option.Float64
 	// VshardRouter is cartridge vshard group name or
 	// vshard router instance.
-	VshardRouter OptString
+	VshardRouter option.String
 	// Fields is field names for getting only a subset of fields.
-	Fields OptTuple
+	Fields option.Any
 	// BucketId is a bucket ID.
-	BucketId OptUint
+	BucketId option.Uint
 	// FetchLatestMetadata guarantees the up-to-date metadata (space format)
 	// in first return value, otherwise it may not take into account
 	// the latest migration of the data format. Performance overhead is up to 15%.
 	// Disabled by default.
-	FetchLatestMetadata OptBool
+	FetchLatestMetadata option.Bool
 	// Noreturn suppresses successfully processed data (first return value is `nil`).
 	// Disabled by default.
-	Noreturn OptBool
+	Noreturn option.Bool
 }
 
 // EncodeMsgpack provides custom msgpack encoder.
@@ -206,25 +97,25 @@ func (opts SimpleOperationOpts) EncodeMsgpack(enc *msgpack.Encoder) error {
 type SimpleOperationObjectOpts struct {
 	// Timeout is a `vshard.call` timeout and vshard
 	// master discovery timeout (in seconds).
-	Timeout OptFloat64
+	Timeout option.Float64
 	// VshardRouter is cartridge vshard group name or
 	// vshard router instance.
-	VshardRouter OptString
+	VshardRouter option.String
 	// Fields is field names for getting only a subset of fields.
-	Fields OptTuple
+	Fields option.Any
 	// BucketId is a bucket ID.
-	BucketId OptUint
+	BucketId option.Uint
 	// SkipNullabilityCheckOnFlatten is a parameter to allow
 	// setting null values to non-nullable fields.
-	SkipNullabilityCheckOnFlatten OptBool
+	SkipNullabilityCheckOnFlatten option.Bool
 	// FetchLatestMetadata guarantees the up-to-date metadata (space format)
 	// in first return value, otherwise it may not take into account
 	// the latest migration of the data format. Performance overhead is up to 15%.
 	// Disabled by default.
-	FetchLatestMetadata OptBool
+	FetchLatestMetadata option.Bool
 	// Noreturn suppresses successfully processed data (first return value is `nil`).
 	// Disabled by default.
-	Noreturn OptBool
+	Noreturn option.Bool
 }
 
 // EncodeMsgpack provides custom msgpack encoder.
@@ -252,27 +143,27 @@ func (opts SimpleOperationObjectOpts) EncodeMsgpack(enc *msgpack.Encoder) error 
 type OperationManyOpts struct {
 	// Timeout is a `vshard.call` timeout and vshard
 	// master discovery timeout (in seconds).
-	Timeout OptFloat64
+	Timeout option.Float64
 	// VshardRouter is cartridge vshard group name or
 	// vshard router instance.
-	VshardRouter OptString
+	VshardRouter option.String
 	// Fields is field names for getting only a subset of fields.
-	Fields OptTuple
+	Fields option.Any
 	// StopOnError is a parameter to stop on a first error and report
 	// error regarding the failed operation and error about what tuples
 	// were not performed.
-	StopOnError OptBool
+	StopOnError option.Bool
 	// RollbackOnError is a parameter because of what any failed operation
 	// will lead to rollback on a storage, where the operation is failed.
-	RollbackOnError OptBool
+	RollbackOnError option.Bool
 	// FetchLatestMetadata guarantees the up-to-date metadata (space format)
 	// in first return value, otherwise it may not take into account
 	// the latest migration of the data format. Performance overhead is up to 15%.
 	// Disabled by default.
-	FetchLatestMetadata OptBool
+	FetchLatestMetadata option.Bool
 	// Noreturn suppresses successfully processed data (first return value is `nil`).
 	// Disabled by default.
-	Noreturn OptBool
+	Noreturn option.Bool
 }
 
 // EncodeMsgpack provides custom msgpack encoder.
@@ -300,30 +191,30 @@ func (opts OperationManyOpts) EncodeMsgpack(enc *msgpack.Encoder) error {
 type OperationObjectManyOpts struct {
 	// Timeout is a `vshard.call` timeout and vshard
 	// master discovery timeout (in seconds).
-	Timeout OptFloat64
+	Timeout option.Float64
 	// VshardRouter is cartridge vshard group name or
 	// vshard router instance.
-	VshardRouter OptString
+	VshardRouter option.String
 	// Fields is field names for getting only a subset of fields.
-	Fields OptTuple
+	Fields option.Any
 	// StopOnError is a parameter to stop on a first error and report
 	// error regarding the failed operation and error about what tuples
 	// were not performed.
-	StopOnError OptBool
+	StopOnError option.Bool
 	// RollbackOnError is a parameter because of what any failed operation
 	// will lead to rollback on a storage, where the operation is failed.
-	RollbackOnError OptBool
+	RollbackOnError option.Bool
 	// SkipNullabilityCheckOnFlatten is a parameter to allow
 	// setting null values to non-nullable fields.
-	SkipNullabilityCheckOnFlatten OptBool
+	SkipNullabilityCheckOnFlatten option.Bool
 	// FetchLatestMetadata guarantees the up-to-date metadata (space format)
 	// in first return value, otherwise it may not take into account
 	// the latest migration of the data format. Performance overhead is up to 15%.
 	// Disabled by default.
-	FetchLatestMetadata OptBool
+	FetchLatestMetadata option.Bool
 	// Noreturn suppresses successfully processed data (first return value is `nil`).
 	// Disabled by default.
-	Noreturn OptBool
+	Noreturn option.Bool
 }
 
 // EncodeMsgpack provides custom msgpack encoder.
@@ -352,17 +243,17 @@ func (opts OperationObjectManyOpts) EncodeMsgpack(enc *msgpack.Encoder) error {
 type BorderOpts struct {
 	// Timeout is a `vshard.call` timeout and vshard
 	// master discovery timeout (in seconds).
-	Timeout OptFloat64
+	Timeout option.Float64
 	// VshardRouter is cartridge vshard group name or
 	// vshard router instance.
-	VshardRouter OptString
+	VshardRouter option.String
 	// Fields is field names for getting only a subset of fields.
-	Fields OptTuple
+	Fields option.Any
 	// FetchLatestMetadata guarantees the up-to-date metadata (space format)
 	// in first return value, otherwise it may not take into account
 	// the latest migration of the data format. Performance overhead is up to 15%.
 	// Disabled by default.
-	FetchLatestMetadata OptBool
+	FetchLatestMetadata option.Bool
 }
 
 // EncodeMsgpack provides custom msgpack encoder.
