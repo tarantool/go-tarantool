@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/tarantool/go-option"
+
 	"github.com/tarantool/go-tarantool/v3"
 	"github.com/tarantool/go-tarantool/v3/crud"
 )
@@ -288,7 +290,7 @@ func ExampleResult_noreturn() {
 			[]interface{}{uint(2011), nil, "bla"},
 		}).
 		Opts(crud.ReplaceManyOpts{
-			Noreturn: crud.MakeOptBool(true),
+			Noreturn: option.SomeBool(true),
 		})
 
 	ret := crud.Result{}
@@ -375,8 +377,8 @@ func ExampleSelectRequest_pagination() {
 
 	req := crud.MakeSelectRequest(exampleSpace).
 		Opts(crud.SelectOpts{
-			First: crud.MakeOptInt(2),
-			After: crud.MakeOptTuple(tuple),
+			First: option.SomeInt64(2),
+			After: option.SomeAny(tuple),
 		})
 	ret := crud.Result{}
 	if err := conn.Do(req).GetTyped(&ret); err != nil {

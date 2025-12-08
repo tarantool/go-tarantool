@@ -3,6 +3,7 @@ package crud
 import (
 	"context"
 
+	"github.com/tarantool/go-option"
 	"github.com/vmihailenco/msgpack/v5"
 
 	"github.com/tarantool/go-tarantool/v3"
@@ -15,30 +16,30 @@ type CountResult = NumberResult
 type CountOpts struct {
 	// Timeout is a `vshard.call` timeout and vshard
 	// master discovery timeout (in seconds).
-	Timeout OptFloat64
+	Timeout option.Float64
 	// VshardRouter is cartridge vshard group name or
 	// vshard router instance.
-	VshardRouter OptString
+	VshardRouter option.String
 	// Mode is a parameter with `write`/`read` possible values,
 	// if `write` is specified then operation is performed on master.
-	Mode OptString
+	Mode option.String
 	// PreferReplica is a parameter to specify preferred target
 	// as one of the replicas.
-	PreferReplica OptBool
+	PreferReplica option.Bool
 	// Balance is a parameter to use replica according to vshard
 	// load balancing policy.
-	Balance OptBool
+	Balance option.Bool
 	// YieldEvery describes number of tuples processed to yield after.
 	// Should be positive.
-	YieldEvery OptUint
+	YieldEvery option.Uint
 	// BucketId is a bucket ID.
-	BucketId OptUint
+	BucketId option.Uint
 	// ForceMapCall describes the map call is performed without any
 	// optimizations even if full primary key equal condition is specified.
-	ForceMapCall OptBool
+	ForceMapCall option.Bool
 	// Fullscan describes if a critical log entry will be skipped on
 	// potentially long count.
-	Fullscan OptBool
+	Fullscan option.Bool
 }
 
 // EncodeMsgpack provides custom msgpack encoder.

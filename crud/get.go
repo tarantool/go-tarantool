@@ -3,6 +3,7 @@ package crud
 import (
 	"context"
 
+	"github.com/tarantool/go-option"
 	"github.com/vmihailenco/msgpack/v5"
 
 	"github.com/tarantool/go-tarantool/v3"
@@ -12,28 +13,28 @@ import (
 type GetOpts struct {
 	// Timeout is a `vshard.call` timeout and vshard
 	// master discovery timeout (in seconds).
-	Timeout OptFloat64
+	Timeout option.Float64
 	// VshardRouter is cartridge vshard group name or
 	// vshard router instance.
-	VshardRouter OptString
+	VshardRouter option.String
 	// Fields is field names for getting only a subset of fields.
-	Fields OptTuple
+	Fields option.Any
 	// BucketId is a bucket ID.
-	BucketId OptUint
+	BucketId option.Uint
 	// Mode is a parameter with `write`/`read` possible values,
 	// if `write` is specified then operation is performed on master.
-	Mode OptString
+	Mode option.String
 	// PreferReplica is a parameter to specify preferred target
 	// as one of the replicas.
-	PreferReplica OptBool
+	PreferReplica option.Bool
 	// Balance is a parameter to use replica according to vshard
 	// load balancing policy.
-	Balance OptBool
+	Balance option.Bool
 	// FetchLatestMetadata guarantees the up-to-date metadata (space format)
 	// in first return value, otherwise it may not take into account
 	// the latest migration of the data format. Performance overhead is up to 15%.
 	// Disabled by default.
-	FetchLatestMetadata OptBool
+	FetchLatestMetadata option.Bool
 }
 
 // EncodeMsgpack provides custom msgpack encoder.

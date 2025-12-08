@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/tarantool/go-iproto"
+	"github.com/tarantool/go-option"
 	"github.com/vmihailenco/msgpack/v5"
 
 	"github.com/tarantool/go-tarantool/v3"
@@ -102,7 +103,7 @@ func BenchmarkLenRequest(b *testing.B) {
 		buf.Reset()
 		req := crud.MakeLenRequest(spaceName).
 			Opts(crud.LenOpts{
-				Timeout: crud.MakeOptFloat64(3.5),
+				Timeout: option.SomeFloat64(3.5),
 			})
 		if err := req.Body(nil, enc); err != nil {
 			b.Error(err)
@@ -121,9 +122,9 @@ func BenchmarkSelectRequest(b *testing.B) {
 		buf.Reset()
 		req := crud.MakeSelectRequest(spaceName).
 			Opts(crud.SelectOpts{
-				Timeout:      crud.MakeOptFloat64(3.5),
-				VshardRouter: crud.MakeOptString("asd"),
-				Balance:      crud.MakeOptBool(true),
+				Timeout:      option.SomeFloat64(3.5),
+				VshardRouter: option.SomeString("asd"),
+				Balance:      option.SomeBool(true),
 			})
 		if err := req.Body(nil, enc); err != nil {
 			b.Error(err)
@@ -636,7 +637,7 @@ func TestRequestsVshardRouter(t *testing.T) {
 				map[string]interface{}{"vshard_router": "custom_router"},
 			}),
 			target: crud.MakeInsertRequest(validSpace).Opts(crud.InsertOpts{
-				VshardRouter: crud.MakeOptString("custom_router"),
+				VshardRouter: option.SomeString("custom_router"),
 			}),
 		},
 		{
@@ -647,7 +648,7 @@ func TestRequestsVshardRouter(t *testing.T) {
 				map[string]interface{}{"vshard_router": "custom_router"},
 			}),
 			target: crud.MakeInsertObjectRequest(validSpace).Opts(crud.InsertObjectOpts{
-				VshardRouter: crud.MakeOptString("custom_router"),
+				VshardRouter: option.SomeString("custom_router"),
 			}),
 		},
 		{
@@ -658,7 +659,7 @@ func TestRequestsVshardRouter(t *testing.T) {
 				map[string]interface{}{"vshard_router": "custom_router"},
 			}),
 			target: crud.MakeInsertManyRequest(validSpace).Opts(crud.InsertManyOpts{
-				VshardRouter: crud.MakeOptString("custom_router"),
+				VshardRouter: option.SomeString("custom_router"),
 			}),
 		},
 		{
@@ -669,7 +670,7 @@ func TestRequestsVshardRouter(t *testing.T) {
 				map[string]interface{}{"vshard_router": "custom_router"},
 			}),
 			target: crud.MakeInsertObjectManyRequest(validSpace).Opts(crud.InsertObjectManyOpts{
-				VshardRouter: crud.MakeOptString("custom_router"),
+				VshardRouter: option.SomeString("custom_router"),
 			}),
 		},
 		{
@@ -680,7 +681,7 @@ func TestRequestsVshardRouter(t *testing.T) {
 				map[string]interface{}{"vshard_router": "custom_router"},
 			}),
 			target: crud.MakeGetRequest(validSpace).Opts(crud.GetOpts{
-				VshardRouter: crud.MakeOptString("custom_router"),
+				VshardRouter: option.SomeString("custom_router"),
 			}),
 		},
 		{
@@ -692,7 +693,7 @@ func TestRequestsVshardRouter(t *testing.T) {
 				map[string]interface{}{"vshard_router": "custom_router"},
 			}),
 			target: crud.MakeUpdateRequest(validSpace).Opts(crud.UpdateOpts{
-				VshardRouter: crud.MakeOptString("custom_router"),
+				VshardRouter: option.SomeString("custom_router"),
 			}),
 		},
 		{
@@ -703,7 +704,7 @@ func TestRequestsVshardRouter(t *testing.T) {
 				map[string]interface{}{"vshard_router": "custom_router"},
 			}),
 			target: crud.MakeDeleteRequest(validSpace).Opts(crud.DeleteOpts{
-				VshardRouter: crud.MakeOptString("custom_router"),
+				VshardRouter: option.SomeString("custom_router"),
 			}),
 		},
 		{
@@ -714,7 +715,7 @@ func TestRequestsVshardRouter(t *testing.T) {
 				map[string]interface{}{"vshard_router": "custom_router"},
 			}),
 			target: crud.MakeReplaceRequest(validSpace).Opts(crud.ReplaceOpts{
-				VshardRouter: crud.MakeOptString("custom_router"),
+				VshardRouter: option.SomeString("custom_router"),
 			}),
 		},
 		{
@@ -725,7 +726,7 @@ func TestRequestsVshardRouter(t *testing.T) {
 				map[string]interface{}{"vshard_router": "custom_router"},
 			}),
 			target: crud.MakeReplaceObjectRequest(validSpace).Opts(crud.ReplaceObjectOpts{
-				VshardRouter: crud.MakeOptString("custom_router"),
+				VshardRouter: option.SomeString("custom_router"),
 			}),
 		},
 		{
@@ -736,7 +737,7 @@ func TestRequestsVshardRouter(t *testing.T) {
 				map[string]interface{}{"vshard_router": "custom_router"},
 			}),
 			target: crud.MakeReplaceManyRequest(validSpace).Opts(crud.ReplaceManyOpts{
-				VshardRouter: crud.MakeOptString("custom_router"),
+				VshardRouter: option.SomeString("custom_router"),
 			}),
 		},
 		{
@@ -747,7 +748,7 @@ func TestRequestsVshardRouter(t *testing.T) {
 				map[string]interface{}{"vshard_router": "custom_router"},
 			}),
 			target: crud.MakeReplaceObjectManyRequest(validSpace).Opts(crud.ReplaceObjectManyOpts{
-				VshardRouter: crud.MakeOptString("custom_router"),
+				VshardRouter: option.SomeString("custom_router"),
 			}),
 		},
 		{
@@ -759,7 +760,7 @@ func TestRequestsVshardRouter(t *testing.T) {
 				map[string]interface{}{"vshard_router": "custom_router"},
 			}),
 			target: crud.MakeUpsertRequest(validSpace).Opts(crud.UpsertOpts{
-				VshardRouter: crud.MakeOptString("custom_router"),
+				VshardRouter: option.SomeString("custom_router"),
 			}),
 		},
 		{
@@ -771,7 +772,7 @@ func TestRequestsVshardRouter(t *testing.T) {
 				map[string]interface{}{"vshard_router": "custom_router"},
 			}),
 			target: crud.MakeUpsertObjectRequest(validSpace).Opts(crud.UpsertObjectOpts{
-				VshardRouter: crud.MakeOptString("custom_router"),
+				VshardRouter: option.SomeString("custom_router"),
 			}),
 		},
 		{
@@ -782,7 +783,7 @@ func TestRequestsVshardRouter(t *testing.T) {
 				map[string]interface{}{"vshard_router": "custom_router"},
 			}),
 			target: crud.MakeUpsertManyRequest(validSpace).Opts(crud.UpsertManyOpts{
-				VshardRouter: crud.MakeOptString("custom_router"),
+				VshardRouter: option.SomeString("custom_router"),
 			}),
 		},
 		{
@@ -793,7 +794,7 @@ func TestRequestsVshardRouter(t *testing.T) {
 				map[string]interface{}{"vshard_router": "custom_router"},
 			}),
 			target: crud.MakeUpsertObjectManyRequest(validSpace).Opts(crud.UpsertObjectManyOpts{
-				VshardRouter: crud.MakeOptString("custom_router"),
+				VshardRouter: option.SomeString("custom_router"),
 			}),
 		},
 		{
@@ -804,7 +805,7 @@ func TestRequestsVshardRouter(t *testing.T) {
 				map[string]interface{}{"vshard_router": "custom_router"},
 			}),
 			target: crud.MakeSelectRequest(validSpace).Opts(crud.SelectOpts{
-				VshardRouter: crud.MakeOptString("custom_router"),
+				VshardRouter: option.SomeString("custom_router"),
 			}),
 		},
 		{
@@ -815,7 +816,7 @@ func TestRequestsVshardRouter(t *testing.T) {
 				map[string]interface{}{"vshard_router": "custom_router"},
 			}),
 			target: crud.MakeMinRequest(validSpace).Opts(crud.MinOpts{
-				VshardRouter: crud.MakeOptString("custom_router"),
+				VshardRouter: option.SomeString("custom_router"),
 			}),
 		},
 		{
@@ -826,7 +827,7 @@ func TestRequestsVshardRouter(t *testing.T) {
 				map[string]interface{}{"vshard_router": "custom_router"},
 			}),
 			target: crud.MakeMaxRequest(validSpace).Opts(crud.MaxOpts{
-				VshardRouter: crud.MakeOptString("custom_router"),
+				VshardRouter: option.SomeString("custom_router"),
 			}),
 		},
 		{
@@ -836,7 +837,7 @@ func TestRequestsVshardRouter(t *testing.T) {
 				map[string]interface{}{"vshard_router": "custom_router"},
 			}),
 			target: crud.MakeTruncateRequest(validSpace).Opts(crud.TruncateOpts{
-				VshardRouter: crud.MakeOptString("custom_router"),
+				VshardRouter: option.SomeString("custom_router"),
 			}),
 		},
 		{
@@ -846,7 +847,7 @@ func TestRequestsVshardRouter(t *testing.T) {
 				map[string]interface{}{"vshard_router": "custom_router"},
 			}),
 			target: crud.MakeLenRequest(validSpace).Opts(crud.LenOpts{
-				VshardRouter: crud.MakeOptString("custom_router"),
+				VshardRouter: option.SomeString("custom_router"),
 			}),
 		},
 		{
@@ -857,7 +858,7 @@ func TestRequestsVshardRouter(t *testing.T) {
 				map[string]interface{}{"vshard_router": "custom_router"},
 			}),
 			target: crud.MakeCountRequest(validSpace).Opts(crud.CountOpts{
-				VshardRouter: crud.MakeOptString("custom_router"),
+				VshardRouter: option.SomeString("custom_router"),
 			}),
 		},
 		{
@@ -866,7 +867,7 @@ func TestRequestsVshardRouter(t *testing.T) {
 				map[string]interface{}{"vshard_router": "custom_router"},
 			}),
 			target: crud.MakeStorageInfoRequest().Opts(crud.StorageInfoOpts{
-				VshardRouter: crud.MakeOptString("custom_router"),
+				VshardRouter: option.SomeString("custom_router"),
 			}),
 		},
 		{
@@ -876,7 +877,7 @@ func TestRequestsVshardRouter(t *testing.T) {
 				map[string]interface{}{"vshard_router": "custom_router"},
 			}),
 			target: crud.MakeSchemaRequest().Opts(crud.SchemaOpts{
-				VshardRouter: crud.MakeOptString("custom_router"),
+				VshardRouter: option.SomeString("custom_router"),
 			}),
 		},
 		{
@@ -886,7 +887,7 @@ func TestRequestsVshardRouter(t *testing.T) {
 				map[string]interface{}{"vshard_router": "custom_router"},
 			}),
 			target: crud.MakeSchemaRequest().Space(validSpace).Opts(crud.SchemaOpts{
-				VshardRouter: crud.MakeOptString("custom_router"),
+				VshardRouter: option.SomeString("custom_router"),
 			}),
 		},
 	}

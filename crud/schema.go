@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/tarantool/go-option"
 	"github.com/vmihailenco/msgpack/v5"
 	"github.com/vmihailenco/msgpack/v5/msgpcode"
 
@@ -18,12 +19,12 @@ func msgpackIsMap(code byte) bool {
 type SchemaOpts struct {
 	// Timeout is a `vshard.call` timeout and vshard
 	// master discovery timeout (in seconds).
-	Timeout OptFloat64
+	Timeout option.Float64
 	// VshardRouter is cartridge vshard group name or
 	// vshard router instance.
-	VshardRouter OptString
+	VshardRouter option.String
 	// Cached defines whether router should reload storage schema on call.
-	Cached OptBool
+	Cached option.Bool
 }
 
 // EncodeMsgpack provides custom msgpack encoder.
@@ -45,7 +46,7 @@ func (opts SchemaOpts) EncodeMsgpack(enc *msgpack.Encoder) error {
 // for execution by a Connection.
 type SchemaRequest struct {
 	baseRequest
-	space OptString
+	space option.String
 	opts  SchemaOpts
 }
 
@@ -59,7 +60,7 @@ func MakeSchemaRequest() SchemaRequest {
 // Space sets the space name for the SchemaRequest request.
 // Note: default value is nil.
 func (req SchemaRequest) Space(space string) SchemaRequest {
-	req.space = MakeOptString(space)
+	req.space = option.SomeString(space)
 	return req
 }
 
