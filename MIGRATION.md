@@ -15,6 +15,7 @@ TODO
 * Removed `box.session.push()` support: Future.AppendPush() and Future.GetIterator()
   methods, ResponseIterator and TimeoutResponseIterator types.
 * Removed deprecated `Connection` methods, related interfaces and tests are updated.
+
   *NOTE*: due to Future.GetTyped() doesn't decode SelectRequest into structure, substitute Connection.GetTyped() following the example:
   ```Go
   var singleTpl = Tuple{}
@@ -30,6 +31,7 @@ TODO
   ).GetTyped(&tpl)
   singleTpl := tpl[0]
   ```
+* Future.done replaced with Future.cond (sync.Cond) + Future.finished bool.
 
 ## Migration from v1.x.x to v2.x.x
 

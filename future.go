@@ -15,32 +15,39 @@ type Future struct {
 	mutex     sync.Mutex
 	resp      Response
 	err       error
+	cond      sync.Cond
+	finished  bool
 	done      chan struct{}
 }
 
 func (fut *Future) wait() {
-	if fut.done == nil {
-		return
+	fut.mutex.Lock()
+	defer fut.mutex.Unlock()
+
+	for !fut.finished {
+		fut.cond.Wait()
 	}
-	<-fut.done
 }
 
-func (fut *Future) isDone() bool {
-	if fut.done == nil {
-		return true
+func (fut *Future) finish() {
+	fut.mutex.Lock()
+	defer fut.mutex.Unlock()
+
+	fut.finished = true
+
+	if fut.done != nil {
+		close(fut.done)
 	}
-	select {
-	case <-fut.done:
-		return true
-	default:
-		return false
-	}
+
+	fut.cond.Broadcast()
 }
 
 // NewFuture creates a new empty Future for a given Request.
 func NewFuture(req Request) (fut *Future) {
 	fut = &Future{}
-	fut.done = make(chan struct{})
+	fut.done = nil
+	fut.finished = false
+	fut.cond.L = &fut.mutex
 	fut.req = req
 	return fut
 }
@@ -50,7 +57,7 @@ func (fut *Future) SetResponse(header Header, body io.Reader) error {
 	fut.mutex.Lock()
 	defer fut.mutex.Unlock()
 
-	if fut.isDone() {
+	if fut.finished {
 		return nil
 	}
 
@@ -60,7 +67,14 @@ func (fut *Future) SetResponse(header Header, body io.Reader) error {
 	}
 	fut.resp = resp
 
-	close(fut.done)
+	fut.finished = true
+
+	if fut.done != nil {
+		close(fut.done)
+	}
+
+	fut.cond.Broadcast()
+
 	return nil
 }
 
@@ -69,12 +83,18 @@ func (fut *Future) SetError(err error) {
 	fut.mutex.Lock()
 	defer fut.mutex.Unlock()
 
-	if fut.isDone() {
+	if fut.finished {
 		return
 	}
 	fut.err = err
 
-	close(fut.done)
+	fut.finished = true
+
+	if fut.done != nil {
+		close(fut.done)
+	}
+
+	fut.cond.Broadcast()
 }
 
 // GetResponse waits for Future to be filled and returns Response and error.
@@ -122,8 +142,16 @@ func init() {
 
 // WaitChan returns channel which becomes closed when response arrived or error occurred.
 func (fut *Future) WaitChan() <-chan struct{} {
-	if fut.done == nil {
+	fut.mutex.Lock()
+	defer fut.mutex.Unlock()
+
+	if fut.finished {
 		return closedChan
 	}
+
+	if fut.done == nil {
+		fut.done = make(chan struct{})
+	}
+
 	return fut.done
 }
