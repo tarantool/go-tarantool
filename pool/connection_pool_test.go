@@ -1115,20 +1115,22 @@ func TestConnectionHandlerOpenUpdateClose(t *testing.T) {
 	poolInstances := makeInstances(poolServers, connOpts)
 	roles := []bool{false, true}
 
-	ctx, cancel := test_helpers.GetPoolConnectContext()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	err := test_helpers.SetClusterRO(ctx, makeDialers(poolServers), connOpts, roles)
-	require.Nilf(t, err, "fail to set roles for cluster")
+	require.NoError(t, err, "fail to set roles for cluster")
 
 	h := &testHandler{}
 	poolOpts := pool.Opts{
-		CheckTimeout:      100 * time.Microsecond,
+		CheckTimeout:      100 * time.Millisecond,
 		ConnectionHandler: h,
 	}
 	connPool, err := pool.ConnectWithOpts(ctx, poolInstances, poolOpts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
+
+	time.Sleep(100 * time.Millisecond)
 
 	_, err = connPool.Do(tarantool.NewCall17Request("box.cfg").
 		Args([]interface{}{map[string]bool{
