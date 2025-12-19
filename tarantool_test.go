@@ -220,14 +220,15 @@ func BenchmarkSync_naive_with_custom_type(b *testing.B) {
 	b.ResetTimer()
 
 	for b.Loop() {
-		err := conn.Do(req).GetTyped(&tuple)
-		if err != nil {
+		fut := conn.Do(req)
+		if err := fut.GetTyped(&tuple); err != nil {
 			b.Errorf("request error: %s", err)
 		}
 
 		if tuple.id != 1111 {
 			b.Errorf("invalid result")
 		}
+		fut.Release()
 	}
 }
 
