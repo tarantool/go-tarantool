@@ -1485,9 +1485,7 @@ func (conn *Connection) newWatcherImpl(key string, callback WatchCallback) (Watc
 					// request will not be finished by a small per-request
 					// timeout.
 					req := newWatchRequest(key).Context(context.Background())
-					if _, err = conn.Do(req).Get(); err != nil {
-						return
-					}
+					_, _ = conn.Do(req).Get()
 				}
 			}
 
@@ -1510,9 +1508,7 @@ func (conn *Connection) newWatcherImpl(key string, callback WatchCallback) (Watc
 						// not be finished by a small per-request timeout to
 						// avoid lost of the request.
 						req := newUnwatchRequest(key).Context(context.Background())
-						if _, err = conn.Do(req).Get(); err != nil {
-							return
-						}
+						_, _ = conn.Do(req).Get()
 					}
 					conn.watchMap.Delete(key)
 					close(state.unready)
