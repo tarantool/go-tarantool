@@ -6,8 +6,9 @@ box.cfg{
 
 box.schema.space.create('space1')
 
+local privileges = 'session,usage,alter,drop,read,write,create,execute'
 box.schema.user.create('test', { password = 'test' , if_not_exists = true })
-box.schema.user.grant('test', 'super', nil, nil, { if_not_exists = true })
+box.schema.user.grant('test', privileges, 'universe', nil, { if_not_exists = true })
 
 -- Set listen only when every other thing is configured.
 box.cfg{

@@ -410,7 +410,7 @@ func TestSchemaUser_Info_TestUserCorrect(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, privileges)
 
-	require.Len(t, privileges, 4)
+	require.Len(t, privileges, 3)
 }
 
 func TestSchemaUser_Info_NonExistsUser(t *testing.T) {
@@ -529,14 +529,20 @@ func TestSchemaUser_Revoke_WithoutSu(t *testing.T) {
 	err = b.Schema().User().Create(ctx, username, box.UserCreateOptions{Password: password})
 	require.NoError(t, err)
 
+	startPrivileges, err := b.Schema().User().Info(ctx, username)
+	require.NoError(t, err)
+
+	require.NotEmpty(t, startPrivileges)
+	// Let's choose random first privilege.
+	examplePriv := startPrivileges[1]
+
 	// Can`t revoke without su permissions.
-	err = b.Schema().User().Grant(ctx, username, box.Privilege{
-		Permissions: []box.Permission{
-			box.PermissionRead,
-		},
-		Type: box.PrivilegeSpace,
-		Name: "space1",
-	}, box.UserGrantOptions{IfNotExists: false})
+	err = b.Schema().User().Revoke(ctx,
+		username,
+		examplePriv,
+		box.UserRevokeOptions{
+			IfExists: false,
+		})
 	require.Error(t, err)
 
 	// Require that error code is ER_ACCESS_DENIED.
@@ -574,7 +580,7 @@ func TestSchemaUser_Revoke_WithSu(t *testing.T) {
 
 	require.NotEmpty(t, startPrivileges)
 	// Let's choose random first privilege.
-	examplePriv := startPrivileges[0]
+	examplePriv := startPrivileges[1]
 
 	// Revoke it.
 	err = b.Schema().User().Revoke(ctx,
