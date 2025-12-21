@@ -229,16 +229,16 @@ func ExampleSchemaUser_Info() {
 		log.Fatalf("Failed to get password hash: %s", err)
 	}
 
-	hasSuper := false
+	hasPublic := false
 	for _, i := range info {
-		if i.Name == "super" && i.Type == box.PrivilegeRole {
-			hasSuper = true
+		if i.Name == "public" && i.Type == box.PrivilegeRole {
+			hasPublic = true
 		}
 	}
 
-	if hasSuper {
-		fmt.Printf("User have super privileges")
+	if hasPublic {
+		fmt.Printf("User have public privileges")
 	}
 	// Output:
-	// User have super privileges
+	// User have public privileges
 }
