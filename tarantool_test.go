@@ -2910,7 +2910,7 @@ func TestConnectionBoxSessionPushUnsupported(t *testing.T) {
 	require.NoError(t, err)
 
 	actualLog := buf.String()
-	expectedLog := "unsupported box.session.push()"
+	expectedLog := " box_session_push_unsupported"
 	require.Contains(t, actualLog, expectedLog)
 }
 
