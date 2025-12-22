@@ -2,7 +2,9 @@ package datetime
 
 import (
 	"bytes"
+	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/vmihailenco/msgpack/v5"
 )
@@ -214,6 +216,85 @@ func decodeInterval(d *msgpack.Decoder, v reflect.Value) (err error) {
 
 	v.Set(reflect.ValueOf(val))
 	return nil
+}
+
+// Returns a human-readable string representation of the interval.
+func (ival Interval) String() string {
+	if ival.countNonZeroFields() == 0 {
+		return "0 seconds"
+	}
+
+	parts := make([]string, 0, 9)
+
+	// Helper function for adding components.
+	addPart := func(value int64, singular, plural string) {
+		if value == 0 {
+			return
+		}
+		if value == 1 || value == -1 {
+			parts = append(parts, fmt.Sprintf("%d %s", value, singular))
+		} else {
+			parts = append(parts, fmt.Sprintf("%d %s", value, plural))
+		}
+	}
+
+	addPart(ival.Year, "year", "years")
+	addPart(ival.Month, "month", "months")
+	addPart(ival.Week, "week", "weeks")
+	addPart(ival.Day, "day", "days")
+	addPart(ival.Hour, "hour", "hours")
+	addPart(ival.Min, "minute", "minutes")
+
+	// Processing seconds and nanoseconds - combine if both are present.
+	if ival.Sec != 0 && ival.Nsec != 0 {
+		// Define a common symbol for proper formatting.
+		secSign := ival.Sec < 0
+		nsecSign := ival.Nsec < 0
+
+		if secSign == nsecSign {
+			// Same signs - combine them.
+			absSec := ival.Sec
+			absNsec := ival.Nsec
+			if secSign {
+				absSec = -absSec
+				absNsec = -absNsec
+			}
+			parts = append(parts, fmt.Sprintf("%s%d.%09d seconds",
+				boolToSign(secSign), absSec, absNsec))
+		} else {
+			// Different characters - output separately.
+			addPart(ival.Sec, "second", "seconds")
+			addPart(ival.Nsec, "nanosecond", "nanoseconds")
+		}
+	} else {
+		// Only seconds or only nanoseconds.
+		addPart(ival.Sec, "second", "seconds")
+		addPart(ival.Nsec, "nanosecond", "nanoseconds")
+	}
+
+	return joinIntervalParts(parts)
+}
+
+// Returns "-" for true and an empty string for false.
+func boolToSign(negative bool) string {
+	if negative {
+		return "-"
+	}
+	return ""
+}
+
+// Combines parts of an interval into a readable string.
+func joinIntervalParts(parts []string) string {
+	switch len(parts) {
+	case 0:
+		return "0 seconds"
+	case 1:
+		return parts[0]
+	case 2:
+		return parts[0] + " and " + parts[1]
+	default:
+		return strings.Join(parts[:len(parts)-1], ", ") + " and " + parts[len(parts)-1]
+	}
 }
 
 func init() {
