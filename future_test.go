@@ -130,3 +130,61 @@ func TestFuture_GetResponse(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, []interface{}{uint8('v'), uint8('2')}, data)
 }
+
+func BenchmarkFuture_Get(b *testing.B) {
+	fut := NewFuture(&futureMockRequest{})
+	if err := fut.SetResponse(Header{}, bytes.NewReader([]byte{'v', '3'})); err != nil {
+		b.Errorf("SetResponse error: %s", err)
+	}
+	b.ResetTimer()
+
+	for b.Loop() {
+		data, err := fut.Get()
+		if err != nil {
+			b.Errorf("Get error: %s", err)
+		}
+		if !(len(data) == 2 && data[0] == uint8('v') && data[1] == uint8('3')) {
+			b.Error("Wrong output: ", data)
+		}
+	}
+}
+
+func BenchmarkFuture_GetTyped(b *testing.B) {
+	fut := NewFuture(&futureMockRequest{})
+	err := fut.SetResponse(Header{}, bytes.NewReader([]byte{'v', '3'}))
+	if err != nil {
+		b.Errorf("SetResponse error: %s", err)
+	}
+	var data []byte
+	resp, err := fut.GetResponse()
+	if err != nil {
+		b.Fatalf("GetResponse error: %s", err)
+	}
+	futResp := resp.(*futureMockResponse)
+	b.ResetTimer()
+
+	for i := 1; i <= b.N; i++ {
+		err = fut.GetTyped(&data)
+		if err != nil {
+			b.Errorf("Get error: %s", err)
+		}
+		if futResp.decodeTypedCnt != i {
+			b.Fatalf("Wrong behavior")
+		}
+	}
+}
+
+func BenchmarkFuture_WaitChan(b *testing.B) {
+	fut := NewFuture(&futureMockRequest{})
+	if err := fut.SetResponse(Header{}, bytes.NewReader([]byte{'v', '3'})); err != nil {
+		b.Errorf("SetResponse error: %s", err)
+	}
+	b.ResetTimer()
+
+	for b.Loop() {
+		ch := fut.WaitChan()
+		if _, ok := <-ch; ok {
+			b.Fatalf("chan not closed")
+		}
+	}
+}
