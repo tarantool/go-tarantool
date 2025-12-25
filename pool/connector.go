@@ -81,6 +81,6 @@ func (c *ConnectorAdapter) NewWatcher(key string,
 }
 
 // Do performs a request asynchronously on the connection.
-func (c *ConnectorAdapter) Do(req tarantool.Request) *tarantool.Future {
+func (c *ConnectorAdapter) Do(req tarantool.Request) tarantool.Future {
 	return c.pool.Do(req, c.mode)
 }

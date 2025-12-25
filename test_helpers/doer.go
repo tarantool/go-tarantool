@@ -47,11 +47,11 @@ func NewMockDoer(t *testing.T, responses ...interface{}) MockDoer {
 
 // Do returns a future with the current response or an error.
 // It saves the current request into MockDoer.Requests.
-func (doer *MockDoer) Do(req tarantool.Request) *tarantool.Future {
+func (doer *MockDoer) Do(req tarantool.Request) tarantool.Future {
 	doer.Requests = append(doer.Requests, req)
 
 	mockReq := NewMockRequest()
-	fut := tarantool.NewFuture(mockReq)
+	var fut tarantool.Future
 
 	if len(doer.responses) == 0 {
 		doer.t.Fatalf("list of responses is empty")
@@ -59,9 +59,10 @@ func (doer *MockDoer) Do(req tarantool.Request) *tarantool.Future {
 	response := doer.responses[0]
 
 	if response.err != nil {
-		fut.SetError(response.err)
+		fut = tarantool.NewFutureWithErr(mockReq, response.err)
 	} else {
-		_ = fut.SetResponse(response.resp.header, bytes.NewBuffer(response.resp.data))
+		fut, _ = tarantool.NewFutureWithResponse(mockReq,
+			response.resp.header, bytes.NewBuffer(response.resp.data))
 	}
 	doer.responses = doer.responses[1:]
 

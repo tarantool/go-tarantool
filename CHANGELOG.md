@@ -16,6 +16,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
   (iproto.IPROTO_FEATURE_IS_SYNC, iproto.IPROTO_FEATURE_INSERT_ARROW) (#466).
 * Added Future.cond (sync.Cond) and Future.finished bool. Added Future.finish() marks Future as done (#496).
 * Added function String() for type datetime (#322).
+* New `Future` interface (#470).
 
 ### Changed
 
@@ -31,6 +32,8 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 * Removed deprecated `Connection` methods, related interfaces and tests are updated (#479).
 * Replaced the use of optional types in crud with go-option library (#492).
 * Future.done replaced with Future.cond (sync.Cond) + Future.finished bool (#496).
+* `Future` transform into `future` that implements interface `Future` and become private,
+  `SetError` and `SetResponse` become private (#470).
 
 ### Fixed
 

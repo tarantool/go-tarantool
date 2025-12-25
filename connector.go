@@ -5,7 +5,7 @@ import "time"
 // Doer is an interface that performs requests asynchronously.
 type Doer interface {
 	// Do performs a request asynchronously.
-	Do(req Request) (fut *Future)
+	Do(req Request) Future
 }
 
 type Connector interface {
