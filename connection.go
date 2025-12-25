@@ -214,11 +214,11 @@ type Connection struct {
 var _ = Connector(&Connection{}) // Check compatibility with connector interface.
 
 type futureList struct {
-	first *Future
-	last  **Future
+	first *future
+	last  **future
 }
 
-func (list *futureList) findFuture(reqid uint32, fetch bool) *Future {
+func (list *futureList) findFuture(reqid uint32, fetch bool) *future {
 	root := &list.first
 	for {
 		fut := *root
@@ -240,7 +240,7 @@ func (list *futureList) findFuture(reqid uint32, fetch bool) *Future {
 	}
 }
 
-func (list *futureList) addFuture(fut *Future) {
+func (list *futureList) addFuture(fut *future) {
 	*list.last = fut
 	list.last = &fut.next
 }
@@ -250,7 +250,7 @@ func (list *futureList) clear(err error, conn *Connection) {
 	list.first = nil
 	list.last = &list.first
 	for fut != nil {
-		fut.SetError(err)
+		fut.setError(err)
 		conn.markDone(fut)
 		fut, fut.next = fut.next, nil
 	}
@@ -446,9 +446,9 @@ func (conn *Connection) Handle() interface{} {
 	return conn.opts.Handle
 }
 
-func (conn *Connection) cancelFuture(fut *Future, err error) {
+func (conn *Connection) cancelFuture(fut *future, err error) {
 	if fut = conn.fetchFuture(fut.requestId); fut != nil {
-		fut.SetError(err)
+		fut.setError(err)
 		conn.markDone(fut)
 	}
 }
@@ -871,7 +871,7 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 			return
 		}
 
-		var fut *Future = nil
+		var fut *future = nil
 		if code == iproto.IPROTO_EVENT {
 			if event, err := readWatchEvent(&buf); err == nil {
 				events <- event
@@ -887,8 +887,8 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 			conn.opts.Logger.Report(LogBoxSessionPushUnsupported, conn, header)
 		} else {
 			if fut = conn.fetchFuture(header.RequestId); fut != nil {
-				if err := fut.SetResponse(header, &buf); err != nil {
-					fut.SetError(fmt.Errorf("failed to set response: %w", err))
+				if err := fut.setResponse(header, &buf); err != nil {
+					fut.setError(fmt.Errorf("failed to set response: %w", err))
 				}
 				conn.markDone(fut)
 			}
@@ -925,9 +925,9 @@ func (conn *Connection) eventer(events <-chan connWatchEvent) {
 	}
 }
 
-func (conn *Connection) newFuture(req Request) (fut *Future) {
+func (conn *Connection) newFuture(req Request) (fut *future) {
 	ctx := req.Ctx()
-	fut = NewFuture(req)
+	fut = newFuture(req)
 	if conn.rlimit != nil && conn.opts.RLimitAction == RLimitDrop {
 		select {
 		case conn.rlimit <- struct{}{}:
@@ -974,7 +974,7 @@ func (conn *Connection) newFuture(req Request) (fut *Future) {
 	if ctx != nil {
 		select {
 		case <-ctx.Done():
-			fut.SetError(fmt.Errorf("context is done (request ID %d): %w",
+			fut.setError(fmt.Errorf("context is done (request ID %d): %w",
 				fut.requestId, context.Cause(ctx)))
 			shard.rmut.Unlock()
 			return
@@ -1007,7 +1007,7 @@ func (conn *Connection) newFuture(req Request) (fut *Future) {
 
 // This method removes a future from the internal queue if the context
 // is "done" before the response is come.
-func (conn *Connection) contextWatchdog(fut *Future, ctx context.Context) {
+func (conn *Connection) contextWatchdog(fut *future, ctx context.Context) {
 	select {
 	case <-fut.WaitChan():
 	case <-ctx.Done():
@@ -1032,7 +1032,7 @@ func (conn *Connection) decrementRequestCnt() {
 	}
 }
 
-func (conn *Connection) send(req Request, streamId uint64) *Future {
+func (conn *Connection) send(req Request, streamId uint64) *future {
 	conn.incrementRequestCnt()
 
 	fut := conn.newFuture(req)
@@ -1056,7 +1056,7 @@ func (conn *Connection) send(req Request, streamId uint64) *Future {
 	return fut
 }
 
-func (conn *Connection) putFuture(fut *Future, req Request, streamId uint64) {
+func (conn *Connection) putFuture(fut *future, req Request, streamId uint64) {
 	shardn := fut.requestId & (conn.opts.Concurrency - 1)
 	shard := &conn.shard[shardn]
 	shard.bufmut.Lock()
@@ -1077,7 +1077,7 @@ func (conn *Connection) putFuture(fut *Future, req Request, streamId uint64) {
 		shard.buf.Trunc(blen)
 		shard.bufmut.Unlock()
 		if f := conn.fetchFuture(reqid); f == fut {
-			fut.SetError(err)
+			fut.setError(err)
 			conn.markDone(fut)
 		} else if f != nil {
 			/* in theory, it is possible. In practice, you have
@@ -1092,7 +1092,7 @@ func (conn *Connection) putFuture(fut *Future, req Request, streamId uint64) {
 				// packing error is more important than connection
 				// error, because it is indication of programmer's
 				// mistake.
-				fut.SetError(err)
+				fut.setError(err)
 			}
 		}
 		return
@@ -1109,20 +1109,20 @@ func (conn *Connection) putFuture(fut *Future, req Request, streamId uint64) {
 				RequestId: reqid,
 				Error:     ErrorNo,
 			}
-			_ = fut.SetResponse(header, nil)
+			_ = fut.setResponse(header, nil)
 			conn.markDone(fut)
 		}
 	}
 }
 
-func (conn *Connection) markDone(fut *Future) {
+func (conn *Connection) markDone(fut *future) {
 	if conn.rlimit != nil {
 		<-conn.rlimit
 	}
 	conn.decrementRequestCnt()
 }
 
-func (conn *Connection) fetchFuture(reqid uint32) (fut *Future) {
+func (conn *Connection) fetchFuture(reqid uint32) (fut *future) {
 	shard := &conn.shard[reqid&(conn.opts.Concurrency-1)]
 	shard.rmut.Lock()
 	fut = conn.getFutureImp(reqid, true)
@@ -1130,7 +1130,7 @@ func (conn *Connection) fetchFuture(reqid uint32) (fut *Future) {
 	return fut
 }
 
-func (conn *Connection) getFutureImp(reqid uint32, fetch bool) *Future {
+func (conn *Connection) getFutureImp(reqid uint32, fetch bool) *future {
 	shard := &conn.shard[reqid&(conn.opts.Concurrency-1)]
 	pos := (reqid / conn.opts.Concurrency) & (requestsMap - 1)
 	// futures with even requests id belong to requests list with nil context
@@ -1168,7 +1168,7 @@ func (conn *Connection) timeouts() {
 					} else {
 						fut.next = nil
 					}
-					fut.SetError(ClientError{
+					fut.setError(ClientError{
 						Code: ErrTimeouted,
 						Msg:  fmt.Sprintf("client timeout for request %d", fut.requestId),
 					})
@@ -1232,11 +1232,10 @@ func (conn *Connection) nextRequestId(context bool) (requestId uint32) {
 //
 // An error is returned if the request was formed incorrectly, or failed to
 // create the future.
-func (conn *Connection) Do(req Request) *Future {
+func (conn *Connection) Do(req Request) Future {
 	if connectedReq, ok := req.(ConnectedRequest); ok {
 		if connectedReq.Conn() != conn {
-			fut := NewFuture(req)
-			fut.SetError(errUnknownRequest)
+			fut := NewFutureWithErr(req, errUnknownRequest)
 			return fut
 		}
 	}
