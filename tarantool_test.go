@@ -360,7 +360,7 @@ func TestBenchmarkAsync(t *testing.T) {
 			for i := range cc {
 				wg.Add(1)
 
-				ch := make(chan *Future, 1024)
+				ch := make(chan Future, 1024)
 
 				go func(i int) {
 					defer close(ch)
@@ -2491,7 +2491,7 @@ func TestClientRequestObjectsWithContext(t *testing.T) {
 	req.wg.Add(1)
 
 	var futWg sync.WaitGroup
-	var fut *Future
+	var fut Future
 
 	futWg.Add(1)
 	go func() {

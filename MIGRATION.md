@@ -32,6 +32,7 @@ TODO
   singleTpl := tpl[0]
   ```
 * Future.done replaced with Future.cond (sync.Cond) + Future.finished bool.
+* `Future` is an interface now.
 
 ## Migration from v1.x.x to v2.x.x
 
