@@ -9,6 +9,9 @@ box.schema.space.create('space1')
 box.schema.user.create('test', { password = 'test' , if_not_exists = true })
 box.schema.user.grant('test', 'super', nil, nil, { if_not_exists = true })
 
+-- revoke grant privileges to keep backward compatibility.
+box.schema.user.revoke('test', 'grant,metagrant', nil, nil, { if_not_exists = true })
+
 -- Set listen only when every other thing is configured.
 box.cfg{
     listen = os.getenv("TEST_TNT_LISTEN"),

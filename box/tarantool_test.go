@@ -529,14 +529,20 @@ func TestSchemaUser_Revoke_WithoutSu(t *testing.T) {
 	err = b.Schema().User().Create(ctx, username, box.UserCreateOptions{Password: password})
 	require.NoError(t, err)
 
+	startPrivileges, err := b.Schema().User().Info(ctx, username)
+	require.NoError(t, err)
+
+	require.NotEmpty(t, startPrivileges)
+	// Let's choose random first privilege.
+	examplePriv := startPrivileges[0]
+
 	// Can`t revoke without su permissions.
-	err = b.Schema().User().Grant(ctx, username, box.Privilege{
-		Permissions: []box.Permission{
-			box.PermissionRead,
-		},
-		Type: box.PrivilegeSpace,
-		Name: "space1",
-	}, box.UserGrantOptions{IfNotExists: false})
+	err = b.Schema().User().Revoke(ctx,
+		username,
+		examplePriv,
+		box.UserRevokeOptions{
+			IfExists: false,
+		})
 	require.Error(t, err)
 
 	// Require that error code is ER_ACCESS_DENIED.
