@@ -3,7 +3,9 @@ package tarantool_test
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -77,8 +79,8 @@ func createFutureMockResponse(header Header, body io.Reader) (Response, error) {
 }
 
 func TestFuture_Get(t *testing.T) {
-	fut := NewFuture(&futureMockRequest{})
-	err := fut.SetResponse(Header{}, bytes.NewReader([]byte{'v', '2'}))
+	fut, err := NewFuture(&futureMockRequest{},
+		Header{}, bytes.NewReader([]byte{'v', '2'}))
 	assert.NoError(t, err)
 
 	resp, err := fut.GetResponse()
@@ -94,9 +96,9 @@ func TestFuture_Get(t *testing.T) {
 }
 
 func TestFuture_GetTyped(t *testing.T) {
-	fut := NewFuture(&futureMockRequest{})
-	assert.NoError(t,
-		fut.SetResponse(Header{}, bytes.NewReader([]byte{'v', '2'})))
+	fut, err := NewFuture(&futureMockRequest{},
+		Header{}, bytes.NewReader([]byte{'v', '2'}))
+	assert.NoError(t, err)
 
 	resp, err := fut.GetResponse()
 	assert.NoError(t, err)
@@ -116,9 +118,9 @@ func TestFuture_GetResponse(t *testing.T) {
 		bytes.NewReader([]byte{'v', '2'}))
 	assert.NoError(t, err)
 
-	fut := NewFuture(&futureMockRequest{})
-	assert.NoError(t,
-		fut.SetResponse(Header{}, bytes.NewReader([]byte{'v', '2'})))
+	fut, err := NewFuture(&futureMockRequest{},
+		Header{}, bytes.NewReader([]byte{'v', '2'}))
+	assert.NoError(t, err)
 
 	resp, err := fut.GetResponse()
 	assert.NoError(t, err)
@@ -132,8 +134,8 @@ func TestFuture_GetResponse(t *testing.T) {
 }
 
 func BenchmarkFuture_Get(b *testing.B) {
-	fut := NewFuture(&futureMockRequest{})
-	if err := fut.SetResponse(Header{}, bytes.NewReader([]byte{'v', '3'})); err != nil {
+	fut, err := NewFuture(&futureMockRequest{}, Header{}, bytes.NewReader([]byte{'v', '3'}))
+	if err != nil {
 		b.Errorf("SetResponse error: %s", err)
 	}
 	b.ResetTimer()
@@ -150,8 +152,8 @@ func BenchmarkFuture_Get(b *testing.B) {
 }
 
 func BenchmarkFuture_GetTyped(b *testing.B) {
-	fut := NewFuture(&futureMockRequest{})
-	err := fut.SetResponse(Header{}, bytes.NewReader([]byte{'v', '3'}))
+	fut, err := NewFuture(&futureMockRequest{},
+		Header{}, bytes.NewReader([]byte{'v', '3'}))
 	if err != nil {
 		b.Errorf("SetResponse error: %s", err)
 	}
@@ -175,8 +177,8 @@ func BenchmarkFuture_GetTyped(b *testing.B) {
 }
 
 func BenchmarkFuture_WaitChan(b *testing.B) {
-	fut := NewFuture(&futureMockRequest{})
-	if err := fut.SetResponse(Header{}, bytes.NewReader([]byte{'v', '3'})); err != nil {
+	fut, err := NewFuture(&futureMockRequest{}, Header{}, bytes.NewReader([]byte{'v', '3'}))
+	if err != nil {
 		b.Errorf("SetResponse error: %s", err)
 	}
 	b.ResetTimer()
@@ -187,4 +189,49 @@ func BenchmarkFuture_WaitChan(b *testing.B) {
 			b.Fatalf("chan not closed")
 		}
 	}
+}
+
+type futureMock struct {
+	value int
+}
+
+var _ = Future(&futureMock{})
+
+func (f *futureMock) Get() ([]interface{}, error) {
+	return []interface{}{f.value}, nil
+}
+
+func (f *futureMock) GetTyped(val interface{}) error {
+	if value, ok := val.(*int); ok {
+		*value = f.value
+		return nil
+	}
+	return fmt.Errorf("wrong interface type")
+}
+
+func (f *futureMock) GetResponse() (Response, error) {
+	return createFutureMockResponse(Header{}, bytes.NewReader([]byte(strconv.Itoa(f.value))))
+}
+
+func (*futureMock) WaitChan() <-chan struct{} {
+	return nil
+}
+
+func TestFuture(t *testing.T) {
+	fut := &futureMock{value: 5}
+
+	values, err := fut.Get()
+	assert.NoError(t, err)
+	assert.Equal(t, []interface{}{5}, values)
+
+	var typed int
+	err = fut.GetTyped(&typed)
+	assert.NoError(t, err)
+	assert.Equal(t, interface{}(5), typed)
+
+	resp, err := fut.GetResponse()
+	assert.NoError(t, err)
+	futResp := resp.(*futureMockResponse)
+	assert.Equal(t, []byte{'5'}, futResp.data)
+	assert.Nil(t, fut.WaitChan())
 }

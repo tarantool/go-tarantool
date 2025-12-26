@@ -28,5 +28,5 @@ type Pooler interface {
 	NewStream(mode Mode) (*tarantool.Stream, error)
 	NewWatcher(key string, callback tarantool.WatchCallback,
 		mode Mode) (tarantool.Watcher, error)
-	Do(req tarantool.Request, mode Mode) (fut *tarantool.Future)
+	Do(req tarantool.Request, mode Mode) (fut tarantool.Future)
 }

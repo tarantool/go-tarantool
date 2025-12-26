@@ -125,7 +125,7 @@ func TestConnectorConfiguredTimeoutWithError(t *testing.T) {
 // Tests for that ConnectorAdapter is just a proxy for requests.
 
 var errReq error = errors.New("response error")
-var reqFuture *tarantool.Future = &tarantool.Future{}
+var reqFuture tarantool.Future
 
 var reqFunctionName string = "any_name"
 var reqPrepared *tarantool.Prepared = &tarantool.Prepared{}
@@ -233,11 +233,15 @@ type doMock struct {
 	mode   Mode
 }
 
-func (m *doMock) Do(req tarantool.Request, mode Mode) *tarantool.Future {
+func (m *doMock) Do(req tarantool.Request, mode Mode) tarantool.Future {
 	m.called++
 	m.req = req
 	m.mode = mode
 	return reqFuture
+}
+
+func init() {
+	reqFuture, _ = tarantool.NewFuture(nil)
 }
 
 func TestConnectorDo(t *testing.T) {
