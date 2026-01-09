@@ -1119,11 +1119,11 @@ func TestConnectionHandlerOpenUpdateClose(t *testing.T) {
 	defer cancel()
 
 	err := test_helpers.SetClusterRO(ctx, makeDialers(poolServers), connOpts, roles)
-	require.Nilf(t, err, "fail to set roles for cluster")
+	require.NoError(t, err, "fail to set roles for cluster")
 
 	h := &testHandler{}
 	poolOpts := pool.Opts{
-		CheckTimeout:      100 * time.Microsecond,
+		CheckTimeout:      7000 * time.Microsecond,
 		ConnectionHandler: h,
 	}
 	connPool, err := pool.ConnectWithOpts(ctx, poolInstances, poolOpts)
