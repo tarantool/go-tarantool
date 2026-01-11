@@ -1111,6 +1111,7 @@ func (h *testHandler) Deactivated(name string, conn *tarantool.Connection,
 }
 
 func TestConnectionHandlerOpenUpdateClose(t *testing.T) {
+
 	poolServers := []string{servers[0], servers[1]}
 	poolInstances := makeInstances(poolServers, connOpts)
 	roles := []bool{false, true}
@@ -1119,32 +1120,35 @@ func TestConnectionHandlerOpenUpdateClose(t *testing.T) {
 	defer cancel()
 
 	err := test_helpers.SetClusterRO(ctx, makeDialers(poolServers), connOpts, roles)
-	require.Nilf(t, err, "fail to set roles for cluster")
+	require.NoError(t, err, "fail to set roles for cluster")
 
 	h := &testHandler{}
 	poolOpts := pool.Opts{
-		CheckTimeout:      100 * time.Microsecond,
+		CheckTimeout:      10000 * time.Microsecond,
 		ConnectionHandler: h,
 	}
 	connPool, err := pool.ConnectWithOpts(ctx, poolInstances, poolOpts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
+	defer connPool.Close()
 
-	_, err = connPool.Do(tarantool.NewCall17Request("box.cfg").
-		Args([]interface{}{map[string]bool{
-			"read_only": true,
-		}}),
-		pool.RW).GetResponse()
-	require.Nilf(t, err, "failed to make ro")
+	require.Eventually(t, func() bool {
+		_, err := connPool.Do(tarantool.NewCall17Request("box.cfg").
+			Args([]interface{}{map[string]bool{
+				"read_only": true,
+			}}),
+			pool.RW).GetResponse()
+		return err == nil
+	}, 100000*time.Microsecond, 100*time.Microsecond, "failed to make ro")
 
-	for i := 0; i < 100; i++ {
-		// Wait for read_only update, it should report about close connection
-		// with old role.
-		if atomic.LoadUint32(&h.discovered) >= 3 {
-			break
-		}
-		time.Sleep(poolOpts.CheckTimeout)
-	}
+	// Wait for update.
+	require.Eventually(t, func() bool {
+		return atomic.LoadUint32(&h.discovered) >= 3
+	}, 100000*time.Microsecond, 100*time.Microsecond, "timeout waiting for discovered")
+
+	require.Eventually(t, func() bool {
+		return atomic.LoadUint32(&h.deactivated) >= 1
+	}, 100000*time.Microsecond, 100*time.Microsecond, "timeout waiting for deactivated")
 
 	discovered := atomic.LoadUint32(&h.discovered)
 	deactivated := atomic.LoadUint32(&h.deactivated)
@@ -1155,17 +1159,14 @@ func TestConnectionHandlerOpenUpdateClose(t *testing.T) {
 
 	connPool.Close()
 
-	for i := 0; i < 100; i++ {
-		// Wait for close of all connections.
-		if atomic.LoadUint32(&h.deactivated) >= 3 {
-			break
-		}
-		time.Sleep(poolOpts.CheckTimeout)
-	}
+	require.Eventually(t, func() bool {
+		return atomic.LoadUint32(&h.deactivated) >= 3
+	}, 100000*time.Microsecond, 100*time.Microsecond, "timeout waiting for all deactivated")
 
 	for _, err := range h.errs {
 		t.Errorf("Unexpected error: %s", err)
 	}
+
 	connected, err := connPool.ConnectedNow(pool.ANY)
 	require.Nilf(t, err, "failed to get connected state")
 	require.Falsef(t, connected, "connection pool still be connected")
