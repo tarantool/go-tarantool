@@ -53,6 +53,10 @@ func (resp *futureMockResponse) Header() Header {
 	return resp.header
 }
 
+func (resp *futureMockResponse) Release() {
+	// Releasing futureMockResponse data.
+}
+
 func (resp *futureMockResponse) Decode() ([]interface{}, error) {
 	resp.decodeCnt++
 
