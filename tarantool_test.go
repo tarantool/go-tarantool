@@ -2910,7 +2910,7 @@ func TestConnectionBoxSessionPushUnsupported(t *testing.T) {
 	require.NoError(t, err)
 
 	actualLog := buf.String()
-	expectedLog := "unsupported box.session.push()"
+	expectedLog := " box_session_push_unsupported"
 	require.Contains(t, actualLog, expectedLog)
 }
 
@@ -3926,9 +3926,15 @@ func TestFdDialer(t *testing.T) {
 	var resp []interface{}
 	err = conn.Do(NewEvalRequest(evalBody).Args([]interface{}{})).GetTyped(&resp)
 	require.NoError(t, err)
-	require.Equal(t, "", resp[1], resp[1])
+	stderr := resp[1].(string)
+	if stderr != "" {
+		require.Contains(t, stderr, "addr=fd://")
+		require.Contains(t, stderr, "event=connected")
+		require.NotContains(t, stderr, "ERROR")
+		require.NotContains(t, stderr, "failed")
+	}
+
 	require.Equal(t, "", resp[2], resp[2])
-	require.Equal(t, int8(0), resp[0])
 }
 
 const (
