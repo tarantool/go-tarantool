@@ -31,6 +31,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 * Removed deprecated `Connection` methods, related interfaces and tests are updated (#479).
 * Replaced the use of optional types in crud with go-option library (#492).
 * Future.done replaced with Future.cond (sync.Cond) + Future.finished bool (#496).
+* Changed design of tarantool.Logger, used slog (#504).
 
 ### Fixed
 
