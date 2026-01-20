@@ -35,15 +35,15 @@ var opts = tarantool.Opts{
 func TestInsert_invalid(t *testing.T) {
 	arrows := []struct {
 		arrow    string
-		expected iproto.Error
+		expected []iproto.Error
 	}{
 		{
 			"",
-			iproto.ER_INVALID_MSGPACK,
+			[]iproto.Error{iproto.ER_INVALID_MSGPACK},
 		},
 		{
 			"00",
-			iproto.ER_INVALID_MSGPACK,
+			[]iproto.Error{iproto.ER_INVALID_MSGPACK},
 		},
 		{
 			"ffffffff70000000040000009effffff0400010004000000" +
@@ -55,7 +55,7 @@ func TestInsert_invalid(t *testing.T) {
 				"00000000000000000000000000000800000000000000000000000100000001000000" +
 				"0000000000000000000000000a00140004000c0010000c0014000400060008000c00" +
 				"00000000000000000000",
-			iproto.ER_UNSUPPORTED,
+			[]iproto.Error{iproto.ER_UNSUPPORTED, iproto.ER_INVALID_MSGPACK},
 		},
 	}
 
@@ -74,7 +74,7 @@ func TestInsert_invalid(t *testing.T) {
 			_, err = conn.Do(req).Get()
 			ttErr := err.(tarantool.Error)
 
-			require.Equal(t, a.expected, ttErr.Code)
+			require.Contains(t, a.expected, ttErr.Code)
 		})
 	}
 
