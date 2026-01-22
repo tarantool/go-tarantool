@@ -521,7 +521,7 @@ func (p *ConnectionPool) NewWatcher(key string,
 // Do sends the request and returns a future.
 // For requests that belong to the only one connection (e.g. Unprepare or ExecutePrepared)
 // the argument of type Mode is unused.
-func (p *ConnectionPool) Do(req tarantool.Request, userMode Mode) *tarantool.Future {
+func (p *ConnectionPool) Do(req tarantool.Request, userMode Mode) tarantool.Future {
 	if connectedReq, ok := req.(tarantool.ConnectedRequest); ok {
 		conns := p.anyPool.GetConnections()
 		isOurConnection := false
@@ -546,7 +546,7 @@ func (p *ConnectionPool) Do(req tarantool.Request, userMode Mode) *tarantool.Fut
 }
 
 // DoInstance sends the request into a target instance and returns a future.
-func (p *ConnectionPool) DoInstance(req tarantool.Request, name string) *tarantool.Future {
+func (p *ConnectionPool) DoInstance(req tarantool.Request, name string) tarantool.Future {
 	conn := p.anyPool.GetConnection(name)
 	if conn == nil {
 		return newErrorFuture(ErrNoHealthyInstance)
@@ -1010,9 +1010,8 @@ func (p *ConnectionPool) getNextConnection(mode Mode) (*tarantool.Connection, er
 	return nil, ErrNoHealthyInstance
 }
 
-func newErrorFuture(err error) *tarantool.Future {
-	fut := tarantool.NewFuture(nil)
-	fut.SetError(err)
+func newErrorFuture(err error) tarantool.Future {
+	fut, _ := tarantool.NewFuture(nil, err)
 	return fut
 }
 
