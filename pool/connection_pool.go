@@ -1306,7 +1306,12 @@ func (p *ConnectionPool) tryConnect(ctx context.Context, e *endpoint) error {
 	e.role = UnknownRole
 
 	connOpts := e.opts
-	connOpts.Notify = e.notify
+	if connOpts.Notify != nil {
+		notifyCh := make(chan tarantool.ConnEvent, 100)
+		go fanOut(e.closed, notifyCh, connOpts.Notify, e.notify)
+		connOpts.Notify = notifyCh
+	}
+
 	conn, err := tarantool.Connect(ctx, e.dialer, connOpts)
 
 	p.poolsMutex.Lock()
@@ -1541,4 +1546,24 @@ func isFeatureInSlice(expected iproto.Feature, actualSlice []iproto.Feature) boo
 		}
 	}
 	return false
+}
+
+func fanOut[T any](done <-chan struct{}, in <-chan T, out ...chan<- T) {
+	for {
+		select {
+		case <-done:
+			return
+		case v, ok := <-in:
+			if !ok {
+				return
+			}
+
+			for _, ch := range out {
+				select {
+				case ch <- v:
+				default:
+				}
+			}
+		}
+	}
 }
