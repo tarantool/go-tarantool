@@ -76,15 +76,33 @@ jobs:
       - name: Install test dependencies
         run: make deps
 
+      - name: Create log directory
+        run: mkdir -p logs
+
       - name: Run regression tests
-        run: make test
+        run: |
+          make test 2>&1 | tee logs/test.log; exit ${PIPESTATUS[0]}
+
+      - name: Summarize regression tests
+        if: always()
+        run: make log-summary LOG_FILE=logs/test.log
 
       - name: Run race tests
-        run: make testrace
+        run: |
+          make testrace 2>&1 | tee logs/testrace.log; exit ${PIPESTATUS[0]}
+
+      - name: Summarize race tests
+        if: always()
+        run: make log-summary LOG_FILE=logs/testrace.log
 
       - name: Run fuzzing tests
         if: ${{ inputs.fuzzing }}
-        run: make fuzzing TAGS="go_tarantool_decimal_fuzzing"
+        run: |
+          make fuzzing TAGS="go_tarantool_decimal_fuzzing" 2>&1 | tee logs/fuzzing.log; exit ${PIPESTATUS[0]}
+
+      - name: Summarize fuzzing tests
+        if: always() && inputs.fuzzing
+        run: make log-summary LOG_FILE=logs/fuzzing.log
 
       - name: Run tests, collect code coverage data and send to Coveralls
         if: ${{ inputs.coveralls }}

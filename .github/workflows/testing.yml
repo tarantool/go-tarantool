@@ -88,6 +88,8 @@ jobs:
       T_SRCDIR: ${{ format('{0}/tarantool-{1}', github.workspace, matrix.tarantool) }}
       T_TARDIR: ${{ format('{0}/tarantool-{1}-build', github.workspace, matrix.tarantool) }}
       SRCDIR: ${{ format('{0}/{1}', github.workspace, github.repository) }}
+      LOG_DIR: ${{ format('{0}/test-logs', github.workspace) }}
+      CONFIG_NAME: macos-${{ matrix.runs-on }}-go-${{ matrix.golang }}
 
     runs-on: ${{ matrix.runs-on }}
     steps:
@@ -120,21 +122,42 @@ jobs:
           cd "${SRCDIR}"
           make deps
 
+      - name: Create log directory
+        run: mkdir -p "${LOG_DIR}"
+
       - name: Run regression tests
         run: |
           cd "${SRCDIR}"
-          make test
+          make test 2>&1 | tee "${LOG_DIR}"/test.log; exit ${PIPESTATUS[0]}
+
+      - name: Summarize regression tests
+        if: always()
+        run: |
+          cd "${SRCDIR}"
+          make log-summary LOG_FILE="${LOG_DIR}"/test.log
 
       - name: Run race tests
         run: |
           cd "${SRCDIR}"
-          make testrace
+          make testrace 2>&1 | tee "${LOG_DIR}"/testrace.log; exit ${PIPESTATUS[0]}
+
+      - name: Summarize race tests
+        if: always()
+        run: |
+          cd "${SRCDIR}"
+          make log-summary LOG_FILE="${LOG_DIR}"/testrace.log
 
       - name: Run fuzzing tests
         if: ${{ matrix.fuzzing }}
         run: |
           cd "${SRCDIR}"
-          make fuzzing TAGS="go_tarantool_decimal_fuzzing"
+          make fuzzing TAGS="go_tarantool_decimal_fuzzing" 2>&1 | tee "${LOG_DIR}"/fuzzing.log; exit ${PIPESTATUS[0]}
+
+      - name: Summarize fuzzing tests
+        if: always() && matrix.fuzzing
+        run: |
+          cd "${SRCDIR}"
+          make log-summary LOG_FILE="${LOG_DIR}"/fuzzing.log
 
       - name: Check workability of benchmark tests
         if: matrix.golang == 'stable'
