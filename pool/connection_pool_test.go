@@ -1123,7 +1123,7 @@ func TestConnectionHandlerOpenUpdateClose(t *testing.T) {
 
 	h := &testHandler{}
 	poolOpts := pool.Opts{
-		CheckTimeout:      100 * time.Microsecond,
+		CheckTimeout:      100 * time.Millisecond,
 		ConnectionHandler: h,
 	}
 	connPool, err := pool.ConnectWithOpts(ctx, poolInstances, poolOpts)

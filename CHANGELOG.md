@@ -33,6 +33,9 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Fixed
 
+* Fixed the fluctuating behavior of the TestConnectionHandlerOpenUpdateClose
+  test by increasing the waiting time (#502).
+
 ## [v2.4.1] - 2025-10-16
 
 This maintenance release marks the end of active development on the `v2`
