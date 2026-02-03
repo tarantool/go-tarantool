@@ -80,7 +80,7 @@ jobs:
         if: inputs.go-version == 'stable'
         run: make bench-deps bench DURATION=1x COUNT=1
 
-      - name: Run BechmarkAsync
+      - name: Run Bechmark
         run: |
           cd "${SRCDIR}"
-          go test -race -run TestBenchmarkAsync
+          make bench
