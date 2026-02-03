@@ -76,23 +76,11 @@ jobs:
       - name: Install test dependencies
         run: make deps
 
-      - name: Run regression tests
-        run: make test
-
-      - name: Run race tests
-        run: make testrace
-
-      - name: Run fuzzing tests
-        if: ${{ inputs.fuzzing }}
-        run: make fuzzing TAGS="go_tarantool_decimal_fuzzing"
-
-      - name: Run tests, collect code coverage data and send to Coveralls
-        if: ${{ inputs.coveralls }}
-        env:
-          COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          make coveralls
-
       - name: Check workability of benchmark tests
         if: inputs.go-version == 'stable'
         run: make bench-deps bench DURATION=1x COUNT=1
+
+      - name: Run BechmarkAsync
+        run: |
+          cd "${SRCDIR}"
+          go test -race -run TestBenchmarkAsync

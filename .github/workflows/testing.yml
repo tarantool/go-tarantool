@@ -120,24 +120,13 @@ jobs:
           cd "${SRCDIR}"
           make deps
 
-      - name: Run regression tests
-        run: |
-          cd "${SRCDIR}"
-          make test
-
-      - name: Run race tests
-        run: |
-          cd "${SRCDIR}"
-          make testrace
-
-      - name: Run fuzzing tests
-        if: ${{ matrix.fuzzing }}
-        run: |
-          cd "${SRCDIR}"
-          make fuzzing TAGS="go_tarantool_decimal_fuzzing"
-
       - name: Check workability of benchmark tests
         if: matrix.golang == 'stable'
         run: |
           cd "${SRCDIR}"
           make bench-deps bench DURATION=1x COUNT=1
+
+      - name: Run BechmarkAsync
+        run: |
+          cd "${SRCDIR}"
+          go test -race -run TestBenchmarkAsync

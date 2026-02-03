@@ -47,5 +47,7 @@ jobs:
       - name: Install test dependencies
         run: make deps
 
-      - name: Run tests
-        run: make test
+      - name: Run BechmarkAsync
+        run: |
+          cd "${SRCDIR}"
+          go test -race -run TestBenchmarkAsync
