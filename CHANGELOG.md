@@ -152,6 +152,7 @@ includes some improvements to logging.
 - Implemented stringer methods for pool.Role (#405).
 - Support the IPROTO_INSERT_ARROW request (#399).
 - A simple implementation of using the box interface (#410).
+- Function String() for types datetime, interval, decimal (#322).
 
 ### Changed
 

@@ -161,7 +161,7 @@ func ExampleDatetime_Interval() {
 	ival := dtFirst.Interval(dtSecond)
 	fmt.Printf("%v", ival)
 	// Output:
-	// {2 2 0 -11 0 -1 0 0 0}
+	// 2 years, 2 months, -11 days and -1 minute
 }
 
 // ExampleDatetime_Add demonstrates how to add an Interval to a Datetime value.
@@ -278,7 +278,7 @@ func ExampleInterval_Add() {
 
 	fmt.Printf("%v", ival)
 	// Output:
-	// {11 2 3 0 0 30 10 0 1}
+	// 11 years, 2 months, 3 weeks, 30 minutes and 10 seconds
 }
 
 // ExampleInterval_Sub demonstrates how to subtract two intervals.
@@ -298,5 +298,5 @@ func ExampleInterval_Sub() {
 
 	fmt.Printf("%v", ival)
 	// Output:
-	// {-9 2 3 0 0 -30 10 0 1}
+	// -9 years, 2 months, 3 weeks, -30 minutes and 10 seconds
 }
