@@ -238,12 +238,10 @@ func (req *RollbackRequest) Context(ctx context.Context) *RollbackRequest {
 //
 // An error is returned if the request was formed incorrectly, or failure to
 // create the future.
-func (s *Stream) Do(req Request) *Future {
+func (s *Stream) Do(req Request) Future {
 	if connectedReq, ok := req.(ConnectedRequest); ok {
 		if connectedReq.Conn() != s.Conn {
-			fut := NewFuture(req)
-			fut.SetError(errUnknownStreamRequest)
-			return fut
+			return NewFutureWithErr(req, errUnknownStreamRequest)
 		}
 	}
 	return s.Conn.send(req, s.Id)
