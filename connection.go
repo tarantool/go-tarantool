@@ -1037,7 +1037,11 @@ func (conn *Connection) send(req Request, streamId uint64) *Future {
 
 	fut := conn.newFuture(req)
 
-	if fut.finished {
+	fut.mutex.Lock()
+	is_done := fut.finished
+	fut.mutex.Unlock()
+
+	if is_done {
 		conn.decrementRequestCnt()
 		return fut
 	}
@@ -1061,7 +1065,11 @@ func (conn *Connection) putFuture(fut *Future, req Request, streamId uint64) {
 	shard := &conn.shard[shardn]
 	shard.bufmut.Lock()
 
-	if fut.finished {
+	fut.mutex.Lock()
+	is_done := fut.finished
+	fut.mutex.Unlock()
+
+	if is_done {
 		shard.bufmut.Unlock()
 		return
 	}
