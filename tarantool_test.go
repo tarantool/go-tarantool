@@ -316,7 +316,7 @@ func BenchmarkAsync_multithread_parallelism(b *testing.B) {
 // implement with a Go-benchmark. It can be used to test performance with
 // different numbers of connections and processing goroutines.
 func TestBenchmarkAsync(t *testing.T) {
-	t.Skip()
+	// t.Skip()
 
 	requests := int64(10_000_000)
 	connections := 16
