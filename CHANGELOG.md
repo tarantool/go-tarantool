@@ -15,6 +15,8 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 * Added missing IPROTO feature flags to greeting negotiation
   (iproto.IPROTO_FEATURE_IS_SYNC, iproto.IPROTO_FEATURE_INSERT_ARROW) (#466).
 * Added Future.cond (sync.Cond) and Future.finished bool. Added Future.finish() marks Future as done (#496).
+* Method `Release` for `Future` and `Response` interface that allows
+  to free used data directly by calling (#493).
 
 ### Changed
 
