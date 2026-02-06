@@ -1178,6 +1178,21 @@ func runTestMain(m *testing.M) int {
 	return m.Run()
 }
 
+func TestDatetimeString(t *testing.T) {
+	tm, _ := time.Parse(time.RFC3339Nano, "2010-05-24T17:51:56.000000009Z")
+	dt, err := MakeDatetime(tm)
+	if err != nil {
+		t.Fatalf("Unable to create Datetime from %s: %s", tm, err)
+	}
+
+	expected := "2010-05-24T17:51:56.000000009Z"
+
+	result := dt.String()
+	if result != expected {
+		t.Errorf("Expected %s, got %s", expected, result)
+	}
+}
+
 func TestMain(m *testing.M) {
 	code := runTestMain(m)
 	os.Exit(code)
