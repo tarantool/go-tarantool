@@ -350,10 +350,7 @@ func datetimeDecoder(d *msgpack.Decoder, v reflect.Value, extLen int) error {
 	return ptr.UnmarshalMsgpack(b)
 }
 
-// This method converts Datetime to String - formats to ISO8601.
-func (d Datetime) String() string {
-	return d.time.Format(time.RFC3339Nano)
-}
+
 
 func init() {
 	msgpack.RegisterExtDecoder(datetimeExtID, Datetime{}, datetimeDecoder)
