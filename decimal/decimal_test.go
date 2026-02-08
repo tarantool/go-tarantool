@@ -299,7 +299,7 @@ func TestEncodeMinNumber(t *testing.T) {
 	}
 }
 
-func benchmarkMPEncodeDecode(b *testing.B, src decimal.Decimal, dst interface{}) {
+func benchmarkMPEncodeDecode(b *testing.B, src decimal.Decimal) {
 	b.ResetTimer()
 
 	var v TupleDecimal
@@ -323,7 +323,7 @@ func BenchmarkMPEncodeDecodeDecimal(b *testing.B) {
 			if err != nil {
 				b.Fatal(err)
 			}
-			benchmarkMPEncodeDecode(b, dec, &dec)
+			benchmarkMPEncodeDecode(b, dec)
 		})
 	}
 }
@@ -703,4 +703,244 @@ func runTestMain(m *testing.M) int {
 func TestMain(m *testing.M) {
 	code := runTestMain(m)
 	os.Exit(code)
+}
+
+func TestDecimalString(t *testing.T) {
+	tests := []struct {
+		name             string
+		input            string
+		expected         string
+		willUseOptimized bool
+	}{
+		{
+			name:             "small positive decimal",
+			input:            "123.45",
+			expected:         "123.45",
+			willUseOptimized: true,
+		},
+		{
+			name:             "small negative decimal",
+			input:            "-123.45",
+			expected:         "-123.45",
+			willUseOptimized: true,
+		},
+		{
+			name:             "zero",
+			input:            "0",
+			expected:         "0",
+			willUseOptimized: true,
+		},
+		{
+			name:             "integer",
+			input:            "12345",
+			expected:         "12345",
+			willUseOptimized: true,
+		},
+		{
+			name:             "small decimal with leading zeros",
+			input:            "0.00123",
+			expected:         "0.00123",
+			willUseOptimized: true,
+		},
+		{
+			name:             "max int64",
+			input:            "9223372036854775807",
+			expected:         "9223372036854775807",
+			willUseOptimized: true,
+		},
+		{
+			name:             "min int64",
+			input:            "-9223372036854775808",
+			expected:         "-9223372036854775808",
+			willUseOptimized: true,
+		},
+		{
+			name:     "number beyond int64 range",
+			input:    "9223372036854775808",
+			expected: "9223372036854775808",
+		},
+		{
+			name:             "very large decimal",
+			input:            "123456789012345678901234567890.123456789",
+			expected:         "123456789012345678901234567890.123456789",
+			willUseOptimized: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dec, err := MakeDecimalFromString(tt.input)
+			assert.NoError(t, err)
+
+			result := dec.String()
+
+			assert.Equal(t, tt.expected, result)
+
+			assert.Equal(t, dec.Decimal.String(), result)
+		})
+	}
+}
+
+func TestTarantoolBCDCompatibility(t *testing.T) {
+
+	testCases := []string{
+		"123.45",
+		"-123.45",
+		"0.001",
+		"100.00",
+		"999999.999999",
+	}
+
+	for _, input := range testCases {
+		t.Run(input, func(t *testing.T) {
+
+			dec, err := MakeDecimalFromString(input)
+			assert.NoError(t, err)
+
+			msgpackData, err := dec.MarshalMsgpack()
+			assert.NoError(t, err)
+
+			var dec2 Decimal
+			err = dec2.UnmarshalMsgpack(msgpackData)
+			assert.NoError(t, err)
+
+			originalStr := dec.String()
+			roundtripStr := dec2.String()
+
+			assert.Equal(t, originalStr, roundtripStr,
+				"BCD roundtrip failed for input: %s", input)
+		})
+	}
+}
+
+func TestRealTarantoolUsage(t *testing.T) {
+	operations := []struct {
+		name string
+		data map[string]interface{}
+	}{
+		{
+			name: "insert operation",
+			data: map[string]interface{}{
+				"id":      1,
+				"amount":  MustMakeDecimal("123.45"),
+				"balance": MustMakeDecimal("-500.00"),
+			},
+		},
+		{
+			name: "update operation",
+			data: map[string]interface{}{
+				"id":       2,
+				"price":    MustMakeDecimal("99.99"),
+				"quantity": MustMakeDecimal("1000.000"),
+			},
+		},
+	}
+
+	for _, op := range operations {
+		t.Run(op.name, func(t *testing.T) {
+			for key, value := range op.data {
+				if dec, isDecimal := value.(Decimal); isDecimal {
+					str := dec.String()
+
+					if str == "" {
+						t.Errorf("%s: string representation is empty", key)
+					}
+
+					validFirstChars := []string{
+						".", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "-",
+					}
+					firstChar := string(str[0])
+					valid := false
+					for _, c := range validFirstChars {
+						if firstChar == c {
+							valid = true
+							break
+						}
+					}
+					if !valid {
+						t.Errorf("%s: string %q starts with invalid character %q",
+							key, str, firstChar)
+					}
+
+					if dec.Decimal.String() != str {
+						t.Errorf("%s: string representation mismatch:"+
+							" Decimal.String()=%q, dec.String()=%q",
+							key, dec.Decimal.String(), str)
+					}
+				}
+			}
+		})
+	}
+}
+
+func Test100_00(t *testing.T) {
+	dec := MustMakeDecimal("100.00")
+
+	coefficient := dec.Decimal.Coefficient()
+	if !coefficient.IsInt64() {
+		t.Errorf("Expected coefficient to be int64")
+	}
+	if coefficient.Int64() != 10000 {
+		t.Errorf("Expected coefficient to be 10000, got %d", coefficient.Int64())
+	}
+
+	exponent := dec.Decimal.Exponent()
+	if exponent != -2 {
+		t.Errorf("Expected exponent to be -2, got %d", exponent)
+	}
+
+	result := dec.String()
+	if result != "100" {
+		t.Errorf(`Expected string "100", got %q`, result)
+	}
+}
+
+func TestLargeNumberString(t *testing.T) {
+	largeNumber := "123456789012345678901234567890.123456789"
+	dec, err := MakeDecimalFromString(largeNumber)
+	if err != nil {
+		t.Fatalf("Failed to create decimal: %v", err)
+	}
+
+	// Check that the coefficient does not fit in int64.
+	coefficient := dec.Decimal.Coefficient()
+	if coefficient.IsInt64() {
+		t.Error("Expected coefficient to be too large for int64")
+	}
+
+	optimized := dec.String()
+	standard := dec.Decimal.String()
+
+	if optimized != standard {
+		t.Errorf("Results differ: optimized=%s, standard=%s", optimized, standard)
+	}
+
+	if optimized != largeNumber {
+		t.Errorf("Expected %s, got %s", largeNumber, optimized)
+	}
+
+}
+
+func TestDecimalTrailingZeros(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"100.00", "100"},
+		{"0.00", "0"},
+		{"0.000", "0"},
+		{"1.000", "1"},
+		{"123.4500", "123.45"},
+		{"0.00100", "0.001"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			dec := MustMakeDecimal(tt.input)
+			result := dec.String()
+			if result != tt.expected {
+				t.Errorf("For %s: expected %s, got %s", tt.input, tt.expected, result)
+			}
+		})
+	}
 }
