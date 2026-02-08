@@ -28,6 +28,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
   power-of-two sized byte slices (#493).
 * New `Opts.Allocator` option to configure a custom allocator for a
   connection (#493).
+* Method String() for type decimal (#322).
 
 ### Changed
 
