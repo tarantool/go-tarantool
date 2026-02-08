@@ -20,6 +20,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 * New `Future` interface (#470).
 * Method `Release` for `Future` and `Response` interface that allows
   to free used data directly by calling (#493).
+* Added function String() for type decimal (#322).
 
 ### Changed
 
