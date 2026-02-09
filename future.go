@@ -42,6 +42,13 @@ func (fut *Future) finish() {
 	fut.cond.Broadcast()
 }
 
+func (fut *Future) isFinished() bool {
+	fut.mutex.Lock()
+	defer fut.mutex.Unlock()
+
+	return fut.finished
+}
+
 // NewFuture creates a new empty Future for a given Request.
 func NewFuture(req Request) (fut *Future) {
 	fut = &Future{}
