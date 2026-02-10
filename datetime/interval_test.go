@@ -133,3 +133,185 @@ func TestIntervalTarantoolEncoding(t *testing.T) {
 		})
 	}
 }
+
+func TestIntervalString(t *testing.T) {
+	tests := []struct {
+		name     string
+		interval Interval
+		expected string
+	}{
+		{
+			name:     "empty interval",
+			interval: Interval{},
+			expected: "0 seconds",
+		},
+		{
+			name: "single positive year",
+			interval: Interval{
+				Year: 1,
+			},
+			expected: "+1 year",
+		},
+		{
+			name: "single negative year",
+			interval: Interval{
+				Year: -1,
+			},
+			expected: "-1 year",
+		},
+		{
+			name: "multiple positive years",
+			interval: Interval{
+				Year: 5,
+			},
+			expected: "+5 years",
+		},
+		{
+			name: "multiple positive components",
+			interval: Interval{
+				Year:  1,
+				Month: 2,
+				Day:   3,
+			},
+			expected: "+1 year, 2 months, 3 days",
+		},
+		{
+			name: "positive components without sign after first",
+			interval: Interval{
+				Hour: 1,
+				Min:  30,
+				Sec:  45,
+			},
+			expected: "+1 hour, 30 minutes, 45 seconds",
+		},
+		{
+			name: "mixed signs",
+			interval: Interval{
+				Year:  -1,
+				Month: 2,
+				Week:  -3,
+				Day:   4,
+				Hour:  -5,
+				Min:   6,
+				Sec:   -7,
+				Nsec:  9,
+			},
+			expected: "-1 year, 2 months, -3 weeks, 4 days, -5 hours, 6 minutes," +
+				" -7 seconds, 9 nanoseconds",
+		},
+		{
+			name: "positive seconds with nanoseconds",
+			interval: Interval{
+				Sec:  5,
+				Nsec: 123456789,
+			},
+			expected: "+5 seconds, 123456789 nanoseconds",
+		},
+		{
+			name: "negative seconds with nanoseconds",
+			interval: Interval{
+				Sec:  -5,
+				Nsec: -123456789,
+			},
+			expected: "-5 seconds, -123456789 nanoseconds",
+		},
+		{
+			name: "only positive nanoseconds",
+			interval: Interval{
+				Nsec: 500000000,
+			},
+			expected: "+500000000 nanoseconds",
+		},
+		{
+			name: "only negative nanoseconds",
+			interval: Interval{
+				Nsec: -500000000,
+			},
+			expected: "-500000000 nanoseconds",
+		},
+		{
+			name: "complex interval",
+			interval: Interval{
+				Year:  1,
+				Month: 6,
+				Week:  2,
+				Day:   3,
+				Hour:  12,
+				Min:   30,
+				Sec:   45,
+				Nsec:  123456789,
+			},
+			expected: "+1 year, 6 months, 2 weeks, 3 days, 12 hours, 30 minutes," +
+				" 45 seconds, 123456789 nanoseconds",
+		},
+		{
+			name: "all negative components",
+			interval: Interval{
+				Year: -1,
+				Day:  -2,
+				Hour: -3,
+			},
+			expected: "-1 year, -2 days, -3 hours",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.interval.String()
+			if result != tt.expected {
+				t.Errorf("Interval.String() = %v, want %v", result, tt.expected)
+			}
+		})
+	}
+}
+func TestIntervalStringIntegration(t *testing.T) {
+	t.Run("implements Stringer", func(t *testing.T) {
+		var _ fmt.Stringer = Interval{}
+	})
+
+	t.Run("works with fmt package", func(t *testing.T) {
+		ival := Interval{Hour: 2, Min: 30}
+		result := ival.String()
+		expected := "+2 hours, 30 minutes"
+		if result != expected {
+			t.Errorf("fmt.Sprintf('%%s') = %v, want %v", result, expected)
+		}
+
+		result = fmt.Sprintf("%v", ival)
+		if result != expected {
+			t.Errorf("fmt.Sprintf('%%v') = %v, want %v", result, expected)
+		}
+	})
+}
+
+func TestIntervalStringEdgeCases(t *testing.T) {
+	tests := []struct {
+		name     string
+		interval Interval
+	}{
+		{
+			name:     "max values",
+			interval: Interval{Year: 1<<63 - 1, Month: 1<<63 - 1},
+		},
+		{
+			name:     "min values",
+			interval: Interval{Year: -1 << 63, Month: -1 << 63},
+		},
+		{
+			name:     "mixed signs complex",
+			interval: Interval{Year: 1, Month: -1, Day: 1, Hour: -1},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.interval.String()
+			if result == "" {
+				t.Error("Interval.String() returned empty string")
+			}
+			if len(result) > 1000 {
+				t.Error("Interval.String() returned unexpectedly long string")
+			}
+		})
+	}
+}
