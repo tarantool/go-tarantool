@@ -5,8 +5,12 @@ import (
 	"io"
 )
 
-type smallBuf struct {
+type tinyBuf struct {
 	b []byte
+}
+
+type smallBuf struct {
+	tinyBuf
 	p int
 }
 

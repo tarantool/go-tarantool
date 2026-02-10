@@ -162,3 +162,11 @@ func (fut *Future) WaitChan() <-chan struct{} {
 
 	return fut.done
 }
+
+// Release is freeing the Future resources.
+// After this, using this Future becomes invalid.
+func (fut *Future) Release() {
+	if fut.resp != nil {
+		fut.resp.Release()
+	}
+}
