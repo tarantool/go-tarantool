@@ -2,7 +2,9 @@ package datetime
 
 import (
 	"bytes"
+	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/vmihailenco/msgpack/v5"
 )
@@ -214,6 +216,73 @@ func decodeInterval(d *msgpack.Decoder, v reflect.Value) (err error) {
 
 	v.Set(reflect.ValueOf(val))
 	return nil
+}
+
+// Returns a human-readable string representation of the interval.
+var intervalFields = []struct {
+	sing string
+	plur string
+}{
+	{"year", "years"},
+	{"month", "months"},
+	{"week", "weeks"},
+	{"day", "days"},
+	{"hour", "hours"},
+	{"minute", "minutes"},
+	{"second", "seconds"},
+	{"nanosecond", "nanoseconds"},
+}
+
+func (ival Interval) String() string {
+	values := []int64{
+		ival.Year,
+		ival.Month,
+		ival.Week,
+		ival.Day,
+		ival.Hour,
+		ival.Min,
+		ival.Sec,
+		ival.Nsec,
+	}
+
+	parts := make([]string, 0, 8)
+	first := true
+	hasNonZero := false
+
+	for i, field := range intervalFields {
+		value := values[i]
+		if value == 0 {
+			continue
+		}
+
+		hasNonZero = true
+		var sign string
+		var absValue int64
+
+		if value < 0 {
+			sign = "-"
+			absValue = -value
+		} else {
+			if first {
+				sign = "+"
+			}
+			absValue = value
+		}
+
+		unit := field.plur
+		if absValue == 1 {
+			unit = field.sing
+		}
+
+		parts = append(parts, fmt.Sprintf("%s%d %s", sign, absValue, unit))
+		first = false
+	}
+
+	if !hasNonZero {
+		return "0 seconds"
+	}
+
+	return strings.Join(parts, ", ")
 }
 
 func init() {
