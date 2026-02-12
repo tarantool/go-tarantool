@@ -158,3 +158,15 @@ fuzzing:
 codespell:
 	@echo "Running codespell"
 	codespell
+
+.PHONY: log-summary
+log-summary:
+	@if [ -z "$(LOG_FILE)" ]; then \
+		echo "ERROR: LOG_FILE is not set"; \
+		exit 1; \
+	fi
+	@if [ ! -f "$(LOG_FILE)" ]; then \
+		echo "ERROR: log file '$(LOG_FILE)' not found"; \
+		exit 1; \
+	fi
+	@.github/scripts/log-summary.sh "$(LOG_FILE)"
