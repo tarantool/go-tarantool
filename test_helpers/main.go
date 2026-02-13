@@ -21,6 +21,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -237,15 +238,27 @@ func IsTarantoolVersionLess(majorMin uint64, minorMin uint64, patchMin uint64) (
 	var major, minor, patch uint64
 
 	var (
-		out []byte
-		err error
+		out         []byte
+		err         error
+		skip_errors = []string{
+			"bad file descriptor",
+			"broken pipe",
+		}
 	)
 	for range 10 {
 		out, err = exec.Command(getTarantoolExec(), "--version").Output()
-		if err == nil || !strings.Contains(err.Error(), "bad file descriptor") {
+
+		if err == nil && len(out) > 0 {
 			break
 		}
-		// Skip "bad file descriptor" error and try again.
+
+		if !slices.ContainsFunc(skip_errors, func(e string) bool {
+			return strings.Contains(err.Error(), e)
+		}) {
+			break
+		}
+
+		// Skip error and try again.
 		// For unknown reason it sometimes happens on CI.
 		time.Sleep(time.Second)
 	}
