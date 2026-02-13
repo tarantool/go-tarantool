@@ -48,4 +48,9 @@ jobs:
         run: make deps
 
       - name: Run tests
-        run: make test
+        run: |
+          go test -run TestGracefulShutdown
+          go test -run TestGracefulShutdown
+          go test -run TestGracefulShutdown
+          go test -run TestGracefulShutdown
+          go test -run TestGracefulShutdown

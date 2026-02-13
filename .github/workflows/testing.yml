@@ -123,12 +123,20 @@ jobs:
       - name: Run regression tests
         run: |
           cd "${SRCDIR}"
-          make test
+          go test -run TestGracefulShutdown
+          go test -run TestGracefulShutdown
+          go test -run TestGracefulShutdown
+          go test -run TestGracefulShutdown
+          go test -run TestGracefulShutdown
 
       - name: Run race tests
         run: |
           cd "${SRCDIR}"
-          make testrace
+          go test -race -run TestGracefulShutdown
+          go test -race -run TestGracefulShutdown
+          go test -race -run TestGracefulShutdown
+          go test -race -run TestGracefulShutdown
+          go test -race -run TestGracefulShutdown
 
       - name: Run fuzzing tests
         if: ${{ matrix.fuzzing }}

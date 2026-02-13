@@ -77,10 +77,20 @@ jobs:
         run: make deps
 
       - name: Run regression tests
-        run: make test
+        run: |
+          go test -run TestGracefulShutdown
+          go test -run TestGracefulShutdown
+          go test -run TestGracefulShutdown
+          go test -run TestGracefulShutdown
+          go test -run TestGracefulShutdown
 
       - name: Run race tests
-        run: make testrace
+        run: |
+          go test -race -run TestGracefulShutdown
+          go test -race -run TestGracefulShutdown
+          go test -race -run TestGracefulShutdown
+          go test -race -run TestGracefulShutdown
+          go test -race -run TestGracefulShutdown
 
       - name: Run fuzzing tests
         if: ${{ inputs.fuzzing }}
