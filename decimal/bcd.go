@@ -85,9 +85,7 @@ func getNumberLength(buf string) int {
 	}
 	n := 0
 	for _, ch := range []byte(buf) {
-		if ch >= '1' && ch <= '9' {
-			n += 1
-		} else if ch == '0' && n != 0 {
+		if (ch >= '1' && ch <= '9') || (ch == '0' && n != 0) {
 			n += 1
 		}
 	}
