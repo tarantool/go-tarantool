@@ -16,24 +16,24 @@ type SlogLogger struct {
 	ctx    context.Context
 }
 
-func NewSlogLogger(logger *slog.Logger) *SlogLogger {
+func NewSlogLogger(logger *slog.Logger) SlogLogger {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	return &SlogLogger{
+	return SlogLogger{
 		logger: logger,
 		ctx:    context.Background(),
 	}
 }
 
-func (l *SlogLogger) WithContext(ctx context.Context) *SlogLogger {
-	return &SlogLogger{
+func (l *SlogLogger) WithContext(ctx context.Context) SlogLogger {
+	return SlogLogger{
 		logger: l.logger,
 		ctx:    ctx,
 	}
 }
 
-func (l *SlogLogger) Report(event LogEvent, conn *Connection) {
+func (l SlogLogger) Report(event LogEvent, conn *Connection) {
 	attrs := event.LogAttrs()
 
 	if conn != nil {
