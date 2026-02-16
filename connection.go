@@ -563,16 +563,6 @@ func (conn *Connection) connect(ctx context.Context) error {
 	return err
 }
 
-// Method to reset the reconnect count
-func (conn *Connection) resetReconnectCount() {
-	atomic.StoreUint32(&conn.reconnectCount, 0)
-}
-
-// Method for getting the current number of reconnects
-func (conn *Connection) GetReconnectCount() uint32 {
-	return atomic.LoadUint32(&conn.reconnectCount)
-}
-
 func (conn *Connection) closeConnection(neterr error, forever bool) (err error) {
 	conn.lockShards()
 	defer conn.unlockShards()
@@ -638,6 +628,14 @@ func (conn *Connection) runReconnects(ctx context.Context) error {
 		cancel()
 
 		if err != nil {
+			// The error will most likely be the one that Dialer
+			// returns to us due to the context being cancelled.
+			// Although this is not guaranteed. For example,
+			// if the dialer may throw another error before checking
+			// the context, and the context has already been
+			// canceled. Or the context was not canceled after
+			// the error was thrown, but before the context was
+			// checked here.
 			if ctx.Err() != nil {
 				return err
 			}
