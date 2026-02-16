@@ -37,24 +37,23 @@ func (l *SlogLogger) Report(event LogEvent, conn *Connection) {
 	attrs := event.LogAttrs()
 
 	if conn != nil {
-		attrs = append(attrs,
-			slog.String("connection_state", conn.stateToString()),
-		)
+		keys := make(map[string]bool, len(attrs))
+		for _, a := range attrs {
+			keys[a.Key] = true
+		}
 
-		if conn.opts.MaxReconnects > 0 {
-			attrs = append(attrs,
-				slog.Uint64("max_reconnects", uint64(conn.opts.MaxReconnects)),
-			)
+		if !keys["connection_state"] {
+			attrs = append(attrs, slog.String("connection_state", conn.stateToString()))
 		}
-		if conn.opts.Reconnect > 0 {
-			attrs = append(attrs,
-				slog.String("reconnect_interval", conn.opts.Reconnect.String()),
-			)
+
+		if conn.opts.MaxReconnects > 0 && !keys["max_reconnects"] {
+			attrs = append(attrs, slog.Uint64("max_reconnects", uint64(conn.opts.MaxReconnects)))
 		}
-		if conn.opts.Timeout > 0 {
-			attrs = append(attrs,
-				slog.String("request_timeout", conn.opts.Timeout.String()),
-			)
+		if conn.opts.Reconnect > 0 && !keys["reconnect_interval"] {
+			attrs = append(attrs, slog.String("reconnect_interval", conn.opts.Reconnect.String()))
+		}
+		if conn.opts.Timeout > 0 && !keys["request_timeout"] {
+			attrs = append(attrs, slog.String("request_timeout", conn.opts.Timeout.String()))
 		}
 	}
 
