@@ -13,21 +13,21 @@ type LogEvent interface {
 }
 
 type baseEvent struct {
-	addr net.Addr
-	time time.Time
+	addr      net.Addr
+	EventTime time.Time
 }
 
 func newBaseEvent(addr net.Addr) baseEvent {
 	return baseEvent{
-		addr: addr,
-		time: time.Now(),
+		addr:      addr,
+		EventTime: time.Now(),
 	}
 }
 
 func (e baseEvent) baseAttrs() []slog.Attr {
 	attrs := []slog.Attr{
 		slog.String("component", "tarantool.connection"),
-		slog.Time("time", e.time),
+		slog.Time("event_time", e.EventTime),
 	}
 	if e.addr != nil {
 		attrs = append(attrs, slog.String("addr", e.addr.String()))
