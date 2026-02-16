@@ -57,7 +57,7 @@ func (l SlogLogger) Report(event LogEvent, conn *Connection) {
 		}
 	}
 
-	l.logger.LogAttrs(l.ctx, event.LogLevel(), event.EventName(), attrs...)
+	l.logger.LogAttrs(l.ctx, event.LogLevel(), event.Message(), attrs...)
 }
 
 type SimpleLogger struct{}
@@ -70,7 +70,7 @@ func (l SimpleLogger) Report(event LogEvent, conn *Connection) {
 		addrStr = event.Addr().String()
 	}
 
-	log.Printf("[%s] %s (addr: %s)", event.LogLevel(), event.EventName(), addrStr)
+	log.Printf("[%s] %s (addr: %s)", event.LogLevel(), event.Message(), addrStr)
 
 	for _, attr := range attrs {
 		if attr.Key == "error" {

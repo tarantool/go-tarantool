@@ -661,13 +661,15 @@ func (conn *Connection) runReconnects(ctx context.Context) error {
 
 		select {
 		case <-ctx.Done():
+		// Since the context is cancelled, we don't need to do anything.
+		// Conn.connect() will return the correct error.
 		case <-t.C:
 		}
 
 		conn.mutex.Lock()
 	}
 
-	conn.logEvent(LastReconnectFailedEvent{
+	conn.logEvent(ReconnectFailedEvent{
 		baseEvent: newBaseEvent(conn.addr),
 		Error:     err,
 	})

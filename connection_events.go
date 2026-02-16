@@ -1,6 +1,7 @@
 package tarantool
 
 import (
+	"fmt"
 	"log/slog"
 	"net"
 	"time"
@@ -8,6 +9,7 @@ import (
 
 type LogEvent interface {
 	EventName() string
+	Message() string
 	LogLevel() slog.Level
 	LogAttrs() []slog.Attr
 }
@@ -41,34 +43,39 @@ type ReconnectFailedEvent struct {
 	MaxReconnects uint
 	Error         error
 	IsInitial     bool
+	IsLast        bool
 }
 
-func (e ReconnectFailedEvent) EventName() string    { return "reconnect_failed" }
+func (e ReconnectFailedEvent) EventName() string {
+	if e.IsLast {
+		return "last_reconnect_failed"
+	}
+	return "reconnect_failed"
+}
+
+func (e ReconnectFailedEvent) Message() string {
+	if e.IsInitial {
+		if e.IsLast {
+			return "Initial connection failed, giving up"
+		}
+		return "Initial connection failed"
+	}
+	if e.IsLast {
+		return "Last reconnect attempt failed, giving up"
+	}
+	return "Reconnect attempt failed"
+}
+
 func (e ReconnectFailedEvent) LogLevel() slog.Level { return slog.LevelError }
 func (e ReconnectFailedEvent) LogAttrs() []slog.Attr {
 	attrs := e.baseAttrs()
 	attrs = append(attrs,
 		slog.String("event", e.EventName()),
+		slog.String("message", e.Message()),
 		slog.Uint64("reconnects", uint64(e.Reconnects)),
 		slog.Uint64("max_reconnects", uint64(e.MaxReconnects)),
 		slog.String("error", e.Error.Error()),
 		slog.Bool("is_initial", e.IsInitial),
-	)
-	return attrs
-}
-
-type LastReconnectFailedEvent struct {
-	baseEvent
-	Error error
-}
-
-func (e LastReconnectFailedEvent) EventName() string    { return "last_reconnect_failed" }
-func (e LastReconnectFailedEvent) LogLevel() slog.Level { return slog.LevelError }
-func (e LastReconnectFailedEvent) LogAttrs() []slog.Attr {
-	attrs := e.baseAttrs()
-	attrs = append(attrs,
-		slog.String("event", e.EventName()),
-		slog.String("error", e.Error.Error()),
 	)
 	return attrs
 }
@@ -78,7 +85,10 @@ type UnexpectedResultIdEvent struct {
 	RequestId uint32
 }
 
-func (e UnexpectedResultIdEvent) EventName() string    { return "unexpected_result_id" }
+func (e UnexpectedResultIdEvent) EventName() string { return "unexpected_result_id" }
+func (e UnexpectedResultIdEvent) Message() string {
+	return fmt.Sprintf("Received response with unexpected request ID %d", e.RequestId)
+}
 func (e UnexpectedResultIdEvent) LogLevel() slog.Level { return slog.LevelWarn }
 func (e UnexpectedResultIdEvent) LogAttrs() []slog.Attr {
 	attrs := e.baseAttrs()
@@ -94,7 +104,10 @@ type WatchEventReadFailedEvent struct {
 	Error error
 }
 
-func (e WatchEventReadFailedEvent) EventName() string    { return "watch_event_read_failed" }
+func (e WatchEventReadFailedEvent) EventName() string { return "watch_event_read_failed" }
+func (e WatchEventReadFailedEvent) Message() string {
+	return fmt.Sprintf("Failed to parse watch event: %s", e.Error)
+}
 func (e WatchEventReadFailedEvent) LogLevel() slog.Level { return slog.LevelWarn }
 func (e WatchEventReadFailedEvent) LogAttrs() []slog.Attr {
 	attrs := e.baseAttrs()
@@ -110,7 +123,10 @@ type BoxSessionPushUnsupportedEvent struct {
 	RequestId uint32
 }
 
-func (e BoxSessionPushUnsupportedEvent) EventName() string    { return "box_session_push_unsupported" }
+func (e BoxSessionPushUnsupportedEvent) EventName() string { return "box_session_push_unsupported" }
+func (e BoxSessionPushUnsupportedEvent) Message() string {
+	return fmt.Sprintf("Unsupported box.session.push() for request %d", e.RequestId)
+}
 func (e BoxSessionPushUnsupportedEvent) LogLevel() slog.Level { return slog.LevelWarn }
 func (e BoxSessionPushUnsupportedEvent) LogAttrs() []slog.Attr {
 	attrs := e.baseAttrs()
@@ -126,7 +142,13 @@ type ConnectedEvent struct {
 	Reconnects uint
 }
 
-func (e ConnectedEvent) EventName() string    { return "connected" }
+func (e ConnectedEvent) EventName() string { return "connected" }
+func (e ConnectedEvent) Message() string {
+	if e.Reconnects == 0 {
+		return "Connected to Tarantool"
+	}
+	return "Reconnected to Tarantool"
+}
 func (e ConnectedEvent) LogLevel() slog.Level { return slog.LevelInfo }
 func (e ConnectedEvent) LogAttrs() []slog.Attr {
 	attrs := e.baseAttrs()
@@ -142,7 +164,13 @@ type DisconnectedEvent struct {
 	Reason error
 }
 
-func (e DisconnectedEvent) EventName() string    { return "disconnected" }
+func (e DisconnectedEvent) EventName() string { return "disconnected" }
+func (e DisconnectedEvent) Message() string {
+	if e.Reason != nil {
+		return fmt.Sprintf("Disconnected from Tarantool: %s", e.Reason)
+	}
+	return "Disconnected from Tarantool"
+}
 func (e DisconnectedEvent) LogLevel() slog.Level { return slog.LevelWarn }
 func (e DisconnectedEvent) LogAttrs() []slog.Attr {
 	attrs := e.baseAttrs()
@@ -169,6 +197,7 @@ type ClosedEvent struct {
 }
 
 func (e ClosedEvent) EventName() string    { return "closed" }
+func (e ClosedEvent) Message() string      { return "Connection closed" }
 func (e ClosedEvent) LogLevel() slog.Level { return slog.LevelInfo }
 func (e ClosedEvent) LogAttrs() []slog.Attr {
 	attrs := e.baseAttrs()
@@ -183,7 +212,19 @@ type ConnectionPoolEvent struct {
 	Event       string
 }
 
-func (e ConnectionPoolEvent) EventName() string    { return "connection_pool_" + e.Event }
+func (e ConnectionPoolEvent) EventName() string { return "connection_pool_" + e.Event }
+func (e ConnectionPoolEvent) Message() string {
+	switch e.Event {
+	case "added":
+		return "Connection added to pool"
+	case "removed":
+		return "Connection removed from pool"
+	case "full":
+		return "Connection pool is full"
+	default:
+		return "Connection pool event: " + e.Event
+	}
+}
 func (e ConnectionPoolEvent) LogLevel() slog.Level { return slog.LevelInfo }
 func (e ConnectionPoolEvent) LogAttrs() []slog.Attr {
 	attrs := e.baseAttrs()
@@ -202,7 +243,10 @@ type TimeoutEvent struct {
 	Timeout   time.Duration
 }
 
-func (e TimeoutEvent) EventName() string    { return "timeout" }
+func (e TimeoutEvent) EventName() string { return "timeout" }
+func (e TimeoutEvent) Message() string {
+	return fmt.Sprintf("Request %d timed out after %s", e.RequestId, e.Timeout)
+}
 func (e TimeoutEvent) LogLevel() slog.Level { return slog.LevelWarn }
 func (e TimeoutEvent) LogAttrs() []slog.Attr {
 	attrs := e.baseAttrs()
