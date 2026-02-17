@@ -14,6 +14,15 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Fixed
 
+## v2.4.2 - 2026-02-17
+
+The patch release with fixes from static analyzer.
+
+### Fixed
+
+- Fix similar branches in decimal/bcd.go detected by Svacer static
+  analyzer (#533).
+
 ## [v2.4.1] - 2025-10-16
 
 This maintenance release marks the end of active development on the `v2`
