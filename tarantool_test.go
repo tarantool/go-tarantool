@@ -2903,14 +2903,17 @@ func TestConnectionBoxSessionPushUnsupported(t *testing.T) {
 	var buf bytes.Buffer
 	log.SetOutput(&buf)
 
-	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
+	testOpts := opts
+	testOpts.Logger = SimpleLogger{}
+
+	conn := test_helpers.ConnectWithValidation(t, dialer, testOpts)
 	defer conn.Close()
 
 	_, err := conn.Do(NewCallRequest("push_func").Args([]interface{}{1})).Get()
 	require.NoError(t, err)
 
 	actualLog := buf.String()
-	expectedLog := " box_session_push_unsupported"
+	expectedLog := "box_session_push_unsupported"
 	require.Contains(t, actualLog, expectedLog)
 }
 

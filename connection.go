@@ -572,6 +572,11 @@ func (conn *Connection) closeConnection(neterr error, forever bool) (err error) 
 			close(conn.control)
 			atomic.StoreUint32(&conn.state, connClosed)
 			conn.cond.Broadcast()
+			// Free the resources.
+			if conn.shutdownWatcher != nil {
+				go conn.shutdownWatcher.Unregister()
+				conn.shutdownWatcher = nil
+			}
 			conn.logEvent(ClosedEvent{
 				baseEvent: newBaseEvent(conn.addr),
 			})

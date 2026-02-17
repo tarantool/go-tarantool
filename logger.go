@@ -4,7 +4,6 @@ import (
 	"context"
 	"log"
 	"log/slog"
-	"net"
 )
 
 type Logger interface {
@@ -65,12 +64,7 @@ type SimpleLogger struct{}
 func (l SimpleLogger) Report(event LogEvent, conn *Connection) {
 	attrs := event.LogAttrs()
 
-	var addrStr string
-	if event, ok := event.(interface{ Addr() net.Addr }); ok && event.Addr() != nil {
-		addrStr = event.Addr().String()
-	}
-
-	log.Printf("[%s] %s (addr: %s)", event.LogLevel(), event.Message(), addrStr)
+	log.Printf("[%s] %s [event=%s]", event.LogLevel(), event.Message(), event.EventName())
 
 	for _, attr := range attrs {
 		if attr.Key == "error" {
