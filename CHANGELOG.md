@@ -14,6 +14,15 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Fixed
 
+## [1.12.3] - 2026-02-17
+
+The patch release with fixes from static analyzer.
+
+### Fixed
+
+- Fix similar branches in decimal/bcd.go detected by Svacer static
+  analyzer (#534).
+
 ## [1.12.2] - 2024-01-11
 
 The patch release with fixes from the master branch.
