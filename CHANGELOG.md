@@ -34,6 +34,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 * Future.done replaced with Future.cond (sync.Cond) + Future.finished bool (#496).
 * `Future` transform into `future` that implements interface `Future` and become private,
   `SetError` and `SetResponse` become private (#470).
+* Changed design of tarantool.Logger, used slog (#504).
 
 ### Fixed
 
