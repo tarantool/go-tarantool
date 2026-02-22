@@ -8,7 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"math"
 	"net"
 	"runtime"
@@ -32,7 +32,6 @@ const (
 const shutdownEventKey = "box.shutdown"
 
 type ConnEventKind int
-type ConnLogKind int
 
 var (
 	errUnknownRequest = errors.New("the passed connected request doesn't belong " +
@@ -50,19 +49,6 @@ const (
 	Shutdown
 	// Either reconnect attempts exhausted, or explicit Close is called.
 	Closed
-
-	// LogReconnectFailed is logged when reconnect attempt failed.
-	LogReconnectFailed ConnLogKind = iota + 1
-	// LogLastReconnectFailed is logged when last reconnect attempt failed,
-	// connection will be closed after that.
-	LogLastReconnectFailed
-	// LogUnexpectedResultId is logged when response with unknown id was received.
-	// Most probably it is due to request timeout.
-	LogUnexpectedResultId
-	// LogWatchEventReadFailed is logged when failed to read a watch event.
-	LogWatchEventReadFailed
-	// LogBoxSessionPushUnsupported is logged when response type turned IPROTO_CHUNK.
-	LogBoxSessionPushUnsupported
 )
 
 // ConnEvent is sent throw Notify channel specified in Opts.
@@ -79,53 +65,6 @@ type connWatchEvent struct {
 }
 
 var epoch = time.Now()
-
-// Logger is logger type expected to be passed in options.
-type Logger interface {
-	Report(event ConnLogKind, conn *Connection, v ...interface{})
-}
-
-type defaultLogger struct{}
-
-func (d defaultLogger) Report(event ConnLogKind, conn *Connection, v ...interface{}) {
-	switch event {
-	case LogReconnectFailed:
-		reconnects := v[0].(uint)
-		err := v[1].(error)
-		addr := conn.Addr()
-		if addr == nil {
-			log.Printf("tarantool: connect (%d/%d) failed: %s",
-				reconnects, conn.opts.MaxReconnects, err)
-		} else {
-			log.Printf("tarantool: reconnect (%d/%d) to %s failed: %s",
-				reconnects, conn.opts.MaxReconnects, addr, err)
-		}
-	case LogLastReconnectFailed:
-		err := v[0].(error)
-		addr := conn.Addr()
-		if addr == nil {
-			log.Printf("tarantool: last connect failed: %s, giving it up",
-				err)
-		} else {
-			log.Printf("tarantool: last reconnect to %s failed: %s, giving it up",
-				addr, err)
-		}
-	case LogUnexpectedResultId:
-		header := v[0].(Header)
-		log.Printf("tarantool: connection %s got unexpected request ID (%d) in response "+
-			"(probably cancelled request)",
-			conn.Addr(), header.RequestId)
-	case LogWatchEventReadFailed:
-		err := v[0].(error)
-		log.Printf("tarantool: unable to parse watch event: %s", err)
-	case LogBoxSessionPushUnsupported:
-		header := v[0].(Header)
-		log.Printf("tarantool: unsupported box.session.push() for request %d", header.RequestId)
-	default:
-		args := append([]interface{}{"tarantool: unexpected event ", event, conn}, v...)
-		log.Print(args...)
-	}
-}
 
 // Connection is a handle with a single connection to a Tarantool instance.
 //
@@ -369,7 +308,7 @@ func Connect(ctx context.Context, dialer Dialer, opts Opts) (conn *Connection, e
 	}
 
 	if conn.opts.Logger == nil {
-		conn.opts.Logger = defaultLogger{}
+		conn.opts.Logger = NewSlogLogger(slog.Default())
 	}
 
 	conn.cond = sync.NewCond(&conn.mutex)
@@ -408,6 +347,28 @@ func Connect(ctx context.Context, dialer Dialer, opts Opts) (conn *Connection, e
 	}
 
 	return conn, err
+}
+
+func (conn *Connection) logEvent(event LogEvent) {
+	if conn.opts.Logger != nil {
+		conn.opts.Logger.Report(event, conn)
+	}
+}
+
+func (conn *Connection) stateToString() string {
+	state := atomic.LoadUint32(&conn.state)
+	switch state {
+	case connDisconnected:
+		return "disconnected"
+	case connConnected:
+		return "connected"
+	case connShutdown:
+		return "shutdown"
+	case connClosed:
+		return "closed"
+	default:
+		return "unknown"
+	}
 }
 
 // ConnectedNow reports if connection is established at the moment.
@@ -583,6 +544,10 @@ func (conn *Connection) connect(ctx context.Context) error {
 	var err error
 	if conn.c == nil && conn.state == connDisconnected {
 		if err = conn.dial(ctx); err == nil {
+
+			conn.logEvent(ConnectedEvent{
+				baseEvent: newBaseEvent(conn.addr),
+			})
 			conn.notify(Connected)
 			return nil
 		}
@@ -596,6 +561,7 @@ func (conn *Connection) connect(ctx context.Context) error {
 func (conn *Connection) closeConnection(neterr error, forever bool) (err error) {
 	conn.lockShards()
 	defer conn.unlockShards()
+
 	if forever {
 		if conn.state != connClosed {
 			close(conn.control)
@@ -606,11 +572,18 @@ func (conn *Connection) closeConnection(neterr error, forever bool) (err error) 
 				go conn.shutdownWatcher.Unregister()
 				conn.shutdownWatcher = nil
 			}
+			conn.logEvent(ClosedEvent{
+				baseEvent: newBaseEvent(conn.addr),
+			})
 			conn.notify(Closed)
 		}
 	} else {
 		atomic.StoreUint32(&conn.state, connDisconnected)
 		conn.cond.Broadcast()
+		conn.logEvent(DisconnectedEvent{
+			baseEvent: newBaseEvent(conn.addr),
+			Reason:    neterr,
+		})
 		conn.notify(Disconnected)
 	}
 	if conn.c != nil {
@@ -674,23 +647,29 @@ func (conn *Connection) runReconnects(ctx context.Context) error {
 			return nil
 		}
 
-		conn.opts.Logger.Report(LogReconnectFailed, conn, reconnects, err)
+		conn.logEvent(ConnectionFailedEvent{
+			baseEvent: newBaseEvent(conn.addr),
+			Error:     err,
+		})
 		conn.notify(ReconnectFailed)
 		reconnects++
 		conn.mutex.Unlock()
 
 		select {
 		case <-ctx.Done():
-			// Since the context is cancelled, we don't need to do anything.
-			// Conn.connect() will return the correct error.
+		// Since the context is cancelled, we don't need to do anything.
+		// Conn.connect() will return the correct error.
 		case <-t.C:
 		}
 
 		conn.mutex.Lock()
 	}
 
-	conn.opts.Logger.Report(LogLastReconnectFailed, conn, err)
-	// mark connection as closed to avoid reopening by another goroutine
+	conn.logEvent(ConnectionFailedEvent{
+		baseEvent: newBaseEvent(conn.addr),
+		Error:     err,
+	})
+
 	return ClientError{ErrConnectionClosed, "last reconnect failed"}
 }
 
@@ -880,11 +859,17 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 					ErrProtocolError,
 					fmt.Sprintf("failed to decode IPROTO_EVENT: %s", err),
 				}
-				conn.opts.Logger.Report(LogWatchEventReadFailed, conn, err)
+				conn.logEvent(WatchEventReadFailedEvent{
+					baseEvent: newBaseEvent(conn.addr),
+					Error:     err,
+				})
 			}
 			continue
 		} else if code == iproto.IPROTO_CHUNK {
-			conn.opts.Logger.Report(LogBoxSessionPushUnsupported, conn, header)
+			conn.logEvent(BoxSessionPushUnsupportedEvent{
+				baseEvent: newBaseEvent(conn.addr),
+				RequestId: header.RequestId,
+			})
 		} else {
 			if fut = conn.fetchFuture(header.RequestId); fut != nil {
 				if err := fut.setResponse(header, &buf); err != nil {
@@ -895,7 +880,10 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 		}
 
 		if fut == nil {
-			conn.opts.Logger.Report(LogUnexpectedResultId, conn, header)
+			conn.logEvent(UnexpectedResultIdEvent{
+				baseEvent: newBaseEvent(conn.addr),
+				RequestId: header.RequestId,
+			})
 		}
 	}
 }
@@ -1174,6 +1162,12 @@ func (conn *Connection) timeouts() {
 					})
 					conn.markDone(fut)
 					shard.bufmut.Unlock()
+
+					conn.logEvent(TimeoutEvent{
+						baseEvent: newBaseEvent(conn.addr),
+						RequestId: fut.requestId,
+						Timeout:   timeout,
+					})
 				}
 				if pair.first != nil && pair.first.timeout < minNext {
 					minNext = pair.first.timeout
