@@ -11,6 +11,7 @@ type Future interface {
 	Get() ([]interface{}, error)
 	GetTyped(result interface{}) error
 	GetResponse() (Response, error)
+	Release()
 	WaitChan() <-chan struct{}
 }
 
@@ -187,4 +188,12 @@ func (fut *future) WaitChan() <-chan struct{} {
 	}
 
 	return fut.done
+}
+
+// Release is freeing the Future resources.
+// After this, using this Future becomes invalid.
+func (fut *future) Release() {
+	if fut.resp != nil {
+		fut.resp.Release()
+	}
 }

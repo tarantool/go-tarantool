@@ -481,6 +481,7 @@ func identify(ctx context.Context, conn Conn) (ProtocolInfo, error) {
 		}
 		return info, err
 	}
+	defer resp.Release()
 	data, err := resp.Decode()
 	if err != nil {
 		return info, err
@@ -536,6 +537,7 @@ func checkProtocolInfo(required ProtocolInfo, actual ProtocolInfo) error {
 func authenticate(ctx context.Context, c Conn, auth Auth, user, pass, salt string) error {
 	var req Request
 	var err error
+	var resp Response
 
 	switch auth {
 	case ChapSha1Auth:
@@ -552,9 +554,10 @@ func authenticate(ctx context.Context, c Conn, auth Auth, user, pass, salt strin
 	if err = writeRequest(ctx, c, req); err != nil {
 		return err
 	}
-	if _, err = readResponse(ctx, c, req); err != nil {
+	if resp, err = readResponse(ctx, c, req); err != nil {
 		return err
 	}
+	resp.Release()
 	return nil
 }
 
