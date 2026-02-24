@@ -358,7 +358,7 @@ func (p *ConnectionPool) Remove(name string) error {
 	return nil
 }
 
-func (p *ConnectionPool) waitClose() []error {
+func (p *ConnectionPool) waitClose() error {
 	p.endsMutex.RLock()
 	endpoints := make([]*endpoint, 0, len(p.ends))
 	for _, e := range p.ends {
@@ -373,11 +373,12 @@ func (p *ConnectionPool) waitClose() []error {
 			errs = append(errs, e.closeErr)
 		}
 	}
-	return errs
+
+	return errors.Join(errs...)
 }
 
 // Close closes connections in the ConnectionPool.
-func (p *ConnectionPool) Close() []error {
+func (p *ConnectionPool) Close() error {
 	if p.state.cas(connectedState, closedState) ||
 		p.state.cas(shutdownState, closedState) {
 		p.endsMutex.RLock()
@@ -393,7 +394,7 @@ func (p *ConnectionPool) Close() []error {
 
 // CloseGraceful closes connections in the ConnectionPool gracefully. It waits
 // for all requests to complete.
-func (p *ConnectionPool) CloseGraceful() []error {
+func (p *ConnectionPool) CloseGraceful() error {
 	if p.state.cas(connectedState, shutdownState) {
 		p.endsMutex.RLock()
 		for _, s := range p.ends {

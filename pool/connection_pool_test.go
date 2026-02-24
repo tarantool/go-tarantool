@@ -748,13 +748,14 @@ func TestAdd_CloseGraceful_concurrent(t *testing.T) {
 		ctx, cancel = test_helpers.GetConnectContext()
 		defer cancel()
 
-		err = connPool.Add(ctx, makeInstance(serv1, connOpts))
+		err := connPool.Add(ctx, makeInstance(serv1, connOpts))
 		if err != nil {
 			assert.Equal(t, pool.ErrClosed, err)
 		}
 	}()
 
-	connPool.CloseGraceful()
+	err = connPool.CloseGraceful()
+	require.NoError(t, err)
 
 	wg.Wait()
 }
@@ -927,11 +928,12 @@ func TestRemove_CloseGraceful_concurrent(t *testing.T) {
 	go func() {
 		defer wg.Done()
 
-		err = connPool.Remove(servers[1])
+		err := connPool.Remove(servers[1])
 		assert.Nil(t, err)
 	}()
 
-	connPool.CloseGraceful()
+	err = connPool.CloseGraceful()
+	require.NoError(t, err)
 
 	wg.Wait()
 }
@@ -1012,7 +1014,8 @@ func TestCloseGraceful(t *testing.T) {
 	req := tarantool.NewEvalRequest(eval).Args([]interface{}{evalSleep})
 	fut := connPool.Do(req, pool.ANY)
 	go func() {
-		connPool.CloseGraceful()
+		err := connPool.CloseGraceful()
+		require.NoError(t, err)
 	}()
 
 	// Check that a request rejected if graceful shutdown in progress.
