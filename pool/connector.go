@@ -36,13 +36,15 @@ func (c *ConnectorAdapter) ConnectedNow() bool {
 // in the specified mode closed.
 func (c *ConnectorAdapter) Close() error {
 	errs := c.pool.Close()
-	if len(errs) == 0 {
+	if errs == nil {
 		return nil
 	}
 
 	err := errors.New("failed to close connection pool")
-	for _, e := range errs {
-		err = fmt.Errorf("%s: %w", err.Error(), e)
+	if closeErrs, ok := errs.(interface{ Unwrap() []error }); ok {
+		for _, e := range closeErrs.Unwrap() {
+			err = fmt.Errorf("%s: %w", err.Error(), e)
+		}
 	}
 	return err
 }

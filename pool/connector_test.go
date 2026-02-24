@@ -57,10 +57,10 @@ type closeMock struct {
 	retErr bool
 }
 
-func (m *closeMock) Close() []error {
+func (m *closeMock) Close() error {
 	m.called++
 	if m.retErr {
-		return []error{errors.New("err1"), errors.New("err2")}
+		return errors.Join(errors.New("err1"), errors.New("err2"))
 	}
 	return nil
 }
