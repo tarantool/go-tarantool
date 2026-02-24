@@ -33,6 +33,7 @@ TODO
   ```
 * Future.done replaced with Future.cond (sync.Cond) + Future.finished bool.
 * `Future` is an interface now.
+* `ConnectionPool.Close()` returns a single error value, combining multiple errors using errors.Join()
 
 ## Migration from v1.x.x to v2.x.x
 

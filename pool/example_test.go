@@ -454,9 +454,14 @@ func ExampleConnectionPool_CloseGraceful_force() {
 
 	done := make(chan struct{})
 	go func() {
-		connPool.CloseGraceful()
+		defer close(done)
+
+		err := connPool.CloseGraceful()
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
 		fmt.Println("ConnectionPool.CloseGraceful() done!")
-		close(done)
 	}()
 
 	select {
