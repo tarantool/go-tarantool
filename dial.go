@@ -481,6 +481,7 @@ func identify(ctx context.Context, conn Conn) (ProtocolInfo, error) {
 		}
 		return info, err
 	}
+	defer resp.Release()
 	data, err := resp.Decode()
 	if err != nil {
 		return info, err
@@ -536,6 +537,7 @@ func checkProtocolInfo(required ProtocolInfo, actual ProtocolInfo) error {
 func authenticate(ctx context.Context, c Conn, auth Auth, user, pass, salt string) error {
 	var req Request
 	var err error
+	var resp Response
 
 	switch auth {
 	case ChapSha1Auth:
@@ -552,9 +554,10 @@ func authenticate(ctx context.Context, c Conn, auth Auth, user, pass, salt strin
 	if err = writeRequest(ctx, c, req); err != nil {
 		return err
 	}
-	if _, err = readResponse(ctx, c, req); err != nil {
+	if resp, err = readResponse(ctx, c, req); err != nil {
 		return err
 	}
+	resp.Release()
 	return nil
 }
 
@@ -620,17 +623,17 @@ func readResponse(ctx context.Context, conn Conn, req Request) (Response, error)
 		return nil, fmt.Errorf("read error: %w", err)
 	}
 
-	buf := smallBuf{b: respBytes}
+	buf := &smallBuf{b: *respBytes, p: 0}
 
-	d := getDecoder(&buf)
+	d := getDecoder(buf)
 	defer putDecoder(d)
 
-	header, _, err := decodeHeader(d, &buf)
+	header, _, err := decodeHeader(d, buf)
 	if err != nil {
 		return nil, fmt.Errorf("decode response header error: %w", err)
 	}
 
-	resp, err := req.Response(header, &buf)
+	resp, err := req.Response(header, buf)
 	if err != nil {
 		return nil, fmt.Errorf("creating response error: %w", err)
 	}
