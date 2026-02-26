@@ -19,10 +19,10 @@ type Pooler interface {
 	TopologyEditor
 
 	ConnectedNow(mode Mode) (bool, error)
-	Close() []error
+	Close() error
 	// CloseGraceful closes connections in the ConnectionPool gracefully. It waits
 	// for all requests to complete.
-	CloseGraceful() []error
+	CloseGraceful() error
 	ConfiguredTimeout(mode Mode) (time.Duration, error)
 	NewPrepared(expr string, mode Mode) (*tarantool.Prepared, error)
 	NewStream(mode Mode) (*tarantool.Stream, error)
