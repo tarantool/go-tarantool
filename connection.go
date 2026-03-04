@@ -8,7 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"math"
 	"net"
 	"runtime"
@@ -22,17 +22,10 @@ import (
 
 const requestsMap = 128
 const ignoreStreamId = 0
-const (
-	connDisconnected = 0
-	connConnected    = 1
-	connShutdown     = 2
-	connClosed       = 3
-)
 
 const shutdownEventKey = "box.shutdown"
 
 type ConnEventKind int
-type ConnLogKind int
 
 var (
 	errUnknownRequest = errors.New("the passed connected request doesn't belong " +
@@ -50,20 +43,33 @@ const (
 	Shutdown
 	// Either reconnect attempts exhausted, or explicit Close is called.
 	Closed
-
-	// LogReconnectFailed is logged when reconnect attempt failed.
-	LogReconnectFailed ConnLogKind = iota + 1
-	// LogLastReconnectFailed is logged when last reconnect attempt failed,
-	// connection will be closed after that.
-	LogLastReconnectFailed
-	// LogUnexpectedResultId is logged when response with unknown id was received.
-	// Most probably it is due to request timeout.
-	LogUnexpectedResultId
-	// LogWatchEventReadFailed is logged when failed to read a watch event.
-	LogWatchEventReadFailed
-	// LogBoxSessionPushUnsupported is logged when response type turned IPROTO_CHUNK.
-	LogBoxSessionPushUnsupported
 )
+
+// ConnectionState represents the state of a connection.
+type ConnectionState uint32
+
+const (
+	StateDisconnected ConnectionState = iota
+	StateConnected
+	StateShutdown
+	StateClosed
+)
+
+// String implements fmt.Stringer.
+func (s ConnectionState) String() string {
+	switch s {
+	case StateDisconnected:
+		return "disconnected"
+	case StateConnected:
+		return "connected"
+	case StateShutdown:
+		return "shutdown"
+	case StateClosed:
+		return "closed"
+	default:
+		return "unknown"
+	}
+}
 
 // ConnEvent is sent throw Notify channel specified in Opts.
 type ConnEvent struct {
@@ -79,53 +85,6 @@ type connWatchEvent struct {
 }
 
 var epoch = time.Now()
-
-// Logger is logger type expected to be passed in options.
-type Logger interface {
-	Report(event ConnLogKind, conn *Connection, v ...interface{})
-}
-
-type defaultLogger struct{}
-
-func (d defaultLogger) Report(event ConnLogKind, conn *Connection, v ...interface{}) {
-	switch event {
-	case LogReconnectFailed:
-		reconnects := v[0].(uint)
-		err := v[1].(error)
-		addr := conn.Addr()
-		if addr == nil {
-			log.Printf("tarantool: connect (%d/%d) failed: %s",
-				reconnects, conn.opts.MaxReconnects, err)
-		} else {
-			log.Printf("tarantool: reconnect (%d/%d) to %s failed: %s",
-				reconnects, conn.opts.MaxReconnects, addr, err)
-		}
-	case LogLastReconnectFailed:
-		err := v[0].(error)
-		addr := conn.Addr()
-		if addr == nil {
-			log.Printf("tarantool: last connect failed: %s, giving it up",
-				err)
-		} else {
-			log.Printf("tarantool: last reconnect to %s failed: %s, giving it up",
-				addr, err)
-		}
-	case LogUnexpectedResultId:
-		header := v[0].(Header)
-		log.Printf("tarantool: connection %s got unexpected request ID (%d) in response "+
-			"(probably cancelled request)",
-			conn.Addr(), header.RequestId)
-	case LogWatchEventReadFailed:
-		err := v[0].(error)
-		log.Printf("tarantool: unable to parse watch event: %s", err)
-	case LogBoxSessionPushUnsupported:
-		header := v[0].(Header)
-		log.Printf("tarantool: unsupported box.session.push() for request %d", header.RequestId)
-	default:
-		args := append([]interface{}{"tarantool: unexpected event ", event, conn}, v...)
-		log.Print(args...)
-	}
-}
 
 // Connection is a handle with a single connection to a Tarantool instance.
 //
@@ -369,7 +328,7 @@ func Connect(ctx context.Context, dialer Dialer, opts Opts) (conn *Connection, e
 	}
 
 	if conn.opts.Logger == nil {
-		conn.opts.Logger = defaultLogger{}
+		conn.opts.Logger = NewSlogLogger(slog.Default())
 	}
 
 	conn.cond = sync.NewCond(&conn.mutex)
@@ -410,14 +369,21 @@ func Connect(ctx context.Context, dialer Dialer, opts Opts) (conn *Connection, e
 	return conn, err
 }
 
+func (conn *Connection) logEvent(event LogEvent) {
+	if conn.opts.Logger != nil {
+		event = event.WithBaseEvent(conn.addr)
+		conn.opts.Logger.Report(event, conn)
+	}
+}
+
 // ConnectedNow reports if connection is established at the moment.
 func (conn *Connection) ConnectedNow() bool {
-	return atomic.LoadUint32(&conn.state) == connConnected
+	return ConnectionState(atomic.LoadUint32(&conn.state)) == StateConnected
 }
 
 // ClosedNow reports if connection is closed by user or after reconnect.
 func (conn *Connection) ClosedNow() bool {
-	return atomic.LoadUint32(&conn.state) == connClosed
+	return ConnectionState(atomic.LoadUint32(&conn.state)) == StateClosed
 }
 
 // Close closes Connection.
@@ -507,7 +473,7 @@ func (conn *Connection) dial(ctx context.Context) error {
 	// Only if connected and fully initialized.
 	conn.lockShards()
 	conn.c = c
-	atomic.StoreUint32(&conn.state, connConnected)
+	atomic.StoreUint32(&conn.state, uint32(StateConnected))
 	conn.cond.Broadcast()
 	conn.unlockShards()
 	go conn.writer(c, c)
@@ -581,13 +547,15 @@ func pack(h *smallWBuf, enc *msgpack.Encoder, reqid uint32,
 
 func (conn *Connection) connect(ctx context.Context) error {
 	var err error
-	if conn.c == nil && conn.state == connDisconnected {
+	if conn.c == nil && ConnectionState(atomic.LoadUint32(&conn.state)) == StateDisconnected {
 		if err = conn.dial(ctx); err == nil {
+
+			conn.logEvent(ConnectedEvent{})
 			conn.notify(Connected)
 			return nil
 		}
 	}
-	if conn.state == connClosed {
+	if ConnectionState(atomic.LoadUint32(&conn.state)) == StateClosed {
 		err = ClientError{ErrConnectionClosed, "using closed connection"}
 	}
 	return err
@@ -596,21 +564,26 @@ func (conn *Connection) connect(ctx context.Context) error {
 func (conn *Connection) closeConnection(neterr error, forever bool) (err error) {
 	conn.lockShards()
 	defer conn.unlockShards()
+
 	if forever {
-		if conn.state != connClosed {
+		if ConnectionState(atomic.LoadUint32(&conn.state)) != StateClosed {
 			close(conn.control)
-			atomic.StoreUint32(&conn.state, connClosed)
+			atomic.StoreUint32(&conn.state, uint32(StateClosed))
 			conn.cond.Broadcast()
 			// Free the resources.
 			if conn.shutdownWatcher != nil {
 				go conn.shutdownWatcher.Unregister()
 				conn.shutdownWatcher = nil
 			}
+			conn.logEvent(ClosedEvent{})
 			conn.notify(Closed)
 		}
 	} else {
-		atomic.StoreUint32(&conn.state, connDisconnected)
+		atomic.StoreUint32(&conn.state, uint32(StateDisconnected))
 		conn.cond.Broadcast()
+		conn.logEvent(DisconnectedEvent{
+			Reason: neterr,
+		})
 		conn.notify(Disconnected)
 	}
 	if conn.c != nil {
@@ -674,7 +647,9 @@ func (conn *Connection) runReconnects(ctx context.Context) error {
 			return nil
 		}
 
-		conn.opts.Logger.Report(LogReconnectFailed, conn, reconnects, err)
+		conn.logEvent(ConnectionFailedEvent{
+			Error: err,
+		})
 		conn.notify(ReconnectFailed)
 		reconnects++
 		conn.mutex.Unlock()
@@ -689,8 +664,10 @@ func (conn *Connection) runReconnects(ctx context.Context) error {
 		conn.mutex.Lock()
 	}
 
-	conn.opts.Logger.Report(LogLastReconnectFailed, conn, err)
-	// mark connection as closed to avoid reopening by another goroutine
+	conn.logEvent(ConnectionFailedEvent{
+		Error: err,
+	})
+
 	return ClientError{ErrConnectionClosed, "last reconnect failed"}
 }
 
@@ -757,7 +734,7 @@ func (conn *Connection) notify(kind ConnEventKind) {
 func (conn *Connection) writer(w writeFlusher, c Conn) {
 	var shardn uint32
 	var packet smallWBuf
-	for atomic.LoadUint32(&conn.state) != connClosed {
+	for ConnectionState(atomic.LoadUint32(&conn.state)) != StateClosed {
 		select {
 		case shardn = <-conn.dirtyShard:
 		default:
@@ -850,7 +827,7 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 
 	go conn.eventer(events)
 
-	for atomic.LoadUint32(&conn.state) != connClosed {
+	for ConnectionState(atomic.LoadUint32(&conn.state)) != StateClosed {
 		respBytes, err := read(r, conn.lenbuf[:])
 		if err != nil {
 			err = ClientError{
@@ -880,11 +857,15 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 					ErrProtocolError,
 					fmt.Sprintf("failed to decode IPROTO_EVENT: %s", err),
 				}
-				conn.opts.Logger.Report(LogWatchEventReadFailed, conn, err)
+				conn.logEvent(WatchEventReadFailedEvent{
+					Error: err,
+				})
 			}
 			continue
 		} else if code == iproto.IPROTO_CHUNK {
-			conn.opts.Logger.Report(LogBoxSessionPushUnsupported, conn, header)
+			conn.logEvent(BoxSessionPushUnsupportedEvent{
+				RequestId: header.RequestId,
+			})
 		} else {
 			if fut = conn.fetchFuture(header.RequestId); fut != nil {
 				if err := fut.setResponse(header, &buf); err != nil {
@@ -895,7 +876,9 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 		}
 
 		if fut == nil {
-			conn.opts.Logger.Report(LogUnexpectedResultId, conn, header)
+			conn.logEvent(UnexpectedResultIdEvent{
+				RequestId: header.RequestId,
+			})
 		}
 	}
 }
@@ -944,8 +927,8 @@ func (conn *Connection) newFuture(req Request) (fut *future) {
 	shardn := fut.requestId & (conn.opts.Concurrency - 1)
 	shard := &conn.shard[shardn]
 	shard.rmut.Lock()
-	switch atomic.LoadUint32(&conn.state) {
-	case connClosed:
+	switch ConnectionState(atomic.LoadUint32(&conn.state)) {
+	case StateClosed:
 		fut.err = ClientError{
 			ErrConnectionClosed,
 			"using closed connection",
@@ -953,7 +936,7 @@ func (conn *Connection) newFuture(req Request) (fut *future) {
 		fut.finish()
 		shard.rmut.Unlock()
 		return
-	case connDisconnected:
+	case StateDisconnected:
 		fut.err = ClientError{
 			ErrConnectionNotReady,
 			"client connection is not ready",
@@ -961,7 +944,7 @@ func (conn *Connection) newFuture(req Request) (fut *future) {
 		fut.finish()
 		shard.rmut.Unlock()
 		return
-	case connShutdown:
+	case StateShutdown:
 		fut.err = ClientError{
 			ErrConnectionShutdown,
 			"server shutdown in progress",
@@ -1174,6 +1157,11 @@ func (conn *Connection) timeouts() {
 					})
 					conn.markDone(fut)
 					shard.bufmut.Unlock()
+
+					conn.logEvent(TimeoutEvent{
+						RequestId: fut.requestId,
+						Timeout:   timeout,
+					})
 				}
 				if pair.first != nil && pair.first.timeout < minNext {
 					minNext = pair.first.timeout
@@ -1551,7 +1539,7 @@ func (conn *Connection) shutdown(forever bool) error {
 	conn.mutex.Lock()
 	defer conn.mutex.Unlock()
 
-	if !atomic.CompareAndSwapUint32(&conn.state, connConnected, connShutdown) {
+	if !atomic.CompareAndSwapUint32(&conn.state, uint32(StateConnected), uint32(StateShutdown)) {
 		if forever {
 			err := ClientError{ErrConnectionClosed, "connection closed by client"}
 			return conn.closeConnection(err, true)
@@ -1568,9 +1556,12 @@ func (conn *Connection) shutdown(forever bool) error {
 	conn.cond.Broadcast()
 	conn.notify(Shutdown)
 
+	// Logging the shutdown event
+	conn.logEvent(ShutdownEvent{})
+
 	c := conn.c
 	for {
-		if (atomic.LoadUint32(&conn.state) != connShutdown) || (c != conn.c) {
+		if (ConnectionState(atomic.LoadUint32(&conn.state)) != StateShutdown) || (c != conn.c) {
 			return nil
 		}
 		if atomic.LoadInt64(&conn.requestCnt) == 0 {
