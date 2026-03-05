@@ -620,11 +620,12 @@ func (req *SelectRequest) Context(ctx context.Context) *SelectRequest {
 
 // Response creates a response for the SelectRequest.
 func (req *SelectRequest) Response(header Header, body io.Reader) (Response, error) {
-	baseResp, err := createBaseResponse(header, body)
+	SelectResp, err := createSelectResponse(header, body)
 	if err != nil {
 		return nil, err
 	}
-	return &SelectResponse{baseResponse: *baseResp}, nil
+
+	return SelectResp, nil
 }
 
 // InsertRequest helps you to create an insert request object for execution

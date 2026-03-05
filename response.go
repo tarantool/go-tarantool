@@ -34,20 +34,31 @@ type baseResponse struct {
 }
 
 func createBaseResponse(header Header, body io.Reader) (*baseResponse, error) {
+	resp := &baseResponse{}
 	if body == nil {
-		return &baseResponse{header: header}, nil
+		resp.header = header
+		return resp, nil
 	}
 	if buf, ok := body.(*smallBuf); ok {
-		return &baseResponse{header: header, buf: *buf}, nil
+		resp.header = header
+		resp.buf.b = buf.b
+		resp.buf.p = buf.p
+		resp.buf.ptr = buf.ptr
+		return resp, nil
 	}
 	data, err := io.ReadAll(body)
 	if err != nil {
-		return nil, err
+		return resp, err
 	}
-	return &baseResponse{header: header, buf: smallBuf{b: data}}, nil
+	resp.header = header
+	resp.buf.b = data
+	return resp, nil
 }
 
 func (resp *baseResponse) Release() {
+	if resp.buf.ptr != nil {
+		putSlice(resp.buf.ptr)
+	}
 	*resp = baseResponse{}
 }
 
@@ -674,6 +685,28 @@ func (resp *ExecuteResponse) DecodeTyped(res interface{}) error {
 
 func (resp *baseResponse) Header() Header {
 	return resp.header
+}
+
+func createSelectResponse(header Header, body io.Reader) (*SelectResponse, error) {
+	resp := &SelectResponse{}
+	if body == nil {
+		resp.header = header
+		return resp, nil
+	}
+	if buf, ok := body.(*smallBuf); ok {
+		resp.header = header
+		resp.buf.b = buf.b
+		resp.buf.p = buf.p
+		resp.buf.ptr = buf.ptr
+		return resp, nil
+	}
+	data, err := io.ReadAll(body)
+	if err != nil {
+		return resp, err
+	}
+	resp.header = header
+	resp.buf.b = data
+	return resp, nil
 }
 
 func (resp *SelectResponse) Release() {

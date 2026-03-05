@@ -6,8 +6,9 @@ import (
 )
 
 type smallBuf struct {
-	b []byte
-	p int
+	b   []byte
+	p   int
+	ptr *[]byte
 }
 
 func (s *smallBuf) Read(d []byte) (l int, err error) {
