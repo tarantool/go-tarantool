@@ -14,7 +14,8 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 * Added `box.MustNew` wrapper for `box.New` without an error (#448).
 * Added missing IPROTO feature flags to greeting negotiation
   (iproto.IPROTO_FEATURE_IS_SYNC, iproto.IPROTO_FEATURE_INSERT_ARROW) (#466).
-* Added Future.cond (sync.Cond) and Future.finished bool. Added Future.finish() marks Future as done (#496).
+* Added Future.cond (sync.Cond) and Future.finished bool. Added Future.finish()
+  marks Future as done (#496).
 * Added function String() for type datetime (#322).
 * New `Future` interface (#470).
 * Method `Release` for `Future` and `Response` interface that allows
@@ -26,17 +27,21 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 * `box.New` returns an error instead of panic (#448).
 * Now cases of `<-ctx.Done()` returns wrapped error provided by `ctx.Cause()`.
   Allows you compare it using `errors.Is/As` (#457).
-* Removed deprecated `pool` methods, related interfaces and tests are updated (#478).
+* Removed deprecated `pool` methods, related interfaces and tests are
+  updated (#478).
 * Removed deprecated `box.session.push()` support: Future.AppendPush()
-  and Future.GetIterator() methods, ResponseIterator and TimeoutResponseIterator types,
-  Future.pushes[], Future.ready (#480, #497).
+  and Future.GetIterator() methods, ResponseIterator and
+  TimeoutResponseIterator types, Future.pushes[], Future.ready (#480, #497).
 * `LogAppendPushFailed` replaced with `LogBoxSessionPushUnsupported` (#480).
-* Removed deprecated `Connection` methods, related interfaces and tests are updated (#479).
+* Removed deprecated `Connection` methods, related interfaces and tests are
+  updated (#479).
 * Replaced the use of optional types in crud with go-option library (#492).
-* Future.done replaced with Future.cond (sync.Cond) + Future.finished bool (#496).
-* `Future` transform into `future` that implements interface `Future` and become private,
-  `SetError` and `SetResponse` become private (#470).
-* `ConnectionPool.Close()` returns a single error value, combining multiple errors using errors.Join() (#540)
+* Future.done replaced with Future.cond (sync.Cond) + Future.finished
+  bool (#496).
+* `Future` transform into `future` that implements interface `Future` and
+  become private, `SetError` and `SetResponse` become private (#470).
+* `ConnectionPool.Close()` returns a single error value, combining multiple
+  errors using errors.Join() (#540)
 
 ### Fixed
 
@@ -50,15 +55,19 @@ branch.
 
 ## [v2.4.0] - 2025-07-11
 
-This release focuses on adding schema/user/session operations, synchronous transaction
-flag handling, and fixes watcher panic.
+This release focuses on adding schema/user/session operations, synchronous
+transaction flag handling, and fixes watcher panic.
 
 ### Added
 
-- Implemented all box.schema.user operations requests and sugar interface (#426).
-- Implemented box.session.su request and sugar interface only for current session granting (#426).
-- Defined `ErrConcurrentSchemaUpdate` constant for "concurrent schema update" error (#404).
-  Now you can check this error with `errors.Is(err, tarantool.ErrConcurrentSchemaUpdate)`.
+- Implemented all box.schema.user operations requests and sugar
+  interface (#426).
+- Implemented box.session.su request and sugar interface only for current
+  session granting (#426).
+- Defined `ErrConcurrentSchemaUpdate` constant for "concurrent schema update"
+  error (#404).
+  Now you can check this error with
+  `errors.Is(err, tarantool.ErrConcurrentSchemaUpdate)`.
 - Implemented support for `IPROTO_IS_SYNC` flag in stream transactions,
   added `IsSync(bool)` method for `BeginRequest`/`CommitRequest` (#447).
 
@@ -99,10 +108,11 @@ The patch releases fixes expected Connect() behavior and reduces allocations.
 
 ### Changed
 
-- Connect() now retry the connection if a failure occurs and opts.Reconnect > 0.
-  The number of attempts is equal to opts.MaxReconnects or unlimited if
-  opts.MaxReconnects == 0. Connect() blocks until a connection is established,
-  the context is cancelled, or the number of attempts is exhausted (#436).
+- Connect() now retry the connection if a failure occurs and
+  opts.Reconnect > 0. The number of attempts is equal to opts.MaxReconnects
+  or unlimited if opts.MaxReconnects == 0. Connect() blocks until a connection
+  is established, the context is cancelled, or the number of attempts is
+  exhausted (#436).
 
 ## [v2.3.0] - 2025-03-11
 
@@ -272,15 +282,15 @@ See the [migration guide](./MIGRATION.md) for more details.
   Add `ProtocolInfo()` function, which returns the server protocol info (#321).
 - `NewWatcher` checks the actual features of the server, rather than relying
   on the features provided by the user during connection creation (#321).
-- `pool.NewWatcher` does not create watchers for connections that do not support
-  it (#321).
+- `pool.NewWatcher` does not create watchers for connections that do not
+  support it (#321).
 - Rename `pool.GetPoolInfo` to `pool.GetInfo`. Change return type to
   `map[string]ConnectionInfo` (#321).
 - `Response` is now an interface (#237).
 - All responses are now implementations of the `Response` interface (#237).
-  `SelectResponse`, `ExecuteResponse`, `PrepareResponse`, `PushResponse` are part
-  of a public API. `Pos()`, `MetaData()`, `SQLInfo()` methods created for them
-  to get specific info.
+  `SelectResponse`, `ExecuteResponse`, `PrepareResponse`, `PushResponse` are
+  part of a public API. `Pos()`, `MetaData()`, `SQLInfo()` methods created for
+  them to get specific info.
   Special types of responses are used with special requests.
 - `IsPush()` method is added to the response iterator (#237). It returns
   the information if the current response is a `PushResponse`.
@@ -289,9 +299,9 @@ See the [migration guide](./MIGRATION.md) for more details.
   response new `GetResponse` method has been added. Methods `AppendPush` and
   `SetResponse` accept response `Header` and data as their arguments.
 - `Future` constructors now accept `Request` as their argument (#237).
-- Operations `Ping`, `Select`, `Insert`, `Replace`, `Delete`, `Update`, `Upsert`,
-  `Call`, `Call16`, `Call17`, `Eval`, `Execute` of a `Connector` and `Pooler`
-  return response data instead of an actual responses (#237).
+- Operations `Ping`, `Select`, `Insert`, `Replace`, `Delete`, `Update`,
+  `Upsert`, `Call`, `Call16`, `Call17`, `Eval`, `Execute` of a `Connector` and
+  `Pooler` return response data instead of an actual responses (#237).
 - Renamed `StrangerResponse` to `MockResponse` (#237).
 - `pool.Connect`, `pool.ConnetcWithOpts` and `pool.Add` use a new type
   `pool.Instance` to determinate connection options (#356).
