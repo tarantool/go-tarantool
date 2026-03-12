@@ -15,6 +15,10 @@ type Future interface {
 	WaitChan() <-chan struct{}
 }
 
+var futurePool = sync.Pool{
+	New: func() any { return &future{} },
+}
+
 // future is inner implementation of Future interface.
 type future struct {
 	requestId uint32
@@ -71,7 +75,7 @@ func NewFutureWithResponse(req Request, header Header, body io.Reader) (Future, 
 
 // newFuture creates a new empty future for a given Request.
 func newFuture(req Request) (fut *future) {
-	fut = &future{}
+	fut = futurePool.Get().(*future)
 	fut.done = nil
 	fut.finished = false
 	fut.cond.L = &fut.mutex
@@ -196,4 +200,7 @@ func (fut *future) Release() {
 	if fut.resp != nil {
 		fut.resp.Release()
 	}
+
+	*fut = future{}
+	futurePool.Put(fut)
 }
