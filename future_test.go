@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/tarantool/go-iproto"
 	. "github.com/tarantool/go-tarantool/v3"
 	"github.com/vmihailenco/msgpack/v5"
@@ -153,6 +155,49 @@ func TestFuture_Release(t *testing.T) {
 
 	fut.Release()
 	assert.True(t, mockResp.released)
+}
+
+func testFuturePoolRoundtrip(t *testing.T, data []byte) {
+	fut, err := NewFutureWithResponse(
+		&futureMockRequest{},
+		Header{},
+		bytes.NewReader(data),
+	)
+	require.NoError(t, err)
+
+	resp, err := fut.GetResponse()
+	require.NoError(t, err)
+
+	mockResp, ok := resp.(*futureMockResponse)
+	require.True(t, ok)
+
+	got, err := mockResp.Decode()
+	require.NoError(t, err)
+	assert.Equal(t, []byte{got[0].(byte), got[1].(byte)}, data)
+
+	fut.Release()
+}
+
+func TestFuture_PoolAllocations(t *testing.T) {
+	for i := range 100 {
+		testFuturePoolRoundtrip(t, []byte{byte(i >> 8), byte(i)})
+	}
+}
+
+func TestFuture_PoolAllocationsConcurrent(t *testing.T) {
+	var wg sync.WaitGroup
+
+	for i := range 100 {
+		wg.Add(1)
+
+		go func(i int) {
+			defer wg.Done()
+
+			testFuturePoolRoundtrip(t, []byte{byte(i >> 8), byte(i)})
+		}(i)
+	}
+
+	wg.Wait()
 }
 
 func BenchmarkFuture_Get(b *testing.B) {

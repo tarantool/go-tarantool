@@ -20,6 +20,8 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 * New `Future` interface (#470).
 * Method `Release` for `Future` and `Response` interface that allows
   to free used data directly by calling (#493).
+* Resources allocated for a `Future` object created by the `Connection` type
+  could be released with the `Future.Release()` call.
 
 ### Changed
 
