@@ -196,7 +196,7 @@ func (t *benchTuple) DecodeMsgpack(dec *msgpack.Decoder) error {
 	return nil
 }
 
-func BenchmarkSync_naive_with_custom_type(b *testing.B) {
+func BenchmarkSync_naive_with_custom_type_without_Release(b *testing.B) {
 	conn := test_helpers.ConnectWithValidation(b, dialer, opts)
 	defer conn.Close()
 
