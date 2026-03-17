@@ -849,7 +849,11 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 
 	go conn.eventer(events)
 
+	buf := smallBuf{}
+
 	for atomic.LoadUint32(&conn.state) != connClosed {
+		buf = smallBuf{}
+
 		respBytes, err := read(r, conn.lenbuf[:])
 		if err != nil {
 			err = ClientError{
@@ -860,9 +864,10 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 			return
 		}
 
-		buf := &smallBuf{b: *respBytes, ptr: respBytes}
+		buf.b = *respBytes
+		buf.ptr = respBytes
 
-		header, code, err := decodeHeader(conn.dec, buf)
+		header, code, err := decodeHeader(conn.dec, &buf)
 
 		if err != nil {
 			err = ClientError{
@@ -875,7 +880,7 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 
 		var fut *future = nil
 		if code == iproto.IPROTO_EVENT {
-			if event, err := readWatchEvent(buf); err == nil {
+			if event, err := readWatchEvent(&buf); err == nil {
 				events <- event
 			} else {
 				err = ClientError{
@@ -884,17 +889,28 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 				}
 				conn.opts.Logger.Report(LogWatchEventReadFailed, conn, err)
 			}
+
+			// Release buf.ptr.
+
 			continue
 		} else if code == iproto.IPROTO_CHUNK {
+
+			// Release buf.ptr.
+
 			conn.opts.Logger.Report(LogBoxSessionPushUnsupported, conn, header)
 		} else {
 			if fut = conn.fetchFuture(header.RequestId); fut != nil {
-				if err := fut.setResponse(header, buf); err != nil {
+				if err := fut.setResponse(header, &buf); err != nil {
+
+					// Release buf.ptr.
+
 					fut.setError(fmt.Errorf("failed to set response: %w", err))
 				}
 				conn.markDone(fut)
 			}
+			// else Release buf.ptr.
 		}
+		// else Release buf.ptr.
 
 		if fut == nil {
 			conn.opts.Logger.Report(LogUnexpectedResultId, conn, header)
