@@ -22,6 +22,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
   to free used data directly by calling (#493).
 * Resources allocated for a `Future` object created by the `Connection` type
   could be released with the `Future.Release()` call.
+* Added function String() for type interval (#322).
 
 ### Changed
 
