@@ -849,6 +849,32 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 
 	go conn.eventer(events)
 
+	type resp struct {
+		header Header
+		buf    smallBuf
+	}
+
+	resps := make(chan resp, 1024)
+	defer close(resps)
+
+	go func() {
+		var r resp
+
+		for r = range resps {
+			fut := conn.fetchFuture(r.header.RequestId)
+			if fut == nil {
+				conn.opts.Logger.Report(LogUnexpectedResultId, conn, r.header)
+
+				continue
+			}
+
+			if err := fut.setResponse(r.header, &r.buf); err != nil {
+				fut.setError(fmt.Errorf("failed to set response: %w", err))
+			}
+			conn.markDone(fut)
+		}
+	}()
+
 	buf := smallBuf{}
 
 	for atomic.LoadUint32(&conn.state) != connClosed {
@@ -874,7 +900,6 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 			return
 		}
 
-		var fut *future = nil
 		if code == iproto.IPROTO_EVENT {
 			if event, err := readWatchEvent(&buf); err == nil {
 				events <- event
@@ -889,16 +914,7 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 		} else if code == iproto.IPROTO_CHUNK {
 			conn.opts.Logger.Report(LogBoxSessionPushUnsupported, conn, header)
 		} else {
-			if fut = conn.fetchFuture(header.RequestId); fut != nil {
-				if err := fut.setResponse(header, &buf); err != nil {
-					fut.setError(fmt.Errorf("failed to set response: %w", err))
-				}
-				conn.markDone(fut)
-			}
-		}
-
-		if fut == nil {
-			conn.opts.Logger.Report(LogUnexpectedResultId, conn, header)
+			resps <- resp{header: header, buf: buf}
 		}
 	}
 }
