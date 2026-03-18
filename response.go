@@ -33,18 +33,21 @@ type baseResponse struct {
 	err          error
 }
 
-func createBaseResponse(header Header, body io.Reader) (*baseResponse, error) {
+func createBaseResponse(header Header, body io.Reader) (baseResponse, error) {
 	if body == nil {
-		return &baseResponse{header: header}, nil
+		return baseResponse{header: header}, nil
 	}
+
 	if buf, ok := body.(*smallBuf); ok {
-		return &baseResponse{header: header, buf: *buf}, nil
+		return baseResponse{header: header, buf: *buf}, nil
 	}
+
 	data, err := io.ReadAll(body)
 	if err != nil {
-		return nil, err
+		return baseResponse{}, err
 	}
-	return &baseResponse{header: header, buf: smallBuf{b: data}}, nil
+
+	return baseResponse{header: header, buf: smallBuf{b: data}}, nil
 }
 
 func (resp *baseResponse) Release() {
@@ -54,7 +57,7 @@ func (resp *baseResponse) Release() {
 // DecodeBaseResponse parse response header and body.
 func DecodeBaseResponse(header Header, body io.Reader) (Response, error) {
 	resp, err := createBaseResponse(header, body)
-	return resp, err
+	return &resp, err
 }
 
 // SelectResponse is used for the select requests.
