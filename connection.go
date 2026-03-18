@@ -849,6 +849,8 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 
 	go conn.eventer(events)
 
+	buf := smallBuf{}
+
 	for atomic.LoadUint32(&conn.state) != connClosed {
 		respBytes, err := read(r, conn.lenbuf[:])
 		if err != nil {
@@ -860,7 +862,7 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 			return
 		}
 
-		buf := smallBuf{b: respBytes}
+		buf = smallBuf{b: respBytes}
 		header, code, err := decodeHeader(conn.dec, &buf)
 
 		if err != nil {

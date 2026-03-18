@@ -236,6 +236,37 @@ func main() {
 Note that [traffic encryption](https://www.tarantool.io/en/doc/latest/enterprise/security/#encrypting-traffic)
 is only available in Tarantool Enterprise Edition 2.10 or newer.
 
+### Custom Requests
+
+You can implement custom request types by implementing the `Request` interface.
+This is useful when you need to send non-standard requests or implement custom
+response handling.
+
+#### Examples
+
+* **[Simple custom request][example-custom-request]** - demonstrates how to
+  implement a custom ping request using the `DecodeBaseResponse` helper.
+
+* **[Advanced custom request][example-custom-request-manual]** - shows how to
+  implement a custom select request with manual body encoding and response
+  decoding.
+
+* **[Typed decoding][example-custom-request-typed]** - demonstrates how to
+  implement `DecodeTyped` for custom response types.
+
+#### Important Notes
+
+When implementing the `Response` method:
+
+1. **Read all data immediately**: The `io.Reader` is only valid during the
+   `Response` method call. You must read all response data before returning.
+
+2. **Use helpers when possible**: `DecodeBaseResponse` handles the common case
+   and should be preferred unless you need custom response handling.
+
+3. **Memory management**: Call `Release()` on responses to free resources.
+   Custom implementations should clean up internal buffers.
+
 ## Migration guide
 
 You can review the changes between major versions in the
@@ -274,3 +305,6 @@ See feature comparison in the [documentation][tarantool-doc-connectors-compariso
 [tarantool-doc-box-space-url]: https://www.tarantool.io/en/doc/latest/reference/reference_lua/box_space/
 [godoc-opts-url]: https://pkg.go.dev/github.com/tarantool/go-tarantool/v3#Opts
 [tarantool-doc-connectors-comparison]: https://www.tarantool.io/en/doc/latest/book/connectors/#go-feature-comparison
+[example-custom-request]: https://pkg.go.dev/github.com/tarantool/go-tarantool/v3#example-Request-Response
+[example-custom-request-manual]: https://pkg.go.dev/github.com/tarantool/go-tarantool/v3#example-Request-Response-manual
+[example-custom-request-typed]: https://pkg.go.dev/github.com/tarantool/go-tarantool/v3#example-Request-Response-manualDecodeTyped
