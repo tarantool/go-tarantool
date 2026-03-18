@@ -277,6 +277,7 @@ func TestConn_ReadWrite(t *testing.T) {
 		conn.read = make(chan struct{})
 		conn.written = make(chan struct{})
 		conn.writeWgDelay = 1
+		conn.readWgDelay = 2
 		conn.readbuf.Write([]byte{
 			0xce, 0x00, 0x00, 0x00, 0x0a, // Length.
 			0x82, // Header map.
@@ -296,7 +297,6 @@ func TestConn_ReadWrite(t *testing.T) {
 	<-dialer.conn.written
 	dialer.conn.written = nil
 
-	dialer.conn.readWg.Done()
 	<-dialer.conn.read
 	<-dialer.conn.read
 
