@@ -3,6 +3,7 @@ package tarantool
 import (
 	"fmt"
 	"io"
+	"sync"
 
 	"github.com/tarantool/go-iproto"
 	"github.com/vmihailenco/msgpack/v5"
@@ -33,21 +34,27 @@ type baseResponse struct {
 	err          error
 }
 
-func createBaseResponse(header Header, body io.Reader) (baseResponse, error) {
+func createBaseResponse(header Header, body io.Reader) (*baseResponse, error) {
+	resp := &baseResponse{}
 	if body == nil {
-		return baseResponse{header: header}, nil
+		resp.header = header
+		return resp, nil
 	}
 
 	if buf, ok := body.(*smallBuf); ok {
-		return baseResponse{header: header, buf: *buf}, nil
+		resp.header = header
+		resp.buf.b = buf.b
+		resp.buf.p = buf.p
+		return resp, nil
 	}
 
 	data, err := io.ReadAll(body)
 	if err != nil {
-		return baseResponse{}, err
+		return nil, err
 	}
-
-	return baseResponse{header: header, buf: smallBuf{b: data}}, nil
+	resp.header = header
+	resp.buf.b = data
+	return resp, nil
 }
 
 func (resp *baseResponse) Release() {
@@ -57,7 +64,7 @@ func (resp *baseResponse) Release() {
 // DecodeBaseResponse parse response header and body.
 func DecodeBaseResponse(header Header, body io.Reader) (Response, error) {
 	resp, err := createBaseResponse(header, body)
-	return &resp, err
+	return resp, err
 }
 
 // SelectResponse is used for the select requests.
@@ -679,9 +686,39 @@ func (resp *baseResponse) Header() Header {
 	return resp.header
 }
 
+var selectResponsePool *sync.Pool = &sync.Pool{
+	New: func() interface{} {
+		return &SelectResponse{}
+	},
+}
+
+func createSelectResponse(header Header, body io.Reader) (*SelectResponse, error) {
+	resp := selectResponsePool.Get().(*SelectResponse)
+	if body == nil {
+		resp.header = header
+		return resp, nil
+	}
+	if buf, ok := body.(*smallBuf); ok {
+		resp.header = header
+		resp.buf.b = buf.b
+		resp.buf.p = buf.p
+		return resp, nil
+	}
+	data, err := io.ReadAll(body)
+	if err != nil {
+		resp.Release()
+		return nil, err
+	}
+	resp.header = header
+	resp.buf.b = data
+	return resp, nil
+}
+
 func (resp *SelectResponse) Release() {
 	resp.baseResponse.Release()
 	resp.pos = nil
+
+	selectResponsePool.Put(resp)
 }
 
 // Pos returns a position descriptor of the last selected tuple for the SelectResponse.
