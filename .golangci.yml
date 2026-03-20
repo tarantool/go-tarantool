@@ -1,0 +1,86 @@
+version: "2"
+
+formatters:
+  enable:
+    - goimports
+
+linters:
+  default: all
+  settings:
+    lll:
+      line-length: 100
+  exclusions:
+    rules:
+      - linters:
+          - lll
+        source: "^//go:generate "
+      - linters:
+          - lll
+        source: "https?://"
+  disable:
+    - containedctx
+    - contextcheck
+    - copyloopvar
+    - cyclop
+    - depguard
+    - dupl
+    - dupword
+    - embeddedstructfieldcheck
+    - err113
+    - errname
+    - errorlint
+    - exhaustive
+    - exhaustruct
+    - fatcontext
+    - forcetypeassert
+    - funcorder
+    - funlen
+    - gochecknoglobals
+    - gochecknoinits
+    - gocognit
+    - goconst
+    - gocyclo
+    - godoclint
+    - godox
+    - gosec
+    - gosmopolitan
+    - iface
+    - inamedparam
+    - interfacebloat
+    - intrange
+    - ireturn
+    - maintidx
+    - makezero
+    - mirror
+    - misspell
+    - mnd
+    - modernize
+    - nakedret
+    - nestif
+    - nilerr
+    - nilnil
+    - nlreturn
+    - noctx
+    - noinlineerr
+    - nolintlint
+    - nonamedreturns
+    - paralleltest
+    - perfsprint
+    - prealloc
+    - predeclared
+    - recvcheck
+    - revive
+    - staticcheck
+    - tparallel
+    - testableexamples
+    - testifylint
+    - testpackage
+    - thelper
+    - unparam
+    - unqueryvet
+    - varnamelen
+    - wastedassign
+    - whitespace
+    - wrapcheck
+    - wsl
+    - wsl_v5

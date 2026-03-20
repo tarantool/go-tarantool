@@ -77,7 +77,7 @@ func TestSelect(t *testing.T) {
 	}
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	id, uuidErr := uuid.Parse("c8f0fa1f-da29-438c-a040-393f1126ad39")
 	if uuidErr != nil {
@@ -114,7 +114,7 @@ func TestReplace(t *testing.T) {
 	}
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	id, uuidErr := uuid.Parse("64d22e4d-ac92-4a23-899a-e59f34af5479")
 	if uuidErr != nil {

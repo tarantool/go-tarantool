@@ -38,7 +38,7 @@ func findEmptyPort(port int) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	defer listener.Close()
+	defer func() { _ = listener.Close() }()
 
 	addr := listener.Addr().(*net.TCPAddr)
 	return addr.Port, nil
@@ -116,7 +116,7 @@ func (t *TCS) Stop() {
 		t.tb.Helper()
 	}
 	if t.conn != nil {
-		t.conn.Close()
+		_ = t.conn.Close()
 	}
 	test_helpers.StopTarantoolWithCleanup(t.inst)
 }

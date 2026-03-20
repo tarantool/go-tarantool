@@ -101,7 +101,8 @@ func (schema *Schema) DecodeMsgpack(d *msgpack.Decoder) error {
 		return err
 	}
 
-	if msgpackIsArray(code) {
+	switch {
+	case msgpackIsArray(code):
 		// Process empty schema case.
 		l, err = d.DecodeArrayLen()
 		if err != nil {
@@ -111,7 +112,7 @@ func (schema *Schema) DecodeMsgpack(d *msgpack.Decoder) error {
 			return fmt.Errorf("expected map or empty array, got non-empty array")
 		}
 		*schema = make(map[string]SpaceSchema, l)
-	} else if msgpackIsMap(code) {
+	case msgpackIsMap(code):
 		l, err := d.DecodeMapLen()
 		if err != nil {
 			return err
@@ -131,7 +132,7 @@ func (schema *Schema) DecodeMsgpack(d *msgpack.Decoder) error {
 
 			(*schema)[key] = spaceSchema
 		}
-	} else {
+	default:
 		return fmt.Errorf("unexpected code=%d decoding map or empty array", code)
 	}
 

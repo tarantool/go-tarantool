@@ -36,7 +36,7 @@ format:
 
 .PHONY: golangci-lint
 golangci-lint:
-	golangci-lint run --config=.golangci.yaml
+	golangci-lint run --max-same-issues 0 --max-issues-per-linter 100
 
 .PHONY: test
 test:

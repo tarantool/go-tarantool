@@ -4,7 +4,7 @@ import (
 	"sync/atomic"
 )
 
-// pool state
+// pool state.
 type state uint32
 
 const (

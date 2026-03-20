@@ -9,12 +9,12 @@ import (
 	"github.com/vmihailenco/msgpack/v5"
 )
 
-// PreparedID is a type for Prepared Statement ID
+// PreparedID is a type for Prepared Statement ID.
 type PreparedID uint64
 
-// Prepared is a type for handling prepared statements
+// Prepared is a type for handling prepared statements.
 //
-// Since 1.7.0
+// Since 1.7.0.
 type Prepared struct {
 	StatementID PreparedID
 	MetaData    []ColumnMetaData
@@ -109,7 +109,7 @@ func NewUnprepareRequest(stmt *Prepared) *UnprepareRequest {
 	return req
 }
 
-// Conn returns the Connection object the request belongs to
+// Conn returns the Connection object the request belongs to.
 func (req *UnprepareRequest) Conn() *Connection {
 	return req.stmt.Conn
 }
@@ -155,7 +155,7 @@ func NewExecutePreparedRequest(stmt *Prepared) *ExecutePreparedRequest {
 	return req
 }
 
-// Conn returns the Connection object the request belongs to
+// Conn returns the Connection object the request belongs to.
 func (req *ExecutePreparedRequest) Conn() *Connection {
 	return req.stmt.Conn
 }

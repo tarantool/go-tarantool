@@ -74,7 +74,7 @@ func ExampleConnectionPool_Do() {
 	if err != nil {
 		fmt.Println(err)
 	}
-	defer connPool.Close()
+	defer func() { _ = connPool.Close() }()
 
 	modes := []pool.Mode{
 		pool.ANY,
@@ -102,7 +102,7 @@ func ExampleConnectionPool_NewPrepared() {
 	if err != nil {
 		fmt.Println(err)
 	}
-	defer connPool.Close()
+	defer func() { _ = connPool.Close() }()
 
 	stmt, err := connPool.NewPrepared("SELECT 1", pool.ANY)
 	if err != nil {
@@ -130,7 +130,7 @@ func ExampleConnectionPool_NewWatcher() {
 	if err != nil {
 		fmt.Println(err)
 	}
-	defer connPool.Close()
+	defer func() { _ = connPool.Close() }()
 
 	callback := func(event tarantool.WatchEvent) {
 		fmt.Printf("event connection: %s\n", event.Conn.Addr())
@@ -175,7 +175,7 @@ func ExampleCommitRequest() {
 		fmt.Println(err)
 		return
 	}
-	defer connPool.Close()
+	defer func() { _ = connPool.Close() }()
 
 	// example pool has only one rw instance
 	stream, err := connPool.NewStream(pool.RW)
@@ -261,7 +261,7 @@ func ExampleRollbackRequest() {
 		fmt.Println(err)
 		return
 	}
-	defer connPool.Close()
+	defer func() { _ = connPool.Close() }()
 
 	stream, err := connPool.NewStream(pool.RW)
 	if err != nil {
@@ -346,7 +346,7 @@ func ExampleBeginRequest_TxnIsolation() {
 		fmt.Println(err)
 		return
 	}
-	defer connPool.Close()
+	defer func() { _ = connPool.Close() }()
 
 	stream, err := connPool.NewStream(pool.RW)
 	if err != nil {
@@ -422,7 +422,7 @@ func ExampleConnectorAdapter() {
 	if err != nil {
 		fmt.Println(err)
 	}
-	defer connPool.Close()
+	defer func() { _ = connPool.Close() }()
 
 	adapter := pool.NewConnectorAdapter(connPool, pool.RW)
 	var connector tarantool.Connector = adapter
@@ -468,7 +468,7 @@ func ExampleConnectionPool_CloseGraceful_force() {
 	case <-done:
 	case <-time.After(3 * time.Second):
 		fmt.Println("Force ConnectionPool.Close()!")
-		connPool.Close()
+		_ = connPool.Close()
 	}
 	<-done
 

@@ -103,7 +103,7 @@ func fillSearch(enc *msgpack.Encoder, spaceEnc spaceEncoder, indexEnc indexEncod
 	return enc.Encode(key)
 }
 
-// KeyValueBind is a type for encoding named SQL parameters
+// KeyValueBind is a type for encoding named SQL parameters.
 type KeyValueBind struct {
 	Key   string
 	Value interface{}
@@ -114,7 +114,7 @@ type KeyValueBind struct {
 //
 
 // this map is needed for caching names of struct fields in lower case
-// to avoid extra allocations in heap by calling strings.ToLower()
+// to avoid extra allocations in heap by calling strings.ToLower().
 var lowerCaseNames sync.Map
 
 func encodeSQLBind(enc *msgpack.Encoder, from interface{}) error {
@@ -504,7 +504,8 @@ func (req *SelectRequest) Key(key interface{}) *SelectRequest {
 // Note: default value is false.
 //
 // Requires Tarantool >= 2.11.
-// Since 1.11.0
+//
+// Since 1.11.0.
 func (req *SelectRequest) FetchPos(fetch bool) *SelectRequest {
 	req.fetchPos = fetch
 	return req
@@ -516,7 +517,8 @@ func (req *SelectRequest) FetchPos(fetch bool) *SelectRequest {
 // Note: default value in nil.
 //
 // Requires Tarantool >= 2.11.
-// Since 1.11.0
+//
+// Since 1.11.0.
 func (req *SelectRequest) After(after interface{}) *SelectRequest {
 	req.after = after
 	return req

@@ -142,13 +142,14 @@ func (space *Space) DecodeMsgpack(d *msgpack.Decoder) error {
 		if err != nil {
 			return err
 		}
-		if msgpackIsString(code) {
+		switch {
+		case msgpackIsString(code):
 			val, err := d.DecodeString()
 			if err != nil {
 				return err
 			}
 			space.Temporary = val == "temporary"
-		} else if msgpackIsMap(code) {
+		case msgpackIsMap(code):
 			mapLen, err := d.DecodeMapLen()
 			if err != nil {
 				return err
@@ -168,7 +169,7 @@ func (space *Space) DecodeMsgpack(d *msgpack.Decoder) error {
 					}
 				}
 			}
-		} else {
+		default:
 			return errors.New("unexpected schema format (space flags)")
 		}
 	}

@@ -80,7 +80,7 @@ var isNegative = [256]bool{
 //
 // - 0.340              - 3 digits
 //
-// - 0                  - 1 digit
+// - 0                  - 1 digit.
 func getNumberLength(buf string) int {
 	if len(buf) == 0 {
 		return 0

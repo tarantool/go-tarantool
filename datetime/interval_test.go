@@ -108,7 +108,7 @@ func TestIntervalTarantoolEncoding(t *testing.T) {
 	skipIfDatetimeUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	cases := []Interval{
 		{},
@@ -284,7 +284,7 @@ func TestIntervalString_FromTarantool(t *testing.T) {
 	skipIfDatetimeUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	testCases := []struct {
 		luaExpr  string

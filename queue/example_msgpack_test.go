@@ -66,7 +66,7 @@ func Example_simpleQueueCustomMsgPack() {
 		log.Fatalf("connection: %s", err)
 		return
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	cfg := queue.Cfg{
 		Temporary:   true,

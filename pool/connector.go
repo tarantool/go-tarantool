@@ -69,14 +69,15 @@ func (c *ConnectorAdapter) NewPrepared(expr string) (*tarantool.Prepared, error)
 // Since v. 2.10.0, Tarantool supports streams and interactive transactions over
 // them. To use interactive transactions, memtx_use_mvcc_engine box option
 // should be set to true.
-// Since 1.7.0
+//
+// Since 1.7.0.
 func (c *ConnectorAdapter) NewStream() (*tarantool.Stream, error) {
 	return c.pool.NewStream(c.mode)
 }
 
-// NewWatcher creates new Watcher object for the pool
+// NewWatcher creates new Watcher object for the pool.
 //
-// Since 1.10.0
+// Since 1.10.0.
 func (c *ConnectorAdapter) NewWatcher(key string,
 	callback tarantool.WatchCallback) (tarantool.Watcher, error) {
 	return c.pool.NewWatcher(key, callback, c.mode)

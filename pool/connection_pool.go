@@ -449,7 +449,8 @@ func (p *ConnectionPool) GetInfo() map[string]ConnectionInfo {
 //
 // Since v. 2.10.0, Tarantool supports streams and interactive transactions over them.
 // To use interactive transactions, memtx_use_mvcc_engine box option should be set to true.
-// Since 1.7.0
+//
+// Since 1.7.0.
 func (p *ConnectionPool) NewStream(userMode Mode) (*tarantool.Stream, error) {
 	conn, err := p.getNextConnection(userMode)
 	if err != nil {
@@ -483,7 +484,7 @@ func (p *ConnectionPool) NewPrepared(expr string, userMode Mode) (*tarantool.Pre
 // See:
 // https://www.tarantool.io/en/doc/latest/reference/reference_lua/box_events/#box-watchers
 //
-// Since 1.10.0
+// Since 1.10.0.
 func (p *ConnectionPool) NewWatcher(key string,
 	callback tarantool.WatchCallback, mode Mode) (tarantool.Watcher, error) {
 
@@ -512,7 +513,7 @@ func (p *ConnectionPool) NewWatcher(key string,
 			continue
 		}
 		if err := watcher.watch(conn); err != nil {
-			conn.Close()
+			_ = conn.Close()
 		}
 	}
 
@@ -756,7 +757,7 @@ func (p *ConnectionPool) updateConnection(e *endpoint) {
 			p.handlerDeactivated(e.name, e.conn, e.role)
 			opened := p.handlerDiscovered(e.name, e.conn, role)
 			if !opened {
-				e.conn.Close()
+				_ = e.conn.Close()
 				e.conn = nil
 				e.role = UnknownRole
 				return
@@ -766,7 +767,7 @@ func (p *ConnectionPool) updateConnection(e *endpoint) {
 			if p.state.get() != connectedState {
 				p.poolsMutex.Unlock()
 
-				e.conn.Close()
+				_ = e.conn.Close()
 				p.handlerDeactivated(e.name, e.conn, role)
 				e.conn = nil
 				e.role = UnknownRole
@@ -776,7 +777,7 @@ func (p *ConnectionPool) updateConnection(e *endpoint) {
 			if p.addConnection(e.name, e.conn, role) != nil {
 				p.poolsMutex.Unlock()
 
-				e.conn.Close()
+				_ = e.conn.Close()
 				p.handlerDeactivated(e.name, e.conn, role)
 				e.conn = nil
 				e.role = UnknownRole
@@ -790,7 +791,7 @@ func (p *ConnectionPool) updateConnection(e *endpoint) {
 		p.deleteConnection(e.name)
 		p.poolsMutex.Unlock()
 
-		e.conn.Close()
+		_ = e.conn.Close()
 		p.handlerDeactivated(e.name, e.conn, e.role)
 		e.conn = nil
 		e.role = UnknownRole
@@ -810,7 +811,7 @@ func (p *ConnectionPool) tryConnect(ctx context.Context, e *endpoint) error {
 
 	if p.state.get() != connectedState {
 		if err == nil {
-			conn.Close()
+			_ = conn.Close()
 		}
 
 		p.poolsMutex.Unlock()
@@ -822,7 +823,7 @@ func (p *ConnectionPool) tryConnect(ctx context.Context, e *endpoint) error {
 		p.poolsMutex.Unlock()
 
 		if err != nil {
-			conn.Close()
+			_ = conn.Close()
 			log.Printf("tarantool: storing connection to %s failed: %s\n",
 				e.name, err)
 			return err
@@ -830,21 +831,21 @@ func (p *ConnectionPool) tryConnect(ctx context.Context, e *endpoint) error {
 
 		opened := p.handlerDiscovered(e.name, conn, role)
 		if !opened {
-			conn.Close()
+			_ = conn.Close()
 			return errors.New("storing connection canceled")
 		}
 
 		p.poolsMutex.Lock()
 		if p.state.get() != connectedState {
 			p.poolsMutex.Unlock()
-			conn.Close()
+			_ = conn.Close()
 			p.handlerDeactivated(e.name, conn, role)
 			return ErrClosed
 		}
 
 		if err = p.addConnection(e.name, conn, role); err != nil {
 			p.poolsMutex.Unlock()
-			conn.Close()
+			_ = conn.Close()
 			p.handlerDeactivated(e.name, conn, role)
 			return err
 		}
@@ -911,7 +912,7 @@ func (p *ConnectionPool) controller(ctx context.Context, e *endpoint) {
 					close(e.closed)
 				} else {
 					// Force close the connection.
-					e.conn.Close()
+					_ = e.conn.Close()
 					// And wait for a finish.
 					<-e.closed
 				}
@@ -960,14 +961,15 @@ func (p *ConnectionPool) controller(ctx context.Context, e *endpoint) {
 					// Reopen connection.
 					// Relocate connection between subpools
 					// if ro/rw was updated.
-					if e.conn == nil {
+					switch {
+					case e.conn == nil:
 						if err := p.tryConnect(ctx, e); err != nil {
 							log.Printf("tarantool: reopen connection to %s failed: %s\n",
 								e.name, err)
 						}
-					} else if !e.conn.ClosedNow() {
+					case !e.conn.ClosedNow():
 						p.updateConnection(e)
-					} else {
+					default:
 						p.reconnect(ctx, e)
 					}
 				}

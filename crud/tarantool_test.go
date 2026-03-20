@@ -553,7 +553,7 @@ func testCrudRequestCheck(t *testing.T, req tarantool.Request,
 
 func TestCrudGenerateData(t *testing.T) {
 	conn := connect(t)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	for _, testCase := range testGenerateDataCases {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -582,7 +582,7 @@ func TestCrudGenerateData(t *testing.T) {
 
 func TestCrudProcessData(t *testing.T) {
 	conn := connect(t)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	for _, testCase := range testProcessDataCases {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -604,7 +604,7 @@ func TestCrudUpdateSplice(t *testing.T) {
 	test_helpers.SkipIfCrudSpliceBroken(t)
 
 	conn := connect(t)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	req := crud.MakeUpdateRequest(spaceName).
 		Key(key).
@@ -629,7 +629,7 @@ func TestCrudUpsertSplice(t *testing.T) {
 	test_helpers.SkipIfCrudSpliceBroken(t)
 
 	conn := connect(t)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	req := crud.MakeUpsertRequest(spaceName).
 		Tuple(tuple).
@@ -654,7 +654,7 @@ func TestCrudUpsertObjectSplice(t *testing.T) {
 	test_helpers.SkipIfCrudSpliceBroken(t)
 
 	conn := connect(t)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	req := crud.MakeUpsertObjectRequest(spaceName).
 		Object(object).
@@ -710,7 +710,7 @@ func TestUnflattenRows(t *testing.T) {
 	)
 
 	conn := connect(t)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Do `replace`.
 	req := crud.MakeReplaceRequest(spaceName).
@@ -769,7 +769,7 @@ func TestUnflattenRows(t *testing.T) {
 
 func TestResultWithErr(t *testing.T) {
 	conn := connect(t)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	for _, testCase := range testResultWithErrCases {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -784,7 +784,7 @@ func TestResultWithErr(t *testing.T) {
 
 func TestBoolResult(t *testing.T) {
 	conn := connect(t)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	req := crud.MakeTruncateRequest(spaceName).Opts(baseOpts)
 	resp := crud.TruncateResult{}
@@ -810,7 +810,7 @@ func TestBoolResult(t *testing.T) {
 
 func TestNumberResult(t *testing.T) {
 	conn := connect(t)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	req := crud.MakeCountRequest(spaceName).Opts(countOpts)
 	resp := crud.CountResult{}
@@ -854,7 +854,7 @@ func TestBaseResult(t *testing.T) {
 	}
 
 	conn := connect(t)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	req := crud.MakeSelectRequest(spaceName).Opts(selectOpts)
 	resp := crud.Result{}
@@ -900,7 +900,7 @@ func TestManyResult(t *testing.T) {
 	}
 
 	conn := connect(t)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	req := crud.MakeReplaceManyRequest(spaceName).Tuples(tuples).Opts(opManyOpts)
 	resp := crud.Result{}
@@ -928,7 +928,7 @@ func TestManyResult(t *testing.T) {
 
 func TestStorageInfoResult(t *testing.T) {
 	conn := connect(t)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	req := crud.MakeStorageInfoRequest().Opts(baseOpts)
 	resp := crud.StorageInfoResult{}
@@ -959,7 +959,7 @@ func TestStorageInfoResult(t *testing.T) {
 
 func TestGetAdditionalOpts(t *testing.T) {
 	conn := connect(t)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	req := crud.MakeGetRequest(spaceName).Key(key).Opts(crud.GetOpts{
 		Timeout:       option.SomeFloat64(1.1),
@@ -1131,7 +1131,7 @@ var testMetadataCases = []struct {
 
 func TestFetchLatestMetadataOption(t *testing.T) {
 	conn := connect(t)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	for _, testCase := range testMetadataCases {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -1286,7 +1286,7 @@ var testNoreturnCases = []struct {
 
 func TestNoreturnOption(t *testing.T) {
 	conn := connect(t)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	for _, testCase := range testNoreturnCases {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -1326,7 +1326,7 @@ func TestNoreturnOption(t *testing.T) {
 
 func TestNoreturnOptionTyped(t *testing.T) {
 	conn := connect(t)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	for _, testCase := range testNoreturnCases {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -1438,7 +1438,7 @@ func getTestSchema(t *testing.T) crud.Schema {
 
 func TestSchemaTyped(t *testing.T) {
 	conn := connect(t)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	req := crud.MakeSchemaRequest()
 	var result crud.SchemaResult
@@ -1450,7 +1450,7 @@ func TestSchemaTyped(t *testing.T) {
 
 func TestSpaceSchemaTyped(t *testing.T) {
 	conn := connect(t)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	req := crud.MakeSchemaRequest().Space("test")
 	var result crud.SpaceSchemaResult
@@ -1462,7 +1462,7 @@ func TestSpaceSchemaTyped(t *testing.T) {
 
 func TestSpaceSchemaTypedError(t *testing.T) {
 	conn := connect(t)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	req := crud.MakeSchemaRequest().Space("not_exist")
 	var result crud.SpaceSchemaResult
@@ -1476,7 +1476,7 @@ func TestUnitEmptySchema(t *testing.T) {
 	// We need to create another cluster with no spaces
 	// to test `{}` schema, so let's at least add a unit test.
 	conn := connect(t)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	req := tarantool.NewEvalRequest("return {}")
 	var result crud.SchemaResult
@@ -1508,7 +1508,7 @@ var testStorageYieldCases = []struct {
 
 func TestYieldEveryOption(t *testing.T) {
 	conn := connect(t)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	for _, testCase := range testStorageYieldCases {
 		t.Run(testCase.name, func(t *testing.T) {

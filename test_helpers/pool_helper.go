@@ -139,7 +139,7 @@ func InsertOnInstance(ctx context.Context, dialer tarantool.Dialer, connOpts tar
 	if conn == nil {
 		return fmt.Errorf("conn is nil after Connect")
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	data, err := conn.Do(tarantool.NewInsertRequest(space).Tuple(tuple)).Get()
 	if err != nil {
@@ -204,7 +204,7 @@ func SetInstanceRO(ctx context.Context, dialer tarantool.Dialer, connOpts tarant
 		return err
 	}
 
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	req := tarantool.NewCallRequest("box.cfg").
 		Args([]interface{}{map[string]bool{"read_only": isReplica}})

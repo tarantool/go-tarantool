@@ -102,7 +102,7 @@ func BenchmarkSync_naive(b *testing.B) {
 	var err error
 
 	conn := test_helpers.ConnectWithValidation(b, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	_, err = conn.Do(
 		NewReplaceRequest(spaceNo).
@@ -135,7 +135,7 @@ func BenchmarkSync_naive_with_single_request(b *testing.B) {
 	var err error
 
 	conn := test_helpers.ConnectWithValidation(b, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	_, err = conn.Do(
 		NewReplaceRequest(spaceNo).
@@ -198,7 +198,7 @@ func (t *benchTuple) DecodeMsgpack(dec *msgpack.Decoder) error {
 
 func BenchmarkSync_naive_with_custom_type(b *testing.B) {
 	conn := test_helpers.ConnectWithValidation(b, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	_, err := conn.Do(
 		NewReplaceRequest(spaceNo).
@@ -231,7 +231,7 @@ func BenchmarkSync_naive_with_custom_type(b *testing.B) {
 
 func BenchmarkSync_naive_with_custom_type_with_Release(b *testing.B) {
 	conn := test_helpers.ConnectWithValidation(b, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	_, err := conn.Do(
 		NewReplaceRequest(spaceNo).
@@ -267,7 +267,7 @@ func BenchmarkSync_multithread(b *testing.B) {
 	var err error
 
 	conn := test_helpers.ConnectWithValidation(b, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	_, err = conn.Do(
 		NewReplaceRequest(spaceNo).
@@ -304,7 +304,7 @@ func BenchmarkAsync_multithread_parallelism(b *testing.B) {
 	var err error
 
 	conn := test_helpers.ConnectWithValidation(b, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	_, err = conn.Do(
 		NewReplaceRequest(spaceNo).
@@ -359,7 +359,7 @@ func TestBenchmarkAsync(t *testing.T) {
 	conns := make([]*Connection, 0, connections)
 	for range connections {
 		conn := test_helpers.ConnectWithValidation(t, dialer, ops)
-		defer conn.Close()
+		defer func() { _ = conn.Close() }()
 
 		conns = append(conns, conn)
 	}
@@ -483,7 +483,7 @@ func TestNetDialer(t *testing.T) {
 	conn, err := dialer.Dial(ctx, DialOpts{})
 	require.Nil(err)
 	require.NotNil(conn)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	assert.Equal(server, conn.Addr().String())
 	assert.NotEqual("", conn.Greeting().Version)
@@ -531,7 +531,7 @@ func TestNetDialer_BadUser(t *testing.T) {
 	assert.NotNil(t, err)
 	assert.ErrorContains(t, err, "failed to authenticate")
 	if conn != nil {
-		conn.Close()
+		_ = conn.Close()
 		t.Errorf("connection is not nil")
 	}
 }
@@ -549,7 +549,7 @@ func TestNetDialer_PapSha256Auth(t *testing.T) {
 	defer cancel()
 	conn, err := authDialer.Dial(ctx, DialOpts{})
 	if conn != nil {
-		conn.Close()
+		_ = conn.Close()
 		t.Fatalf("Connection created successfully")
 	}
 
@@ -558,7 +558,7 @@ func TestNetDialer_PapSha256Auth(t *testing.T) {
 
 func TestFutureMultipleGetGetTyped(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	fut := conn.Do(NewCall17Request("simple_concat").Args([]interface{}{"1"}))
 
@@ -596,7 +596,7 @@ func TestFutureMultipleGetGetTyped(t *testing.T) {
 
 func TestFutureMultipleGetWithError(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	fut := conn.Do(NewCall17Request("non_exist").Args([]interface{}{"1"}))
 
@@ -609,7 +609,7 @@ func TestFutureMultipleGetWithError(t *testing.T) {
 
 func TestFutureMultipleGetTypedWithError(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	fut := conn.Do(NewCall17Request("simple_concat").Args([]interface{}{"1"}))
 
@@ -635,7 +635,7 @@ func TestFutureMultipleGetTypedWithError(t *testing.T) {
 
 func TestClient(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	var (
 		req Request
@@ -1118,7 +1118,7 @@ func TestSQL(t *testing.T) {
 	}
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	for i, test := range testCases {
 		req := NewExecuteRequest(test.Query).Args(test.Args)
@@ -1150,7 +1150,7 @@ func TestSQLTyped(t *testing.T) {
 	test_helpers.SkipIfSQLUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	mem := []Member{}
 	fut := conn.Do(NewExecuteRequest(selectTypedQuery).
@@ -1192,7 +1192,7 @@ func TestSQLBindings(t *testing.T) {
 	var resp Response
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// test all types of supported bindings
 	// prepare named sql bind
@@ -1319,7 +1319,7 @@ func TestStressSQL(t *testing.T) {
 	test_helpers.SkipIfSQLUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	req := NewExecuteRequest(createTableQuery)
 	resp, err := conn.Do(req).GetResponse()
@@ -1453,7 +1453,7 @@ func TestNewPrepared(t *testing.T) {
 	test_helpers.SkipIfSQLUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	stmt, err := conn.NewPrepared(selectNamedQuery2)
 	if err != nil {
@@ -1541,7 +1541,7 @@ func TestConnection_DoWithStrangerConn(t *testing.T) {
 
 func TestConnection_SetResponse_failed(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	req := mockRequest{conn}
 	fut := conn.Do(&req)
@@ -1553,7 +1553,7 @@ func TestConnection_SetResponse_failed(t *testing.T) {
 
 func TestGetSchema(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	s, err := GetSchema(conn)
 	if err != nil {
@@ -1566,7 +1566,7 @@ func TestGetSchema(t *testing.T) {
 
 func TestConnection_SetSchema_Changes(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	req := NewInsertRequest(spaceName)
 	req.Tuple([]interface{}{uint(1010), "Tarantool"})
@@ -1598,7 +1598,7 @@ func TestConnection_SetSchema_Changes(t *testing.T) {
 
 func TestSchema(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Schema
 	schema, err := GetSchema(conn)
@@ -1748,7 +1748,7 @@ func TestSchema(t *testing.T) {
 
 func TestSchema_IsNullable(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	schema, err := GetSchema(conn)
 	if err != nil {
@@ -1813,7 +1813,7 @@ func TestNewPreparedFromResponse(t *testing.T) {
 
 func TestClientNamed(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	var (
 		req  Request
@@ -1937,7 +1937,7 @@ func TestClientRequestObjects(t *testing.T) {
 	)
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Ping
 	req = NewPingRequest()
@@ -2271,7 +2271,7 @@ func testConnectionDoSelectRequestCheck(t *testing.T,
 
 func TestConnectionDoSelectRequest(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	testConnectionDoSelectRequestPrepare(t, conn)
 
@@ -2292,7 +2292,7 @@ func TestConnectionDoWatchOnceRequest(t *testing.T) {
 	test_helpers.SkipIfWatchOnceUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	_, err := conn.Do(NewBroadcastRequest("hello").Value("world")).Get()
 	if err != nil {
@@ -2312,7 +2312,7 @@ func TestConnectionDoWatchOnceOnEmptyKey(t *testing.T) {
 	test_helpers.SkipIfWatchOnceUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	data, err := conn.Do(NewWatchOnceRequest("notexists!")).Get()
 	if err != nil {
@@ -2327,7 +2327,7 @@ func TestConnectionDoSelectRequest_fetch_pos(t *testing.T) {
 	test_helpers.SkipIfPaginationUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	testConnectionDoSelectRequestPrepare(t, conn)
 
@@ -2349,7 +2349,7 @@ func TestConnectDoSelectRequest_after_tuple(t *testing.T) {
 	test_helpers.SkipIfPaginationUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	testConnectionDoSelectRequestPrepare(t, conn)
 
@@ -2372,7 +2372,7 @@ func TestConnectionDoSelectRequest_pagination_pos(t *testing.T) {
 	test_helpers.SkipIfPaginationUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	testConnectionDoSelectRequestPrepare(t, conn)
 
@@ -2403,7 +2403,7 @@ func TestCallRequest(t *testing.T) {
 	var err error
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	req := NewCallRequest("simple_concat").Args([]interface{}{"1"})
 	data, err := conn.Do(req).Get()
@@ -2417,7 +2417,7 @@ func TestCallRequest(t *testing.T) {
 
 func TestClientRequestObjectsWithNilContext(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 	req := NewPingRequest().Context(nil) // nolint
 	data, err := conn.Do(req).Get()
 	if err != nil {
@@ -2430,7 +2430,7 @@ func TestClientRequestObjectsWithNilContext(t *testing.T) {
 
 func TestClientRequestObjectsWithPassedCanceledContext(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	req := NewPingRequest().Context(ctx)
@@ -2447,7 +2447,7 @@ func TestClientRequestObjectsWithPassedCanceledContext(t *testing.T) {
 // Checking comparable with simple context.WithCancel.
 func TestComparableErrorsCanceledContext(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	req := NewPingRequest().Context(ctx)
@@ -2459,7 +2459,7 @@ func TestComparableErrorsCanceledContext(t *testing.T) {
 // Checking comparable with simple context.WithTimeout.
 func TestComparableErrorsTimeoutContext(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	timeout := time.Nanosecond
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
@@ -2473,7 +2473,7 @@ func TestComparableErrorsTimeoutContext(t *testing.T) {
 // Shows ability to compare with custom errors (also with ClientError).
 func TestComparableErrorsCancelCauseContext(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	ctxCause, cancelCause := context.WithCancelCause(context.Background())
 	req := NewPingRequest().Context(ctxCause)
@@ -2516,7 +2516,7 @@ func (req *waitCtxRequest) Response(header Header, body io.Reader) (Response, er
 func TestClientRequestObjectsWithContext(t *testing.T) {
 	var err error
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	req := &waitCtxRequest{ctx: ctx}
@@ -2555,7 +2555,7 @@ func TestComplexStructs(t *testing.T) {
 	var err error
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	tuple := Tuple2{Cid: 777, Orig: "orig", Members: []Member{{"lol", "", 1}, {"wut", "", 3}}}
 	_, err = conn.Do(NewReplaceRequest(spaceNo).Tuple(&tuple)).Get()
@@ -2591,7 +2591,7 @@ func TestStream_IdValues(t *testing.T) {
 	test_helpers.SkipIfStreamsUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	cases := []uint64{
 		1,
@@ -2627,7 +2627,7 @@ func TestStream_Commit(t *testing.T) {
 	test_helpers.SkipIfStreamsUnsupported(t)
 
 	conn = test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	stream, _ := conn.NewStream()
 
@@ -2723,7 +2723,7 @@ func TestStream_Rollback(t *testing.T) {
 	test_helpers.SkipIfStreamsUnsupported(t)
 
 	conn = test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	stream, _ := conn.NewStream()
 
@@ -2822,7 +2822,7 @@ func TestStream_TxnIsolationLevel(t *testing.T) {
 	test_helpers.SkipIfStreamsUnsupported(t)
 
 	conn = test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	stream, _ := conn.NewStream()
 
@@ -2915,7 +2915,7 @@ func TestStream_DoWithClosedConn(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 
 	stream, _ := conn.NewStream()
-	conn.Close()
+	_ = conn.Close()
 
 	// Begin transaction
 	req := NewBeginRequest()
@@ -2936,7 +2936,7 @@ func TestConnectionBoxSessionPushUnsupported(t *testing.T) {
 	log.SetOutput(&buf)
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	_, err := conn.Do(NewCallRequest("push_func").Args([]interface{}{1})).Get()
 	require.NoError(t, err)
@@ -2950,7 +2950,7 @@ func TestConnectionProtocolInfoSupported(t *testing.T) {
 	test_helpers.SkipIfIdUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// First Tarantool protocol version (1, IPROTO_FEATURE_STREAMS and
 	// IPROTO_FEATURE_TRANSACTIONS) was introduced between 2.10.0-beta1 and
@@ -2983,7 +2983,7 @@ func TestClientIdRequestObject(t *testing.T) {
 	test_helpers.SkipIfIdUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	tarantool210ProtocolInfo := ProtocolInfo{
 		Version: ProtocolVersion(3),
@@ -3018,7 +3018,7 @@ func TestClientIdRequestObjectWithNilContext(t *testing.T) {
 	test_helpers.SkipIfIdUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	tarantool210ProtocolInfo := ProtocolInfo{
 		Version: ProtocolVersion(3),
@@ -3051,7 +3051,7 @@ func TestClientIdRequestObjectWithNilContext(t *testing.T) {
 
 func TestClientIdRequestObjectWithPassedCanceledContext(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	req := NewIdRequest(ProtocolInfo{
@@ -3069,7 +3069,7 @@ func TestConnectionProtocolInfoUnsupported(t *testing.T) {
 	test_helpers.SkipIfIdSupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	serverProtocolInfo := conn.ProtocolInfo()
 	expected := ProtocolInfo{}
@@ -3080,7 +3080,7 @@ func TestConnectionServerFeaturesImmutable(t *testing.T) {
 	test_helpers.SkipIfIdUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	info := conn.ProtocolInfo()
 	infoOrig := info.Clone()
@@ -3105,7 +3105,7 @@ func TestConnectionProtocolVersionRequirementSuccess(t *testing.T) {
 	require.Nilf(t, err, "No errors on connect")
 	require.NotNilf(t, conn, "Connect success")
 
-	conn.Close()
+	_ = conn.Close()
 }
 
 func TestConnectionProtocolVersionRequirementFail(t *testing.T) {
@@ -3140,7 +3140,7 @@ func TestConnectionProtocolFeatureRequirementSuccess(t *testing.T) {
 	require.NotNilf(t, conn, "Connect success")
 	require.Nilf(t, err, "No errors on connect")
 
-	conn.Close()
+	_ = conn.Close()
 }
 
 func TestConnectionProtocolFeatureRequirementFail(t *testing.T) {
@@ -3187,7 +3187,7 @@ func TestErrorExtendedInfoBasic(t *testing.T) {
 	test_helpers.SkipIfErrorExtendedInfoUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	_, err := conn.Do(NewEvalRequest("not a Lua code").Args([]interface{}{})).Get()
 	require.NotNilf(t, err, "expected error on invalid Lua code")
@@ -3215,7 +3215,7 @@ func TestErrorExtendedInfoStack(t *testing.T) {
 	test_helpers.SkipIfErrorExtendedInfoUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	_, err := conn.Do(NewEvalRequest("error(chained_error)").Args([]interface{}{})).Get()
 	require.NotNilf(t, err, "expected error on explicit error raise")
@@ -3251,7 +3251,7 @@ func TestErrorExtendedInfoFields(t *testing.T) {
 	test_helpers.SkipIfErrorExtendedInfoUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	_, err := conn.Do(NewEvalRequest("error(access_denied_error)").Args([]interface{}{})).Get()
 	require.NotNilf(t, err, "expected error on forbidden action")
@@ -3285,7 +3285,7 @@ func TestConnection_NewWatcher(t *testing.T) {
 
 	const key = "TestConnection_NewWatcher"
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	events := make(chan WatchEvent)
 	defer close(events)
@@ -3359,7 +3359,7 @@ func TestNewWatcherDuringReconnect(t *testing.T) {
 	test_helpers.SkipIfWatchersUnsupported(t)
 
 	conn, cancel := newWatcherReconnectionPrepareTestConnection(t)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 	defer cancel()
 
 	_, err := conn.NewWatcher("one", func(event WatchEvent) {})
@@ -3387,7 +3387,7 @@ func TestConnection_NewWatcher_noWatchersFeature(t *testing.T) {
 	testDialer := dialer
 	testDialer.RequiredProtocolInfo = ProtocolInfo{Features: []iproto.Feature{}}
 	conn := test_helpers.ConnectWithValidation(t, testDialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	watcher, err := conn.NewWatcher(key, func(event WatchEvent) {})
 	require.Nilf(t, watcher, "watcher must not be created")
@@ -3424,7 +3424,7 @@ func TestConnection_NewWatcher_reconnect(t *testing.T) {
 	reconnectOpts.MaxReconnects = 10
 
 	conn := test_helpers.ConnectWithValidation(t, testDialer, reconnectOpts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	events := make(chan WatchEvent)
 	defer close(events)
@@ -3458,7 +3458,7 @@ func TestBroadcastRequest(t *testing.T) {
 	const value = "bar"
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	data, err := conn.Do(NewBroadcastRequest(key).Value(value)).Get()
 	if err != nil {
@@ -3501,7 +3501,7 @@ func TestBroadcastRequest_multi(t *testing.T) {
 	const key = "TestBroadcastRequest_multi"
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	events := make(chan WatchEvent)
 	defer close(events)
@@ -3545,7 +3545,7 @@ func TestConnection_NewWatcher_multiOnKey(t *testing.T) {
 	const value = "bar"
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	events := []chan WatchEvent{
 		make(chan WatchEvent),
@@ -3604,7 +3604,7 @@ func TestWatcher_Unregister(t *testing.T) {
 	const value = "bar"
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	events := make(chan WatchEvent)
 	defer close(events)
@@ -3637,7 +3637,7 @@ func TestConnection_NewWatcher_concurrent(t *testing.T) {
 	const key = "TestConnection_NewWatcher_concurrent"
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	var wg sync.WaitGroup
 	wg.Add(testConcurrency)
@@ -3679,7 +3679,7 @@ func TestWatcher_Unregister_concurrent(t *testing.T) {
 	const key = "TestWatcher_Unregister_concurrent"
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	watcher, err := conn.NewWatcher(key, func(event WatchEvent) {})
 	if err != nil {
@@ -3722,7 +3722,7 @@ func TestConnection_named_index_after_reconnect(t *testing.T) {
 	reconnectOpts.MaxReconnects = 10
 
 	conn := test_helpers.ConnectWithValidation(t, testDialer, reconnectOpts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	test_helpers.StopTarantool(inst)
 
@@ -3755,7 +3755,7 @@ func TestConnection_named_index_after_reconnect(t *testing.T) {
 
 func TestConnect_schema_update(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -3844,7 +3844,7 @@ func TestConnectIsBlocked(t *testing.T) {
 	reconnectOpts.MaxReconnects = 100
 	conn, err := Connect(ctx, mockDialer, reconnectOpts)
 	assert.Nil(t, err)
-	conn.Close()
+	_ = conn.Close()
 	assert.GreaterOrEqual(t, counter, 10)
 }
 
@@ -3917,7 +3917,7 @@ func TestFdDialer(t *testing.T) {
 	defer test_helpers.StopTarantoolWithCleanup(inst)
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	sidecarExe := filepath.Join(wd, "testdata", "sidecar", "main")
 
@@ -3971,7 +3971,7 @@ func TestDoBeginRequest_IsSync(t *testing.T) {
 	test_helpers.SkipIfIsSyncUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	stream, err := conn.NewStream()
 	require.NoError(t, err)
@@ -3993,7 +3993,7 @@ func TestDoCommitRequest_IsSync(t *testing.T) {
 	test_helpers.SkipIfIsSyncUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	stream, err := conn.NewStream()
 	require.NoError(t, err)
@@ -4015,7 +4015,7 @@ func TestDoCommitRequest_NoSync(t *testing.T) {
 	test_helpers.SkipIfIsSyncUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	stream, err := conn.NewStream()
 	require.NoError(t, err)

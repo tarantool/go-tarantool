@@ -60,7 +60,7 @@ func TestInsert_invalid(t *testing.T) {
 	}
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	for i, a := range arrows {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
