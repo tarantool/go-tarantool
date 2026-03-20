@@ -207,7 +207,7 @@ func dialIo(t *testing.T,
 
 func TestConn_Close(t *testing.T) {
 	conn, dialer := dialIo(t, nil)
-	conn.Close()
+	_ = conn.Close()
 
 	assert.Equal(t, 1, dialer.conn.closeCnt)
 }
@@ -230,7 +230,7 @@ func TestConn_Addr(t *testing.T) {
 		conn.addr = stubAddr{str: addr}
 	})
 	defer func() {
-		conn.Close()
+		_ = conn.Close()
 	}()
 
 	assert.Equal(t, addr, conn.Addr().String())
@@ -246,7 +246,7 @@ func TestConn_Greeting(t *testing.T) {
 		conn.greeting = greeting
 	})
 	defer func() {
-		conn.Close()
+		_ = conn.Close()
 	}()
 
 	assert.Equal(t, &greeting, conn.Greeting)
@@ -265,7 +265,7 @@ func TestConn_ProtocolInfo(t *testing.T) {
 		conn.info = info
 	})
 	defer func() {
-		conn.Close()
+		_ = conn.Close()
 	}()
 
 	assert.Equal(t, info, conn.ProtocolInfo())
@@ -289,7 +289,7 @@ func TestConn_ReadWrite(t *testing.T) {
 	})
 	defer func() {
 		dialer.conn.writeWg.Done()
-		conn.Close()
+		_ = conn.Close()
 	}()
 
 	fut := conn.Do(tarantool.NewPingRequest())
@@ -461,7 +461,7 @@ func testDialAccept(opts testDialOpts, l net.Listener) chan dialServerActual {
 		if err != nil {
 			return
 		}
-		defer client.Close()
+		defer func() { _ = client.Close() }()
 		if opts.isErrGreeting {
 			_, _ = client.Write(errResponse)
 			return
@@ -476,11 +476,12 @@ func testDialAccept(opts testDialOpts, l net.Listener) chan dialServerActual {
 		_, _ = client.Read(idRequestActual)
 
 		// Make Id response.
-		if opts.isErrId {
+		switch {
+		case opts.isErrId:
 			_, _ = client.Write(errResponse)
-		} else if opts.isIdUnsupported {
+		case opts.isIdUnsupported:
 			_, _ = client.Write(idResponseNotSupported)
-		} else {
+		default:
 			_, _ = client.Write(idResponse)
 		}
 
@@ -533,13 +534,13 @@ func testDialer(t *testing.T, l net.Listener, dialer tarantool.Dialer,
 		authRequestExpected = []byte{}
 	}
 	require.Equal(t, authRequestExpected, actual.AuthRequest)
-	conn.Close()
+	_ = conn.Close()
 }
 
 func TestNetDialer_Dial(t *testing.T) {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
-	defer l.Close()
+	defer func() { _ = l.Close() }()
 	dialer := tarantool.NetDialer{
 		Address:  l.Addr().String(),
 		User:     testDialUser,
@@ -584,7 +585,7 @@ func TestNetDialer_Dial(t *testing.T) {
 func TestNetDialer_Dial_hang_connection(t *testing.T) {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
-	defer l.Close()
+	defer func() { _ = l.Close() }()
 
 	dialer := tarantool.NetDialer{
 		Address: l.Addr().String(),
@@ -602,7 +603,7 @@ func TestNetDialer_Dial_hang_connection(t *testing.T) {
 func TestNetDialer_Dial_requirements(t *testing.T) {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
-	defer l.Close()
+	defer func() { _ = l.Close() }()
 	dialer := tarantool.NetDialer{
 		Address:  l.Addr().String(),
 		User:     testDialUser,
@@ -616,7 +617,7 @@ func TestNetDialer_Dial_requirements(t *testing.T) {
 	defer cancel()
 	conn, err := dialer.Dial(ctx, tarantool.DialOpts{})
 	if err == nil {
-		conn.Close()
+		_ = conn.Close()
 	}
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "invalid server protocol")
@@ -625,7 +626,7 @@ func TestNetDialer_Dial_requirements(t *testing.T) {
 func TestFdDialer_Dial(t *testing.T) {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
-	defer l.Close()
+	defer func() { _ = l.Close() }()
 	addr := l.Addr().String()
 
 	cases := []testDialOpts{
@@ -658,7 +659,7 @@ func TestFdDialer_Dial(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			sock, err := net.Dial("tcp", addr)
 			require.NoError(t, err)
-			defer sock.Close()
+			defer func() { _ = sock.Close() }()
 
 			// It seems that the file descriptor is not always fully ready
 			// after the connection is created. These lines help to avoid the
@@ -671,7 +672,7 @@ func TestFdDialer_Dial(t *testing.T) {
 
 			f, err := sock.(*net.TCPConn).File()
 			require.NoError(t, err)
-			defer f.Close()
+			defer func() { _ = f.Close() }()
 
 			dialer := tarantool.FdDialer{
 				Fd: f.Fd(),
@@ -684,12 +685,12 @@ func TestFdDialer_Dial(t *testing.T) {
 func TestFdDialer_Dial_requirements(t *testing.T) {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
-	defer l.Close()
+	defer func() { _ = l.Close() }()
 	addr := l.Addr().String()
 
 	sock, err := net.Dial("tcp", addr)
 	require.NoError(t, err)
-	defer sock.Close()
+	defer func() { _ = sock.Close() }()
 
 	// It seems that the file descriptor is not always fully ready after the
 	// connection is created. These lines help to avoid the
@@ -702,7 +703,7 @@ func TestFdDialer_Dial_requirements(t *testing.T) {
 
 	f, err := sock.(*net.TCPConn).File()
 	require.NoError(t, err)
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	dialer := tarantool.FdDialer{
 		Fd: f.Fd(),
@@ -717,7 +718,7 @@ func TestFdDialer_Dial_requirements(t *testing.T) {
 
 	conn, err := dialer.Dial(ctx, tarantool.DialOpts{})
 	if err == nil {
-		conn.Close()
+		_ = conn.Close()
 	}
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "invalid server protocol")
@@ -735,7 +736,7 @@ func TestAuthDialer_Dial_DialerError(t *testing.T) {
 
 	conn, err := dialer.Dial(ctx, tarantool.DialOpts{})
 	if conn != nil {
-		conn.Close()
+		_ = conn.Close()
 	}
 
 	assert.NotNil(t, err)
@@ -760,7 +761,7 @@ func TestAuthDialer_Dial_NoSalt(t *testing.T) {
 	assert.NotNil(t, err)
 	assert.ErrorContains(t, err, "an invalid connection without salt")
 	if conn != nil {
-		conn.Close()
+		_ = conn.Close()
 		t.Errorf("connection is not nil")
 	}
 }
@@ -822,7 +823,7 @@ func TestAuthDialer_Dial(t *testing.T) {
 	defer cancel()
 	conn, err := authDialer.Dial(ctx, tarantool.DialOpts{})
 	if conn != nil {
-		conn.Close()
+		_ = conn.Close()
 	}
 
 	assert.NoError(t, err)
@@ -856,7 +857,7 @@ func TestAuthDialer_Dial_PapSha256Auth(t *testing.T) {
 	defer cancel()
 	conn, err := authDialer.Dial(ctx, tarantool.DialOpts{})
 	if conn != nil {
-		conn.Close()
+		_ = conn.Close()
 	}
 
 	assert.NoError(t, err)
@@ -875,7 +876,7 @@ func TestProtocolDialer_Dial_DialerError(t *testing.T) {
 	defer cancel()
 	conn, err := dialer.Dial(ctx, tarantool.DialOpts{})
 	if conn != nil {
-		conn.Close()
+		_ = conn.Close()
 	}
 
 	assert.NotNil(t, err)
@@ -929,7 +930,7 @@ func TestProtocolDialer_Dial_IdentifyFailed(t *testing.T) {
 	assert.NotNil(t, err)
 	assert.ErrorContains(t, err, "failed to identify")
 	if conn != nil {
-		conn.Close()
+		_ = conn.Close()
 		t.Errorf("connection is not nil")
 	}
 }
@@ -954,7 +955,7 @@ func TestProtocolDialer_Dial_WrongInfo(t *testing.T) {
 	assert.NotNil(t, err)
 	assert.ErrorContains(t, err, "invalid server protocol")
 	if conn != nil {
-		conn.Close()
+		_ = conn.Close()
 		t.Errorf("connection is not nil")
 	}
 }
@@ -982,7 +983,7 @@ func TestProtocolDialer_Dial(t *testing.T) {
 	defer cancel()
 	conn, err := dialer.Dial(ctx, tarantool.DialOpts{})
 	if conn != nil {
-		conn.Close()
+		_ = conn.Close()
 	}
 
 	assert.NoError(t, err)
@@ -1001,7 +1002,7 @@ func TestGreetingDialer_Dial_DialerError(t *testing.T) {
 	defer cancel()
 	conn, err := dialer.Dial(ctx, tarantool.DialOpts{})
 	if conn != nil {
-		conn.Close()
+		_ = conn.Close()
 	}
 
 	assert.NotNil(t, err)
@@ -1051,7 +1052,7 @@ func TestGreetingDialer_Dial_GreetingFailed(t *testing.T) {
 	assert.NotNil(t, err)
 	assert.ErrorContains(t, err, "failed to read greeting")
 	if conn != nil {
-		conn.Close()
+		_ = conn.Close()
 		t.Errorf("connection is not nil")
 	}
 }
@@ -1073,7 +1074,7 @@ func TestGreetingDialer_Dial(t *testing.T) {
 	defer cancel()
 	conn, err := dialer.Dial(ctx, tarantool.DialOpts{})
 	if conn != nil {
-		conn.Close()
+		_ = conn.Close()
 	}
 
 	assert.NoError(t, err)

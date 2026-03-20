@@ -139,7 +139,8 @@ func (r *Result) DecodeMsgpack(d *msgpack.Decoder) error {
 			return err
 		}
 
-		if msgpackIsArray(code) {
+		switch {
+		case msgpackIsArray(code):
 			crudErr := newErrorMany(r.rowType)
 			if err := d.Decode(&crudErr); err != nil {
 				return err
@@ -147,7 +148,7 @@ func (r *Result) DecodeMsgpack(d *msgpack.Decoder) error {
 			if crudErr != nil {
 				return *crudErr
 			}
-		} else if code != msgpcode.Nil {
+		case code != msgpcode.Nil:
 			crudErr := newError(r.rowType)
 			if err := d.Decode(&crudErr); err != nil {
 				return err
@@ -155,7 +156,7 @@ func (r *Result) DecodeMsgpack(d *msgpack.Decoder) error {
 			if crudErr != nil {
 				return *crudErr
 			}
-		} else {
+		default:
 			if err := d.DecodeNil(); err != nil {
 				return err
 			}

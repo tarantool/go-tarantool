@@ -52,7 +52,7 @@ func (r *customPingRequest) Context(ctx context.Context) *customPingRequest {
 // for a custom Request type.
 func ExampleRequest_Response() {
 	conn := exampleConnect(dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	future := conn.Do(&customPingRequest{})
 
@@ -218,7 +218,7 @@ func (r *manualResponse) DecodeTyped(res interface{}) error {
 // for a custom Request type with manual body decoding.
 func ExampleRequest_Response_manual() {
 	conn := exampleConnect(dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Insert test data.
 	_, err := conn.Do(tarantool.NewInsertRequest(spaceNo).
@@ -255,7 +255,7 @@ func ExampleRequest_Response_manual() {
 // with a custom Request implementation.
 func ExampleRequest_Response_manualDecodeTyped() {
 	conn := exampleConnect(dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Insert test data.
 	_, err := conn.Do(tarantool.NewInsertRequest(spaceNo).

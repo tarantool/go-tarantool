@@ -58,7 +58,7 @@ func dropQueue(t *testing.T, q queue.Queue) {
 
 func TestFifoQueue(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	name := "test_queue"
 	q := createQueue(t, conn, name, queue.Cfg{Temporary: true, Kind: queue.FIFO})
@@ -67,7 +67,7 @@ func TestFifoQueue(t *testing.T) {
 
 func TestQueue_Cfg(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	name := "test_queue"
 	q := createQueue(t, conn, name, queue.Cfg{Temporary: true, Kind: queue.FIFO})
@@ -81,7 +81,7 @@ func TestQueue_Cfg(t *testing.T) {
 
 func TestQueue_Identify(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	name := "test_queue"
 	q := createQueue(t, conn, name, queue.Cfg{Temporary: true, Kind: queue.FIFO})
@@ -106,7 +106,7 @@ func TestQueue_ReIdentify(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer func() {
 		if conn != nil {
-			conn.Close()
+			_ = conn.Close()
 		}
 	}()
 
@@ -139,12 +139,13 @@ func TestQueue_ReIdentify(t *testing.T) {
 	// Put.
 	putData := "put_data"
 	task, err := q.Put(putData)
-	if err != nil {
-		conn.Close()
+	switch {
+	case err != nil:
+		_ = conn.Close()
 		t.Fatalf("Failed put to queue: %s", err)
-	} else if err == nil && task == nil {
+	case task == nil:
 		t.Fatalf("Task is nil after put")
-	} else if task.Data() != putData {
+	case task.Data() != putData:
 		t.Errorf("Task data after put not equal with example. %s != %s", task.Data(), putData)
 	}
 
@@ -156,7 +157,7 @@ func TestQueue_ReIdentify(t *testing.T) {
 		t.Fatalf("Task is nil after take")
 	}
 
-	conn.Close()
+	_ = conn.Close()
 	conn = nil
 
 	conn = test_helpers.ConnectWithValidation(t, dialer, opts)
@@ -190,7 +191,7 @@ func TestQueue_ReIdentify(t *testing.T) {
 
 func TestQueue_State(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	name := "test_queue"
 	q := createQueue(t, conn, name, queue.Cfg{Temporary: true, Kind: queue.FIFO})
@@ -207,7 +208,7 @@ func TestQueue_State(t *testing.T) {
 
 func TestFifoQueue_GetExist_Statistic(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	name := "test_queue"
 	q := createQueue(t, conn, name, queue.Cfg{Temporary: true, Kind: queue.FIFO})
@@ -237,7 +238,7 @@ func TestFifoQueue_GetExist_Statistic(t *testing.T) {
 
 func TestFifoQueue_Put(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	name := "test_queue"
 	q := createQueue(t, conn, name, queue.Cfg{Temporary: true, Kind: queue.FIFO})
@@ -246,18 +247,19 @@ func TestFifoQueue_Put(t *testing.T) {
 	// Put.
 	putData := "put_data"
 	task, err := q.Put(putData)
-	if err != nil {
+	switch {
+	case err != nil:
 		t.Fatalf("Failed put to queue: %s", err)
-	} else if err == nil && task == nil {
+	case task == nil:
 		t.Fatalf("Task is nil after put")
-	} else if task.Data() != putData {
+	case task.Data() != putData:
 		t.Errorf("Task data after put not equal with example. %s != %s", task.Data(), putData)
 	}
 }
 
 func TestFifoQueue_Take(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	name := "test_queue"
 	q := createQueue(t, conn, name, queue.Cfg{Temporary: true, Kind: queue.FIFO})
@@ -266,21 +268,23 @@ func TestFifoQueue_Take(t *testing.T) {
 	// Put.
 	putData := "put_data"
 	task, err := q.Put(putData)
-	if err != nil {
+	switch {
+	case err != nil:
 		t.Fatalf("Failed put to queue: %s", err)
-	} else if err == nil && task == nil {
+	case task == nil:
 		t.Fatalf("Task is nil after put")
-	} else if task.Data() != putData {
+	case task.Data() != putData:
 		t.Errorf("Task data after put not equal with example. %s != %s", task.Data(), putData)
 	}
 
 	// Take.
 	task, err = q.TakeTimeout(2 * time.Second)
-	if err != nil {
+	switch {
+	case err != nil:
 		t.Errorf("Failed take from queue: %s", err)
-	} else if task == nil {
+	case task == nil:
 		t.Errorf("Task is nil after take")
-	} else {
+	default:
 		if task.Data() != putData {
 			t.Errorf("Task data after take not equal with example. %s != %s", task.Data(), putData)
 		}
@@ -330,7 +334,7 @@ func (c *customData) EncodeMsgpack(e *msgpack.Encoder) error {
 
 func TestFifoQueue_TakeTyped(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	name := "test_queue"
 	q := createQueue(t, conn, name, queue.Cfg{Temporary: true, Kind: queue.FIFO})
@@ -339,11 +343,12 @@ func TestFifoQueue_TakeTyped(t *testing.T) {
 	// Put.
 	putData := &customData{customField: "put_data"}
 	task, err := q.Put(putData)
-	if err != nil {
+	switch {
+	case err != nil:
 		t.Fatalf("Failed put to queue: %s", err)
-	} else if err == nil && task == nil {
+	case task == nil:
 		t.Fatalf("Task is nil after put")
-	} else {
+	default:
 		typedData, ok := task.Data().(*customData)
 		if !ok {
 			t.Errorf("Task data after put has different type. %#v != %#v",
@@ -358,11 +363,12 @@ func TestFifoQueue_TakeTyped(t *testing.T) {
 	// Take.
 	takeData := &customData{}
 	task, err = q.TakeTypedTimeout(2*time.Second, takeData)
-	if err != nil {
+	switch {
+	case err != nil:
 		t.Errorf("Failed take from queue: %s", err)
-	} else if task == nil {
+	case task == nil:
 		t.Errorf("Task is nil after take")
-	} else {
+	default:
 		typedData, ok := task.Data().(*customData)
 		if !ok {
 			t.Errorf("Task data after put has different type. %#v != %#v",
@@ -393,7 +399,7 @@ func TestFifoQueue_TakeTyped(t *testing.T) {
 
 func TestFifoQueue_Peek(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	name := "test_queue"
 	q := createQueue(t, conn, name, queue.Cfg{Temporary: true, Kind: queue.FIFO})
@@ -402,30 +408,32 @@ func TestFifoQueue_Peek(t *testing.T) {
 	// Put.
 	putData := "put_data"
 	task, err := q.Put(putData)
-	if err != nil {
+	switch {
+	case err != nil:
 		t.Fatalf("Failed put to queue: %s", err)
-	} else if err == nil && task == nil {
+	case task == nil:
 		t.Fatalf("Task is nil after put")
-	} else if task.Data() != putData {
+	case task.Data() != putData:
 		t.Errorf("Task data after put not equal with example. %s != %s", task.Data(), putData)
 	}
 
 	// Peek.
 	task, err = q.Peek(task.Id())
-	if err != nil {
+	switch {
+	case err != nil:
 		t.Errorf("Failed peek from queue: %s", err)
-	} else if task == nil {
+	case task == nil:
 		t.Errorf("Task is nil after peek")
-	} else if task.Data() != putData {
+	case task.Data() != putData:
 		t.Errorf("Task data after peek not equal with example. %s != %s", task.Data(), putData)
-	} else if !task.IsReady() {
+	case !task.IsReady():
 		t.Errorf("Task status after peek is not ready. Status = %s", task.Status())
 	}
 }
 
 func TestFifoQueue_Bury_Kick(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	name := "test_queue"
 	q := createQueue(t, conn, name, queue.Cfg{Temporary: true, Kind: queue.FIFO})
@@ -434,37 +442,41 @@ func TestFifoQueue_Bury_Kick(t *testing.T) {
 	// Put.
 	putData := "put_data"
 	task, err := q.Put(putData)
-	if err != nil {
+	switch {
+	case err != nil:
 		t.Fatalf("Failed put to queue: %s", err)
-	} else if err == nil && task == nil {
+	case task == nil:
 		t.Fatalf("Task is nil after put")
-	} else if task.Data() != putData {
+	case task.Data() != putData:
 		t.Errorf("Task data after put not equal with example. %s != %s", task.Data(), putData)
 	}
 
 	// Bury.
 	err = task.Bury()
-	if err != nil {
+	switch {
+	case err != nil:
 		t.Fatalf("Failed bury task %s", err)
-	} else if !task.IsBuried() {
+	case !task.IsBuried():
 		t.Errorf("Task status after bury is not buried. Status = %s", task.Status())
 	}
 
 	// Kick.
 	count, err := q.Kick(1)
-	if err != nil {
+	switch {
+	case err != nil:
 		t.Fatalf("Failed kick task %s", err)
-	} else if count != 1 {
+	case count != 1:
 		t.Fatalf("Kick result != 1")
 	}
 
 	// Take.
 	task, err = q.TakeTimeout(2 * time.Second)
-	if err != nil {
+	switch {
+	case err != nil:
 		t.Errorf("Failed take from queue: %s", err)
-	} else if task == nil {
+	case task == nil:
 		t.Errorf("Task is nil after take")
-	} else {
+	default:
 		if task.Data() != putData {
 			t.Errorf("Task data after take not equal with example. %s != %s", task.Data(), putData)
 		}
@@ -486,7 +498,7 @@ func TestFifoQueue_Delete(t *testing.T) {
 	var err error
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	name := "test_queue"
 	q := createQueue(t, conn, name, queue.Cfg{Temporary: true, Kind: queue.FIFO})
@@ -498,11 +510,12 @@ func TestFifoQueue_Delete(t *testing.T) {
 
 	for i := 0; i < 2; i++ {
 		tasks[i], err = q.Put(putData)
-		if err != nil {
+		switch {
+		case err != nil:
 			t.Fatalf("Failed put to queue: %s", err)
-		} else if err == nil && tasks[i] == nil {
+		case tasks[i] == nil:
 			t.Fatalf("Task is nil after put")
-		} else if tasks[i].Data() != putData {
+		case tasks[i].Data() != putData:
 			t.Errorf(
 				"Task data after put not equal with example. %s != %s",
 				tasks[i].Data(), putData)
@@ -538,7 +551,7 @@ func TestFifoQueue_Delete(t *testing.T) {
 
 func TestFifoQueue_Release(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	name := "test_queue"
 	q := createQueue(t, conn, name, queue.Cfg{Temporary: true, Kind: queue.FIFO})
@@ -546,19 +559,21 @@ func TestFifoQueue_Release(t *testing.T) {
 
 	putData := "put_data"
 	task, err := q.Put(putData)
-	if err != nil {
+	switch {
+	case err != nil:
 		t.Fatalf("Failed put to queue: %s", err)
-	} else if err == nil && task == nil {
+	case task == nil:
 		t.Fatalf("Task is nil after put")
-	} else if task.Data() != putData {
+	case task.Data() != putData:
 		t.Errorf("Task data after put not equal with example. %s != %s", task.Data(), putData)
 	}
 
 	// Take.
 	task, err = q.Take()
-	if err != nil {
+	switch {
+	case err != nil:
 		t.Fatalf("Failed take from queue: %s", err)
-	} else if task == nil {
+	case task == nil:
 		t.Fatal("Task is nil after take")
 	}
 
@@ -574,11 +589,12 @@ func TestFifoQueue_Release(t *testing.T) {
 
 	// Take.
 	task, err = q.Take()
-	if err != nil {
+	switch {
+	case err != nil:
 		t.Fatalf("Failed take from queue: %s", err)
-	} else if task == nil {
+	case task == nil:
 		t.Fatal("Task is nil after take")
-	} else {
+	default:
 		if task.Data() != putData {
 			t.Errorf("Task data after take not equal with example. %s != %s", task.Data(), putData)
 		}
@@ -598,7 +614,7 @@ func TestFifoQueue_Release(t *testing.T) {
 
 func TestQueue_ReleaseAll(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	name := "test_queue"
 	q := createQueue(t, conn, name, queue.Cfg{Temporary: true, Kind: queue.FIFO})
@@ -606,19 +622,21 @@ func TestQueue_ReleaseAll(t *testing.T) {
 
 	putData := "put_data"
 	task, err := q.Put(putData)
-	if err != nil {
+	switch {
+	case err != nil:
 		t.Fatalf("Failed put to queue: %s", err)
-	} else if err == nil && task == nil {
+	case task == nil:
 		t.Fatalf("Task is nil after put")
-	} else if task.Data() != putData {
+	case task.Data() != putData:
 		t.Errorf("Task data after put not equal with example. %s != %s", task.Data(), putData)
 	}
 
 	// Take.
 	task, err = q.Take()
-	if err != nil {
+	switch {
+	case err != nil:
 		t.Fatalf("Failed take from queue: %s", err)
-	} else if task == nil {
+	case task == nil:
 		t.Fatal("Task is nil after take")
 	}
 
@@ -638,11 +656,12 @@ func TestQueue_ReleaseAll(t *testing.T) {
 
 	// Take.
 	task, err = q.Take()
-	if err != nil {
+	switch {
+	case err != nil:
 		t.Fatalf("Failed take from queue: %s", err)
-	} else if task == nil {
+	case task == nil:
 		t.Fatal("Task is nil after take")
-	} else {
+	default:
 		if task.Data() != putData {
 			t.Errorf("Task data after take not equal with example. %s != %s", task.Data(), putData)
 		}
@@ -662,7 +681,7 @@ func TestQueue_ReleaseAll(t *testing.T) {
 
 func TestTtlQueue(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	name := "test_queue"
 	cfg := queue.Cfg{
@@ -675,11 +694,12 @@ func TestTtlQueue(t *testing.T) {
 
 	putData := "put_data"
 	task, err := q.Put(putData)
-	if err != nil {
+	switch {
+	case err != nil:
 		t.Fatalf("Failed put to queue: %s", err)
-	} else if err == nil && task == nil {
+	case task == nil:
 		t.Fatalf("Task is nil after put")
-	} else if task.Data() != putData {
+	case task.Data() != putData:
 		t.Errorf("Task data after put not equal with example. %s != %s", task.Data(), putData)
 	}
 
@@ -687,16 +707,17 @@ func TestTtlQueue(t *testing.T) {
 
 	// Take.
 	task, err = q.TakeTimeout(2 * time.Second)
-	if err != nil {
+	switch {
+	case err != nil:
 		t.Errorf("Failed take from queue: %s", err)
-	} else if task != nil {
+	case task != nil:
 		t.Errorf("Task is not nil after sleep")
 	}
 }
 
 func TestTtlQueue_Put(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	name := "test_queue"
 	cfg := queue.Cfg{
@@ -709,23 +730,25 @@ func TestTtlQueue_Put(t *testing.T) {
 
 	putData := "put_data"
 	task, err := q.PutWithOpts(putData, queue.Opts{Ttl: 10 * time.Second})
-	if err != nil {
+	switch {
+	case err != nil:
 		t.Fatalf("Failed put to queue: %s", err)
-	} else if err == nil && task == nil {
+	case task == nil:
 		t.Fatalf("Task is nil after put")
-	} else if task.Data() != putData {
+	case task.Data() != putData:
 		t.Errorf("Task data after put not equal with example. %s != %s", task.Data(), putData)
 	}
 
-	time.Sleep(5 * time.Second)
+	time.Sleep(2 * time.Second)
 
 	// Take.
 	task, err = q.TakeTimeout(2 * time.Second)
-	if err != nil {
+	switch {
+	case err != nil:
 		t.Errorf("Failed take from queue: %s", err)
-	} else if task == nil {
+	case task == nil:
 		t.Errorf("Task is nil after sleep")
-	} else {
+	default:
 		if task.Data() != putData {
 			t.Errorf("Task data after take not equal with example. %s != %s", task.Data(), putData)
 		}
@@ -735,9 +758,10 @@ func TestTtlQueue_Put(t *testing.T) {
 		}
 
 		err = task.Ack()
-		if err != nil {
+		switch {
+		case err != nil:
 			t.Errorf("Failed ack %s", err)
-		} else if !task.IsDone() {
+		case !task.IsDone():
 			t.Errorf("Task status after take is not done. Status = %s", task.Status())
 		}
 	}
@@ -745,7 +769,7 @@ func TestTtlQueue_Put(t *testing.T) {
 
 func TestUtube_Put(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	name := "test_utube"
 	cfg := queue.Cfg{
@@ -818,7 +842,7 @@ func TestUtube_Put(t *testing.T) {
 
 func TestTask_Touch(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	tests := []struct {
 		name string

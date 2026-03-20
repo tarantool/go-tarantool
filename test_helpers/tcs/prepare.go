@@ -27,7 +27,7 @@ func writeConfig(name string, port int) error {
 	if err != nil {
 		return err
 	}
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	err = cfg.Chmod(0644)
 	if err != nil {

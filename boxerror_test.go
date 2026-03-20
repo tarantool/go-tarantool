@@ -300,7 +300,7 @@ func TestErrorTypeEval(t *testing.T) {
 	test_helpers.SkipIfErrorMessagePackTypeUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	for name, testcase := range tupleCases {
 		t.Run(name, func(t *testing.T) {
@@ -321,7 +321,7 @@ func TestErrorTypeEvalTyped(t *testing.T) {
 	test_helpers.SkipIfErrorMessagePackTypeUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	for name, testcase := range tupleCases {
 		t.Run(name, func(t *testing.T) {
@@ -341,7 +341,7 @@ func TestErrorTypeInsert(t *testing.T) {
 	test_helpers.SkipIfErrorMessagePackTypeUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	truncateEval := fmt.Sprintf("box.space[%q]:truncate()", space)
 	_, err := conn.Do(NewEvalRequest(truncateEval).Args([]interface{}{})).Get()
@@ -379,7 +379,7 @@ func TestErrorTypeInsertTyped(t *testing.T) {
 	test_helpers.SkipIfErrorMessagePackTypeUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	truncateEval := fmt.Sprintf("box.space[%q]:truncate()", space)
 	_, err := conn.Do(NewEvalRequest(truncateEval).Args([]interface{}{})).Get()
@@ -421,7 +421,7 @@ func TestErrorTypeSelect(t *testing.T) {
 	test_helpers.SkipIfErrorMessagePackTypeUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	truncateEval := fmt.Sprintf("box.space[%q]:truncate()", space)
 	_, err := conn.Do(NewEvalRequest(truncateEval).Args([]interface{}{})).Get()
@@ -470,7 +470,7 @@ func TestErrorTypeSelectTyped(t *testing.T) {
 	test_helpers.SkipIfErrorMessagePackTypeUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	truncateEval := fmt.Sprintf("box.space[%q]:truncate()", space)
 	_, err := conn.Do(NewEvalRequest(truncateEval).Args([]interface{}{})).Get()

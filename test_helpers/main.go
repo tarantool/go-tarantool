@@ -196,7 +196,7 @@ func isReady(dialer tarantool.Dialer, opts *tarantool.Opts) error {
 	if conn == nil {
 		return errors.New("connection is nil after connect")
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	_, err = conn.Do(tarantool.NewPingRequest()).Get()
 	if err != nil {
@@ -290,11 +290,12 @@ func IsTarantoolVersionLess(majorMin uint64, minorMin uint64, patchMin uint64) (
 		return true, fmt.Errorf("failed to parse patch from output %q: %w", out, err)
 	}
 
-	if major != majorMin {
+	switch {
+	case major != majorMin:
 		return major < majorMin, nil
-	} else if minor != minorMin {
+	case minor != minorMin:
 		return minor < minorMin, nil
-	} else {
+	default:
 		return patch < patchMin, nil
 	}
 }
@@ -553,13 +554,13 @@ func copyFile(srcFile, dstFile string) error {
 		return err
 	}
 
-	defer out.Close()
+	defer func() { _ = out.Close() }()
 
 	in, err := os.Open(srcFile)
 	if err != nil {
 		return err
 	}
-	defer in.Close()
+	defer func() { _ = in.Close() }()
 
 	_, err = io.Copy(out, in)
 	if err != nil {

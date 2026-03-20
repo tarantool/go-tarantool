@@ -186,7 +186,7 @@ func Example_connectionPool() {
 		fmt.Printf("Unable to connect to the pool: %s", err)
 		return
 	}
-	defer connPool.Close()
+	defer func() { _ = connPool.Close() }()
 
 	// Wait for a queue initialization and master instance identification in
 	// the queue.
@@ -248,16 +248,17 @@ func Example_connectionPool() {
 		// Take a data from the new master instance.
 		task, err := q.Take()
 
-		if err == pool.ErrNoRwInstance {
+		switch {
+		case err == pool.ErrNoRwInstance:
 			// It may be not registered yet by the pool.
 			continue
-		} else if err != nil {
+		case err != nil:
 			fmt.Println("Unable to got task:", err)
-		} else if task == nil {
+		case task == nil:
 			fmt.Println("task == nil")
-		} else if task.Data() == nil {
+		case task.Data() == nil:
 			fmt.Println("task.Data() == nil")
-		} else {
+		default:
 			if err = task.Ack(); err != nil {
 				fmt.Println("Ack error:", err)
 			} else {

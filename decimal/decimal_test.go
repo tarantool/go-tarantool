@@ -533,7 +533,7 @@ func TestSelect(t *testing.T) {
 	skipIfDecimalUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	number, err := decimal.NewFromString("-12.34")
 	if err != nil {
@@ -573,7 +573,7 @@ func TestUnmarshal_from_decimal_new(t *testing.T) {
 	skipIfDecimalUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	samples := correctnessSamples
 	samples = append(samples, correctnessDecodeSamples...)
@@ -622,7 +622,7 @@ func TestInsert(t *testing.T) {
 	skipIfDecimalUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	samples := correctnessSamples
 	samples = append(samples, benchmarkSamples...)
@@ -637,7 +637,7 @@ func TestReplace(t *testing.T) {
 	skipIfDecimalUnsupported(t)
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	number, err := decimal.NewFromString("-12.34")
 	if err != nil {

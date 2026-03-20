@@ -42,7 +42,7 @@ func (clierr ClientError) Error() string {
 //
 // - request is timeouted
 //
-// - request is aborted due to rate limit
+// - request is aborted due to rate limit.
 func (clierr ClientError) Temporary() bool {
 	switch clierr.Code {
 	case ErrConnectionNotReady, ErrTimeouted, ErrRateLimited, ErrIoError:

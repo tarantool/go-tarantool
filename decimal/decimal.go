@@ -45,9 +45,9 @@ const (
 
 var (
 	one = decimal.NewFromInt(1)
-	// -10^decimalPrecision - 1
+	// -10^decimalPrecision - 1.
 	minSupportedDecimal = maxSupportedDecimal.Neg().Sub(one)
-	// 10^decimalPrecision - 1
+	// 10^decimalPrecision - 1.
 	maxSupportedDecimal = decimal.New(1, decimalPrecision).Sub(one)
 )
 

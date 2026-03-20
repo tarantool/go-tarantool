@@ -278,7 +278,7 @@ const (
 	RLimitWait
 )
 
-// Opts is a way to configure Connection
+// Opts is a way to configure Connection.
 type Opts struct {
 	// Timeout for response to a particular request. The timeout is reset when
 	// push messages are received. If Timeout is zero, any request can be
@@ -499,7 +499,7 @@ func (conn *Connection) dial(ctx context.Context) error {
 	})
 
 	if err != nil {
-		c.Close()
+		_ = c.Close()
 		return fmt.Errorf("unable to register watch: %w", err)
 	}
 
@@ -900,7 +900,8 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 			return
 		}
 
-		if code == iproto.IPROTO_EVENT {
+		switch code {
+		case iproto.IPROTO_EVENT:
 			if event, err := readWatchEvent(&buf); err == nil {
 				events <- event
 			} else {
@@ -910,10 +911,9 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 				}
 				conn.opts.Logger.Report(LogWatchEventReadFailed, conn, err)
 			}
-			continue
-		} else if code == iproto.IPROTO_CHUNK {
+		case iproto.IPROTO_CHUNK:
 			conn.opts.Logger.Report(LogBoxSessionPushUnsupported, conn, header)
-		} else {
+		default:
 			resps <- resp{header: header, buf: buf}
 		}
 	}
@@ -1298,7 +1298,8 @@ func (conn *Connection) NewPrepared(expr string) (*Prepared, error) {
 //
 // Since v. 2.10.0, Tarantool supports streams and interactive transactions over them.
 // To use interactive transactions, memtx_use_mvcc_engine box option should be set to true.
-// Since 1.7.0
+//
+// Since 1.7.0.
 func (conn *Connection) NewStream() (*Stream, error) {
 	next := atomic.AddUint64(&conn.lastStreamId, 1)
 	return &Stream{
@@ -1445,7 +1446,7 @@ func isFeatureInSlice(expected iproto.Feature, actualSlice []iproto.Feature) boo
 // See:
 // https://www.tarantool.io/en/doc/latest/reference/reference_lua/box_events/#box-watchers
 //
-// Since 1.10.0
+// Since 1.10.0.
 func (conn *Connection) NewWatcher(key string, callback WatchCallback) (Watcher, error) {
 	// We need to check the feature because the IPROTO_WATCH request is
 	// asynchronous. We do not expect any response from a Tarantool instance
@@ -1548,7 +1549,8 @@ func (conn *Connection) newWatcherImpl(key string, callback WatchCallback) (Watc
 // ProtocolInfo returns protocol version and protocol features
 // supported by connected Tarantool server. Beware that values might be
 // outdated if connection is in a disconnected state.
-// Since 2.0.0
+//
+// Since 2.0.0.
 func (conn *Connection) ProtocolInfo() ProtocolInfo {
 	return conn.serverProtocolInfo.Clone()
 }

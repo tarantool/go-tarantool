@@ -21,7 +21,7 @@ const (
 	AutoAuth Auth = iota
 	// ChapSha1Auth forces chap-sha1 authentication method. The method is
 	// available both in the Tarantool Community Edition (CE) and the
-	// Tarantool Enterprise Edition (EE)
+	// Tarantool Enterprise Edition (EE).
 	ChapSha1Auth
 	// PapSha256Auth forces pap-sha256 authentication method. The method is
 	// available only for the Tarantool Enterprise Edition (EE) with

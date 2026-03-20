@@ -56,7 +56,7 @@ func TestErrorMarshalingEnabledSetting(t *testing.T) {
 	var err error
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Disable receiving box.error as MP_EXT 3.
 	data, err := conn.Do(NewErrorMarshalingEnabledSetRequest(false)).Get()
@@ -98,7 +98,7 @@ func TestSQLDefaultEngineSetting(t *testing.T) {
 	var err error
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Set default SQL "CREATE TABLE" engine to "vinyl".
 	data, err := conn.Do(NewSQLDefaultEngineSetRequest("vinyl")).Get()
@@ -163,7 +163,7 @@ func TestSQLDeferForeignKeysSetting(t *testing.T) {
 	var err error
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Create a parent space.
 	exec := tarantool.NewExecuteRequest("CREATE TABLE parent(id INT PRIMARY KEY, y INT UNIQUE);")
@@ -239,7 +239,7 @@ func TestSQLFullColumnNamesSetting(t *testing.T) {
 	var err error
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Create a space.
 	exec := tarantool.NewExecuteRequest("CREATE TABLE FKNAME(ID INT PRIMARY KEY, X INT);")
@@ -313,7 +313,7 @@ func TestSQLFullMetadataSetting(t *testing.T) {
 	var err error
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Create a space.
 	exec := tarantool.NewExecuteRequest("CREATE TABLE fmt(id INT PRIMARY KEY, x INT);")
@@ -386,7 +386,7 @@ func TestSQLParserDebugSetting(t *testing.T) {
 	var err error
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Disable parser debug mode.
 	data, err := conn.Do(NewSQLParserDebugSetRequest(false)).Get()
@@ -420,7 +420,7 @@ func TestSQLRecursiveTriggersSetting(t *testing.T) {
 	var err error
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Create a space.
 	exec := tarantool.NewExecuteRequest("CREATE TABLE rec(id INTEGER PRIMARY KEY, a INT, b INT);")
@@ -504,7 +504,7 @@ func TestSQLReverseUnorderedSelectsSetting(t *testing.T) {
 	var err error
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Create a space.
 	exec := tarantool.NewExecuteRequest("CREATE TABLE data(id STRING PRIMARY KEY);")
@@ -588,7 +588,7 @@ func TestSQLSelectDebugSetting(t *testing.T) {
 	var err error
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Disable select debug mode.
 	data, err := conn.Do(NewSQLSelectDebugSetRequest(false)).Get()
@@ -620,7 +620,7 @@ func TestSQLVDBEDebugSetting(t *testing.T) {
 	var err error
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Disable VDBE debug mode.
 	data, err := conn.Do(NewSQLVDBEDebugSetRequest(false)).Get()
@@ -652,7 +652,7 @@ func TestSessionSettings(t *testing.T) {
 	var err error
 
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Set some settings values.
 	data, err := conn.Do(NewSQLDefaultEngineSetRequest("memtx")).Get()

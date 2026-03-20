@@ -26,7 +26,7 @@ const (
 // MP_ERROR_STACK object with a link to the previous stack error.
 // See https://www.tarantool.io/en/doc/latest/reference/reference_lua/box_error/error/
 //
-// Since 1.10.0
+// Since 1.10.0.
 type BoxError struct {
 	// Type is error type that implies its source (for example, "ClientError").
 	Type string

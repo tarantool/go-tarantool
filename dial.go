@@ -292,7 +292,7 @@ func (d AuthDialer) Dial(ctx context.Context, opts DialOpts) (Conn, error) {
 
 	greeting := conn.Greeting()
 	if greeting.Salt == "" {
-		conn.Close()
+		_ = conn.Close()
 		return nil, fmt.Errorf("failed to authenticate: " +
 			"an invalid connection without salt")
 	}
@@ -312,7 +312,7 @@ func (d AuthDialer) Dial(ctx context.Context, opts DialOpts) (Conn, error) {
 
 	if err := authenticate(ctx, conn, d.Auth, d.Username, d.Password,
 		conn.Greeting().Salt); err != nil {
-		conn.Close()
+		_ = conn.Close()
 		return nil, fmt.Errorf("failed to authenticate: %w", err)
 	}
 	return conn, nil
@@ -343,13 +343,13 @@ func (d ProtocolDialer) Dial(ctx context.Context, opts DialOpts) (Conn, error) {
 
 	protocolConn.protocolInfo, err = identify(ctx, &protocolConn)
 	if err != nil {
-		protocolConn.Close()
+		_ = protocolConn.Close()
 		return nil, fmt.Errorf("failed to identify: %w", err)
 	}
 
 	err = checkProtocolInfo(d.RequiredProtocolInfo, protocolConn.protocolInfo)
 	if err != nil {
-		protocolConn.Close()
+		_ = protocolConn.Close()
 		return nil, fmt.Errorf("invalid server protocol: %w", err)
 	}
 
@@ -375,7 +375,7 @@ func (d GreetingDialer) Dial(ctx context.Context, opts DialOpts) (Conn, error) {
 	}
 	version, salt, err := readGreeting(ctx, &greetingConn)
 	if err != nil {
-		greetingConn.Close()
+		_ = greetingConn.Close()
 		return nil, fmt.Errorf("failed to read greeting: %w", err)
 	}
 
@@ -392,20 +392,21 @@ func parseAddress(address string) (string, string) {
 	network := "tcp"
 	addrLen := len(address)
 
-	if addrLen > 0 && (address[0] == '.' || address[0] == '/') {
+	switch {
+	case addrLen > 0 && (address[0] == '.' || address[0] == '/'):
 		network = "unix"
-	} else if addrLen >= 7 && address[0:7] == "unix://" {
+	case addrLen >= 7 && address[0:7] == "unix://":
 		network = "unix"
 		address = address[7:]
-	} else if addrLen >= 5 && address[0:5] == "unix:" {
+	case addrLen >= 5 && address[0:5] == "unix:":
 		network = "unix"
 		address = address[5:]
-	} else if addrLen >= 6 && address[0:6] == "unix/:" {
+	case addrLen >= 6 && address[0:6] == "unix/:":
 		network = "unix"
 		address = address[6:]
-	} else if addrLen >= 6 && address[0:6] == "tcp://" {
+	case addrLen >= 6 && address[0:6] == "tcp://":
 		address = address[6:]
-	} else if addrLen >= 4 && address[0:4] == "tcp:" {
+	case addrLen >= 4 && address[0:4] == "tcp:":
 		address = address[4:]
 	}
 
@@ -428,7 +429,7 @@ func ioWaiter(ctx context.Context, conn Conn) (chan<- struct{}, <-chan error) {
 
 		select {
 		case <-ctx.Done():
-			conn.Close()
+			_ = conn.Close()
 			<-doneIO
 			doneWait <- ctx.Err()
 		case <-doneIO:

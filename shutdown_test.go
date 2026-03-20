@@ -136,7 +136,7 @@ func TestGracefulShutdown(t *testing.T) {
 	defer test_helpers.StopTarantoolWithCleanup(inst)
 
 	conn = test_helpers.ConnectWithValidation(t, shtdnDialer, shtdnClntOpts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	testGracefulShutdown(t, conn, inst)
 }
@@ -155,7 +155,7 @@ func TestCloseGraceful(t *testing.T) {
 	defer test_helpers.StopTarantoolWithCleanup(inst)
 
 	conn := test_helpers.ConnectWithValidation(t, testDialer, opts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Send request with sleep.
 	evalSleep := 3 // In seconds.
@@ -193,7 +193,7 @@ func TestGracefulShutdownWithReconnect(t *testing.T) {
 	defer test_helpers.StopTarantoolWithCleanup(inst)
 
 	conn := test_helpers.ConnectWithValidation(t, shtdnDialer, shtdnClntOpts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	testGracefulShutdown(t, conn, inst)
 
@@ -224,7 +224,7 @@ func TestNoGracefulShutdown(t *testing.T) {
 	defer test_helpers.StopTarantoolWithCleanup(inst)
 
 	conn = test_helpers.ConnectWithValidation(t, noShtdDialer, noSthdClntOpts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	evalSleep := 10             // in seconds
 	serverShutdownTimeout := 60 // in seconds
@@ -271,7 +271,7 @@ func TestGracefulShutdownRespectsClose(t *testing.T) {
 	defer test_helpers.StopTarantoolWithCleanup(inst)
 
 	conn = test_helpers.ConnectWithValidation(t, shtdnDialer, shtdnClntOpts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Create a helper watcher to ensure that async
 	// shutdown is set up.
@@ -307,7 +307,7 @@ func TestGracefulShutdownRespectsClose(t *testing.T) {
 	require.Nil(t, inst.Signal(syscall.SIGTERM))
 
 	// Close the connection.
-	conn.Close()
+	_ = conn.Close()
 
 	// Connection is closed.
 	require.Equal(t, true, conn.ClosedNow())
@@ -348,7 +348,7 @@ func TestGracefulShutdownNotRacesWithRequestReconnect(t *testing.T) {
 	defer test_helpers.StopTarantoolWithCleanup(inst)
 
 	conn = test_helpers.ConnectWithValidation(t, shtdnDialer, shtdnClntOpts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Create a helper watcher to ensure that async
 	// shutdown is set up.
@@ -416,7 +416,7 @@ func TestGracefulShutdownCloseConcurrent(t *testing.T) {
 	defer test_helpers.StopTarantoolWithCleanup(inst)
 
 	conn := test_helpers.ConnectWithValidation(t, shtdnDialer, shtdnClntOpts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Create a helper watcher to ensure that async
 	// shutdown is set up.
@@ -435,7 +435,7 @@ func TestGracefulShutdownCloseConcurrent(t *testing.T) {
 		Args([]interface{}{serverShutdownTimeout}),
 	).Get()
 	require.Nil(t, err)
-	conn.Close()
+	_ = conn.Close()
 
 	const testConcurrency = 50
 
@@ -458,7 +458,7 @@ func TestGracefulShutdownCloseConcurrent(t *testing.T) {
 			if err != nil {
 				t.Errorf("Failed to connect: %s", err)
 			} else {
-				defer conn.Close()
+				defer func() { _ = conn.Close() }()
 			}
 
 			// Wait till all connections created.
@@ -503,7 +503,7 @@ func TestGracefulShutdownConcurrent(t *testing.T) {
 	defer test_helpers.StopTarantoolWithCleanup(inst)
 
 	conn := test_helpers.ConnectWithValidation(t, shtdnDialer, shtdnClntOpts)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Set a big timeout so it would be easy to differ
 	// if server went down on timeout or after all connections were terminated.
@@ -512,7 +512,7 @@ func TestGracefulShutdownConcurrent(t *testing.T) {
 		Args([]interface{}{serverShutdownTimeout}),
 	).Get()
 	require.Nil(t, err)
-	conn.Close()
+	_ = conn.Close()
 
 	const testConcurrency = 50
 
@@ -528,7 +528,7 @@ func TestGracefulShutdownConcurrent(t *testing.T) {
 			defer caseWg.Done()
 
 			conn := test_helpers.ConnectWithValidation(t, shtdnDialer, shtdnClntOpts)
-			defer conn.Close()
+			defer func() { _ = conn.Close() }()
 
 			// Create a helper watcher to ensure that async
 			// shutdown is set up.
