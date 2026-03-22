@@ -45,6 +45,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
   become private, `SetError` and `SetResponse` become private (#470).
 * `ConnectionPool.Close()` returns a single error value, combining multiple
   errors using errors.Join() (#540)
+* Changed design of tarantool.Logger, used slog (#504).
 
 ### Fixed
 
