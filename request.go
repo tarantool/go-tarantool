@@ -117,6 +117,13 @@ type KeyValueBind struct {
 // to avoid extra allocations in heap by calling strings.ToLower().
 var lowerCaseNames sync.Map
 
+func validateNonEmptyString(name, value string) error {
+	if len(value) == 0 {
+		return fmt.Errorf("%s must not be empty", name)
+	}
+	return nil
+}
+
 func encodeSQLBind(enc *msgpack.Encoder, from interface{}) error {
 	// internal function for encoding single map in msgpack
 	encodeKeyInterface := func(key string, val interface{}) error {
@@ -190,17 +197,19 @@ func encodeSQLBind(enc *msgpack.Encoder, from interface{}) error {
 	encodeSlice := func(from interface{}) error {
 		castedSlice, ok := from.([]interface{})
 		if !ok {
-			castedKVSlice := from.([]KeyValueBind)
-			t := len(castedKVSlice)
-			if err := enc.EncodeArrayLen(t); err != nil {
-				return err
-			}
-			for _, v := range castedKVSlice {
-				if err := encodeKeyInterface(v.Key, v.Value); err != nil {
+			if castedKVSlice, ok := from.([]KeyValueBind); ok {
+				t := len(castedKVSlice)
+				if err := enc.EncodeArrayLen(t); err != nil {
 					return err
 				}
+				for _, v := range castedKVSlice {
+					if err := encodeKeyInterface(v.Key, v.Value); err != nil {
+						return err
+					}
+				}
+				return nil
 			}
-			return nil
+			return fmt.Errorf("unsupported SQL bind type %T", from)
 		}
 
 		if err := enc.EncodeArrayLen(len(castedSlice)); err != nil {
@@ -240,6 +249,8 @@ func encodeSQLBind(enc *msgpack.Encoder, from interface{}) error {
 		if err := encodeSlice(from); err != nil {
 			return err
 		}
+	default:
+		return fmt.Errorf("unsupported SQL bind type %T", from)
 	}
 	return nil
 }
@@ -295,11 +306,11 @@ func (req *baseRequest) Response(header Header, body io.Reader) (Response, error
 
 type spaceRequest struct {
 	baseRequest
-	space interface{}
+	Space interface{}
 }
 
 func (req *spaceRequest) setSpace(space interface{}) {
-	req.space = space
+	req.Space = space
 }
 
 func EncodeSpace(res SchemaResolver, enc *msgpack.Encoder, space interface{}) error {
@@ -315,11 +326,11 @@ func EncodeSpace(res SchemaResolver, enc *msgpack.Encoder, space interface{}) er
 
 type spaceIndexRequest struct {
 	spaceRequest
-	index interface{}
+	IndexValue interface{}
 }
 
 func (req *spaceIndexRequest) setIndex(index interface{}) {
-	req.index = index
+	req.IndexValue = index
 }
 
 // authRequest implements IPROTO_AUTH request.
@@ -439,10 +450,12 @@ func (req *PingRequest) Context(ctx context.Context) *PingRequest {
 // by a Connection.
 type SelectRequest struct {
 	spaceIndexRequest
-	isIteratorSet, fetchPos bool
-	offset, limit           uint32
-	iterator                Iter
-	key, after              interface{}
+	isIteratorSet        bool
+	FetchPosEnabled      bool
+	OffsetValue          uint32
+	LimitValue           uint32
+	IteratorValue        Iter
+	KeyValue, AfterValue interface{}
 }
 
 // NewSelectRequest returns a new empty SelectRequest.
@@ -451,11 +464,11 @@ func NewSelectRequest(space interface{}) *SelectRequest {
 	req.rtype = iproto.IPROTO_SELECT
 	req.setSpace(space)
 	req.isIteratorSet = false
-	req.fetchPos = false
-	req.iterator = IterAll
-	req.key = []interface{}{}
-	req.after = nil
-	req.limit = 0xFFFFFFFF
+	req.FetchPosEnabled = false
+	req.IteratorValue = IterAll
+	req.KeyValue = []interface{}{}
+	req.AfterValue = nil
+	req.LimitValue = 0xFFFFFFFF
 	return req
 }
 
@@ -469,21 +482,21 @@ func (req *SelectRequest) Index(index interface{}) *SelectRequest {
 // Offset sets the offset for the select request.
 // Note: default value is 0.
 func (req *SelectRequest) Offset(offset uint32) *SelectRequest {
-	req.offset = offset
+	req.OffsetValue = offset
 	return req
 }
 
 // Limit sets the limit for the select request.
 // Note: default value is 0xFFFFFFFF.
 func (req *SelectRequest) Limit(limit uint32) *SelectRequest {
-	req.limit = limit
+	req.LimitValue = limit
 	return req
 }
 
 // Iterator set the iterator for the select request.
 // Note: default value is IterAll if key is not set or IterEq otherwise.
 func (req *SelectRequest) Iterator(iterator Iter) *SelectRequest {
-	req.iterator = iterator
+	req.IteratorValue = iterator
 	req.isIteratorSet = true
 	return req
 }
@@ -491,9 +504,9 @@ func (req *SelectRequest) Iterator(iterator Iter) *SelectRequest {
 // Key set the key for the select request.
 // Note: default value is empty.
 func (req *SelectRequest) Key(key interface{}) *SelectRequest {
-	req.key = key
+	req.KeyValue = key
 	if !req.isIteratorSet {
-		req.iterator = IterEq
+		req.IteratorValue = IterEq
 	}
 	return req
 }
@@ -507,7 +520,7 @@ func (req *SelectRequest) Key(key interface{}) *SelectRequest {
 //
 // Since 1.11.0.
 func (req *SelectRequest) FetchPos(fetch bool) *SelectRequest {
-	req.fetchPos = fetch
+	req.FetchPosEnabled = fetch
 	return req
 }
 
@@ -520,27 +533,27 @@ func (req *SelectRequest) FetchPos(fetch bool) *SelectRequest {
 //
 // Since 1.11.0.
 func (req *SelectRequest) After(after interface{}) *SelectRequest {
-	req.after = after
+	req.AfterValue = after
 	return req
 }
 
 // Body fills an encoder with the select request body.
 func (req *SelectRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
-	spaceEnc, err := newSpaceEncoder(res, req.space)
+	spaceEnc, err := newSpaceEncoder(res, req.Space)
 	if err != nil {
 		return err
 	}
 
-	indexEnc, err := newIndexEncoder(res, req.index, spaceEnc.Id)
+	indexEnc, err := newIndexEncoder(res, req.IndexValue, spaceEnc.Id)
 	if err != nil {
 		return err
 	}
 
 	mapLen := 6
-	if req.fetchPos {
+	if req.FetchPosEnabled {
 		mapLen++
 	}
-	if req.after != nil {
+	if req.AfterValue != nil {
 		mapLen++
 	}
 
@@ -552,7 +565,7 @@ func (req *SelectRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 		return err
 	}
 
-	if err := enc.EncodeUint(uint64(req.iterator)); err != nil {
+	if err := enc.EncodeUint(uint64(req.IteratorValue)); err != nil {
 		return err
 	}
 
@@ -560,7 +573,7 @@ func (req *SelectRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 		return err
 	}
 
-	if err := enc.EncodeUint(uint64(req.offset)); err != nil {
+	if err := enc.EncodeUint(uint64(req.OffsetValue)); err != nil {
 		return err
 	}
 
@@ -568,26 +581,26 @@ func (req *SelectRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 		return err
 	}
 
-	if err := enc.EncodeUint(uint64(req.limit)); err != nil {
+	if err := enc.EncodeUint(uint64(req.LimitValue)); err != nil {
 		return err
 	}
 
-	if err := fillSearch(enc, spaceEnc, indexEnc, req.key); err != nil {
+	if err := fillSearch(enc, spaceEnc, indexEnc, req.KeyValue); err != nil {
 		return err
 	}
 
-	if req.fetchPos {
+	if req.FetchPosEnabled {
 		if err := enc.EncodeUint(uint64(iproto.IPROTO_FETCH_POSITION)); err != nil {
 			return err
 		}
 
-		if err := enc.EncodeBool(req.fetchPos); err != nil {
+		if err := enc.EncodeBool(req.FetchPosEnabled); err != nil {
 			return err
 		}
 	}
 
-	if req.after != nil {
-		if pos, ok := req.after.([]byte); ok {
+	if req.AfterValue != nil {
+		if pos, ok := req.AfterValue.([]byte); ok {
 			if err := enc.EncodeUint(uint64(iproto.IPROTO_AFTER_POSITION)); err != nil {
 				return err
 			}
@@ -600,7 +613,7 @@ func (req *SelectRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 				return err
 			}
 
-			if err := enc.Encode(req.after); err != nil {
+			if err := enc.Encode(req.AfterValue); err != nil {
 				return err
 			}
 		}
@@ -634,7 +647,7 @@ func (req *SelectRequest) Response(header Header, body io.Reader) (Response, err
 // by a Connection.
 type InsertRequest struct {
 	spaceRequest
-	tuple interface{}
+	TupleValue interface{}
 }
 
 // NewInsertRequest returns a new empty InsertRequest.
@@ -642,20 +655,20 @@ func NewInsertRequest(space interface{}) *InsertRequest {
 	req := new(InsertRequest)
 	req.rtype = iproto.IPROTO_INSERT
 	req.setSpace(space)
-	req.tuple = []interface{}{}
+	req.TupleValue = []interface{}{}
 	return req
 }
 
 // Tuple sets the tuple for insertion the insert request.
 // Note: default value is nil.
 func (req *InsertRequest) Tuple(tuple interface{}) *InsertRequest {
-	req.tuple = tuple
+	req.TupleValue = tuple
 	return req
 }
 
 // Body fills an msgpack.Encoder with the insert request body.
 func (req *InsertRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
-	spaceEnc, err := newSpaceEncoder(res, req.space)
+	spaceEnc, err := newSpaceEncoder(res, req.Space)
 	if err != nil {
 		return err
 	}
@@ -672,7 +685,7 @@ func (req *InsertRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 		return err
 	}
 
-	return enc.Encode(req.tuple)
+	return enc.Encode(req.TupleValue)
 }
 
 // Context sets a passed context to the request.
@@ -690,7 +703,7 @@ func (req *InsertRequest) Context(ctx context.Context) *InsertRequest {
 // by a Connection.
 type ReplaceRequest struct {
 	spaceRequest
-	tuple interface{}
+	TupleValue interface{}
 }
 
 // NewReplaceRequest returns a new empty ReplaceRequest.
@@ -698,20 +711,20 @@ func NewReplaceRequest(space interface{}) *ReplaceRequest {
 	req := new(ReplaceRequest)
 	req.rtype = iproto.IPROTO_REPLACE
 	req.setSpace(space)
-	req.tuple = []interface{}{}
+	req.TupleValue = []interface{}{}
 	return req
 }
 
 // Tuple sets the tuple for replace by the replace request.
 // Note: default value is nil.
 func (req *ReplaceRequest) Tuple(tuple interface{}) *ReplaceRequest {
-	req.tuple = tuple
+	req.TupleValue = tuple
 	return req
 }
 
 // Body fills an msgpack.Encoder with the replace request body.
 func (req *ReplaceRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
-	spaceEnc, err := newSpaceEncoder(res, req.space)
+	spaceEnc, err := newSpaceEncoder(res, req.Space)
 	if err != nil {
 		return err
 	}
@@ -728,7 +741,7 @@ func (req *ReplaceRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error 
 		return err
 	}
 
-	return enc.Encode(req.tuple)
+	return enc.Encode(req.TupleValue)
 }
 
 // Context sets a passed context to the request.
@@ -746,7 +759,7 @@ func (req *ReplaceRequest) Context(ctx context.Context) *ReplaceRequest {
 // by a Connection.
 type DeleteRequest struct {
 	spaceIndexRequest
-	key interface{}
+	KeyValue interface{}
 }
 
 // NewDeleteRequest returns a new empty DeleteRequest.
@@ -754,7 +767,7 @@ func NewDeleteRequest(space interface{}) *DeleteRequest {
 	req := new(DeleteRequest)
 	req.rtype = iproto.IPROTO_DELETE
 	req.setSpace(space)
-	req.key = []interface{}{}
+	req.KeyValue = []interface{}{}
 	return req
 }
 
@@ -768,18 +781,18 @@ func (req *DeleteRequest) Index(index interface{}) *DeleteRequest {
 // Key sets the key of tuple for the delete request.
 // Note: default value is empty.
 func (req *DeleteRequest) Key(key interface{}) *DeleteRequest {
-	req.key = key
+	req.KeyValue = key
 	return req
 }
 
 // Body fills an msgpack.Encoder with the delete request body.
 func (req *DeleteRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
-	spaceEnc, err := newSpaceEncoder(res, req.space)
+	spaceEnc, err := newSpaceEncoder(res, req.Space)
 	if err != nil {
 		return err
 	}
 
-	indexEnc, err := newIndexEncoder(res, req.index, spaceEnc.Id)
+	indexEnc, err := newIndexEncoder(res, req.IndexValue, spaceEnc.Id)
 	if err != nil {
 		return err
 	}
@@ -788,7 +801,7 @@ func (req *DeleteRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 		return err
 	}
 
-	return fillSearch(enc, spaceEnc, indexEnc, req.key)
+	return fillSearch(enc, spaceEnc, indexEnc, req.KeyValue)
 }
 
 // Context sets a passed context to the request.
@@ -806,8 +819,8 @@ func (req *DeleteRequest) Context(ctx context.Context) *DeleteRequest {
 // by a Connection.
 type UpdateRequest struct {
 	spaceIndexRequest
-	key interface{}
-	ops *Operations
+	KeyValue interface{}
+	Ops      *Operations
 }
 
 // NewUpdateRequest returns a new empty UpdateRequest.
@@ -815,7 +828,7 @@ func NewUpdateRequest(space interface{}) *UpdateRequest {
 	req := new(UpdateRequest)
 	req.rtype = iproto.IPROTO_UPDATE
 	req.setSpace(space)
-	req.key = []interface{}{}
+	req.KeyValue = []interface{}{}
 	return req
 }
 
@@ -829,25 +842,25 @@ func (req *UpdateRequest) Index(index interface{}) *UpdateRequest {
 // Key sets the key of tuple for the update request.
 // Note: default value is empty.
 func (req *UpdateRequest) Key(key interface{}) *UpdateRequest {
-	req.key = key
+	req.KeyValue = key
 	return req
 }
 
 // Operations sets operations to be performed on update.
 // Note: default value is empty.
 func (req *UpdateRequest) Operations(ops *Operations) *UpdateRequest {
-	req.ops = ops
+	req.Ops = ops
 	return req
 }
 
 // Body fills an msgpack.Encoder with the update request body.
 func (req *UpdateRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
-	spaceEnc, err := newSpaceEncoder(res, req.space)
+	spaceEnc, err := newSpaceEncoder(res, req.Space)
 	if err != nil {
 		return err
 	}
 
-	indexEnc, err := newIndexEncoder(res, req.index, spaceEnc.Id)
+	indexEnc, err := newIndexEncoder(res, req.IndexValue, spaceEnc.Id)
 	if err != nil {
 		return err
 	}
@@ -856,7 +869,7 @@ func (req *UpdateRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 		return err
 	}
 
-	if err := fillSearch(enc, spaceEnc, indexEnc, req.key); err != nil {
+	if err := fillSearch(enc, spaceEnc, indexEnc, req.KeyValue); err != nil {
 		return err
 	}
 
@@ -864,10 +877,10 @@ func (req *UpdateRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 		return err
 	}
 
-	if req.ops == nil {
+	if req.Ops == nil {
 		return enc.EncodeArrayLen(0)
 	} else {
-		return enc.Encode(req.ops)
+		return enc.Encode(req.Ops)
 	}
 }
 
@@ -886,8 +899,8 @@ func (req *UpdateRequest) Context(ctx context.Context) *UpdateRequest {
 // by a Connection.
 type UpsertRequest struct {
 	spaceRequest
-	tuple interface{}
-	ops   *Operations
+	TupleValue interface{}
+	Ops        *Operations
 }
 
 // NewUpsertRequest returns a new empty UpsertRequest.
@@ -895,27 +908,27 @@ func NewUpsertRequest(space interface{}) *UpsertRequest {
 	req := new(UpsertRequest)
 	req.rtype = iproto.IPROTO_UPSERT
 	req.setSpace(space)
-	req.tuple = []interface{}{}
+	req.TupleValue = []interface{}{}
 	return req
 }
 
 // Tuple sets the tuple for insertion or update by the upsert request.
 // Note: default value is empty.
 func (req *UpsertRequest) Tuple(tuple interface{}) *UpsertRequest {
-	req.tuple = tuple
+	req.TupleValue = tuple
 	return req
 }
 
 // Operations sets operations to be performed on update case by the upsert request.
 // Note: default value is empty.
 func (req *UpsertRequest) Operations(ops *Operations) *UpsertRequest {
-	req.ops = ops
+	req.Ops = ops
 	return req
 }
 
 // Body fills an msgpack.Encoder with the upsert request body.
 func (req *UpsertRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
-	spaceEnc, err := newSpaceEncoder(res, req.space)
+	spaceEnc, err := newSpaceEncoder(res, req.Space)
 	if err != nil {
 		return err
 	}
@@ -932,7 +945,7 @@ func (req *UpsertRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 		return err
 	}
 
-	if err := enc.Encode(req.tuple); err != nil {
+	if err := enc.Encode(req.TupleValue); err != nil {
 		return err
 	}
 
@@ -940,10 +953,10 @@ func (req *UpsertRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 		return err
 	}
 
-	if req.ops == nil {
+	if req.Ops == nil {
 		return enc.EncodeArrayLen(0)
 	} else {
-		return enc.Encode(req.ops)
+		return enc.Encode(req.Ops)
 	}
 }
 
@@ -962,8 +975,8 @@ func (req *UpsertRequest) Context(ctx context.Context) *UpsertRequest {
 // by a Connection.
 type CallRequest struct {
 	baseRequest
-	function string
-	args     interface{}
+	FunctionName string
+	ArgsValue    interface{}
 }
 
 // NewCallRequest returns a new empty CallRequest. It uses request code for
@@ -971,19 +984,23 @@ type CallRequest struct {
 func NewCallRequest(function string) *CallRequest {
 	req := new(CallRequest)
 	req.rtype = iproto.IPROTO_CALL
-	req.function = function
+	req.FunctionName = function
 	return req
 }
 
 // Args sets the args for the call request.
 // Note: default value is empty.
 func (req *CallRequest) Args(args interface{}) *CallRequest {
-	req.args = args
+	req.ArgsValue = args
 	return req
 }
 
 // Body fills an encoder with the call request body.
 func (req *CallRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
+	if err := validateNonEmptyString("function", req.FunctionName); err != nil {
+		return err
+	}
+
 	if err := enc.EncodeMapLen(2); err != nil {
 		return err
 	}
@@ -992,7 +1009,7 @@ func (req *CallRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
 		return err
 	}
 
-	if err := enc.EncodeString(req.function); err != nil {
+	if err := enc.EncodeString(req.FunctionName); err != nil {
 		return err
 	}
 
@@ -1000,10 +1017,10 @@ func (req *CallRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
 		return err
 	}
 
-	if req.args == nil {
+	if req.ArgsValue == nil {
 		return enc.EncodeArrayLen(0)
 	} else {
-		return enc.Encode(req.args)
+		return enc.Encode(req.ArgsValue)
 	}
 }
 
@@ -1039,28 +1056,32 @@ func NewCall17Request(function string) *CallRequest {
 // by a Connection.
 type EvalRequest struct {
 	baseRequest
-	expr string
-	args interface{}
+	ExprValue string
+	ArgsValue interface{}
 }
 
 // NewEvalRequest returns a new empty EvalRequest.
 func NewEvalRequest(expr string) *EvalRequest {
 	req := new(EvalRequest)
 	req.rtype = iproto.IPROTO_EVAL
-	req.expr = expr
-	req.args = []interface{}{}
+	req.ExprValue = expr
+	req.ArgsValue = []interface{}{}
 	return req
 }
 
 // Args sets the args for the eval request.
 // Note: default value is empty.
 func (req *EvalRequest) Args(args interface{}) *EvalRequest {
-	req.args = args
+	req.ArgsValue = args
 	return req
 }
 
 // Body fills an msgpack.Encoder with the eval request body.
 func (req *EvalRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
+	if err := validateNonEmptyString("expression", req.ExprValue); err != nil {
+		return err
+	}
+
 	if err := enc.EncodeMapLen(2); err != nil {
 		return err
 	}
@@ -1069,7 +1090,7 @@ func (req *EvalRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
 		return err
 	}
 
-	if err := enc.EncodeString(req.expr); err != nil {
+	if err := enc.EncodeString(req.ExprValue); err != nil {
 		return err
 	}
 
@@ -1077,10 +1098,10 @@ func (req *EvalRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
 		return err
 	}
 
-	if req.args == nil {
+	if req.ArgsValue == nil {
 		return enc.EncodeArrayLen(0)
 	} else {
-		return enc.Encode(req.args)
+		return enc.Encode(req.ArgsValue)
 	}
 }
 
@@ -1099,28 +1120,32 @@ func (req *EvalRequest) Context(ctx context.Context) *EvalRequest {
 // by a Connection.
 type ExecuteRequest struct {
 	baseRequest
-	expr string
-	args interface{}
+	ExprValue string
+	ArgsValue interface{}
 }
 
 // NewExecuteRequest returns a new empty ExecuteRequest.
 func NewExecuteRequest(expr string) *ExecuteRequest {
 	req := new(ExecuteRequest)
 	req.rtype = iproto.IPROTO_EXECUTE
-	req.expr = expr
-	req.args = []interface{}{}
+	req.ExprValue = expr
+	req.ArgsValue = []interface{}{}
 	return req
 }
 
 // Args sets the args for the execute request.
 // Note: default value is empty.
 func (req *ExecuteRequest) Args(args interface{}) *ExecuteRequest {
-	req.args = args
+	req.ArgsValue = args
 	return req
 }
 
 // Body fills an msgpack.Encoder with the execute request body.
 func (req *ExecuteRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
+	if err := validateNonEmptyString("expression", req.ExprValue); err != nil {
+		return err
+	}
+
 	if err := enc.EncodeMapLen(2); err != nil {
 		return err
 	}
@@ -1129,7 +1154,7 @@ func (req *ExecuteRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
 		return err
 	}
 
-	if err := enc.EncodeString(req.expr); err != nil {
+	if err := enc.EncodeString(req.ExprValue); err != nil {
 		return err
 	}
 
@@ -1137,7 +1162,7 @@ func (req *ExecuteRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
 		return err
 	}
 
-	return encodeSQLBind(enc, req.args)
+	return encodeSQLBind(enc, req.ArgsValue)
 }
 
 // Context sets a passed context to the request.
@@ -1165,19 +1190,23 @@ func (req *ExecuteRequest) Response(header Header, body io.Reader) (Response, er
 // specified notification key without subscribing to changes.
 type WatchOnceRequest struct {
 	baseRequest
-	key string
+	KeyValue string
 }
 
 // NewWatchOnceRequest returns a new watchOnceRequest.
 func NewWatchOnceRequest(key string) *WatchOnceRequest {
 	req := new(WatchOnceRequest)
 	req.rtype = iproto.IPROTO_WATCH_ONCE
-	req.key = key
+	req.KeyValue = key
 	return req
 }
 
 // Body fills an msgpack.Encoder with the watchOnce request body.
 func (req *WatchOnceRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
+	if err := validateNonEmptyString("key", req.KeyValue); err != nil {
+		return err
+	}
+
 	if err := enc.EncodeMapLen(1); err != nil {
 		return err
 	}
@@ -1186,7 +1215,7 @@ func (req *WatchOnceRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error 
 		return err
 	}
 
-	return enc.EncodeString(req.key)
+	return enc.EncodeString(req.KeyValue)
 }
 
 // Context sets a passed context to the request.
