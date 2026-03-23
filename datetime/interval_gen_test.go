@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/vmihailenco/msgpack/v5"
 )
 
@@ -77,11 +78,11 @@ func TestOptionalInterval_EncodeDecodeMsgpack_Some(t *testing.T) {
 	dec := msgpack.NewDecoder(&buf)
 
 	err := enc.Encode(some)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var decodedSome OptionalInterval
 	err = dec.Decode(&decodedSome)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, decodedSome.IsSome())
 	assert.Equal(t, val, decodedSome.Unwrap())
 }
@@ -94,11 +95,11 @@ func TestOptionalInterval_EncodeDecodeMsgpack_None(t *testing.T) {
 	dec := msgpack.NewDecoder(&buf)
 
 	err := enc.Encode(none)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var decodedNone OptionalInterval
 	err = dec.Decode(&decodedNone)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, decodedNone.IsZero())
 }
 
@@ -108,7 +109,7 @@ func TestOptionalInterval_EncodeDecodeMsgpack_InvalidType(t *testing.T) {
 	dec := msgpack.NewDecoder(&buf)
 
 	err := enc.Encode(123)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var decodedInvalid OptionalInterval
 	err = dec.Decode(&decodedInvalid)

@@ -32,7 +32,7 @@ func (c *ConnectorAdapter) ConnectedNow() bool {
 	return ret
 }
 
-// ClosedNow reports if the connector is closed by user or all connections
+// Close reports if the connector is closed by user or all connections
 // in the specified mode closed.
 func (c *ConnectorAdapter) Close() error {
 	errs := c.pool.Close()

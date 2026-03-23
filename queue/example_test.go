@@ -6,6 +6,7 @@
 // Terminal 2:
 // $ cd queue
 // $ go test -v example_test.go
+
 package queue_test
 
 import (

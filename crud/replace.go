@@ -20,7 +20,7 @@ type ReplaceRequest struct {
 }
 
 type replaceArgs struct {
-	_msgpack struct{} `msgpack:",asArray"` // nolint: structcheck,unused
+	_msgpack struct{} `msgpack:",asArray"` //nolint:unused
 	Space    string
 	Tuple    Tuple
 	Opts     ReplaceOpts
@@ -78,7 +78,7 @@ type ReplaceObjectRequest struct {
 }
 
 type replaceObjectArgs struct {
-	_msgpack struct{} `msgpack:",asArray"` // nolint: structcheck,unused
+	_msgpack struct{} `msgpack:",asArray"` //nolint:unused
 	Space    string
 	Object   Object
 	Opts     ReplaceObjectOpts

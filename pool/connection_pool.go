@@ -1,4 +1,4 @@
-// Package with methods to work with a Tarantool cluster
+// Package pool provides methods to work with a Tarantool cluster
 // considering master discovery.
 //
 // Main features:
@@ -96,13 +96,13 @@ type ConnectionInfo struct {
 	Instance     Instance
 }
 
-/*
-Main features:
-
-- Return available connection from pool according to round-robin strategy.
-
-- Automatic master discovery by mode parameter.
-*/
+// ConnectionPool is a connection pool for a Tarantool cluster.
+//
+// Main features:
+//
+// - Return available connection from pool according to round-robin strategy.
+//
+// - Automatic master discovery by mode parameter.
 type ConnectionPool struct {
 	ends      map[string]*endpoint
 	endsMutex sync.RWMutex
@@ -487,7 +487,6 @@ func (p *ConnectionPool) NewPrepared(expr string, userMode Mode) (*tarantool.Pre
 // Since 1.10.0.
 func (p *ConnectionPool) NewWatcher(key string,
 	callback tarantool.WatchCallback, mode Mode) (tarantool.Watcher, error) {
-
 	watcher := &poolWatcher{
 		container:    &p.watcherContainer,
 		mode:         mode,
@@ -648,7 +647,7 @@ func (p *ConnectionPool) addConnection(name string,
 	if isFeatureInSlice(iproto.IPROTO_FEATURE_WATCHERS, conn.ProtocolInfo().Features) {
 		watched := []*poolWatcher{}
 		err := p.watcherContainer.foreach(func(watcher *poolWatcher) error {
-			watch := false
+			var watch bool
 			switch watcher.mode {
 			case RW:
 				watch = role == MasterRole
@@ -979,7 +978,6 @@ func (p *ConnectionPool) controller(ctx context.Context, e *endpoint) {
 }
 
 func (p *ConnectionPool) getNextConnection(mode Mode) (*tarantool.Connection, error) {
-
 	switch mode {
 	case ANY:
 		if next := p.anyPool.GetNextConnection(); next != nil {

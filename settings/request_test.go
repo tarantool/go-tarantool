@@ -68,7 +68,7 @@ func TestRequestsAPI(t *testing.T) {
 
 		var reqBuf bytes.Buffer
 		enc := msgpack.NewEncoder(&reqBuf)
-		require.Nilf(t, test.req.Body(&resolver, enc), "No errors on fill")
+		require.NoErrorf(t, test.req.Body(&resolver, enc), "No errors on fill")
 	}
 }
 

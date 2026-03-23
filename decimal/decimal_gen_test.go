@@ -6,6 +6,7 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/vmihailenco/msgpack/v5"
 )
 
@@ -78,11 +79,11 @@ func TestOptionalDecimal_EncodeDecodeMsgpack_Some(t *testing.T) {
 	dec := msgpack.NewDecoder(&buf)
 
 	err := enc.Encode(some)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var decodedSome OptionalDecimal
 	err = dec.Decode(&decodedSome)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, decodedSome.IsSome())
 	assert.Equal(t, val, decodedSome.Unwrap())
 }
@@ -95,11 +96,11 @@ func TestOptionalDecimal_EncodeDecodeMsgpack_None(t *testing.T) {
 	dec := msgpack.NewDecoder(&buf)
 
 	err := enc.Encode(none)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var decodedNone OptionalDecimal
 	err = dec.Decode(&decodedNone)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, decodedNone.IsZero())
 }
 
@@ -109,7 +110,7 @@ func TestOptionalDecimal_EncodeDecodeMsgpack_InvalidType(t *testing.T) {
 	dec := msgpack.NewDecoder(&buf)
 
 	err := enc.Encode(123)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var decodedInvalid OptionalDecimal
 	err = dec.Decode(&decodedInvalid)

@@ -80,14 +80,12 @@ func TestEncodeArrow(t *testing.T) {
 
 			require.Equal(t, tt.enc, buf.Bytes())
 		})
-
 	}
 }
 
 func TestDecodeArrow(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			buf := bytes.NewBuffer(tt.enc)
 			dec := msgpack.NewDecoder(buf)
 

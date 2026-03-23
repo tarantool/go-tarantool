@@ -80,7 +80,7 @@ func Start(port int) (TCS, error) {
 	return tcs, nil
 }
 
-// Start starts a Tarantool centralized configuration storage.
+// StartTesting starts a Tarantool centralized configuration storage.
 // Returns a Tcs instance and a cleanup function.
 func StartTesting(tb testing.TB, port int) TCS {
 	tcs, err := Start(port)

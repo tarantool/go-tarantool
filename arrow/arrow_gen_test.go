@@ -5,12 +5,13 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/vmihailenco/msgpack/v5"
 )
 
 func TestSomeOptionalArrow(t *testing.T) {
 	val, err := MakeArrow([]byte{1, 2, 3})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	opt := SomeOptionalArrow(val)
 
 	assert.True(t, opt.IsSome())
@@ -33,7 +34,7 @@ func TestNoneOptionalArrow(t *testing.T) {
 
 func TestOptionalArrow_MustGet(t *testing.T) {
 	val, err := MakeArrow([]byte{1, 2, 3})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	optSome := SomeOptionalArrow(val)
 	optNone := NoneOptionalArrow()
 
@@ -43,7 +44,7 @@ func TestOptionalArrow_MustGet(t *testing.T) {
 
 func TestOptionalArrow_Unwrap(t *testing.T) {
 	val, err := MakeArrow([]byte{1, 2, 3})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	optSome := SomeOptionalArrow(val)
 	optNone := NoneOptionalArrow()
 
@@ -53,9 +54,9 @@ func TestOptionalArrow_Unwrap(t *testing.T) {
 
 func TestOptionalArrow_UnwrapOr(t *testing.T) {
 	val, err := MakeArrow([]byte{1, 2, 3})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	def, err := MakeArrow([]byte{4, 5, 6})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	optSome := SomeOptionalArrow(val)
 	optNone := NoneOptionalArrow()
 
@@ -65,9 +66,9 @@ func TestOptionalArrow_UnwrapOr(t *testing.T) {
 
 func TestOptionalArrow_UnwrapOrElse(t *testing.T) {
 	val, err := MakeArrow([]byte{1, 2, 3})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	def, err := MakeArrow([]byte{4, 5, 6})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	optSome := SomeOptionalArrow(val)
 	optNone := NoneOptionalArrow()
 
@@ -77,7 +78,7 @@ func TestOptionalArrow_UnwrapOrElse(t *testing.T) {
 
 func TestOptionalArrow_EncodeDecodeMsgpack_Some(t *testing.T) {
 	val, err := MakeArrow([]byte{1, 2, 3})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	some := SomeOptionalArrow(val)
 
 	var buf bytes.Buffer
@@ -85,11 +86,11 @@ func TestOptionalArrow_EncodeDecodeMsgpack_Some(t *testing.T) {
 	dec := msgpack.NewDecoder(&buf)
 
 	err = enc.Encode(some)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var decodedSome OptionalArrow
 	err = dec.Decode(&decodedSome)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, decodedSome.IsSome())
 	assert.Equal(t, val, decodedSome.Unwrap())
 }
@@ -102,11 +103,11 @@ func TestOptionalArrow_EncodeDecodeMsgpack_None(t *testing.T) {
 	dec := msgpack.NewDecoder(&buf)
 
 	err := enc.Encode(none)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var decodedNone OptionalArrow
 	err = dec.Decode(&decodedNone)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, decodedNone.IsZero())
 }
 
@@ -116,7 +117,7 @@ func TestOptionalArrow_EncodeDecodeMsgpack_InvalidType(t *testing.T) {
 	dec := msgpack.NewDecoder(&buf)
 
 	err := enc.Encode(123)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var decodedInvalid OptionalArrow
 	err = dec.Decode(&decodedInvalid)

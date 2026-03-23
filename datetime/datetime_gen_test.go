@@ -6,12 +6,13 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/vmihailenco/msgpack/v5"
 )
 
 func TestSomeOptionalDatetime(t *testing.T) {
 	val, err := MakeDatetime(time.Now().In(time.UTC))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	opt := SomeOptionalDatetime(val)
 
 	assert.True(t, opt.IsSome())
@@ -34,7 +35,7 @@ func TestNoneOptionalDatetime(t *testing.T) {
 
 func TestOptionalDatetime_MustGet(t *testing.T) {
 	val, err := MakeDatetime(time.Now().In(time.UTC))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	optSome := SomeOptionalDatetime(val)
 	optNone := NoneOptionalDatetime()
 
@@ -44,7 +45,7 @@ func TestOptionalDatetime_MustGet(t *testing.T) {
 
 func TestOptionalDatetime_Unwrap(t *testing.T) {
 	val, err := MakeDatetime(time.Now().In(time.UTC))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	optSome := SomeOptionalDatetime(val)
 	optNone := NoneOptionalDatetime()
 
@@ -54,9 +55,9 @@ func TestOptionalDatetime_Unwrap(t *testing.T) {
 
 func TestOptionalDatetime_UnwrapOr(t *testing.T) {
 	val, err := MakeDatetime(time.Now().In(time.UTC))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	def, err := MakeDatetime(time.Now().Add(1 * time.Hour).In(time.UTC))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	optSome := SomeOptionalDatetime(val)
 	optNone := NoneOptionalDatetime()
 
@@ -66,9 +67,9 @@ func TestOptionalDatetime_UnwrapOr(t *testing.T) {
 
 func TestOptionalDatetime_UnwrapOrElse(t *testing.T) {
 	val, err := MakeDatetime(time.Now().In(time.UTC))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	def, err := MakeDatetime(time.Now().Add(1 * time.Hour).In(time.UTC))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	optSome := SomeOptionalDatetime(val)
 	optNone := NoneOptionalDatetime()
 
@@ -78,7 +79,7 @@ func TestOptionalDatetime_UnwrapOrElse(t *testing.T) {
 
 func TestOptionalDatetime_EncodeDecodeMsgpack_Some(t *testing.T) {
 	val, err := MakeDatetime(time.Now().In(time.UTC))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	some := SomeOptionalDatetime(val)
 
 	var buf bytes.Buffer
@@ -86,11 +87,11 @@ func TestOptionalDatetime_EncodeDecodeMsgpack_Some(t *testing.T) {
 	dec := msgpack.NewDecoder(&buf)
 
 	err = enc.Encode(some)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var decodedSome OptionalDatetime
 	err = dec.Decode(&decodedSome)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, decodedSome.IsSome())
 	assert.Equal(t, val, decodedSome.Unwrap())
 }
@@ -103,11 +104,11 @@ func TestOptionalDatetime_EncodeDecodeMsgpack_None(t *testing.T) {
 	dec := msgpack.NewDecoder(&buf)
 
 	err := enc.Encode(none)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var decodedNone OptionalDatetime
 	err = dec.Decode(&decodedNone)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, decodedNone.IsZero())
 }
 
@@ -117,7 +118,7 @@ func TestOptionalDatetime_EncodeDecodeMsgpack_InvalidType(t *testing.T) {
 	dec := msgpack.NewDecoder(&buf)
 
 	err := enc.Encode(123)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var decodedInvalid OptionalDatetime
 	err = dec.Decode(&decodedInvalid)

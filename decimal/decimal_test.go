@@ -299,7 +299,7 @@ func TestEncodeMinNumber(t *testing.T) {
 	}
 }
 
-func benchmarkMPEncodeDecode(b *testing.B, src decimal.Decimal, dst interface{}) {
+func benchmarkMPEncodeDecode(b *testing.B, src decimal.Decimal) {
 	b.ResetTimer()
 
 	var v TupleDecimal
@@ -323,7 +323,7 @@ func BenchmarkMPEncodeDecodeDecimal(b *testing.B) {
 			if err != nil {
 				b.Fatal(err)
 			}
-			benchmarkMPEncodeDecode(b, dec, &dec)
+			benchmarkMPEncodeDecode(b, dec)
 		})
 	}
 }

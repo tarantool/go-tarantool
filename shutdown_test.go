@@ -56,7 +56,7 @@ func testGracefulShutdown(t *testing.T, conn *Connection, inst *test_helpers.Tar
 	_, err = conn.Do(NewCallRequest("box.ctl.set_on_shutdown_timeout").
 		Args([]interface{}{serverShutdownTimeout}),
 	).Get()
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// Send request with sleep.
 	evalSleep := 1 // in seconds
@@ -71,7 +71,7 @@ func testGracefulShutdown(t *testing.T, conn *Connection, inst *test_helpers.Tar
 	helperW, herr := conn.NewWatcher("box.shutdown", func(event WatchEvent) {
 		helperCh <- event
 	})
-	require.Nil(t, herr)
+	require.NoError(t, herr)
 	defer helperW.Unregister()
 	<-helperCh
 
@@ -81,7 +81,7 @@ func testGracefulShutdown(t *testing.T, conn *Connection, inst *test_helpers.Tar
 
 	// SIGTERM the server.
 	shutdownStart := time.Now()
-	require.Nil(t, inst.Signal(syscall.SIGTERM))
+	require.NoError(t, inst.Signal(syscall.SIGTERM))
 
 	// Check that we can't send new requests after shutdown starts.
 	// Retry helps to wait a bit until server starts to shutdown
@@ -101,18 +101,18 @@ func testGracefulShutdown(t *testing.T, conn *Connection, inst *test_helpers.Tar
 
 		return nil
 	}, nil, shutdownWaitRetries, shutdownWaitTimeout)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// Check that requests started before the shutdown finish successfully.
 	data, err := fut.Get()
-	require.Nil(t, err)
-	require.Equal(t, data, []interface{}{evalMsg})
+	require.NoError(t, err)
+	require.Equal(t, []interface{}{evalMsg}, data)
 
 	// Wait until server go down.
 	// Server will go down only when it process all requests from our connection
 	// (or on timeout).
 	err = inst.Wait()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	shutdownFinish := time.Now()
 	shutdownTime := shutdownFinish.Sub(shutdownStart)
 
@@ -123,7 +123,7 @@ func testGracefulShutdown(t *testing.T, conn *Connection, inst *test_helpers.Tar
 		"server went down not by timeout")
 
 	// Connection is unavailable when server is down.
-	require.Equal(t, false, conn.ConnectedNow())
+	require.False(t, conn.ConnectedNow())
 }
 
 func TestGracefulShutdown(t *testing.T) {
@@ -132,7 +132,7 @@ func TestGracefulShutdown(t *testing.T) {
 	var conn *Connection
 
 	inst, err := test_helpers.StartTarantool(shtdnSrvOpts)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer test_helpers.StopTarantoolWithCleanup(inst)
 
 	conn = test_helpers.ConnectWithValidation(t, shtdnDialer, shtdnClntOpts)
@@ -151,7 +151,7 @@ func TestCloseGraceful(t *testing.T) {
 	testSrvOpts.Dialer = testDialer
 
 	inst, err := test_helpers.StartTarantool(testSrvOpts)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer test_helpers.StopTarantoolWithCleanup(inst)
 
 	conn := test_helpers.ConnectWithValidation(t, testDialer, opts)
@@ -171,17 +171,17 @@ func TestCloseGraceful(t *testing.T) {
 		// CloseGraceful closes the connection gracefully.
 		_ = conn.CloseGraceful()
 		// Connection is closed.
-		assert.Equal(t, true, conn.ClosedNow())
+		assert.True(t, conn.ClosedNow())
 	}()
 
 	// Check that a request rejected if graceful shutdown in progress.
 	time.Sleep((time.Duration(evalSleep) * time.Second) / 2)
 	_, err = conn.Do(NewPingRequest()).Get()
-	assert.ErrorContains(t, err, "server shutdown in progress")
+	require.ErrorContains(t, err, "server shutdown in progress")
 
 	// Check that a previous request was successful.
 	resp, err := fut.Get()
-	assert.Nilf(t, err, "sleep request no error")
+	require.NoErrorf(t, err, "sleep request no error")
 	assert.NotNilf(t, resp, "sleep response exists")
 }
 
@@ -189,7 +189,7 @@ func TestGracefulShutdownWithReconnect(t *testing.T) {
 	test_helpers.SkipIfWatchersUnsupported(t)
 
 	inst, err := test_helpers.StartTarantool(shtdnSrvOpts)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer test_helpers.StopTarantoolWithCleanup(inst)
 
 	conn := test_helpers.ConnectWithValidation(t, shtdnDialer, shtdnClntOpts)
@@ -198,7 +198,7 @@ func TestGracefulShutdownWithReconnect(t *testing.T) {
 	testGracefulShutdown(t, conn, inst)
 
 	err = test_helpers.RestartTarantool(inst)
-	require.Nilf(t, err, "Failed to restart tarantool")
+	require.NoErrorf(t, err, "Failed to restart tarantool")
 
 	connected := test_helpers.WaitUntilReconnected(conn, shtdnClntOpts.MaxReconnects,
 		shtdnClntOpts.Reconnect)
@@ -220,7 +220,7 @@ func TestNoGracefulShutdown(t *testing.T) {
 	testSrvOpts.Dialer = noShtdDialer
 
 	inst, err := test_helpers.StartTarantool(testSrvOpts)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer test_helpers.StopTarantoolWithCleanup(inst)
 
 	conn = test_helpers.ConnectWithValidation(t, noShtdDialer, noSthdClntOpts)
@@ -242,15 +242,15 @@ func TestNoGracefulShutdown(t *testing.T) {
 
 	// SIGTERM the server.
 	shutdownStart := time.Now()
-	require.Nil(t, inst.Signal(syscall.SIGTERM))
+	require.NoError(t, inst.Signal(syscall.SIGTERM))
 
 	// Check that request was interrupted.
 	_, err = fut.Get()
-	require.NotNilf(t, err, "sleep request error")
+	require.Errorf(t, err, "sleep request error")
 
 	// Wait until server go down.
 	err = inst.Wait()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	shutdownFinish := time.Now()
 	shutdownTime := shutdownFinish.Sub(shutdownStart)
 
@@ -267,7 +267,7 @@ func TestGracefulShutdownRespectsClose(t *testing.T) {
 	var conn *Connection
 
 	inst, err := test_helpers.StartTarantool(shtdnSrvOpts)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer test_helpers.StopTarantoolWithCleanup(inst)
 
 	conn = test_helpers.ConnectWithValidation(t, shtdnDialer, shtdnClntOpts)
@@ -279,7 +279,7 @@ func TestGracefulShutdownRespectsClose(t *testing.T) {
 	helperW, herr := conn.NewWatcher("box.shutdown", func(event WatchEvent) {
 		helperCh <- event
 	})
-	require.Nil(t, herr)
+	require.NoError(t, herr)
 	defer helperW.Unregister()
 	<-helperCh
 
@@ -289,7 +289,7 @@ func TestGracefulShutdownRespectsClose(t *testing.T) {
 	_, err = conn.Do(NewCallRequest("box.ctl.set_on_shutdown_timeout").
 		Args([]interface{}{serverShutdownTimeout}),
 	).Get()
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// Send request with sleep.
 	evalSleep := 10 // in seconds
@@ -304,21 +304,21 @@ func TestGracefulShutdownRespectsClose(t *testing.T) {
 
 	// SIGTERM the server.
 	shutdownStart := time.Now()
-	require.Nil(t, inst.Signal(syscall.SIGTERM))
+	require.NoError(t, inst.Signal(syscall.SIGTERM))
 
 	// Close the connection.
 	_ = conn.Close()
 
 	// Connection is closed.
-	require.Equal(t, true, conn.ClosedNow())
+	require.True(t, conn.ClosedNow())
 
 	// Check that request was interrupted.
 	_, err = fut.Get()
-	require.NotNilf(t, err, "sleep request error")
+	require.Errorf(t, err, "sleep request error")
 
 	// Wait until server go down.
 	err = inst.Wait()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	shutdownFinish := time.Now()
 	shutdownTime := shutdownFinish.Sub(shutdownStart)
 
@@ -335,7 +335,7 @@ func TestGracefulShutdownRespectsClose(t *testing.T) {
 		"server went down not by timeout")
 
 	// Connection is still closed.
-	require.Equal(t, true, conn.ClosedNow())
+	require.True(t, conn.ClosedNow())
 }
 
 func TestGracefulShutdownNotRacesWithRequestReconnect(t *testing.T) {
@@ -344,7 +344,7 @@ func TestGracefulShutdownNotRacesWithRequestReconnect(t *testing.T) {
 	var conn *Connection
 
 	inst, err := test_helpers.StartTarantool(shtdnSrvOpts)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer test_helpers.StopTarantoolWithCleanup(inst)
 
 	conn = test_helpers.ConnectWithValidation(t, shtdnDialer, shtdnClntOpts)
@@ -356,7 +356,7 @@ func TestGracefulShutdownNotRacesWithRequestReconnect(t *testing.T) {
 	helperW, herr := conn.NewWatcher("box.shutdown", func(event WatchEvent) {
 		helperCh <- event
 	})
-	require.Nil(t, herr)
+	require.NoError(t, herr)
 	defer helperW.Unregister()
 	<-helperCh
 
@@ -365,7 +365,7 @@ func TestGracefulShutdownNotRacesWithRequestReconnect(t *testing.T) {
 	_, err = conn.Do(NewCallRequest("box.ctl.set_on_shutdown_timeout").
 		Args([]interface{}{serverShutdownTimeout}),
 	).Get()
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// Send request with sleep.
 	evalSleep := 5 // in seconds
@@ -384,16 +384,16 @@ func TestGracefulShutdownNotRacesWithRequestReconnect(t *testing.T) {
 	fut := conn.Do(req)
 
 	// SIGTERM the server.
-	require.Nil(t, inst.Signal(syscall.SIGTERM))
+	require.NoError(t, inst.Signal(syscall.SIGTERM))
 
 	// Wait until server go down.
 	// Server is expected to go down on timeout.
 	err = inst.Wait()
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// Check that request failed by server disconnect, not a client timeout.
 	_, err = fut.Get()
-	require.NotNil(t, err)
+	require.Error(t, err)
 	require.NotContains(t, err.Error(), "client timeout for request")
 
 	evalFinish := time.Now()
@@ -412,7 +412,7 @@ func TestGracefulShutdownCloseConcurrent(t *testing.T) {
 	var srvShtdnStart, srvShtdnFinish time.Time
 
 	inst, err := test_helpers.StartTarantool(shtdnSrvOpts)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer test_helpers.StopTarantoolWithCleanup(inst)
 
 	conn := test_helpers.ConnectWithValidation(t, shtdnDialer, shtdnClntOpts)
@@ -424,7 +424,7 @@ func TestGracefulShutdownCloseConcurrent(t *testing.T) {
 	helperW, herr := conn.NewWatcher("box.shutdown", func(event WatchEvent) {
 		helperCh <- event
 	})
-	require.Nil(t, herr)
+	require.NoError(t, herr)
 	defer helperW.Unregister()
 	<-helperCh
 
@@ -434,7 +434,7 @@ func TestGracefulShutdownCloseConcurrent(t *testing.T) {
 	_, err = conn.Do(NewCallRequest("box.ctl.set_on_shutdown_timeout").
 		Args([]interface{}{serverShutdownTimeout}),
 	).Get()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	_ = conn.Close()
 
 	const testConcurrency = 50
@@ -446,7 +446,7 @@ func TestGracefulShutdownCloseConcurrent(t *testing.T) {
 
 	// Create many connections.
 	for i := 0; i < testConcurrency; i++ {
-		go func(i int) {
+		go func() {
 			defer caseWg.Done()
 
 			ctx, cancel := test_helpers.GetConnectContext()
@@ -464,7 +464,7 @@ func TestGracefulShutdownCloseConcurrent(t *testing.T) {
 			// Wait till all connections created.
 			srvToStop.Done()
 			srvStop.Wait()
-		}(i)
+		}()
 	}
 
 	var sret error
@@ -479,10 +479,10 @@ func TestGracefulShutdownCloseConcurrent(t *testing.T) {
 	}(inst)
 
 	srvStop.Wait()
-	require.Nil(t, sret, "No errors on server SIGTERM")
+	require.NoError(t, sret, "No errors on server SIGTERM")
 
 	err = inst.Wait()
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	srvShtdnFinish = time.Now()
 	srvShtdnTime := srvShtdnFinish.Sub(srvShtdnStart)
@@ -499,7 +499,7 @@ func TestGracefulShutdownConcurrent(t *testing.T) {
 	var srvShtdnStart, srvShtdnFinish time.Time
 
 	inst, err := test_helpers.StartTarantool(shtdnSrvOpts)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer test_helpers.StopTarantoolWithCleanup(inst)
 
 	conn := test_helpers.ConnectWithValidation(t, shtdnDialer, shtdnClntOpts)
@@ -511,7 +511,7 @@ func TestGracefulShutdownConcurrent(t *testing.T) {
 	_, err = conn.Do(NewCallRequest("box.ctl.set_on_shutdown_timeout").
 		Args([]interface{}{serverShutdownTimeout}),
 	).Get()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	_ = conn.Close()
 
 	const testConcurrency = 50
@@ -524,7 +524,7 @@ func TestGracefulShutdownConcurrent(t *testing.T) {
 	// Create many connections.
 	var ret error
 	for i := 0; i < testConcurrency; i++ {
-		go func(i int) {
+		go func() {
 			defer caseWg.Done()
 
 			conn := test_helpers.ConnectWithValidation(t, shtdnDialer, shtdnClntOpts)
@@ -551,7 +551,7 @@ func TestGracefulShutdownConcurrent(t *testing.T) {
 			if gerr != nil {
 				ret = gerr
 			}
-		}(i)
+		}()
 	}
 
 	var sret error
@@ -566,13 +566,13 @@ func TestGracefulShutdownConcurrent(t *testing.T) {
 	}(inst)
 
 	srvStop.Wait()
-	require.Nil(t, sret, "No errors on server SIGTERM")
+	require.NoError(t, sret, "No errors on server SIGTERM")
 
 	caseWg.Wait()
-	require.Nil(t, ret, "No errors on concurrent wait")
+	require.NoError(t, ret, "No errors on concurrent wait")
 
 	err = inst.Wait()
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	srvShtdnFinish = time.Now()
 	srvShtdnTime := srvShtdnFinish.Sub(srvShtdnStart)

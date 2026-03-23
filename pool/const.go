@@ -1,23 +1,23 @@
 //go:generate go tool stringer -type Role -linecomment
 package pool
 
-/*
-Default mode for each request table:
-
-	  Request   Default mode
-	---------- --------------
-	| call    | no default  |
-	| eval    | no default  |
-	| execute | no default  |
-	| ping    | no default  |
-	| insert  | RW          |
-	| delete  | RW          |
-	| replace | RW          |
-	| update  | RW          |
-	| upsert  | RW          |
-	| select  | ANY         |
-	| get     | ANY         |
-*/
+// Mode is a request mode for a connection pool.
+//
+// Default mode for each request table:
+//
+//	  Request   Default mode
+//	---------- --------------
+//	| call    | no default  |
+//	| eval    | no default  |
+//	| execute | no default  |
+//	| ping    | no default  |
+//	| insert  | RW          |
+//	| delete  | RW          |
+//	| replace | RW          |
+//	| update  | RW          |
+//	| upsert  | RW          |
+//	| select  | ANY         |
+//	| get     | ANY         |
 type Mode uint32
 
 const (

@@ -22,7 +22,7 @@ type TruncateRequest struct {
 }
 
 type truncateArgs struct {
-	_msgpack struct{} `msgpack:",asArray"` // nolint: structcheck,unused
+	_msgpack struct{} `msgpack:",asArray"` //nolint:unused
 	Space    string
 	Opts     TruncateOpts
 }

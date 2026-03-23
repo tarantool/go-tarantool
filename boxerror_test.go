@@ -193,7 +193,7 @@ func TestMessagePackDecode(t *testing.T) {
 			var val = &BoxError{}
 			err := val.UnmarshalMsgpack(testcase.b)
 			if testcase.ok {
-				require.Nilf(t, err, "No errors on decode")
+				require.NoErrorf(t, err, "No errors on decode")
 			} else {
 				require.Regexp(t, testcase.err, err.Error())
 			}
@@ -211,7 +211,7 @@ func TestMessagePackEncodeNil(t *testing.T) {
 	var val *BoxError
 
 	_, err := val.MarshalMsgpack()
-	require.NotNil(t, err)
+	require.Error(t, err)
 	require.Equal(t, "msgpack: unexpected nil BoxError on encode", err.Error())
 }
 
@@ -285,11 +285,11 @@ func TestErrorTypeMPEncodeDecode(t *testing.T) {
 	for name, testcase := range tupleCases {
 		t.Run(name, func(t *testing.T) {
 			buf, err := msgpack.Marshal(&testcase.tuple)
-			require.Nil(t, err)
+			require.NoError(t, err)
 
 			var res TupleBoxError
 			err = msgpack.Unmarshal(buf, &res)
-			require.Nil(t, err)
+			require.NoError(t, err)
 
 			require.Equal(t, testcase.tuple, res)
 		})
@@ -307,9 +307,9 @@ func TestErrorTypeEval(t *testing.T) {
 			data, err := conn.Do(NewEvalRequest("return ...").
 				Args([]interface{}{&testcase.tuple.val}),
 			).Get()
-			require.Nil(t, err)
+			require.NoError(t, err)
 			require.NotNil(t, data)
-			require.Equal(t, len(data), 1)
+			require.Len(t, data, 1)
 			actual, ok := data[0].(*BoxError)
 			require.Truef(t, ok, "Response data has valid type")
 			require.Equal(t, testcase.tuple.val, *actual)
@@ -329,9 +329,9 @@ func TestErrorTypeEvalTyped(t *testing.T) {
 			err := conn.Do(NewEvalRequest("return ...").
 				Args([]interface{}{&testcase.tuple.val}),
 			).GetTyped(&res)
-			require.Nil(t, err)
+			require.NoError(t, err)
 			require.NotNil(t, res)
-			require.Equal(t, len(res), 1)
+			require.Len(t, res, 1)
 			require.Equal(t, testcase.tuple.val, res[0])
 		})
 	}
@@ -345,12 +345,12 @@ func TestErrorTypeInsert(t *testing.T) {
 
 	truncateEval := fmt.Sprintf("box.space[%q]:truncate()", space)
 	_, err := conn.Do(NewEvalRequest(truncateEval).Args([]interface{}{})).Get()
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	for name, testcase := range tupleCases {
 		t.Run(name, func(t *testing.T) {
 			_, err = conn.Do(NewInsertRequest(space).Tuple(&testcase.tuple)).Get()
-			require.Nil(t, err)
+			require.NoError(t, err)
 
 			checkEval := fmt.Sprintf(`
 				local err = rawget(_G, %q)
@@ -370,7 +370,7 @@ func TestErrorTypeInsert(t *testing.T) {
 			// since they may differ between different Tarantool versions
 			// and editions.
 			_, err := conn.Do(NewEvalRequest(checkEval).Args([]interface{}{})).Get()
-			require.Nilf(t, err, "Tuple has been successfully inserted")
+			require.NoErrorf(t, err, "Tuple has been successfully inserted")
 		})
 	}
 }
@@ -383,15 +383,15 @@ func TestErrorTypeInsertTyped(t *testing.T) {
 
 	truncateEval := fmt.Sprintf("box.space[%q]:truncate()", space)
 	_, err := conn.Do(NewEvalRequest(truncateEval).Args([]interface{}{})).Get()
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	for name, testcase := range tupleCases {
 		t.Run(name, func(t *testing.T) {
 			var res []TupleBoxError
 			err = conn.Do(NewInsertRequest(space).Tuple(&testcase.tuple)).GetTyped(&res)
-			require.Nil(t, err)
+			require.NoError(t, err)
 			require.NotNil(t, res)
-			require.Equal(t, len(res), 1)
+			require.Len(t, res, 1)
 			require.Equal(t, testcase.tuple, res[0])
 
 			checkEval := fmt.Sprintf(`
@@ -412,7 +412,7 @@ func TestErrorTypeInsertTyped(t *testing.T) {
 			// since they may differ between different Tarantool versions
 			// and editions.
 			_, err := conn.Do(NewEvalRequest(checkEval).Args([]interface{}{})).Get()
-			require.Nilf(t, err, "Tuple has been successfully inserted")
+			require.NoErrorf(t, err, "Tuple has been successfully inserted")
 		})
 	}
 }
@@ -425,7 +425,7 @@ func TestErrorTypeSelect(t *testing.T) {
 
 	truncateEval := fmt.Sprintf("box.space[%q]:truncate()", space)
 	_, err := conn.Do(NewEvalRequest(truncateEval).Args([]interface{}{})).Get()
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	for name, testcase := range tupleCases {
 		t.Run(name, func(t *testing.T) {
@@ -438,7 +438,7 @@ func TestErrorTypeSelect(t *testing.T) {
 			`, testcase.ttObj, space, testcase.tuple.pk)
 
 			_, err := conn.Do(NewEvalRequest(insertEval).Args([]interface{}{})).Get()
-			require.Nilf(t, err, "Tuple has been successfully inserted")
+			require.NoErrorf(t, err, "Tuple has been successfully inserted")
 
 			var offset uint32 = 0
 			var limit uint32 = 1
@@ -449,9 +449,9 @@ func TestErrorTypeSelect(t *testing.T) {
 				Iterator(IterEq).
 				Key([]interface{}{testcase.tuple.pk}),
 			).Get()
-			require.Nil(t, err)
+			require.NoError(t, err)
 			require.NotNil(t, data)
-			require.Equalf(t, len(data), 1, "Exactly one tuple had been found")
+			require.Lenf(t, data, 1, "Exactly one tuple had been found")
 			tpl, ok := data[0].([]interface{})
 			require.Truef(t, ok, "Tuple has valid type")
 			require.Equal(t, testcase.tuple.pk, tpl[0])
@@ -474,7 +474,7 @@ func TestErrorTypeSelectTyped(t *testing.T) {
 
 	truncateEval := fmt.Sprintf("box.space[%q]:truncate()", space)
 	_, err := conn.Do(NewEvalRequest(truncateEval).Args([]interface{}{})).Get()
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	for name, testcase := range tupleCases {
 		t.Run(name, func(t *testing.T) {
@@ -487,7 +487,7 @@ func TestErrorTypeSelectTyped(t *testing.T) {
 			`, testcase.ttObj, space, testcase.tuple.pk)
 
 			_, err := conn.Do(NewEvalRequest(insertEval).Args([]interface{}{})).Get()
-			require.Nilf(t, err, "Tuple has been successfully inserted")
+			require.NoErrorf(t, err, "Tuple has been successfully inserted")
 
 			var offset uint32 = 0
 			var limit uint32 = 1
@@ -499,9 +499,9 @@ func TestErrorTypeSelectTyped(t *testing.T) {
 				Iterator(IterEq).
 				Key([]interface{}{testcase.tuple.pk}),
 			).GetTyped(&resp)
-			require.Nil(t, err)
+			require.NoError(t, err)
 			require.NotNil(t, resp)
-			require.Equalf(t, len(resp), 1, "Exactly one tuple had been found")
+			require.Lenf(t, resp, 1, "Exactly one tuple had been found")
 			require.Equal(t, testcase.tuple.pk, resp[0].pk)
 			// In fact, CheckEqualBoxErrors does not check than File and Line
 			// of connector BoxError are equal to the Tarantool ones

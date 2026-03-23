@@ -67,7 +67,7 @@ func ExampleResult_rowsCustomType() {
 		Tuple([]interface{}{uint(2010), nil, "bla"})
 
 	type Tuple struct {
-		_msgpack struct{} `msgpack:",asArray"` // nolint: structcheck,unused
+		_msgpack struct{} `msgpack:",asArray"` //nolint:unused
 		Id       uint64
 		BucketId uint64
 		Name     string
@@ -94,7 +94,7 @@ func ExampleTuples_customType() {
 
 	// The type will be encoded/decoded as an array.
 	type Tuple struct {
-		_msgpack struct{} `msgpack:",asArray"` // nolint: structcheck,unused
+		_msgpack struct{} `msgpack:",asArray"` //nolint:unused
 		Id       uint64
 		BucketId *uint64
 		Name     string

@@ -21,7 +21,7 @@ const (
 type Condition struct {
 	// Instruct msgpack to pack this struct as array, so no custom packer
 	// is needed.
-	_msgpack struct{} `msgpack:",asArray"` //nolint: structcheck,unused
+	_msgpack struct{} `msgpack:",asArray"` //nolint:unused
 	Operator Operator
 	Field    string // Field name or index name.
 	Value    interface{}

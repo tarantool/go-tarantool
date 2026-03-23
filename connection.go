@@ -1,4 +1,4 @@
-// Package with implementation of methods and structures for work with
+// Package tarantool implements methods and structures for work with
 // Tarantool instance.
 package tarantool
 
@@ -48,7 +48,8 @@ const (
 	ReconnectFailed
 	// Shutdown signals that shutdown callback is processing.
 	Shutdown
-	// Either reconnect attempts exhausted, or explicit Close is called.
+	// Closed signals that either reconnect attempts exhausted, or explicit
+	// Close is called.
 	Closed
 
 	// LogReconnectFailed is logged when reconnect attempt failed.
@@ -251,7 +252,7 @@ func (list *futureList) clear(err error, conn *Connection) {
 	list.last = &list.first
 	for fut != nil {
 		fut.setError(err)
-		conn.markDone(fut)
+		conn.markDone()
 		fut, fut.next = fut.next, nil
 	}
 }
@@ -265,7 +266,7 @@ type connShard struct {
 	enc             *msgpack.Encoder
 }
 
-// RLimitActions is an enumeration type for an action to do when a rate limit
+// RLimitAction is an enumeration type for an action to do when a rate limit
 // is reached.
 type RLimitAction int
 
@@ -448,7 +449,7 @@ func (conn *Connection) Handle() interface{} {
 func (conn *Connection) cancelFuture(fut *future, err error) {
 	if fut = conn.fetchFuture(fut.requestId); fut != nil {
 		fut.setError(err)
-		conn.markDone(fut)
+		conn.markDone()
 	}
 }
 
@@ -871,7 +872,7 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 			if err := fut.setResponse(r.header, &r.buf); err != nil {
 				fut.setError(fmt.Errorf("failed to set response: %w", err))
 			}
-			conn.markDone(fut)
+			conn.markDone()
 		}
 	}()
 
@@ -1097,7 +1098,7 @@ func (conn *Connection) putFuture(fut *future, req Request, streamId uint64) {
 		shard.bufmut.Unlock()
 		if f := conn.fetchFuture(reqid); f == fut {
 			fut.setError(err)
-			conn.markDone(fut)
+			conn.markDone()
 		} else if f != nil {
 			/* in theory, it is possible. In practice, you have
 			 * to have race condition that lasts hours */
@@ -1129,12 +1130,12 @@ func (conn *Connection) putFuture(fut *future, req Request, streamId uint64) {
 				Error:     ErrorNo,
 			}
 			_ = fut.setResponse(header, nil)
-			conn.markDone(fut)
+			conn.markDone()
 		}
 	}
 }
 
-func (conn *Connection) markDone(fut *future) {
+func (conn *Connection) markDone() {
 	if conn.rlimit != nil {
 		<-conn.rlimit
 	}
@@ -1191,7 +1192,7 @@ func (conn *Connection) timeouts() {
 						Code: ErrTimeouted,
 						Msg:  fmt.Sprintf("client timeout for request %d", fut.requestId),
 					})
-					conn.markDone(fut)
+					conn.markDone()
 					shard.bufmut.Unlock()
 				}
 				if pair.first != nil && pair.first.timeout < minNext {

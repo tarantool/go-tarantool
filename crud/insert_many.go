@@ -20,7 +20,7 @@ type InsertManyRequest struct {
 }
 
 type insertManyArgs struct {
-	_msgpack struct{} `msgpack:",asArray"` // nolint: structcheck,unused
+	_msgpack struct{} `msgpack:",asArray"` //nolint:unused
 	Space    string
 	Tuples   Tuples
 	Opts     InsertManyOpts
@@ -78,7 +78,7 @@ type InsertObjectManyRequest struct {
 }
 
 type insertObjectManyArgs struct {
-	_msgpack struct{} `msgpack:",asArray"` // nolint: structcheck,unused
+	_msgpack struct{} `msgpack:",asArray"` //nolint:unused
 	Space    string
 	Objects  Objects
 	Opts     InsertObjectManyOpts

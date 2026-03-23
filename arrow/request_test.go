@@ -23,12 +23,12 @@ func TestInsertRequestType(t *testing.T) {
 
 func TestInsertRequestAsync(t *testing.T) {
 	request := arrow.NewInsertRequest(validSpace, arrow.Arrow{})
-	require.Equal(t, false, request.Async())
+	require.False(t, request.Async())
 }
 
 func TestInsertRequestCtx_default(t *testing.T) {
 	request := arrow.NewInsertRequest(validSpace, arrow.Arrow{})
-	require.Equal(t, nil, request.Ctx())
+	require.Nil(t, request.Ctx())
 }
 
 func TestInsertRequestCtx_setter(t *testing.T) {

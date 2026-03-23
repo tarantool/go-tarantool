@@ -13,7 +13,7 @@ type UpsertManyOpts = OperationManyOpts
 
 // TupleOperationsData contains tuple with operations to be applied to tuple.
 type TupleOperationsData struct {
-	_msgpack   struct{} `msgpack:",asArray"` // nolint: structcheck,unused
+	_msgpack   struct{} `msgpack:",asArray"` //nolint:unused
 	Tuple      Tuple
 	Operations []Operation
 }
@@ -27,7 +27,7 @@ type UpsertManyRequest struct {
 }
 
 type upsertManyArgs struct {
-	_msgpack             struct{} `msgpack:",asArray"` // nolint: structcheck,unused
+	_msgpack             struct{} `msgpack:",asArray"` //nolint:unused
 	Space                string
 	TuplesOperationsData []TupleOperationsData
 	Opts                 UpsertManyOpts
@@ -79,7 +79,7 @@ type UpsertObjectManyOpts = OperationManyOpts
 
 // ObjectOperationsData contains object with operations to be applied to object.
 type ObjectOperationsData struct {
-	_msgpack   struct{} `msgpack:",asArray"` // nolint: structcheck,unused
+	_msgpack   struct{} `msgpack:",asArray"` //nolint:unused
 	Object     Object
 	Operations []Operation
 }
@@ -93,7 +93,7 @@ type UpsertObjectManyRequest struct {
 }
 
 type upsertObjectManyArgs struct {
-	_msgpack              struct{} `msgpack:",asArray"` // nolint: structcheck,unused
+	_msgpack              struct{} `msgpack:",asArray"` //nolint:unused
 	Space                 string
 	ObjectsOperationsData []ObjectOperationsData
 	Opts                  UpsertObjectManyOpts
@@ -109,7 +109,7 @@ func MakeUpsertObjectManyRequest(space string) UpsertObjectManyRequest {
 	return req
 }
 
-// ObjectOperationsData sets objects and operations
+// ObjectsOperationsData sets objects and operations
 // for the UpsertObjectManyRequest request.
 // Note: default value is nil.
 func (req UpsertObjectManyRequest) ObjectsOperationsData(

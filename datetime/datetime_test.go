@@ -486,7 +486,7 @@ func TestInvalidOffset(t *testing.T) {
 	}
 
 	for _, testcase := range tests {
-		name := ""
+		var name string
 		if testcase.ok {
 			name = fmt.Sprintf("in_boundary_%d", testcase.offset)
 		} else {
@@ -565,7 +565,6 @@ func TestCustomTimezone(t *testing.T) {
 	} else {
 		t.Fatalf("Datetime doesn't match")
 	}
-
 }
 
 func tupleInsertSelectDelete(t *testing.T, conn *Connection, tm time.Time) {

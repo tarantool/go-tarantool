@@ -29,6 +29,6 @@ func TestResult_DecodeMsgpack(t *testing.T) {
 	decoder := msgpack.NewDecoder(b)
 	err = decoder.DecodeValue(reflect.ValueOf(&results))
 	require.NoError(t, err)
-	require.Equal(t, results[0].Rows, []interface{}{"1", "2", "3"})
-	require.Equal(t, results[1].Rows, []interface{}{"1", "2", "3"})
+	require.Equal(t, []interface{}{"1", "2", "3"}, results[0].Rows)
+	require.Equal(t, []interface{}{"1", "2", "3"}, results[1].Rows)
 }

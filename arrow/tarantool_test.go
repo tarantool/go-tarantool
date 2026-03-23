@@ -77,7 +77,6 @@ func TestInsert_invalid(t *testing.T) {
 			require.Contains(t, a.expected, ttErr.Code)
 		})
 	}
-
 }
 
 // runTestMain is a body of TestMain function

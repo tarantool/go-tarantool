@@ -1,4 +1,4 @@
-// Helpers for managing Tarantool process for testing purposes.
+// Package test_helpers provides helpers for managing Tarantool process for testing purposes.
 //
 // Package introduces go helpers for starting a tarantool process and
 // validating Tarantool version. Helpers are based on os/exec calls.
@@ -570,8 +570,9 @@ func copyFile(srcFile, dstFile string) error {
 	return nil
 }
 
-// msgpack.v5 decodes different uint types depending on value. The
-// function helps to unify a result.
+// ConvertUint64 converts an interface value to uint64. The msgpack.v5
+// decodes different uint types depending on value, this function helps
+// to unify a result.
 func ConvertUint64(v interface{}) (result uint64, err error) {
 	switch v := v.(type) {
 	case uint:

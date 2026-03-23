@@ -128,7 +128,7 @@ func SkipIfFeatureDropped(t *testing.T, feature string, major, minor, patch uint
 	SkipIfGreaterOrEqual(t, fmt.Sprintf("with %s support dropped", feature), major, minor, patch)
 }
 
-// SkipOfStreamsUnsupported skips test run if Tarantool without streams
+// SkipIfStreamsUnsupported skips test run if Tarantool without streams
 // support is used.
 func SkipIfStreamsUnsupported(t *testing.T) {
 	t.Helper()
@@ -136,7 +136,7 @@ func SkipIfStreamsUnsupported(t *testing.T) {
 	SkipIfFeatureUnsupported(t, "streams", 2, 10, 0)
 }
 
-// SkipOfStreamsUnsupported skips test run if Tarantool without watchers
+// SkipIfWatchersUnsupported skips test run if Tarantool without watchers
 // support is used.
 func SkipIfWatchersUnsupported(t *testing.T) {
 	t.Helper()
@@ -229,7 +229,6 @@ func SkipIfIsSyncUnsupported(t *testing.T) {
 // IsTcsSupported checks if Tarantool supports centralized storage.
 // Tarantool supports centralized storage with Enterprise since 3.3.0 version.
 func IsTcsSupported() (bool, error) {
-
 	if isEe, err := IsTarantoolEE(); !isEe || err != nil {
 		return false, err
 	}
@@ -239,7 +238,7 @@ func IsTcsSupported() (bool, error) {
 	return true, nil
 }
 
-// SkipIfTCSUnsupported skips test if no centralized storage support.
+// SkipIfTcsUnsupported skips test if no centralized storage support.
 func SkipIfTcsUnsupported(t testing.TB) {
 	t.Helper()
 
@@ -274,8 +273,8 @@ func CheckEqualBoxErrors(t *testing.T, expected tarantool.BoxError, actual taran
 
 	for {
 		require.Equal(t, expected.Type, actual.Type)
-		require.Greater(t, len(expected.File), 0)
-		require.Greater(t, expected.Line, uint64(0))
+		require.NotEmpty(t, expected.File)
+		require.Positive(t, expected.Line)
 		require.Equal(t, expected.Msg, actual.Msg)
 		require.Equal(t, expected.Errno, actual.Errno)
 		require.Equal(t, expected.Code, actual.Code)
