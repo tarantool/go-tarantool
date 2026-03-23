@@ -286,7 +286,7 @@ func TestResponseDecode(t *testing.T) {
 	header := Header{}
 	data := bytes.NewBuffer([]byte{'v', '2'})
 	baseExample, err := NewPingRequest().Response(header, data)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	tests := []struct {
 		req      Request
@@ -319,18 +319,18 @@ func TestResponseDecode(t *testing.T) {
 		buf := bytes.NewBuffer([]byte{})
 		enc := msgpack.NewEncoder(buf)
 
-		assert.NoError(t, enc.EncodeMapLen(1))
-		assert.NoError(t, enc.EncodeUint8(uint8(iproto.IPROTO_DATA)))
-		assert.NoError(t, enc.Encode([]interface{}{'v', '2'}))
+		require.NoError(t, enc.EncodeMapLen(1))
+		require.NoError(t, enc.EncodeUint8(uint8(iproto.IPROTO_DATA)))
+		require.NoError(t, enc.Encode([]interface{}{'v', '2'}))
 
 		resp, err := test.req.Response(header, bytes.NewBuffer(buf.Bytes()))
-		assert.NoError(t, err)
-		assert.True(t, fmt.Sprintf("%T", resp) ==
-			fmt.Sprintf("%T", test.expected))
+		require.NoError(t, err)
+		assert.Equal(t, fmt.Sprintf("%T", test.expected),
+			fmt.Sprintf("%T", resp))
 		assert.Equal(t, header, resp.Header())
 
 		decodedInterface, err := resp.Decode()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, []interface{}{'v', '2'}, decodedInterface)
 	}
 }
@@ -339,7 +339,7 @@ func TestResponseDecodeTyped(t *testing.T) {
 	header := Header{}
 	data := bytes.NewBuffer([]byte{'v', '2'})
 	baseExample, err := NewPingRequest().Response(header, data)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	tests := []struct {
 		req      Request
@@ -372,19 +372,19 @@ func TestResponseDecodeTyped(t *testing.T) {
 		buf := bytes.NewBuffer([]byte{})
 		enc := msgpack.NewEncoder(buf)
 
-		assert.NoError(t, enc.EncodeMapLen(1))
-		assert.NoError(t, enc.EncodeUint8(uint8(iproto.IPROTO_DATA)))
-		assert.NoError(t, enc.EncodeBytes([]byte{'v', '2'}))
+		require.NoError(t, enc.EncodeMapLen(1))
+		require.NoError(t, enc.EncodeUint8(uint8(iproto.IPROTO_DATA)))
+		require.NoError(t, enc.EncodeBytes([]byte{'v', '2'}))
 
 		resp, err := test.req.Response(header, bytes.NewBuffer(buf.Bytes()))
-		assert.NoError(t, err)
-		assert.True(t, fmt.Sprintf("%T", resp) ==
-			fmt.Sprintf("%T", test.expected))
+		require.NoError(t, err)
+		assert.Equal(t, fmt.Sprintf("%T", test.expected),
+			fmt.Sprintf("%T", resp))
 		assert.Equal(t, header, resp.Header())
 
 		var decoded []byte
 		err = resp.DecodeTyped(&decoded)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, []byte{'v', '2'}, decoded)
 	}
 }

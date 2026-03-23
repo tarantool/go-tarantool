@@ -1,5 +1,5 @@
-// Package with implementation of methods for work with a Tarantool's queue
-// implementations.
+// Package queue provides an implementation of methods for work with a
+// Tarantool's queue implementations.
 //
 // Since: 1.5.
 //
@@ -64,7 +64,7 @@ type Queue interface {
 	// Note: if connection has a request Timeout, then 0.9 * connection.Timeout is
 	// used as a timeout.
 	// Data will be unpacked to result.
-	TakeTyped(interface{}) (*Task, error)
+	TakeTyped(result interface{}) (*Task, error)
 	// TakeTypedTimeout takes 'ready' task from a tube and marks it as "in progress",
 	// or it is timeouted after "timeout" period.
 	// Note: if connection has a request Timeout, and conn.Timeout * 0.9 < timeout

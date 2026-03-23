@@ -1,4 +1,4 @@
-// Package with support of Tarantool's datetime data type.
+// Package datetime provides support for Tarantool's datetime data type.
 //
 // Datetime data type supported in Tarantool since 2.10.
 //
@@ -350,7 +350,7 @@ func datetimeDecoder(d *msgpack.Decoder, v reflect.Value, extLen int) error {
 	return ptr.UnmarshalMsgpack(b)
 }
 
-// This method converts Datetime to String - formats to ISO8601.
+// String converts Datetime to a string formatted to ISO8601.
 func (d Datetime) String() string {
 	return d.time.Format(time.RFC3339Nano)
 }

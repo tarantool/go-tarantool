@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -72,8 +71,8 @@ func TestDialer_Dial_passedOpts(t *testing.T) {
 	})
 
 	assert.Nil(t, conn)
-	assert.NotNil(t, err)
-	assert.NotEqual(t, err.Error(), "wrong context")
+	require.Error(t, err)
+	assert.NotEqual(t, "wrong context", err.Error())
 	assert.Equal(t, dialOpts, dialer.opts)
 }
 
@@ -199,7 +198,7 @@ func dialIo(t *testing.T,
 			Timeout:    1000 * time.Second, // Avoid pings.
 			SkipSchema: true,
 		})
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.NotNil(t, conn)
 
 	return conn, dialer
@@ -309,7 +308,7 @@ func TestConn_ReadWrite(t *testing.T) {
 	}, dialer.conn.writebuf.Bytes())
 
 	_, err := fut.Get()
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 }
 
 func TestConn_ContextCancel(t *testing.T) {
@@ -320,10 +319,10 @@ func TestConn_ContextCancel(t *testing.T) {
 	conn, err := dialer.Dial(ctx, tarantool.DialOpts{})
 
 	assert.Nil(t, conn)
-	assert.NotNil(t, err)
-	assert.Truef(t, strings.Contains(err.Error(), "operation was canceled"),
-		fmt.Sprintf("unexpected error, expected to contain %s, got %v",
-			"operation was canceled", err))
+	require.Error(t, err)
+	assert.Containsf(t, err.Error(), "operation was canceled",
+		"unexpected error, expected to contain %s, got %v",
+		"operation was canceled", err)
 }
 
 func genSalt() [64]byte {
@@ -597,7 +596,7 @@ func TestNetDialer_Dial_hang_connection(t *testing.T) {
 	conn, err := dialer.Dial(ctx, tarantool.DialOpts{})
 
 	require.Nil(t, conn)
-	require.Error(t, err, context.DeadlineExceeded)
+	require.ErrorIs(t, err, context.DeadlineExceeded)
 }
 
 func TestNetDialer_Dial_requirements(t *testing.T) {
@@ -739,8 +738,8 @@ func TestAuthDialer_Dial_DialerError(t *testing.T) {
 		_ = conn.Close()
 	}
 
-	assert.NotNil(t, err)
-	assert.EqualError(t, err, "some error")
+	require.Error(t, err)
+	require.EqualError(t, err, "some error")
 }
 
 func TestAuthDialer_Dial_NoSalt(t *testing.T) {
@@ -758,8 +757,8 @@ func TestAuthDialer_Dial_NoSalt(t *testing.T) {
 	defer cancel()
 	conn, err := dialer.Dial(ctx, tarantool.DialOpts{})
 
-	assert.NotNil(t, err)
-	assert.ErrorContains(t, err, "an invalid connection without salt")
+	require.Error(t, err)
+	require.ErrorContains(t, err, "an invalid connection without salt")
 	if conn != nil {
 		_ = conn.Close()
 		t.Errorf("connection is not nil")
@@ -792,9 +791,9 @@ func TestConn_AuthDialer_hang_connection(t *testing.T) {
 		})
 
 	require.Nil(t, conn)
-	require.Error(t, err, context.DeadlineExceeded)
-	require.Equal(t, mock.conn.writeCnt, 1)
-	require.Equal(t, mock.conn.readCnt, 0)
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+	require.Equal(t, 1, mock.conn.writeCnt)
+	require.Equal(t, 0, mock.conn.readCnt)
 	require.Greater(t, mock.conn.closeCnt, 1)
 }
 
@@ -826,7 +825,7 @@ func TestAuthDialer_Dial(t *testing.T) {
 		_ = conn.Close()
 	}
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, conn)
 	assert.Equal(t, authRequestExpectedChapSha1[:41], dialer.conn.writebuf.Bytes()[:41])
 }
@@ -860,7 +859,7 @@ func TestAuthDialer_Dial_PapSha256Auth(t *testing.T) {
 		_ = conn.Close()
 	}
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, conn)
 	assert.Equal(t, authRequestExpectedPapSha256[:41], dialer.conn.writebuf.Bytes()[:41])
 }
@@ -879,8 +878,8 @@ func TestProtocolDialer_Dial_DialerError(t *testing.T) {
 		_ = conn.Close()
 	}
 
-	assert.NotNil(t, err)
-	assert.EqualError(t, err, "some error")
+	require.Error(t, err)
+	require.EqualError(t, err, "some error")
 }
 
 func TestConn_ProtocolDialer_hang_connection(t *testing.T) {
@@ -905,9 +904,9 @@ func TestConn_ProtocolDialer_hang_connection(t *testing.T) {
 		})
 
 	require.Nil(t, conn)
-	require.Error(t, err, context.DeadlineExceeded)
-	require.Equal(t, mock.conn.writeCnt, 1)
-	require.Equal(t, mock.conn.readCnt, 0)
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+	require.Equal(t, 1, mock.conn.writeCnt)
+	require.Equal(t, 0, mock.conn.readCnt)
 	require.Greater(t, mock.conn.closeCnt, 1)
 }
 
@@ -927,8 +926,8 @@ func TestProtocolDialer_Dial_IdentifyFailed(t *testing.T) {
 	defer cancel()
 	conn, err := dialer.Dial(ctx, tarantool.DialOpts{})
 
-	assert.NotNil(t, err)
-	assert.ErrorContains(t, err, "failed to identify")
+	require.Error(t, err)
+	require.ErrorContains(t, err, "failed to identify")
 	if conn != nil {
 		_ = conn.Close()
 		t.Errorf("connection is not nil")
@@ -952,8 +951,8 @@ func TestProtocolDialer_Dial_WrongInfo(t *testing.T) {
 	defer cancel()
 	conn, err := dialer.Dial(ctx, tarantool.DialOpts{})
 
-	assert.NotNil(t, err)
-	assert.ErrorContains(t, err, "invalid server protocol")
+	require.Error(t, err)
+	require.ErrorContains(t, err, "invalid server protocol")
 	if conn != nil {
 		_ = conn.Close()
 		t.Errorf("connection is not nil")
@@ -986,7 +985,7 @@ func TestProtocolDialer_Dial(t *testing.T) {
 		_ = conn.Close()
 	}
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, conn)
 	assert.Equal(t, protoInfo, conn.ProtocolInfo())
 }
@@ -1005,8 +1004,8 @@ func TestGreetingDialer_Dial_DialerError(t *testing.T) {
 		_ = conn.Close()
 	}
 
-	assert.NotNil(t, err)
-	assert.EqualError(t, err, "some error")
+	require.Error(t, err)
+	require.EqualError(t, err, "some error")
 }
 
 func TestConn_GreetingDialer_hang_connection(t *testing.T) {
@@ -1029,8 +1028,8 @@ func TestConn_GreetingDialer_hang_connection(t *testing.T) {
 		})
 
 	require.Nil(t, conn)
-	require.Error(t, err, context.DeadlineExceeded)
-	require.Equal(t, mock.conn.readCnt, 1)
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+	require.Equal(t, 1, mock.conn.readCnt)
 	require.Greater(t, mock.conn.closeCnt, 1)
 }
 
@@ -1049,8 +1048,8 @@ func TestGreetingDialer_Dial_GreetingFailed(t *testing.T) {
 	defer cancel()
 	conn, err := dialer.Dial(ctx, tarantool.DialOpts{})
 
-	assert.NotNil(t, err)
-	assert.ErrorContains(t, err, "failed to read greeting")
+	require.Error(t, err)
+	require.ErrorContains(t, err, "failed to read greeting")
 	if conn != nil {
 		_ = conn.Close()
 		t.Errorf("connection is not nil")
@@ -1077,7 +1076,7 @@ func TestGreetingDialer_Dial(t *testing.T) {
 		_ = conn.Close()
 	}
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, conn)
 	assert.Equal(t, string(testDialVersion[:]), conn.Greeting().Version)
 	assert.Equal(t, string(testDialSalt[:44]), conn.Greeting().Salt)

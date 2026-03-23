@@ -20,9 +20,9 @@ func TestProtocolInfoClonePreservesFeatures(t *testing.T) {
 	original.Features[1] = iproto.Feature(98)
 
 	require.Equal(t,
-		origCopy,
 		ProtocolInfo{
 			Version:  ProtocolVersion(100),
 			Features: []iproto.Feature{iproto.Feature(99), iproto.Feature(100)},
-		})
+		},
+		origCopy)
 }

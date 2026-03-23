@@ -239,7 +239,6 @@ func NewUserPasswdRequest(args ...string) (UserPasswdRequest, error) {
 		callReq.Args([]interface{}{args[0], args[1]})
 	default:
 		return UserPasswdRequest{}, fmt.Errorf("len of fields must be 1 or 2, got %d", len(args))
-
 	}
 
 	return UserPasswdRequest{callReq}, nil
@@ -428,7 +427,6 @@ func (u *SchemaUser) Info(ctx context.Context, username string) ([]Privilege, er
 // The generic type T can be UserGrantOptions or UserRevokeOptions.
 func prepareGrantAndRevokeArgs[T UserGrantOptions | UserRevokeOptions](username string,
 	privilege Privilege, opts T) []interface{} {
-
 	args := []interface{}{username} // Initialize args slice with the username.
 
 	switch privilege.Type {

@@ -183,7 +183,7 @@ func connect(t testing.TB) *tarantool.Connection {
 		}
 
 		ret := struct {
-			_msgpack struct{} `msgpack:",asArray"` // nolint: structcheck,unused
+			_msgpack struct{} `msgpack:",asArray"`
 			Result   bool
 		}{}
 		err = conn.Do(tarantool.NewCall17Request("is_ready")).GetTyped(&ret)
@@ -694,7 +694,7 @@ func TestUnflattenRows_IncorrectParams(t *testing.T) {
 	// Format tuples with invalid format with UnflattenRows.
 	objs, err := crud.UnflattenRows(tpls, invalidMetadata)
 	require.Nil(t, objs)
-	require.NotNil(t, err)
+	require.Error(t, err)
 	require.Contains(t, err.Error(), "unexpected space format")
 }
 
@@ -754,7 +754,7 @@ func TestUnflattenRows(t *testing.T) {
 		t.Fatalf("Expected `bucket_id` field")
 	}
 
-	require.Equal(t, len(object), len(objs[0]))
+	require.Len(t, object, len(objs[0]))
 	if expectedId, err = test_helpers.ConvertUint64(object["id"]); err != nil {
 		t.Fatalf("Unexpected `id` type")
 	}
@@ -1403,7 +1403,7 @@ func getTestSchema(t *testing.T) crud.Schema {
 
 	// https://github.com/tarantool/tarantool/issues/4091
 	uniqueIssue, err := test_helpers.IsTarantoolVersionLess(2, 2, 1)
-	require.Equal(t, err, nil, "expected version check to succeed")
+	require.NoError(t, err, "expected version check to succeed")
 
 	if uniqueIssue {
 		for sk, sv := range schema {
@@ -1417,7 +1417,7 @@ func getTestSchema(t *testing.T) crud.Schema {
 
 	// https://github.com/tarantool/tarantool/commit/17c9c034933d726925910ce5bf8b20e8e388f6e3
 	excludeNullUnsupported, err := test_helpers.IsTarantoolVersionLess(2, 8, 1)
-	require.Equal(t, err, nil, "expected version check to succeed")
+	require.NoError(t, err, "expected version check to succeed")
 
 	if excludeNullUnsupported {
 		for sk, sv := range schema {
@@ -1444,8 +1444,8 @@ func TestSchemaTyped(t *testing.T) {
 	var result crud.SchemaResult
 
 	err := conn.Do(req).GetTyped(&result)
-	require.Equal(t, err, nil, "Expected CRUD request to succeed")
-	require.Equal(t, result.Value, getTestSchema(t), "map with \"test\" schema expected")
+	require.NoError(t, err, "Expected CRUD request to succeed")
+	require.Equal(t, getTestSchema(t), result.Value, "map with \"test\" schema expected")
 }
 
 func TestSpaceSchemaTyped(t *testing.T) {
@@ -1456,8 +1456,8 @@ func TestSpaceSchemaTyped(t *testing.T) {
 	var result crud.SpaceSchemaResult
 
 	err := conn.Do(req).GetTyped(&result)
-	require.Equal(t, err, nil, "Expected CRUD request to succeed")
-	require.Equal(t, result.Value, getTestSchema(t)["test"], "map with \"test\" schema expected")
+	require.NoError(t, err, "Expected CRUD request to succeed")
+	require.Equal(t, getTestSchema(t)["test"], result.Value, "map with \"test\" schema expected")
 }
 
 func TestSpaceSchemaTypedError(t *testing.T) {
@@ -1468,7 +1468,7 @@ func TestSpaceSchemaTypedError(t *testing.T) {
 	var result crud.SpaceSchemaResult
 
 	err := conn.Do(req).GetTyped(&result)
-	require.NotEqual(t, err, nil, "Expected CRUD request to fail")
+	require.Error(t, err, "Expected CRUD request to fail")
 	require.Regexp(t, "Space \"not_exist\" doesn't exist", err.Error())
 }
 
@@ -1482,8 +1482,8 @@ func TestUnitEmptySchema(t *testing.T) {
 	var result crud.SchemaResult
 
 	err := conn.Do(req).GetTyped(&result)
-	require.Equal(t, err, nil, "Expected CRUD request to succeed")
-	require.Equal(t, result.Value, crud.Schema{}, "empty schema expected")
+	require.NoError(t, err, "Expected CRUD request to succeed")
+	require.Equal(t, crud.Schema{}, result.Value, "empty schema expected")
 }
 
 var testStorageYieldCases = []struct {

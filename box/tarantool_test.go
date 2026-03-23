@@ -33,7 +33,7 @@ func validateInfo(t testing.TB, info box.Info) {
 
 	require.NotEmpty(t, info.Version)
 	// Check that pid parsed correctly.
-	require.NotEqual(t, info.PID, 0)
+	require.NotEqual(t, 0, info.PID)
 
 	// Check replication is parsed correctly.
 	require.NotEmpty(t, info.Replication)
@@ -179,7 +179,6 @@ func TestBox_Sugar_Schema_UserCreate_ExistsTrue(t *testing.T) {
 	exists, err := b.Schema().User().Exists(ctx, username)
 	require.True(t, exists)
 	require.NoError(t, err)
-
 }
 
 func TestBox_Sugar_Schema_UserCreate_IfNotExistsNoErr(t *testing.T) {
@@ -393,7 +392,6 @@ func TestSchemaUser_Passwd_WithoutGrants(t *testing.T) {
 	var boxErr tarantool.Error
 	errors.As(err, &boxErr)
 	require.Equal(t, iproto.ER_ACCESS_DENIED, boxErr.Code)
-
 }
 
 func TestSchemaUser_Info_TestUserCorrect(t *testing.T) {

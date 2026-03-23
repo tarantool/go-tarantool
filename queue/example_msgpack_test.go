@@ -6,6 +6,7 @@
 // Terminal 2:
 // $ cd queue
 // $ go test -v example_msgpack_test.go
+
 package queue_test
 
 import (
@@ -120,7 +121,7 @@ func Example_simpleQueueCustomMsgPack() {
 	// Take data.
 	task, err = que.TakeTyped(&takeData) // Blocking operation.
 	if err != nil {
-		fmt.Printf("take take typed: %s", err)
+		fmt.Printf("take typed: %s", err)
 		return
 	}
 	fmt.Println("Data is ", takeData)

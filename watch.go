@@ -36,7 +36,7 @@ func (req *BroadcastRequest) Context(ctx context.Context) *BroadcastRequest {
 	return req
 }
 
-// Code returns IPROTO code for the broadcast request.
+// Type returns IPROTO code for the broadcast request.
 func (req *BroadcastRequest) Type() iproto.Type {
 	return req.call.Type()
 }

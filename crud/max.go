@@ -20,7 +20,7 @@ type MaxRequest struct {
 }
 
 type maxArgs struct {
-	_msgpack struct{} `msgpack:",asArray"` // nolint: structcheck,unused
+	_msgpack struct{} `msgpack:",asArray"` //nolint:unused
 	Space    string
 	Index    interface{}
 	Opts     MaxOpts

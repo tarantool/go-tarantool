@@ -12,7 +12,7 @@ import (
 type TxnIsolationLevel uint
 
 const (
-	// By default, the isolation level of Tarantool is serializable.
+	// DefaultIsolationLevel is the default isolation level of Tarantool, serializable.
 	DefaultIsolationLevel TxnIsolationLevel = 0
 	// The ReadCommittedLevel isolation level makes visible all transactions
 	// that started commit (stream.Do(NewCommitRequest()) was called).
@@ -20,7 +20,7 @@ const (
 	// The ReadConfirmedLevel isolation level makes visible all transactions
 	// that finished the commit (stream.Do(NewCommitRequest()) was returned).
 	ReadConfirmedLevel TxnIsolationLevel = 2
-	// If the BestEffortLevel (serializable) isolation level becomes unreachable,
+	// BestEffortLevel is serializable. If it becomes unreachable,
 	// the transaction is marked as «conflicted» and can no longer be committed.
 	BestEffortLevel TxnIsolationLevel = 3
 )
@@ -54,7 +54,7 @@ func NewBeginRequest() *BeginRequest {
 	return req
 }
 
-// TxnIsolation sets the the transaction isolation level for transaction manager.
+// TxnIsolation sets the transaction isolation level for transaction manager.
 // By default, the isolation level of Tarantool is serializable.
 func (req *BeginRequest) TxnIsolation(txnIsolation TxnIsolationLevel) *BeginRequest {
 	req.txnIsolation = txnIsolation

@@ -33,7 +33,6 @@ func TestUserExistsResponse_DecodeMsgpack(t *testing.T) {
 	}
 
 	for tCaseBool, tCaseBuf := range tCases {
-		tCaseBool := tCaseBool
 		tCaseBuf := tCaseBuf()
 
 		t.Run(fmt.Sprintf("case: %t", tCaseBool), func(t *testing.T) {
@@ -45,7 +44,6 @@ func TestUserExistsResponse_DecodeMsgpack(t *testing.T) {
 			require.Equal(t, tCaseBool, resp.Exists)
 		})
 	}
-
 }
 
 func TestUserPasswordResponse_DecodeMsgpack(t *testing.T) {
@@ -55,8 +53,6 @@ func TestUserPasswordResponse_DecodeMsgpack(t *testing.T) {
 	}
 
 	for _, tCase := range tCases {
-		tCase := tCase
-
 		t.Run(tCase, func(t *testing.T) {
 			t.Parallel()
 			buf := bytes.NewBuffer(nil)
@@ -73,7 +69,6 @@ func TestUserPasswordResponse_DecodeMsgpack(t *testing.T) {
 			require.Equal(t, tCase, resp.Hash)
 		})
 	}
-
 }
 
 func FuzzUserPasswordResponse_DecodeMsgpack(f *testing.F) {

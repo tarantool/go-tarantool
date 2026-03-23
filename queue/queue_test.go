@@ -291,7 +291,6 @@ func TestFifoQueue_Take(t *testing.T) {
 
 		if !task.IsTaken() {
 			t.Errorf("Task status after take is not taken. Status = %s", task.Status())
-
 		}
 
 		err = task.Ack()

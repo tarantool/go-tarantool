@@ -19,7 +19,7 @@ type Tuple2 struct {
 
 // Same effect in a "magic" way, but slower.
 type Tuple3 struct {
-	_msgpack struct{} `msgpack:",asArray"` // nolint: structcheck,unused
+	_msgpack struct{} `msgpack:",asArray"` //nolint:unused
 
 	Cid     uint
 	Orig    string
@@ -145,5 +145,4 @@ func Example_customUnpacking() {
 	// Tuples (tuples1) [{777 orig [{lol  1} {wut  3}]}]
 	// Tuples (tuples2): [{{} 777 orig [{lol  1} {wut  3}]}]
 	// Tuples (tuples3): [[{{} 221  [{Moscow  34} {Minsk  23} {Kiev  31}]}]]
-
 }

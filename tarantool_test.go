@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -481,12 +480,12 @@ func TestNetDialer(t *testing.T) {
 	ctx, cancel := test_helpers.GetConnectContext()
 	defer cancel()
 	conn, err := dialer.Dial(ctx, DialOpts{})
-	require.Nil(err)
+	require.NoError(err)
 	require.NotNil(conn)
 	defer func() { _ = conn.Close() }()
 
 	assert.Equal(server, conn.Addr().String())
-	assert.NotEqual("", conn.Greeting().Version)
+	assert.NotEmpty(conn.Greeting().Version)
 
 	// Write IPROTO_PING.
 	ping := []byte{
@@ -498,21 +497,21 @@ func TestNetDialer(t *testing.T) {
 	}
 	ret, err := conn.Write(ping)
 	require.Equal(len(ping), ret)
-	require.Nil(err)
-	require.Nil(conn.Flush())
+	require.NoError(err)
+	require.NoError(conn.Flush())
 
 	// Read IPROTO_PING response length.
 	lenbuf := make([]byte, 5)
 	ret, err = io.ReadFull(conn, lenbuf)
-	require.Nil(err)
+	require.NoError(err)
 	require.Equal(len(lenbuf), ret)
 	length := int(binary.BigEndian.Uint32(lenbuf[1:]))
-	require.Greater(length, 0)
+	require.Positive(length)
 
 	// Read IPROTO_PING response.
 	buf := make([]byte, length)
 	ret, err = io.ReadFull(conn, buf)
-	require.Nil(err)
+	require.NoError(err)
 	require.Equal(len(buf), ret)
 	// Check that it is IPROTO_OK.
 	assert.Equal([]byte{0x83, 0x00, 0xce, 0x00, 0x00, 0x00, 0x00}, buf[:7])
@@ -528,8 +527,8 @@ func TestNetDialer_BadUser(t *testing.T) {
 	defer cancel()
 
 	conn, err := Connect(ctx, badDialer, opts)
-	assert.NotNil(t, err)
-	assert.ErrorContains(t, err, "failed to authenticate")
+	require.Error(t, err)
+	require.ErrorContains(t, err, "failed to authenticate")
 	if conn != nil {
 		_ = conn.Close()
 		t.Errorf("connection is not nil")
@@ -1123,23 +1122,23 @@ func TestSQL(t *testing.T) {
 	for i, test := range testCases {
 		req := NewExecuteRequest(test.Query).Args(test.Args)
 		resp, err := conn.Do(req).GetResponse()
-		assert.NoError(t, err, "Failed to Execute, query: %s", test.Query)
+		require.NoError(t, err, "Failed to Execute, query: %s", test.Query)
 		assert.NotNil(t, resp, "Response is nil after Execute\nQuery number: %d", i)
 		data, err := resp.Decode()
-		assert.NoError(t, err, "Failed to Decode")
+		require.NoError(t, err, "Failed to Decode")
 		for j := range data {
 			assert.Equal(t, data[j], test.data[j], "Response data is wrong")
 		}
 		exResp, ok := resp.(*ExecuteResponse)
 		assert.True(t, ok, "Got wrong response type")
 		sqlInfo, err := exResp.SQLInfo()
-		assert.NoError(t, err, "Error while getting SQLInfo")
+		require.NoError(t, err, "Error while getting SQLInfo")
 		assert.Equal(t, sqlInfo.AffectedCount, test.sqlInfo.AffectedCount,
 			"Affected count is wrong")
 
 		errorMsg := "Response Metadata is wrong"
 		metaData, err := exResp.MetaData()
-		assert.NoError(t, err, "Error while getting MetaData")
+		require.NoError(t, err, "Error while getting MetaData")
 		for j := range metaData {
 			assert.Equal(t, metaData[j], test.metaData[j], errorMsg)
 		}
@@ -1157,16 +1156,16 @@ func TestSQLTyped(t *testing.T) {
 		Args([]interface{}{1}),
 	)
 	err := fut.GetTyped(&mem)
-	assert.NoError(t, err, "Error while GetTyped")
+	require.NoError(t, err, "Error while GetTyped")
 	resp, err := fut.GetResponse()
-	assert.NoError(t, err, "Error while getting Response")
+	require.NoError(t, err, "Error while getting Response")
 	exResp, ok := resp.(*ExecuteResponse)
 	assert.True(t, ok, "Got wrong response type")
 
 	info, err := exResp.SQLInfo()
-	assert.NoError(t, err, "Error while getting SQLInfo")
+	require.NoError(t, err, "Error while getting SQLInfo")
 	meta, err := exResp.MetaData()
-	assert.NoError(t, err, "Error while getting MetaData")
+	require.NoError(t, err, "Error while getting MetaData")
 	if info.AffectedCount != 0 {
 		t.Errorf("Rows affected count must be 0")
 	}
@@ -1253,7 +1252,7 @@ func TestSQLBindings(t *testing.T) {
 		exResp, ok := resp.(*ExecuteResponse)
 		assert.True(t, ok, "Got wrong response type")
 		metaData, err := exResp.MetaData()
-		assert.NoError(t, err, "Error while getting MetaData")
+		require.NoError(t, err, "Error while getting MetaData")
 		if metaData[0].FieldType != "unsigned" ||
 			metaData[0].FieldName != "NAME0" ||
 			metaData[1].FieldType != "string" ||
@@ -1280,7 +1279,7 @@ func TestSQLBindings(t *testing.T) {
 	exResp, ok := resp.(*ExecuteResponse)
 	assert.True(t, ok, "Got wrong response type")
 	metaData, err := exResp.MetaData()
-	assert.NoError(t, err, "Error while getting MetaData")
+	require.NoError(t, err, "Error while getting MetaData")
 	if metaData[0].FieldType != "unsigned" ||
 		metaData[0].FieldName != "NAME0" ||
 		metaData[1].FieldType != "string" ||
@@ -1306,7 +1305,7 @@ func TestSQLBindings(t *testing.T) {
 	exResp, ok = resp.(*ExecuteResponse)
 	assert.True(t, ok, "Got wrong response type")
 	metaData, err = exResp.MetaData()
-	assert.NoError(t, err, "Error while getting MetaData")
+	require.NoError(t, err, "Error while getting MetaData")
 	if metaData[0].FieldType != "unsigned" ||
 		metaData[0].FieldName != "NAME0" ||
 		metaData[1].FieldType != "string" ||
@@ -1332,7 +1331,7 @@ func TestStressSQL(t *testing.T) {
 	exResp, ok := resp.(*ExecuteResponse)
 	assert.True(t, ok, "Got wrong response type")
 	sqlInfo, err := exResp.SQLInfo()
-	assert.NoError(t, err, "Error while getting SQLInfo")
+	require.NoError(t, err, "Error while getting SQLInfo")
 	if sqlInfo.AffectedCount != 1 {
 		t.Errorf("Incorrect count of created spaces: %d", sqlInfo.AffectedCount)
 	}
@@ -1347,7 +1346,7 @@ func TestStressSQL(t *testing.T) {
 		t.Fatal("Response is nil after Execute")
 	}
 	_, err = resp.Decode()
-	assert.NotNil(t, err, "Expected error while decoding")
+	require.Error(t, err, "Expected error while decoding")
 
 	tntErr, ok := err.(Error)
 	assert.True(t, ok)
@@ -1380,7 +1379,7 @@ func TestStressSQL(t *testing.T) {
 	exResp, ok = resp.(*ExecuteResponse)
 	assert.True(t, ok, "Got wrong response type")
 	sqlInfo, err = exResp.SQLInfo()
-	assert.NotNil(t, err, "Expected an error")
+	require.Error(t, err, "Expected an error")
 	if sqlInfo.AffectedCount != 0 {
 		t.Errorf("Incorrect count of created spaces: %d", sqlInfo.AffectedCount)
 	}
@@ -1400,7 +1399,7 @@ func TestStressSQL(t *testing.T) {
 	exResp, ok = resp.(*ExecuteResponse)
 	assert.True(t, ok, "Got wrong response type")
 	sqlInfo, err = exResp.SQLInfo()
-	assert.NotNil(t, err, "Expected an error")
+	require.Error(t, err, "Expected an error")
 	if sqlInfo.AffectedCount != 0 {
 		t.Errorf("Incorrect count of created spaces: %d", sqlInfo.AffectedCount)
 	}
@@ -1417,7 +1416,7 @@ func TestStressSQL(t *testing.T) {
 	exResp, ok = resp.(*ExecuteResponse)
 	assert.True(t, ok, "Got wrong response type")
 	sqlInfo, err = exResp.SQLInfo()
-	assert.NoError(t, err, "Error while getting SQLInfo")
+	require.NoError(t, err, "Error while getting SQLInfo")
 	if sqlInfo.AffectedCount != 1 {
 		t.Errorf("Incorrect count of dropped spaces: %d", sqlInfo.AffectedCount)
 	}
@@ -1477,7 +1476,7 @@ func TestNewPrepared(t *testing.T) {
 	prepResp, ok := resp.(*ExecuteResponse)
 	assert.True(t, ok, "Got wrong response type")
 	metaData, err := prepResp.MetaData()
-	assert.NoError(t, err, "Error while getting MetaData")
+	require.NoError(t, err, "Error while getting MetaData")
 	if metaData[0].FieldType != "unsigned" ||
 		metaData[0].FieldName != "NAME0" ||
 		metaData[1].FieldType != "string" ||
@@ -1547,7 +1546,7 @@ func TestConnection_SetResponse_failed(t *testing.T) {
 	fut := conn.Do(&req)
 
 	data, err := fut.Get()
-	assert.EqualError(t, err, "failed to set response: some error")
+	require.EqualError(t, err, "failed to set response: some error")
 	assert.Nil(t, data)
 }
 
@@ -2179,7 +2178,7 @@ func TestClientRequestObjects(t *testing.T) {
 	exResp, ok := resp.(*ExecuteResponse)
 	assert.True(t, ok, "Got wrong response type")
 	sqlInfo, err := exResp.SQLInfo()
-	assert.NoError(t, err, "Error while getting SQLInfo")
+	require.NoError(t, err, "Error while getting SQLInfo")
 	if sqlInfo.AffectedCount != 1 {
 		t.Errorf("Incorrect count of created spaces: %d", sqlInfo.AffectedCount)
 	}
@@ -2202,7 +2201,7 @@ func TestClientRequestObjects(t *testing.T) {
 	exResp, ok = resp.(*ExecuteResponse)
 	assert.True(t, ok, "Got wrong response type")
 	sqlInfo, err = exResp.SQLInfo()
-	assert.NoError(t, err, "Error while getting SQLInfo")
+	require.NoError(t, err, "Error while getting SQLInfo")
 	if sqlInfo.AffectedCount != 1 {
 		t.Errorf("Incorrect count of dropped spaces: %d", sqlInfo.AffectedCount)
 	}
@@ -2390,7 +2389,7 @@ func TestConnectionDoSelectRequest_pagination_pos(t *testing.T) {
 	testConnectionDoSelectRequestCheck(t, selResp, err, true, 2, 1010)
 
 	selPos, err := selResp.Pos()
-	assert.NoError(t, err, "Error while getting Pos")
+	require.NoError(t, err, "Error while getting Pos")
 
 	resp, err = conn.Do(req.After(selPos)).GetResponse()
 	selResp, ok = resp.(*SelectResponse)
@@ -2418,7 +2417,7 @@ func TestCallRequest(t *testing.T) {
 func TestClientRequestObjectsWithNilContext(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer func() { _ = conn.Close() }()
-	req := NewPingRequest().Context(nil) // nolint
+	req := NewPingRequest().Context(nil)
 	data, err := conn.Do(req).Get()
 	if err != nil {
 		t.Fatalf("Failed to Ping: %s", err)
@@ -2436,7 +2435,7 @@ func TestClientRequestObjectsWithPassedCanceledContext(t *testing.T) {
 	req := NewPingRequest().Context(ctx)
 	cancel()
 	resp, err := conn.Do(req).Get()
-	if !contextDoneErrRegexp.Match([]byte(err.Error())) {
+	if !contextDoneErrRegexp.MatchString(err.Error()) {
 		t.Fatalf("Failed to catch an error from done context")
 	}
 	if resp != nil {
@@ -2453,7 +2452,7 @@ func TestComparableErrorsCanceledContext(t *testing.T) {
 	req := NewPingRequest().Context(ctx)
 	cancel()
 	_, err := conn.Do(req).Get()
-	require.True(t, errors.Is(err, context.Canceled), err.Error())
+	require.ErrorIs(t, err, context.Canceled)
 }
 
 // Checking comparable with simple context.WithTimeout.
@@ -2466,7 +2465,7 @@ func TestComparableErrorsTimeoutContext(t *testing.T) {
 	req := NewPingRequest().Context(ctx)
 	defer cancel()
 	_, err := conn.Do(req).Get()
-	require.True(t, errors.Is(err, context.DeadlineExceeded), err.Error())
+	require.ErrorIs(t, err, context.DeadlineExceeded)
 }
 
 // Checking comparable with context.WithCancelCause.
@@ -2480,7 +2479,7 @@ func TestComparableErrorsCancelCauseContext(t *testing.T) {
 	cancelCause(ClientError{ErrConnectionClosed, "something went wrong"})
 	_, err := conn.Do(req).Get()
 	var tmpErr ClientError
-	require.True(t, errors.As(err, &tmpErr), tmpErr.Error())
+	require.ErrorAs(t, err, &tmpErr)
 }
 
 // waitCtxRequest waits for the WaitGroup in Body() call and returns
@@ -2546,7 +2545,7 @@ func TestClientRequestObjectsWithContext(t *testing.T) {
 	if err == nil {
 		t.Fatalf("caught nil error")
 	}
-	if !contextDoneErrRegexp.Match([]byte(err.Error())) {
+	if !contextDoneErrRegexp.MatchString(err.Error()) {
 		t.Fatalf("wrong error caught: %v", err)
 	}
 }
@@ -2830,13 +2829,13 @@ func TestStream_TxnIsolationLevel(t *testing.T) {
 		// Begin transaction
 		req = NewBeginRequest().TxnIsolation(level).Timeout(500 * time.Millisecond)
 		_, err = stream.Do(req).Get()
-		require.Nilf(t, err, "failed to Begin")
+		require.NoErrorf(t, err, "failed to Begin")
 
 		// Insert in stream
 		req = NewInsertRequest(spaceName).
 			Tuple([]interface{}{uint(1001), "hello2", "world2"})
 		_, err = stream.Do(req).Get()
-		require.Nilf(t, err, "failed to Insert")
+		require.NoErrorf(t, err, "failed to Insert")
 
 		// Select not related to the transaction
 		// while transaction is not committed
@@ -2847,20 +2846,20 @@ func TestStream_TxnIsolationLevel(t *testing.T) {
 			Iterator(IterEq).
 			Key([]interface{}{uint(1001)})
 		data, err := conn.Do(selectReq).Get()
-		require.Nilf(t, err, "failed to Select")
-		require.Equalf(t, 0, len(data), "response Data len != 0")
+		require.NoErrorf(t, err, "failed to Select")
+		require.Emptyf(t, data, "response Data len != 0")
 
 		// Select in stream
 		data, err = stream.Do(selectReq).Get()
-		require.Nilf(t, err, "failed to Select")
-		require.Equalf(t, 1, len(data), "response Body len != 1 after Select")
+		require.NoErrorf(t, err, "failed to Select")
+		require.Lenf(t, data, 1, "response Body len != 1 after Select")
 
 		tpl, ok := data[0].([]interface{})
 		require.Truef(t, ok, "unexpected body of Select")
-		require.Equalf(t, 3, len(tpl), "unexpected body of Select")
+		require.Lenf(t, tpl, 3, "unexpected body of Select")
 
 		key, err := test_helpers.ConvertUint64(tpl[0])
-		require.Nilf(t, err, "unexpected body of Select (0)")
+		require.NoErrorf(t, err, "unexpected body of Select (0)")
 		require.Equalf(t, uint64(1001), key, "unexpected body of Select (0)")
 
 		value1, ok := tpl[1].(string)
@@ -2874,17 +2873,17 @@ func TestStream_TxnIsolationLevel(t *testing.T) {
 		// Rollback transaction
 		req = NewRollbackRequest()
 		_, err = stream.Do(req).Get()
-		require.Nilf(t, err, "failed to Rollback")
+		require.NoErrorf(t, err, "failed to Rollback")
 
 		// Select outside of transaction
 		data, err = conn.Do(selectReq).Get()
-		require.Nilf(t, err, "failed to Select")
-		require.Equalf(t, 0, len(data), "response Data len != 0")
+		require.NoErrorf(t, err, "failed to Select")
+		require.Emptyf(t, data, "response Data len != 0")
 
 		// Select inside of stream after rollback
 		data, err = stream.Do(selectReq).Get()
-		require.Nilf(t, err, "failed to Select")
-		require.Equalf(t, 0, len(data), "response Data len != 0")
+		require.NoErrorf(t, err, "failed to Select")
+		require.Emptyf(t, data, "response Data len != 0")
 
 		test_helpers.DeleteRecordByKey(t, conn, spaceNo, indexNo, []interface{}{uint(1001)})
 	}
@@ -3000,9 +2999,9 @@ func TestClientIdRequestObject(t *testing.T) {
 		Features: []iproto.Feature{iproto.IPROTO_FEATURE_STREAMS},
 	})
 	data, err := conn.Do(req).Get()
-	require.Nilf(t, err, "No errors on Id request execution")
+	require.NoErrorf(t, err, "No errors on Id request execution")
 	require.NotNilf(t, data, "Response data not empty")
-	require.Equal(t, len(data), 1, "Response data contains exactly one object")
+	require.Len(t, data, 1, "Response data contains exactly one object")
 
 	serverProtocolInfo, ok := data[0].(ProtocolInfo)
 	require.Truef(t, ok, "Response Data object is an ProtocolInfo object")
@@ -3033,11 +3032,11 @@ func TestClientIdRequestObjectWithNilContext(t *testing.T) {
 	req := NewIdRequest(ProtocolInfo{
 		Version:  ProtocolVersion(1),
 		Features: []iproto.Feature{iproto.IPROTO_FEATURE_STREAMS},
-	}).Context(nil) // nolint
+	}).Context(nil)
 	data, err := conn.Do(req).Get()
-	require.Nilf(t, err, "No errors on Id request execution")
+	require.NoErrorf(t, err, "No errors on Id request execution")
 	require.NotNilf(t, data, "Response data not empty")
-	require.Equal(t, len(data), 1, "Response data contains exactly one object")
+	require.Len(t, data, 1, "Response data contains exactly one object")
 
 	serverProtocolInfo, ok := data[0].(ProtocolInfo)
 	require.Truef(t, ok, "Response Data object is an ProtocolInfo object")
@@ -3057,11 +3056,11 @@ func TestClientIdRequestObjectWithPassedCanceledContext(t *testing.T) {
 	req := NewIdRequest(ProtocolInfo{
 		Version:  ProtocolVersion(1),
 		Features: []iproto.Feature{iproto.IPROTO_FEATURE_STREAMS},
-	}).Context(ctx) // nolint
+	}).Context(ctx)
 	cancel()
 	resp, err := conn.Do(req).Get()
 	require.Nilf(t, resp, "Response is empty")
-	require.NotNilf(t, err, "Error is not empty")
+	require.Errorf(t, err, "Error is not empty")
 	require.Regexp(t, contextDoneErrRegexp, err.Error())
 }
 
@@ -3102,7 +3101,7 @@ func TestConnectionProtocolVersionRequirementSuccess(t *testing.T) {
 	defer cancel()
 	conn, err := Connect(ctx, testDialer, opts)
 
-	require.Nilf(t, err, "No errors on connect")
+	require.NoErrorf(t, err, "No errors on connect")
 	require.NotNilf(t, conn, "Connect success")
 
 	_ = conn.Close()
@@ -3121,7 +3120,7 @@ func TestConnectionProtocolVersionRequirementFail(t *testing.T) {
 	conn, err := Connect(ctx, testDialer, opts)
 
 	require.Nilf(t, conn, "Connect fail")
-	require.NotNilf(t, err, "Got error on connect")
+	require.Errorf(t, err, "Got error on connect")
 	require.Contains(t, err.Error(), "invalid server protocol: protocol version 3 is not supported")
 }
 
@@ -3138,7 +3137,7 @@ func TestConnectionProtocolFeatureRequirementSuccess(t *testing.T) {
 	conn, err := Connect(ctx, testDialer, opts)
 
 	require.NotNilf(t, conn, "Connect success")
-	require.Nilf(t, err, "No errors on connect")
+	require.NoErrorf(t, err, "No errors on connect")
 
 	_ = conn.Close()
 }
@@ -3156,7 +3155,7 @@ func TestConnectionProtocolFeatureRequirementFail(t *testing.T) {
 	conn, err := Connect(ctx, testDialer, opts)
 
 	require.Nilf(t, conn, "Connect fail")
-	require.NotNilf(t, err, "Got error on connect")
+	require.Errorf(t, err, "Got error on connect")
 	require.Contains(t, err.Error(),
 		"invalid server protocol: protocol feature "+
 			"IPROTO_FEATURE_TRANSACTIONS is not supported")
@@ -3176,7 +3175,7 @@ func TestConnectionProtocolFeatureRequirementManyFail(t *testing.T) {
 	conn, err := Connect(ctx, testDialer, opts)
 
 	require.Nilf(t, conn, "Connect fail")
-	require.NotNilf(t, err, "Got error on connect")
+	require.Errorf(t, err, "Got error on connect")
 	require.Contains(t,
 		err.Error(),
 		"invalid server protocol: protocol features IPROTO_FEATURE_TRANSACTIONS, "+
@@ -3190,10 +3189,10 @@ func TestErrorExtendedInfoBasic(t *testing.T) {
 	defer func() { _ = conn.Close() }()
 
 	_, err := conn.Do(NewEvalRequest("not a Lua code").Args([]interface{}{})).Get()
-	require.NotNilf(t, err, "expected error on invalid Lua code")
+	require.Errorf(t, err, "expected error on invalid Lua code")
 
 	ttErr, ok := err.(Error)
-	require.Equalf(t, ok, true, "error is built from a Tarantool error")
+	require.Truef(t, ok, "error is built from a Tarantool error")
 
 	expected := BoxError{
 		Type:  "LuajitError",
@@ -3218,10 +3217,10 @@ func TestErrorExtendedInfoStack(t *testing.T) {
 	defer func() { _ = conn.Close() }()
 
 	_, err := conn.Do(NewEvalRequest("error(chained_error)").Args([]interface{}{})).Get()
-	require.NotNilf(t, err, "expected error on explicit error raise")
+	require.Errorf(t, err, "expected error on explicit error raise")
 
 	ttErr, ok := err.(Error)
-	require.Equalf(t, ok, true, "error is built from a Tarantool error")
+	require.Truef(t, ok, "error is built from a Tarantool error")
 
 	expected := BoxError{
 		Type:  "ClientError",
@@ -3254,10 +3253,10 @@ func TestErrorExtendedInfoFields(t *testing.T) {
 	defer func() { _ = conn.Close() }()
 
 	_, err := conn.Do(NewEvalRequest("error(access_denied_error)").Args([]interface{}{})).Get()
-	require.NotNilf(t, err, "expected error on forbidden action")
+	require.Errorf(t, err, "expected error on forbidden action")
 
 	ttErr, ok := err.(Error)
-	require.Equalf(t, ok, true, "error is built from a Tarantool error")
+	require.Truef(t, ok, "error is built from a Tarantool error")
 
 	expected := BoxError{
 		Type:  "AccessDeniedError",
@@ -3363,7 +3362,7 @@ func TestNewWatcherDuringReconnect(t *testing.T) {
 	defer cancel()
 
 	_, err := conn.NewWatcher("one", func(event WatchEvent) {})
-	assert.NotNil(t, err)
+	require.Error(t, err)
 	assert.ErrorContains(t, err, "client connection is not ready")
 }
 
@@ -3376,7 +3375,7 @@ func TestNewWatcherAfterClose(t *testing.T) {
 	_ = conn.Close()
 
 	_, err := conn.NewWatcher("one", func(event WatchEvent) {})
-	assert.NotNil(t, err)
+	require.Error(t, err)
 	assert.ErrorContains(t, err, "using closed connection")
 }
 
@@ -3391,7 +3390,7 @@ func TestConnection_NewWatcher_noWatchersFeature(t *testing.T) {
 
 	watcher, err := conn.NewWatcher(key, func(event WatchEvent) {})
 	require.Nilf(t, watcher, "watcher must not be created")
-	require.NotNilf(t, err, "an error is expected")
+	require.Errorf(t, err, "an error is expected")
 	expected := "the feature IPROTO_FEATURE_WATCHERS must be supported by " +
 		"connection to create a watcher"
 	require.Equal(t, expected, err.Error())
@@ -3765,7 +3764,7 @@ func TestConnect_schema_update(t *testing.T) {
 
 		switch conn, err := Connect(ctx, dialer, opts); {
 		case err != nil:
-			assert.ErrorIs(t, err, ErrConcurrentSchemaUpdate)
+			require.ErrorIs(t, err, ErrConcurrentSchemaUpdate)
 		case conn == nil:
 			assert.Fail(t, "conn is nil")
 		default:
@@ -3843,7 +3842,7 @@ func TestConnectIsBlocked(t *testing.T) {
 	reconnectOpts.Reconnect = 100 * time.Millisecond
 	reconnectOpts.MaxReconnects = 100
 	conn, err := Connect(ctx, mockDialer, reconnectOpts)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	_ = conn.Close()
 	assert.GreaterOrEqual(t, counter, 10)
 }
@@ -3861,7 +3860,7 @@ func TestConnectIsBlockedUntilContextExpires(t *testing.T) {
 	reconnectOpts.Reconnect = 100 * time.Millisecond
 	reconnectOpts.MaxReconnects = 100
 	_, err := Connect(ctx, testDialer, reconnectOpts)
-	assert.NotNil(t, err)
+	require.Error(t, err)
 	assert.ErrorContains(t, err, "failed to dial: dial tcp 127.0.0.1:3015: i/o timeout")
 }
 
@@ -3878,7 +3877,7 @@ func TestConnectIsUnblockedAfterMaxAttempts(t *testing.T) {
 	reconnectOpts.Reconnect = 100 * time.Millisecond
 	reconnectOpts.MaxReconnects = 1
 	_, err := Connect(ctx, testDialer, reconnectOpts)
-	assert.NotNil(t, err)
+	require.Error(t, err)
 	assert.ErrorContains(t, err, "last reconnect failed")
 }
 
@@ -3958,8 +3957,8 @@ func TestFdDialer(t *testing.T) {
 	var resp []interface{}
 	err = conn.Do(NewEvalRequest(evalBody).Args([]interface{}{})).GetTyped(&resp)
 	require.NoError(t, err)
-	require.Equal(t, "", resp[1], resp[1])
-	require.Equal(t, "", resp[2], resp[2])
+	require.Empty(t, resp[1], resp[1])
+	require.Empty(t, resp[2], resp[2])
 	require.Equal(t, int8(0), resp[0])
 }
 
@@ -3977,15 +3976,15 @@ func TestDoBeginRequest_IsSync(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = stream.Do(NewBeginRequest().IsSync(true)).Get()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	_, err = stream.Do(
 		NewReplaceRequest("test").Tuple([]interface{}{1, "foo"}),
 	).Get()
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	_, err = stream.Do(NewCommitRequest()).Get()
-	require.NotNil(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), errNoSyncTransactionQueue)
 }
 
@@ -3999,15 +3998,15 @@ func TestDoCommitRequest_IsSync(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = stream.Do(NewBeginRequest()).Get()
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	_, err = stream.Do(
 		NewReplaceRequest("test").Tuple([]interface{}{1, "foo"}),
 	).Get()
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	_, err = stream.Do(NewCommitRequest().IsSync(true)).Get()
-	require.NotNil(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), errNoSyncTransactionQueue)
 }
 
@@ -4021,15 +4020,15 @@ func TestDoCommitRequest_NoSync(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = stream.Do(NewBeginRequest()).Get()
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	_, err = stream.Do(
 		NewReplaceRequest("test").Tuple([]interface{}{1, "foo"}),
 	).Get()
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	_, err = stream.Do(NewCommitRequest()).Get()
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 }
 
 // runTestMain is a body of TestMain function

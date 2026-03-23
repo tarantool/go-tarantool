@@ -22,7 +22,7 @@ func TestAuth_String(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.expected, func(t *testing.T) {
-			assert.Equal(t, tc.auth.String(), tc.expected)
+			assert.Equal(t, tc.expected, tc.auth.String())
 		})
 	}
 }

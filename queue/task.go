@@ -68,7 +68,7 @@ func (t *Task) Delete() error {
 	return t.accept(t.q._delete(t.id))
 }
 
-// Bury signals that task task cannot be executed in the current circumstances,
+// Bury signals that task cannot be executed in the current circumstances,
 // task becomes "buried" - ie neither completed, nor ready, so it could not be
 // deleted or taken by other worker.
 // To revert "burying" call queue.Kick(numberOfBurried).
@@ -110,7 +110,7 @@ func (t *Task) IsDone() bool {
 	return t.status == DONE
 }
 
-// IsBurred returns if task is buried.
+// IsBuried returns if task is buried.
 func (t *Task) IsBuried() bool {
 	return t.status == BURIED
 }

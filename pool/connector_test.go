@@ -69,7 +69,7 @@ func TestConnectorClose(t *testing.T) {
 	m := &closeMock{retErr: false}
 	c := NewConnectorAdapter(m, testMode)
 
-	require.Nilf(t, c.Close(), "unexpected result")
+	require.NoErrorf(t, c.Close(), "unexpected result")
 	require.Equalf(t, 1, m.called, "should be called only once")
 }
 
@@ -78,7 +78,7 @@ func TestConnectorCloseWithError(t *testing.T) {
 	c := NewConnectorAdapter(m, testMode)
 
 	err := c.Close()
-	require.NotNilf(t, err, "unexpected result")
+	require.Errorf(t, err, "unexpected result")
 	require.Equalf(t, 1, m.called, "should be called only once")
 	require.Equal(t, "failed to close connection pool: err1: err2", err.Error())
 }

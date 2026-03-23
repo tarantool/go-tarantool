@@ -88,15 +88,15 @@ func createFutureMockResponse(header Header, body io.Reader) (Response, error) {
 func TestFuture_Get(t *testing.T) {
 	fut, err := NewFutureWithResponse(&futureMockRequest{},
 		Header{}, bytes.NewReader([]byte{'v', '2'}))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	resp, err := fut.GetResponse()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	mockResp, ok := resp.(*futureMockResponse)
 	assert.True(t, ok)
 
 	data, err := fut.Get()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []interface{}{uint8('v'), uint8('2')}, data)
 	assert.Equal(t, 1, mockResp.decodeCnt)
 	assert.Equal(t, 0, mockResp.decodeTypedCnt)
@@ -105,17 +105,17 @@ func TestFuture_Get(t *testing.T) {
 func TestFuture_GetTyped(t *testing.T) {
 	fut, err := NewFutureWithResponse(&futureMockRequest{},
 		Header{}, bytes.NewReader([]byte{'v', '2'}))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	resp, err := fut.GetResponse()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	mockResp, ok := resp.(*futureMockResponse)
 	assert.True(t, ok)
 
 	var data []byte
 
 	err = fut.GetTyped(&data)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 0, mockResp.decodeCnt)
 	assert.Equal(t, 1, mockResp.decodeTypedCnt)
 }
@@ -123,30 +123,30 @@ func TestFuture_GetTyped(t *testing.T) {
 func TestFuture_GetResponse(t *testing.T) {
 	mockResp, err := createFutureMockResponse(Header{},
 		bytes.NewReader([]byte{'v', '2'}))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	fut, err := NewFutureWithResponse(&futureMockRequest{},
 		Header{}, bytes.NewReader([]byte{'v', '2'}))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	resp, err := fut.GetResponse()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	respConv, ok := resp.(*futureMockResponse)
 	assert.True(t, ok)
 	assert.Equal(t, mockResp, respConv)
 
 	data, err := resp.Decode()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []interface{}{uint8('v'), uint8('2')}, data)
 }
 
 func TestFuture_Release(t *testing.T) {
 	fut, err := NewFutureWithResponse(&futureMockRequest{},
 		Header{}, bytes.NewReader([]byte{'v', '3'}))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	resp, err := fut.GetResponse()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	mockResp, ok := resp.(*futureMockResponse)
 	assert.True(t, ok)
 	assert.False(t, mockResp.released)
@@ -157,25 +157,44 @@ func TestFuture_Release(t *testing.T) {
 	assert.True(t, mockResp.released)
 }
 
-func testFuturePoolRoundtrip(t *testing.T, data []byte) {
+func testFuturePoolRoundtripErr(data []byte) error {
 	fut, err := NewFutureWithResponse(
 		&futureMockRequest{},
 		Header{},
 		bytes.NewReader(data),
 	)
-	require.NoError(t, err)
+	if err != nil {
+		return fmt.Errorf("NewFutureWithResponse error: %w", err)
+	}
 
 	resp, err := fut.GetResponse()
-	require.NoError(t, err)
+	if err != nil {
+		return fmt.Errorf("GetResponse error: %w", err)
+	}
 
 	mockResp, ok := resp.(*futureMockResponse)
-	require.True(t, ok)
+	if !ok {
+		return fmt.Errorf("expected *futureMockResponse, got %T", resp)
+	}
 
 	got, err := mockResp.Decode()
-	require.NoError(t, err)
-	assert.Equal(t, []byte{got[0].(byte), got[1].(byte)}, data)
+	if err != nil {
+		return fmt.Errorf("Decode error: %w", err)
+	}
+
+	expected := []byte{got[0].(byte), got[1].(byte)}
+	if !bytes.Equal(expected, data) {
+		return fmt.Errorf("expected %v, got %v", data, expected)
+	}
 
 	fut.Release()
+	return nil
+}
+
+func testFuturePoolRoundtrip(t *testing.T, data []byte) {
+	if err := testFuturePoolRoundtripErr(data); err != nil {
+		require.NoError(t, err)
+	}
 }
 
 func TestFuture_PoolAllocations(t *testing.T) {
@@ -186,6 +205,7 @@ func TestFuture_PoolAllocations(t *testing.T) {
 
 func TestFuture_PoolAllocationsConcurrent(t *testing.T) {
 	var wg sync.WaitGroup
+	errCh := make(chan error, 100)
 
 	for i := range 100 {
 		wg.Add(1)
@@ -193,11 +213,18 @@ func TestFuture_PoolAllocationsConcurrent(t *testing.T) {
 		go func(i int) {
 			defer wg.Done()
 
-			testFuturePoolRoundtrip(t, []byte{byte(i >> 8), byte(i)})
+			if err := testFuturePoolRoundtripErr([]byte{byte(i >> 8), byte(i)}); err != nil {
+				errCh <- err
+			}
 		}(i)
 	}
 
 	wg.Wait()
+	close(errCh)
+
+	for err := range errCh {
+		require.NoError(t, err)
+	}
 }
 
 func BenchmarkFuture_Get(b *testing.B) {
@@ -294,16 +321,16 @@ func TestFuture(t *testing.T) {
 	fut := &futureMock{value: 5}
 
 	values, err := fut.Get()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []interface{}{5}, values)
 
 	var typed int
 	err = fut.GetTyped(&typed)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, interface{}(5), typed)
 
 	resp, err := fut.GetResponse()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	futResp := resp.(*futureMockResponse)
 	assert.Equal(t, []byte{'5'}, futResp.data)
 	assert.Nil(t, fut.WaitChan())

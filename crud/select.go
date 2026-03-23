@@ -91,7 +91,7 @@ type SelectRequest struct {
 }
 
 type selectArgs struct {
-	_msgpack   struct{} `msgpack:",asArray"` // nolint: structcheck,unused
+	_msgpack   struct{} `msgpack:",asArray"` //nolint:unused
 	Space      string
 	Conditions []Condition
 	Opts       SelectOpts

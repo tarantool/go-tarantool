@@ -154,7 +154,7 @@ type Index struct {
 	Parts  []IndexPart `msgpack:"parts"`
 }
 
-// IndexField contains a CRUD space index part definition.
+// IndexPart contains a CRUD space index part definition.
 type IndexPart struct {
 	Fieldno     uint32 `msgpack:"fieldno"`
 	Type        string `msgpack:"type"`
@@ -206,7 +206,7 @@ func (result *SchemaResult) DecodeMsgpack(d *msgpack.Decoder) error {
 	return nil
 }
 
-// SchemaResult contains a schema request result for a single space.
+// SpaceSchemaResult contains a schema request result for a single space.
 type SpaceSchemaResult struct {
 	Value SpaceSchema
 }

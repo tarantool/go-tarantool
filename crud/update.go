@@ -21,7 +21,7 @@ type UpdateRequest struct {
 }
 
 type updateArgs struct {
-	_msgpack   struct{} `msgpack:",asArray"` // nolint: structcheck,unused
+	_msgpack   struct{} `msgpack:",asArray"` //nolint:unused
 	Space      string
 	Key        Tuple
 	Operations []Operation

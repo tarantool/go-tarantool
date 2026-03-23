@@ -8,7 +8,6 @@ import (
 	"github.com/vmihailenco/msgpack/v5/msgpcode"
 )
 
-// nolint: varcheck,deadcode
 const (
 	maxSchemas             = 10000
 	spaceSpId              = 280
@@ -325,7 +324,7 @@ func (index *Index) DecodeMsgpack(d *msgpack.Decoder) error {
 	return nil
 }
 
-// IndexFields is an index field.
+// IndexField is an index field.
 type IndexField struct {
 	Id   uint32
 	Type string
