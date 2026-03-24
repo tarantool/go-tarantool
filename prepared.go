@@ -53,15 +53,15 @@ type PrepareRequest struct {
 }
 
 // NewPrepareRequest returns a new empty PrepareRequest.
-func NewPrepareRequest(expr string) *PrepareRequest {
-	req := new(PrepareRequest)
-	req.rtype = iproto.IPROTO_PREPARE
-	req.expr = expr
-	return req
+func NewPrepareRequest(expr string) PrepareRequest {
+	return PrepareRequest{
+		baseRequest: baseRequest{rtype: iproto.IPROTO_PREPARE},
+		expr:        expr,
+	}
 }
 
 // Body fills an msgpack.Encoder with the execute request body.
-func (req *PrepareRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
+func (req PrepareRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
 	if err := enc.EncodeMapLen(1); err != nil {
 		return err
 	}
@@ -79,13 +79,13 @@ func (req *PrepareRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
 // the timeout option for Connection does not affect the lifetime
 // of the request. For those purposes use context.WithTimeout() as
 // the root context.
-func (req *PrepareRequest) Context(ctx context.Context) *PrepareRequest {
+func (req PrepareRequest) Context(ctx context.Context) PrepareRequest {
 	req.ctx = ctx
 	return req
 }
 
 // Response creates a response for the PrepareRequest.
-func (req *PrepareRequest) Response(header Header, body io.Reader) (Response, error) {
+func (req PrepareRequest) Response(header Header, body io.Reader) (Response, error) {
 	baseResp, err := createBaseResponse(header, body)
 	if err != nil {
 		return nil, err
@@ -102,20 +102,20 @@ type UnprepareRequest struct {
 }
 
 // NewUnprepareRequest returns a new empty UnprepareRequest.
-func NewUnprepareRequest(stmt *Prepared) *UnprepareRequest {
-	req := new(UnprepareRequest)
-	req.rtype = iproto.IPROTO_PREPARE
-	req.stmt = stmt
-	return req
+func NewUnprepareRequest(stmt *Prepared) UnprepareRequest {
+	return UnprepareRequest{
+		baseRequest: baseRequest{rtype: iproto.IPROTO_PREPARE},
+		stmt:        stmt,
+	}
 }
 
 // Conn returns the Connection object the request belongs to.
-func (req *UnprepareRequest) Conn() *Connection {
+func (req UnprepareRequest) Conn() *Connection {
 	return req.stmt.Conn
 }
 
 // Body fills an msgpack.Encoder with the execute request body.
-func (req *UnprepareRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
+func (req UnprepareRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
 	if err := enc.EncodeMapLen(1); err != nil {
 		return err
 	}
@@ -133,7 +133,7 @@ func (req *UnprepareRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error 
 // the timeout option for Connection does not affect the lifetime
 // of the request. For those purposes use context.WithTimeout() as
 // the root context.
-func (req *UnprepareRequest) Context(ctx context.Context) *UnprepareRequest {
+func (req UnprepareRequest) Context(ctx context.Context) UnprepareRequest {
 	req.ctx = ctx
 	return req
 }
@@ -147,28 +147,28 @@ type ExecutePreparedRequest struct {
 }
 
 // NewExecutePreparedRequest returns a new empty preparedExecuteRequest.
-func NewExecutePreparedRequest(stmt *Prepared) *ExecutePreparedRequest {
-	req := new(ExecutePreparedRequest)
-	req.rtype = iproto.IPROTO_EXECUTE
-	req.stmt = stmt
-	req.args = []interface{}{}
-	return req
+func NewExecutePreparedRequest(stmt *Prepared) ExecutePreparedRequest {
+	return ExecutePreparedRequest{
+		baseRequest: baseRequest{rtype: iproto.IPROTO_EXECUTE},
+		stmt:        stmt,
+		args:        []interface{}{},
+	}
 }
 
 // Conn returns the Connection object the request belongs to.
-func (req *ExecutePreparedRequest) Conn() *Connection {
+func (req ExecutePreparedRequest) Conn() *Connection {
 	return req.stmt.Conn
 }
 
 // Args sets the args for execute the prepared request.
 // Note: default value is empty.
-func (req *ExecutePreparedRequest) Args(args interface{}) *ExecutePreparedRequest {
+func (req ExecutePreparedRequest) Args(args interface{}) ExecutePreparedRequest {
 	req.args = args
 	return req
 }
 
 // Body fills an msgpack.Encoder with the execute request body.
-func (req *ExecutePreparedRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
+func (req ExecutePreparedRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
 	if err := enc.EncodeMapLen(2); err != nil {
 		return err
 	}
@@ -194,13 +194,13 @@ func (req *ExecutePreparedRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) 
 // the timeout option for Connection does not affect the lifetime
 // of the request. For those purposes use context.WithTimeout() as
 // the root context.
-func (req *ExecutePreparedRequest) Context(ctx context.Context) *ExecutePreparedRequest {
+func (req ExecutePreparedRequest) Context(ctx context.Context) ExecutePreparedRequest {
 	req.ctx = ctx
 	return req
 }
 
 // Response creates a response for the ExecutePreparedRequest.
-func (req *ExecutePreparedRequest) Response(header Header, body io.Reader) (Response, error) {
+func (req ExecutePreparedRequest) Response(header Header, body io.Reader) (Response, error) {
 	baseResp, err := createBaseResponse(header, body)
 	if err != nil {
 		return nil, err

@@ -11,53 +11,53 @@ import (
 // BroadcastRequest helps to send broadcast messages. See:
 // https://www.tarantool.io/en/doc/latest/reference/reference_lua/box_events/broadcast/
 type BroadcastRequest struct {
-	call *CallRequest
+	call CallRequest
 	key  string
 }
 
 // NewBroadcastRequest returns a new broadcast request for a specified key.
-func NewBroadcastRequest(key string) *BroadcastRequest {
-	req := new(BroadcastRequest)
-	req.key = key
-	req.call = NewCallRequest("box.broadcast").Args([]interface{}{key})
-	return req
+func NewBroadcastRequest(key string) BroadcastRequest {
+	return BroadcastRequest{
+		call: NewCallRequest("box.broadcast").Args([]interface{}{key}),
+		key:  key,
+	}
 }
 
 // Value sets the value for the broadcast request.
 // Note: default value is nil.
-func (req *BroadcastRequest) Value(value interface{}) *BroadcastRequest {
+func (req BroadcastRequest) Value(value interface{}) BroadcastRequest {
 	req.call = req.call.Args([]interface{}{req.key, value})
 	return req
 }
 
 // Context sets a passed context to the broadcast request.
-func (req *BroadcastRequest) Context(ctx context.Context) *BroadcastRequest {
+func (req BroadcastRequest) Context(ctx context.Context) BroadcastRequest {
 	req.call = req.call.Context(ctx)
 	return req
 }
 
 // Code returns IPROTO code for the broadcast request.
-func (req *BroadcastRequest) Type() iproto.Type {
+func (req BroadcastRequest) Type() iproto.Type {
 	return req.call.Type()
 }
 
 // Body fills an msgpack.Encoder with the broadcast request body.
-func (req *BroadcastRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
+func (req BroadcastRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 	return req.call.Body(res, enc)
 }
 
 // Ctx returns a context of the broadcast request.
-func (req *BroadcastRequest) Ctx() context.Context {
+func (req BroadcastRequest) Ctx() context.Context {
 	return req.call.Ctx()
 }
 
 // Async returns is the broadcast request expects a response.
-func (req *BroadcastRequest) Async() bool {
+func (req BroadcastRequest) Async() bool {
 	return req.call.Async()
 }
 
 // Response creates a response for a BroadcastRequest.
-func (req *BroadcastRequest) Response(header Header, body io.Reader) (Response, error) {
+func (req BroadcastRequest) Response(header Header, body io.Reader) (Response, error) {
 	return DecodeBaseResponse(header, body)
 }
 

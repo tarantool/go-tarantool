@@ -14,7 +14,8 @@ type InsertManyOpts = OperationManyOpts
 // InsertManyRequest helps you to create request object to call
 // `crud.insert_many` for execution by a Connection.
 type InsertManyRequest struct {
-	spaceRequest
+	baseRequest
+	space  string
 	tuples Tuples
 	opts   InsertManyOpts
 }
@@ -28,11 +29,11 @@ type insertManyArgs struct {
 
 // MakeInsertManyRequest returns a new empty InsertManyRequest.
 func MakeInsertManyRequest(space string) InsertManyRequest {
-	req := InsertManyRequest{}
-	req.impl = newCall("crud.insert_many")
-	req.space = space
-	req.opts = InsertManyOpts{}
-	return req
+	return InsertManyRequest{
+		baseRequest: newBaseRequest("crud.insert_many"),
+		space:       space,
+		opts:        InsertManyOpts{},
+	}
 }
 
 // Tuples sets the tuples for the InsertManyRequest request.
@@ -72,7 +73,8 @@ type InsertObjectManyOpts = OperationObjectManyOpts
 // InsertObjectManyRequest helps you to create request object to call
 // `crud.insert_object_many` for execution by a Connection.
 type InsertObjectManyRequest struct {
-	spaceRequest
+	baseRequest
+	space   string
 	objects Objects
 	opts    InsertObjectManyOpts
 }
@@ -86,11 +88,11 @@ type insertObjectManyArgs struct {
 
 // MakeInsertObjectManyRequest returns a new empty InsertObjectManyRequest.
 func MakeInsertObjectManyRequest(space string) InsertObjectManyRequest {
-	req := InsertObjectManyRequest{}
-	req.impl = newCall("crud.insert_object_many")
-	req.space = space
-	req.opts = InsertObjectManyOpts{}
-	return req
+	return InsertObjectManyRequest{
+		baseRequest: newBaseRequest("crud.insert_object_many"),
+		space:       space,
+		opts:        InsertObjectManyOpts{},
+	}
 }
 
 // Objects sets the objects for the InsertObjectManyRequest request.
