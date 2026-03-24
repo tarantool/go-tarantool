@@ -75,7 +75,7 @@ func TestRequestsAPI(t *testing.T) {
 func TestRequestsCtx(t *testing.T) {
 	// tarantool.Request interface doesn't have Context()
 	getTests := []struct {
-		req *GetRequest
+		req GetRequest
 	}{
 		{req: NewErrorMarshalingEnabledGetRequest()},
 		{req: NewSQLDefaultEngineGetRequest()},
@@ -96,7 +96,7 @@ func TestRequestsCtx(t *testing.T) {
 	}
 
 	setTests := []struct {
-		req *SetRequest
+		req SetRequest
 	}{
 		{req: NewErrorMarshalingEnabledSetRequest(false)},
 		{req: NewSQLDefaultEngineSetRequest("memtx")},

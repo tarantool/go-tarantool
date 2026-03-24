@@ -118,8 +118,7 @@ func TestGetSchema_index_select_error(t *testing.T) {
 func TestResolverCalledWithoutNameSupport(t *testing.T) {
 	resolver := ValidSchemeResolver{nameUseSupported: false}
 
-	req := tarantool.NewSelectRequest("valid")
-	req.Index("valid")
+	req := tarantool.NewSelectRequest("valid").Index("valid")
 
 	var reqBuf bytes.Buffer
 	reqEnc := msgpack.NewEncoder(&reqBuf)
@@ -138,8 +137,7 @@ func TestResolverCalledWithoutNameSupport(t *testing.T) {
 func TestResolverNotCalledWithNameSupport(t *testing.T) {
 	resolver := ValidSchemeResolver{nameUseSupported: true}
 
-	req := tarantool.NewSelectRequest("valid")
-	req.Index("valid")
+	req := tarantool.NewSelectRequest("valid").Index("valid")
 
 	var reqBuf bytes.Buffer
 	reqEnc := msgpack.NewEncoder(&reqBuf)

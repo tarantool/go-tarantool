@@ -1,6 +1,7 @@
 package box
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/vmihailenco/msgpack/v5"
@@ -8,7 +9,7 @@ import (
 	"github.com/tarantool/go-tarantool/v3"
 )
 
-var _ tarantool.Request = (*InfoRequest)(nil)
+var _ tarantool.Request = InfoRequest{}
 
 // Info represents detailed information about the Tarantool instance.
 // It includes version, node ID, read-only status, process ID, cluster information, and more.
@@ -112,14 +113,20 @@ func (ir *InfoResponse) DecodeMsgpack(d *msgpack.Decoder) error {
 // InfoRequest represents a request to retrieve information about the Tarantool instance.
 // It implements the tarantool.Request interface.
 type InfoRequest struct {
-	*tarantool.CallRequest // Underlying Tarantool call request.
+	baseCallRequest
 }
 
 // NewInfoRequest returns a new empty info request.
 func NewInfoRequest() InfoRequest {
-	callReq := tarantool.NewCallRequest("box.info")
-
 	return InfoRequest{
-		callReq,
+		baseCallRequest: baseCallRequest{
+			call: tarantool.NewCallRequest("box.info"),
+		},
 	}
+}
+
+// Context sets a passed context to the request.
+func (req InfoRequest) Context(ctx context.Context) InfoRequest {
+	req.call = req.call.Context(ctx)
+	return req
 }

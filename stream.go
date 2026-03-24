@@ -48,35 +48,35 @@ type BeginRequest struct {
 }
 
 // NewBeginRequest returns a new BeginRequest.
-func NewBeginRequest() *BeginRequest {
-	req := new(BeginRequest)
-	req.rtype = iproto.IPROTO_BEGIN
-	req.txnIsolation = DefaultIsolationLevel
-	return req
+func NewBeginRequest() BeginRequest {
+	return BeginRequest{
+		baseRequest:  baseRequest{rtype: iproto.IPROTO_BEGIN},
+		txnIsolation: DefaultIsolationLevel,
+	}
 }
 
 // TxnIsolation sets the transaction isolation level for transaction manager.
 // By default, the isolation level of Tarantool is serializable.
-func (req *BeginRequest) TxnIsolation(txnIsolation TxnIsolationLevel) *BeginRequest {
+func (req BeginRequest) TxnIsolation(txnIsolation TxnIsolationLevel) BeginRequest {
 	req.txnIsolation = txnIsolation
 	return req
 }
 
 // Timeout allows to set up a timeout for call BeginRequest.
-func (req *BeginRequest) Timeout(timeout time.Duration) *BeginRequest {
+func (req BeginRequest) Timeout(timeout time.Duration) BeginRequest {
 	req.timeout = timeout
 	return req
 }
 
 // IsSync allows to set up a IsSync flag for call BeginRequest.
-func (req *BeginRequest) IsSync(isSync bool) *BeginRequest {
+func (req BeginRequest) IsSync(isSync bool) BeginRequest {
 	req.isSync = isSync
 	req.isSyncSet = true
 	return req
 }
 
 // Body fills an msgpack.Encoder with the begin request body.
-func (req *BeginRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
+func (req BeginRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
 	var (
 		mapLen            = 0
 		hasTimeout        = req.timeout > 0
@@ -138,7 +138,7 @@ func (req *BeginRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
 // the timeout option for Connection does not affect the lifetime
 // of the request. For those purposes use context.WithTimeout() as
 // the root context.
-func (req *BeginRequest) Context(ctx context.Context) *BeginRequest {
+func (req BeginRequest) Context(ctx context.Context) BeginRequest {
 	req.ctx = ctx
 	return req
 }
@@ -154,21 +154,21 @@ type CommitRequest struct {
 }
 
 // NewCommitRequest returns a new CommitRequest.
-func NewCommitRequest() *CommitRequest {
-	req := new(CommitRequest)
-	req.rtype = iproto.IPROTO_COMMIT
-	return req
+func NewCommitRequest() CommitRequest {
+	return CommitRequest{
+		baseRequest: baseRequest{rtype: iproto.IPROTO_COMMIT},
+	}
 }
 
 // IsSync allows to set up a IsSync flag for call BeginRequest.
-func (req *CommitRequest) IsSync(isSync bool) *CommitRequest {
+func (req CommitRequest) IsSync(isSync bool) CommitRequest {
 	req.isSync = isSync
 	req.isSyncSet = true
 	return req
 }
 
 // Body fills an msgpack.Encoder with the commit request body.
-func (req *CommitRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
+func (req CommitRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
 	var (
 		mapLen = 0
 	)
@@ -200,7 +200,7 @@ func (req *CommitRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
 // the timeout option for Connection does not affect the lifetime
 // of the request. For those purposes use context.WithTimeout() as
 // the root context.
-func (req *CommitRequest) Context(ctx context.Context) *CommitRequest {
+func (req CommitRequest) Context(ctx context.Context) CommitRequest {
 	req.ctx = ctx
 	return req
 }
@@ -213,14 +213,14 @@ type RollbackRequest struct {
 }
 
 // NewRollbackRequest returns a new RollbackRequest.
-func NewRollbackRequest() *RollbackRequest {
-	req := new(RollbackRequest)
-	req.rtype = iproto.IPROTO_ROLLBACK
-	return req
+func NewRollbackRequest() RollbackRequest {
+	return RollbackRequest{
+		baseRequest: baseRequest{rtype: iproto.IPROTO_ROLLBACK},
+	}
 }
 
 // Body fills an msgpack.Encoder with the rollback request body.
-func (req *RollbackRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
+func (req RollbackRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
 	return enc.EncodeMapLen(0)
 }
 
@@ -230,7 +230,7 @@ func (req *RollbackRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
 // the timeout option for Connection does not affect the lifetime
 // of the request. For those purposes use context.WithTimeout() as
 // the root context.
-func (req *RollbackRequest) Context(ctx context.Context) *RollbackRequest {
+func (req RollbackRequest) Context(ctx context.Context) RollbackRequest {
 	req.ctx = ctx
 	return req
 }

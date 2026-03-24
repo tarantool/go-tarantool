@@ -72,15 +72,15 @@ type IdRequest struct {
 }
 
 // NewIdRequest returns a new IdRequest.
-func NewIdRequest(protocolInfo ProtocolInfo) *IdRequest {
-	req := new(IdRequest)
-	req.rtype = iproto.IPROTO_ID
-	req.protocolInfo = protocolInfo.Clone()
-	return req
+func NewIdRequest(protocolInfo ProtocolInfo) IdRequest {
+	return IdRequest{
+		baseRequest:  baseRequest{rtype: iproto.IPROTO_ID},
+		protocolInfo: protocolInfo.Clone(),
+	}
 }
 
 // Body fills an msgpack.Encoder with the id request body.
-func (req *IdRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
+func (req IdRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
 	if err := enc.EncodeMapLen(2); err != nil {
 		return err
 	}
@@ -116,7 +116,7 @@ func (req *IdRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
 // the timeout option for Connection does not affect the lifetime
 // of the request. For those purposes use context.WithTimeout() as
 // the root context.
-func (req *IdRequest) Context(ctx context.Context) *IdRequest {
+func (req IdRequest) Context(ctx context.Context) IdRequest {
 	req.ctx = ctx
 	return req
 }
