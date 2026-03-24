@@ -45,6 +45,19 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Changed
 
+* All top-level `New*Request()` constructors now return values instead of
+  pointers. All methods on request types use value receivers and return
+  values, enabling immutable builder-style chaining.
+* Renamed value constructors `Make*` to `New*` for naming consistency across
+  the connector. Affects `crud.Make*Request` (now `crud.New*Request`),
+  `datetime.MakeDatetime` (now `datetime.NewDatetime`), `decimal.MakeDecimal`
+  and `decimal.MakeDecimalFromString` (now `decimal.NewDecimal` and
+  `decimal.NewDecimalFromString`), `decimal.MustMakeDecimal` (now
+  `decimal.MustNewDecimal`), `arrow.MakeArrow` (now `arrow.NewArrow`), and
+  `crud.MakeResult` (now `crud.NewResult`).
+* Removed intermediate `spaceRequest`, `spaceIndexRequest` types — `space`
+  and `index` fields are now inlined directly into each request struct.
+  The same flattening was applied to `crud.spaceRequest`.
 * Required Go version is `1.24` now (#456).
 * `test_helpers.MockDoer` is now an interface instead of a struct. The
   `Requests` field became a method `Requests()`. The `NewMockDoer()`

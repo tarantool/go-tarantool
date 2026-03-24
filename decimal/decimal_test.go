@@ -166,7 +166,7 @@ var decimalSamples = []struct {
 func TestMPEncodeDecode(t *testing.T) {
 	for _, testcase := range benchmarkSamples {
 		t.Run(testcase.numString, func(t *testing.T) {
-			decNum, err := MakeDecimalFromString(testcase.numString)
+			decNum, err := NewDecimalFromString(testcase.numString)
 			require.NoError(t, err)
 			var buf []byte
 			tuple := TupleDecimal{number: decNum}
@@ -243,7 +243,7 @@ func TestEncodeMaxNumber(t *testing.T) {
 	referenceErrMsg := "msgpack: decimal number is bigger than maximum " +
 		"supported number (10^38 - 1)"
 	decNum := decimal.New(1, DecimalPrecision) // // 10^DecimalPrecision
-	tuple := TupleDecimal{number: MakeDecimal(decNum)}
+	tuple := TupleDecimal{number: NewDecimal(decNum)}
 	_, err := msgpack.Marshal(&tuple)
 	require.Error(t, err,
 		"It is possible to msgpack.Encoder a number unsupported by Tarantool")
@@ -256,7 +256,7 @@ func TestEncodeMinNumber(t *testing.T) {
 		"supported number (-10^38 - 1)"
 	two := decimal.NewFromInt(2)
 	decNum := decimal.New(1, DecimalPrecision).Neg().Sub(two) // -10^DecimalPrecision - 2
-	tuple := TupleDecimal{number: MakeDecimal(decNum)}
+	tuple := TupleDecimal{number: NewDecimal(decNum)}
 	_, err := msgpack.Marshal(&tuple)
 	require.Error(t, err,
 		"It is possible to msgpack.Encoder a number unsupported by Tarantool")
@@ -273,7 +273,7 @@ func benchmarkMPEncodeDecode(b *testing.B, src decimal.Decimal) {
 	var buf []byte
 	var err error
 	for i := 0; i < b.N; i++ {
-		tuple := TupleDecimal{number: MakeDecimal(src)}
+		tuple := TupleDecimal{number: NewDecimal(src)}
 		if buf, err = msgpack.Marshal(&tuple); err != nil {
 			b.Fatal(err)
 		}
@@ -298,7 +298,7 @@ func BenchmarkMPEncodeDecodeDecimal(b *testing.B) {
 func BenchmarkMPEncodeDecimal(b *testing.B) {
 	for _, testcase := range benchmarkSamples {
 		b.Run(testcase.numString, func(b *testing.B) {
-			decNum, err := MakeDecimalFromString(testcase.numString)
+			decNum, err := NewDecimalFromString(testcase.numString)
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -315,7 +315,7 @@ func BenchmarkMPEncodeDecimal(b *testing.B) {
 func BenchmarkMPDecodeDecimal(b *testing.B) {
 	for _, testcase := range benchmarkSamples {
 		b.Run(testcase.numString, func(b *testing.B) {
-			decNum, err := MakeDecimalFromString(testcase.numString)
+			decNum, err := NewDecimalFromString(testcase.numString)
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -402,8 +402,8 @@ func TestMPEncode(t *testing.T) {
 	samples = append(samples, benchmarkSamples...)
 	for _, testcase := range samples {
 		t.Run(testcase.numString, func(t *testing.T) {
-			dec, err := MakeDecimalFromString(testcase.numString)
-			require.NoError(t, err, "MakeDecimalFromString() failed")
+			dec, err := NewDecimalFromString(testcase.numString)
+			require.NoError(t, err, "NewDecimalFromString() failed")
 			buf, err := msgpack.Marshal(dec)
 			require.NoError(t, err, "Marshalling failed")
 			refBuf, _ := hex.DecodeString(testcase.mpBuf)
@@ -469,7 +469,7 @@ func TestSelect(t *testing.T) {
 	number, err := decimal.NewFromString("-12.34")
 	require.NoError(t, err, "Failed to prepare test decimal")
 
-	ins := NewInsertRequest(space).Tuple([]any{MakeDecimal(number)})
+	ins := NewInsertRequest(space).Tuple([]any{NewDecimal(number)})
 	data, err := conn.Do(ins).Get()
 	require.NoError(t, err, "Decimal insert failed")
 	tupleValueIsDecimal(t, data, number)
@@ -481,12 +481,12 @@ func TestSelect(t *testing.T) {
 		Offset(offset).
 		Limit(limit).
 		Iterator(IterEq).
-		Key([]any{MakeDecimal(number)})
+		Key([]any{NewDecimal(number)})
 	data, err = conn.Do(sel).Get()
 	require.NoError(t, err, "Decimal select failed")
 	tupleValueIsDecimal(t, data, number)
 
-	del := NewDeleteRequest(space).Index(index).Key([]any{MakeDecimal(number)})
+	del := NewDeleteRequest(space).Index(index).Key([]any{NewDecimal(number)})
 	data, err = conn.Do(del).Get()
 	require.NoError(t, err, "Decimal delete failed")
 	tupleValueIsDecimal(t, data, number)
@@ -522,12 +522,12 @@ func assertInsert(t *testing.T, conn *Connection, numString string) {
 	number, err := decimal.NewFromString(numString)
 	require.NoError(t, err, "Failed to prepare test decimal")
 
-	ins := NewInsertRequest(space).Tuple([]any{MakeDecimal(number)})
+	ins := NewInsertRequest(space).Tuple([]any{NewDecimal(number)})
 	data, err := conn.Do(ins).Get()
 	require.NoError(t, err, "Decimal insert failed")
 	tupleValueIsDecimal(t, data, number)
 
-	del := NewDeleteRequest(space).Index(index).Key([]any{MakeDecimal(number)})
+	del := NewDeleteRequest(space).Index(index).Key([]any{NewDecimal(number)})
 	data, err = conn.Do(del).Get()
 	require.NoError(t, err, "Decimal delete failed")
 	tupleValueIsDecimal(t, data, number)
@@ -557,7 +557,7 @@ func TestReplace(t *testing.T) {
 	number, err := decimal.NewFromString("-12.34")
 	require.NoError(t, err, "Failed to prepare test decimal")
 
-	rep := NewReplaceRequest(space).Tuple([]any{MakeDecimal(number)})
+	rep := NewReplaceRequest(space).Tuple([]any{NewDecimal(number)})
 	dataRep, errRep := conn.Do(rep).Get()
 	require.NoError(t, errRep, "Decimal replace failed")
 	tupleValueIsDecimal(t, dataRep, number)
@@ -566,7 +566,7 @@ func TestReplace(t *testing.T) {
 		Index(index).
 		Limit(1).
 		Iterator(IterEq).
-		Key([]any{MakeDecimal(number)})
+		Key([]any{NewDecimal(number)})
 	dataSel, errSel := conn.Do(sel).Get()
 	require.NoError(t, errSel, "Decimal select failed")
 	tupleValueIsDecimal(t, dataSel, number)
@@ -677,7 +677,7 @@ func TestDecimalString(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			dec, err := MakeDecimalFromString(tt.input)
+			dec, err := NewDecimalFromString(tt.input)
 			require.NoError(t, err)
 
 			result := dec.String()
@@ -700,7 +700,7 @@ func TestTarantoolBCDCompatibility(t *testing.T) {
 
 	for _, input := range testCases {
 		t.Run(input, func(t *testing.T) {
-			dec, err := MakeDecimalFromString(input)
+			dec, err := NewDecimalFromString(input)
 			require.NoError(t, err)
 
 			msgpackData, err := dec.MarshalMsgpack()
@@ -728,16 +728,16 @@ func TestRealTarantoolUsage(t *testing.T) {
 			name: "insert operation",
 			data: map[string]any{
 				"id":      1,
-				"amount":  MustMakeDecimal("123.45"),
-				"balance": MustMakeDecimal("-500.00"),
+				"amount":  MustNewDecimal("123.45"),
+				"balance": MustNewDecimal("-500.00"),
 			},
 		},
 		{
 			name: "update operation",
 			data: map[string]any{
 				"id":       2,
-				"price":    MustMakeDecimal("99.99"),
-				"quantity": MustMakeDecimal("1000.000"),
+				"price":    MustNewDecimal("99.99"),
+				"quantity": MustNewDecimal("1000.000"),
 			},
 		},
 	}
@@ -774,7 +774,7 @@ func TestRealTarantoolUsage(t *testing.T) {
 }
 
 func Test100_00(t *testing.T) {
-	dec := MustMakeDecimal("100.00")
+	dec := MustNewDecimal("100.00")
 
 	coefficient := dec.Decimal.Coefficient()
 	if !coefficient.IsInt64() {
@@ -797,7 +797,7 @@ func Test100_00(t *testing.T) {
 
 func TestLargeNumberString(t *testing.T) {
 	largeNumber := "123456789012345678901234567890.123456789"
-	dec, err := MakeDecimalFromString(largeNumber)
+	dec, err := NewDecimalFromString(largeNumber)
 	if err != nil {
 		t.Fatalf("Failed to create decimal: %v", err)
 	}
@@ -835,7 +835,7 @@ func TestDecimalTrailingZeros(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-			dec := MustMakeDecimal(tt.input)
+			dec := MustNewDecimal(tt.input)
 			result := dec.String()
 			if result != tt.expected {
 				t.Errorf("For %s: expected %s, got %s", tt.input, tt.expected, result)
@@ -858,7 +858,7 @@ func TestDecimalStringPositiveExponent(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-			dec := MustMakeDecimal(tt.input)
+			dec := MustNewDecimal(tt.input)
 			result := dec.String()
 			if result != tt.expected {
 				t.Errorf("For %s: expected %s, got %s", tt.input, tt.expected, result)
@@ -888,7 +888,7 @@ func TestDecimalStringMinInt64WithScale(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			dec := MustMakeDecimal(tt.input)
+			dec := MustNewDecimal(tt.input)
 			result := dec.String()
 			if result != tt.expected {
 				t.Errorf("For %s: expected %s, got %s", tt.input, tt.expected, result)
@@ -916,7 +916,7 @@ func TestDecimalStringNegativeTrailingZeros(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-			dec := MustMakeDecimal(tt.input)
+			dec := MustNewDecimal(tt.input)
 			result := dec.String()
 			if result != tt.expected {
 				t.Errorf("For %s: expected %s, got %s", tt.input, tt.expected, result)

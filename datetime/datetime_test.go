@@ -62,7 +62,7 @@ func skipIfDatetimeUnsupported(t *testing.T) {
 
 func TestDatetimeAdd(t *testing.T) {
 	tm := time.Unix(0, 0).UTC()
-	dt, err := MakeDatetime(tm)
+	dt, err := NewDatetime(tm)
 	require.NoError(t, err, "Unexpected error")
 
 	newdt, err := dt.Add(Interval{
@@ -225,7 +225,7 @@ func TestDatetimeAddAdjust(t *testing.T) {
 	for _, tc := range cases {
 		tm, err := time.Parse(time.RFC3339, tc.date)
 		require.NoError(t, err, "Unexpected error")
-		dt, err := MakeDatetime(tm)
+		dt, err := NewDatetime(tm)
 		require.NoError(t, err, "Unexpected error")
 		t.Run(fmt.Sprintf("%d_%d_%d_%s", tc.year, tc.month, tc.adjust, tc.date),
 			func(t *testing.T) {
@@ -243,7 +243,7 @@ func TestDatetimeAddAdjust(t *testing.T) {
 
 func TestDatetimeAddSubSymmetric(t *testing.T) {
 	tm := time.Unix(0, 0).UTC()
-	dt, err := MakeDatetime(tm)
+	dt, err := NewDatetime(tm)
 	require.NoError(t, err, "Unexpected error")
 
 	newdtadd, err := dt.Add(Interval{
@@ -277,7 +277,7 @@ func TestDatetimeAddSubSymmetric(t *testing.T) {
 
 func TestDatetimeAddOutOfRange(t *testing.T) {
 	tm := time.Unix(0, 0).UTC()
-	dt, err := MakeDatetime(tm)
+	dt, err := NewDatetime(tm)
 	require.NoError(t, err, "Unexpected error")
 
 	_, err = dt.Add(Interval{Year: 1000000000})
@@ -295,9 +295,9 @@ func TestDatetimeInterval(t *testing.T) {
 	tmSecond, err := time.Parse(time.RFC3339, second)
 	require.NoError(t, err, "Error in time.Parse()")
 
-	dtFirst, err := MakeDatetime(tmFirst)
+	dtFirst, err := NewDatetime(tmFirst)
 	require.NoError(t, err, "Unable to create Datetime")
-	dtSecond, err := MakeDatetime(tmSecond)
+	dtSecond, err := NewDatetime(tmSecond)
 	require.NoError(t, err, "Unable to create Datetime")
 
 	ivalFirst := dtFirst.Interval(dtSecond)
@@ -340,8 +340,8 @@ func TestDatetimeTarantoolInterval(t *testing.T) {
 	for _, date := range dates {
 		tm, err := time.Parse(time.RFC3339, date)
 		require.NoError(t, err, "Error in time.Parse()")
-		dt, err := MakeDatetime(tm)
-		require.NoError(t, err, "Error in MakeDatetime()")
+		dt, err := NewDatetime(tm)
+		require.NoError(t, err, "Error in NewDatetime()")
 		datetimes = append(datetimes, dt)
 	}
 
@@ -390,7 +390,7 @@ func TestInvalidTimezone(t *testing.T) {
 	tm, err := time.Parse(time.RFC3339, "2010-08-12T11:39:14Z")
 	require.NoError(t, err, "Time parse failed")
 	tm = tm.In(invalidLoc)
-	_, err = MakeDatetime(tm)
+	_, err = NewDatetime(tm)
 	require.Error(t, err, "Expected error for invalid timezone")
 	require.Equal(t, "unknown timezone AnyInvalid with offset 0", err.Error(), "Unexpected error")
 }
@@ -420,7 +420,7 @@ func TestInvalidOffset(t *testing.T) {
 			tm, err := time.Parse(time.RFC3339, "2010-08-12T11:39:14Z")
 			require.NoError(t, err, "Time parse failed")
 			tm = tm.In(loc)
-			_, err = MakeDatetime(tm)
+			_, err = NewDatetime(tm)
 			if testcase.ok {
 				require.NoError(t, err, "Unexpected error")
 			} else {
@@ -452,7 +452,7 @@ func TestCustomTimezone(t *testing.T) {
 	tm, err := time.Parse(time.RFC3339, "2010-08-12T11:44:14Z")
 	require.NoError(t, err, "Time parse failed")
 	tm = tm.In(customLoc)
-	dt, err := MakeDatetime(tm)
+	dt, err := NewDatetime(tm)
 	require.NoError(t, err, "Unable to create datetime")
 
 	req := NewReplaceRequest(spaceTuple1).Tuple([]any{dt, "payload"})
@@ -476,7 +476,7 @@ func TestCustomTimezone(t *testing.T) {
 func tupleInsertSelectDelete(t *testing.T, conn *Connection, tm time.Time) {
 	t.Helper()
 
-	dt, err := MakeDatetime(tm)
+	dt, err := NewDatetime(tm)
 	require.NoError(t, err, "Unable to create Datetime from %s", tm)
 
 	// Insert tuple with datetime.
@@ -610,7 +610,7 @@ func TestDatetimeOutOfRange(t *testing.T) {
 
 	for _, tm := range greaterBoundaryTimes {
 		t.Run(tm.String(), func(t *testing.T) {
-			_, err := MakeDatetime(tm)
+			_, err := NewDatetime(tm)
 			assert.Error(t, err, "Time %s should be unsupported!", tm)
 		})
 	}
@@ -625,7 +625,7 @@ func TestDatetimeReplace(t *testing.T) {
 	tm, err := time.Parse(time.RFC3339, "2007-01-02T15:04:05Z")
 	require.NoError(t, err, "Time parse failed")
 
-	dt, err := MakeDatetime(tm)
+	dt, err := NewDatetime(tm)
 	require.NoError(t, err, "Unable to create Datetime from %s", tm)
 
 	rep := NewReplaceRequest(spaceTuple1).Tuple([]any{dt, "payload"})
@@ -778,9 +778,9 @@ func TestCustomEncodeDecodeTuple1(t *testing.T) {
 
 	tm1, _ := time.Parse(time.RFC3339, "2010-05-24T17:51:56.000000009Z")
 	tm2, _ := time.Parse(time.RFC3339, "2022-05-24T17:51:56.000000009Z")
-	dt1, err := MakeDatetime(tm1)
+	dt1, err := NewDatetime(tm1)
 	require.NoError(t, err, "Unable to create Datetime from %s", tm1)
-	dt2, err := MakeDatetime(tm2)
+	dt2, err := NewDatetime(tm2)
 	require.NoError(t, err, "Unable to create Datetime from %s", tm2)
 	const cid = 13
 	const orig = "orig"
@@ -862,7 +862,7 @@ func TestCustomEncodeDecodeTuple5(t *testing.T) {
 	defer func() { _ = conn.Close() }()
 
 	tm := time.Unix(500, 1000).In(time.FixedZone(NoTimezone, 0))
-	dt, err := MakeDatetime(tm)
+	dt, err := NewDatetime(tm)
 	require.NoError(t, err, "Unable to create Datetime from %s", tm)
 
 	ins := NewInsertRequest(spaceTuple1).Tuple([]any{dt})
@@ -900,7 +900,7 @@ func TestMPEncode(t *testing.T) {
 				tm = tm.In(loc)
 			}
 			require.NoError(t, err, "Time (%s) parse failed", testcase.dt)
-			dt, err := MakeDatetime(tm)
+			dt, err := NewDatetime(tm)
 			require.NoError(t, err, "Unable to create Datetime")
 			buf, err := msgpack.Marshal(dt)
 			require.NoError(t, err, "Marshalling failed")
@@ -992,7 +992,7 @@ func runTestMain(m *testing.M) int {
 
 func TestDatetimeString(t *testing.T) {
 	tm, _ := time.Parse(time.RFC3339Nano, "2010-05-24T17:51:56.000000009Z")
-	dt, err := MakeDatetime(tm)
+	dt, err := NewDatetime(tm)
 	require.NoError(t, err, "Unable to create Datetime from %s", tm)
 
 	expected := "2010-05-24T17:51:56.000000009Z"

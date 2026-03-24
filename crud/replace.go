@@ -14,8 +14,9 @@ type ReplaceOpts = SimpleOperationOpts
 // ReplaceRequest helps you to create request object to call `crud.replace`
 // for execution by a Connection.
 type ReplaceRequest struct {
-	spaceRequest
+	baseRequest
 
+	space string
 	tuple Tuple
 	opts  ReplaceOpts
 }
@@ -27,13 +28,13 @@ type replaceArgs struct {
 	Opts     ReplaceOpts
 }
 
-// MakeReplaceRequest returns a new empty ReplaceRequest.
-func MakeReplaceRequest(space string) ReplaceRequest {
-	req := ReplaceRequest{}
-	req.impl = newCall("crud.replace")
-	req.space = space
-	req.opts = ReplaceOpts{}
-	return req
+// NewReplaceRequest returns a new empty ReplaceRequest.
+func NewReplaceRequest(space string) ReplaceRequest {
+	return ReplaceRequest{
+		baseRequest: newBaseRequest("crud.replace"),
+		space:       space,
+		opts:        ReplaceOpts{},
+	}
 }
 
 // Tuple sets the tuple for the ReplaceRequest request.
@@ -73,8 +74,9 @@ type ReplaceObjectOpts = SimpleOperationObjectOpts
 // ReplaceObjectRequest helps you to create request object to call
 // `crud.replace_object` for execution by a Connection.
 type ReplaceObjectRequest struct {
-	spaceRequest
+	baseRequest
 
+	space  string
 	object Object
 	opts   ReplaceObjectOpts
 }
@@ -86,13 +88,13 @@ type replaceObjectArgs struct {
 	Opts     ReplaceObjectOpts
 }
 
-// MakeReplaceObjectRequest returns a new empty ReplaceObjectRequest.
-func MakeReplaceObjectRequest(space string) ReplaceObjectRequest {
-	req := ReplaceObjectRequest{}
-	req.impl = newCall("crud.replace_object")
-	req.space = space
-	req.opts = ReplaceObjectOpts{}
-	return req
+// NewReplaceObjectRequest returns a new empty ReplaceObjectRequest.
+func NewReplaceObjectRequest(space string) ReplaceObjectRequest {
+	return ReplaceObjectRequest{
+		baseRequest: newBaseRequest("crud.replace_object"),
+		space:       space,
+		opts:        ReplaceObjectOpts{},
+	}
 }
 
 // Object sets the tuple for the ReplaceObjectRequest request.

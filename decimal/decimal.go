@@ -58,19 +58,19 @@ type Decimal struct {
 	decimal.Decimal
 }
 
-// MakeDecimal creates a new Decimal from a decimal.Decimal.
-func MakeDecimal(decimal decimal.Decimal) Decimal {
+// NewDecimal creates a new Decimal from a decimal.Decimal.
+func NewDecimal(decimal decimal.Decimal) Decimal {
 	return Decimal{Decimal: decimal}
 }
 
-// MakeDecimalFromString creates a new Decimal from a string.
-func MakeDecimalFromString(src string) (Decimal, error) {
+// NewDecimalFromString creates a new Decimal from a string.
+func NewDecimalFromString(src string) (Decimal, error) {
 	result := Decimal{}
 	dec, err := decimal.NewFromString(src)
 	if err != nil {
 		return result, err
 	}
-	result = MakeDecimal(dec)
+	result = NewDecimal(dec)
 	return result, nil
 }
 
@@ -122,7 +122,7 @@ func (d *Decimal) UnmarshalMsgpack(data []byte) error {
 		dec = dec.Shift(int32(exp))
 	}
 
-	*d = MakeDecimal(dec)
+	*d = NewDecimal(dec)
 	return nil
 }
 
@@ -374,10 +374,10 @@ func (d Decimal) handleMinInt64(scale int) string {
 	return string(buf[:pos])
 }
 
-func MustMakeDecimal(src string) Decimal {
-	dec, err := MakeDecimalFromString(src)
+func MustNewDecimal(src string) Decimal {
+	dec, err := NewDecimalFromString(src)
 	if err != nil {
-		panic(fmt.Sprintf("MustMakeDecimalFromString: %v", err))
+		panic(fmt.Sprintf("MustNewDecimalFromString: %v", err))
 	}
 	return dec
 }

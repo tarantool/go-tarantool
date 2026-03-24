@@ -10,7 +10,7 @@ import (
 )
 
 func TestSomeOptionalArrow(t *testing.T) {
-	val, err := MakeArrow([]byte{1, 2, 3})
+	val, err := NewArrow([]byte{1, 2, 3})
 	require.NoError(t, err)
 	opt := SomeOptionalArrow(val)
 
@@ -33,7 +33,7 @@ func TestNoneOptionalArrow(t *testing.T) {
 }
 
 func TestOptionalArrow_MustGet(t *testing.T) {
-	val, err := MakeArrow([]byte{1, 2, 3})
+	val, err := NewArrow([]byte{1, 2, 3})
 	require.NoError(t, err)
 	optSome := SomeOptionalArrow(val)
 	optNone := NoneOptionalArrow()
@@ -43,7 +43,7 @@ func TestOptionalArrow_MustGet(t *testing.T) {
 }
 
 func TestOptionalArrow_Unwrap(t *testing.T) {
-	val, err := MakeArrow([]byte{1, 2, 3})
+	val, err := NewArrow([]byte{1, 2, 3})
 	require.NoError(t, err)
 	optSome := SomeOptionalArrow(val)
 	optNone := NoneOptionalArrow()
@@ -53,9 +53,9 @@ func TestOptionalArrow_Unwrap(t *testing.T) {
 }
 
 func TestOptionalArrow_UnwrapOr(t *testing.T) {
-	val, err := MakeArrow([]byte{1, 2, 3})
+	val, err := NewArrow([]byte{1, 2, 3})
 	require.NoError(t, err)
-	def, err := MakeArrow([]byte{4, 5, 6})
+	def, err := NewArrow([]byte{4, 5, 6})
 	require.NoError(t, err)
 	optSome := SomeOptionalArrow(val)
 	optNone := NoneOptionalArrow()
@@ -65,9 +65,9 @@ func TestOptionalArrow_UnwrapOr(t *testing.T) {
 }
 
 func TestOptionalArrow_UnwrapOrElse(t *testing.T) {
-	val, err := MakeArrow([]byte{1, 2, 3})
+	val, err := NewArrow([]byte{1, 2, 3})
 	require.NoError(t, err)
-	def, err := MakeArrow([]byte{4, 5, 6})
+	def, err := NewArrow([]byte{4, 5, 6})
 	require.NoError(t, err)
 	optSome := SomeOptionalArrow(val)
 	optNone := NoneOptionalArrow()
@@ -77,7 +77,7 @@ func TestOptionalArrow_UnwrapOrElse(t *testing.T) {
 }
 
 func TestOptionalArrow_EncodeDecodeMsgpack_Some(t *testing.T) {
-	val, err := MakeArrow([]byte{1, 2, 3})
+	val, err := NewArrow([]byte{1, 2, 3})
 	require.NoError(t, err)
 	some := SomeOptionalArrow(val)
 

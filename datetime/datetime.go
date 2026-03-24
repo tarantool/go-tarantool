@@ -95,15 +95,15 @@ const (
 	offsetMax = 14 * 60 * 60
 )
 
-// MakeDatetime returns a datetime.Datetime object that contains a
+// NewDatetime returns a datetime.Datetime object that contains a
 // specified time.Time. It may return an error if the Time value is out of
 // supported range: [-5879610-06-22T00:00Z .. 5879611-07-11T00:00Z] or
 // an invalid timezone or offset value is out of supported range:
 // [-12 * 60 * 60, 14 * 60 * 60].
 //
 // NOTE: Tarantool's datetime.tz value is picked from t.Location().String().
-// "Local" location is unsupported, see ExampleMakeDatetime_localUnsupported.
-func MakeDatetime(t time.Time) (Datetime, error) {
+// "Local" location is unsupported, see ExampleNewDatetime_localUnsupported.
+func NewDatetime(t time.Time) (Datetime, error) {
 	dt := Datetime{}
 	seconds := t.Unix()
 
@@ -195,7 +195,7 @@ func (d Datetime) MarshalMsgpack() ([]byte, error) {
 	zone := tm.Location().String()
 	_, offset := tm.Zone()
 	if zone != NoTimezone {
-		// The zone value already checked in MakeDatetime() or
+		// The zone value already checked in NewDatetime() or
 		// UnmarshalMsgpack() calls.
 		dt.tzIndex = int16(timezoneToIndex[zone])
 	}
@@ -257,7 +257,7 @@ func (d *Datetime) UnmarshalMsgpack(data []byte) error {
 	}
 	tt = tt.In(loc)
 
-	newDatetime, err := MakeDatetime(tt)
+	newDatetime, err := NewDatetime(tt)
 	if err != nil {
 		return err
 	}
@@ -289,7 +289,7 @@ func (d Datetime) add(ival Interval, positive bool) (Datetime, error) {
 		int(newVal.Day), int(newVal.Hour), int(newVal.Min),
 		int(newVal.Sec), int(newVal.Nsec), d.time.Location())
 
-	return MakeDatetime(tm)
+	return NewDatetime(tm)
 }
 
 // Add creates a new Datetime as addition of the Datetime and Interval. It may

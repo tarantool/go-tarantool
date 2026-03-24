@@ -42,7 +42,7 @@ func exampleConnect() *tarantool.Connection {
 // interface{} type.
 func ExampleResult_rowsInterface() {
 	conn := exampleConnect()
-	req := crud.MakeReplaceRequest(exampleSpace).
+	req := crud.NewReplaceRequest(exampleSpace).
 		Tuple([]any{uint(2010), nil, "bla"})
 
 	ret := crud.Result{}
@@ -63,7 +63,7 @@ func ExampleResult_rowsInterface() {
 // custom type.
 func ExampleResult_rowsCustomType() {
 	conn := exampleConnect()
-	req := crud.MakeReplaceRequest(exampleSpace).
+	req := crud.NewReplaceRequest(exampleSpace).
 		Tuple([]any{uint(2010), nil, "bla"})
 
 	type Tuple struct {
@@ -72,7 +72,7 @@ func ExampleResult_rowsCustomType() {
 		BucketId uint64
 		Name     string
 	}
-	ret := crud.MakeResult(reflect.TypeFor[Tuple]())
+	ret := crud.NewResult(reflect.TypeFor[Tuple]())
 
 	if err := conn.Do(req).GetTyped(&ret); err != nil {
 		fmt.Printf("Failed to execute request: %s", err)
@@ -99,7 +99,7 @@ func ExampleTuples_customType() {
 		BucketId *uint64
 		Name     string
 	}
-	req := crud.MakeReplaceManyRequest(exampleSpace).Tuples([]Tuple{
+	req := crud.NewReplaceManyRequest(exampleSpace).Tuples([]Tuple{
 		Tuple{
 			Id:       2010,
 			BucketId: nil,
@@ -107,7 +107,7 @@ func ExampleTuples_customType() {
 		},
 	})
 
-	ret := crud.MakeResult(reflect.TypeFor[Tuple]())
+	ret := crud.NewResult(reflect.TypeFor[Tuple]())
 	if err := conn.Do(req).GetTyped(&ret); err != nil {
 		fmt.Printf("Failed to execute request: %s", err)
 		return
@@ -140,7 +140,7 @@ func ExampleObjects_customType() {
 		BucketId *uint64 `msgpack:"bucket_id,omitempty"`
 		Name     string  `msgpack:"name,omitempty"`
 	}
-	req := crud.MakeReplaceObjectManyRequest(exampleSpace).Objects([]Tuple{
+	req := crud.NewReplaceObjectManyRequest(exampleSpace).Objects([]Tuple{
 		Tuple{
 			Id:       2010,
 			BucketId: nil,
@@ -148,7 +148,7 @@ func ExampleObjects_customType() {
 		},
 	})
 
-	ret := crud.MakeResult(reflect.TypeFor[Tuple]())
+	ret := crud.NewResult(reflect.TypeFor[Tuple]())
 	if err := conn.Do(req).GetTyped(&ret); err != nil {
 		fmt.Printf("Failed to execute request: %s", err)
 		return
@@ -174,7 +174,7 @@ func ExampleObjects_customType() {
 // about erroneous objects from crud.Error using `OperationData` field.
 func ExampleResult_operationData() {
 	conn := exampleConnect()
-	req := crud.MakeInsertObjectManyRequest(exampleSpace).Objects([]crud.Object{
+	req := crud.NewInsertObjectManyRequest(exampleSpace).Objects([]crud.Object{
 		crud.MapObject{
 			"id":        2,
 			"bucket_id": 3,
@@ -215,7 +215,7 @@ func ExampleResult_operationData() {
 // The type of `OperationData` is determined as the crud.Result row type.
 func ExampleResult_operationDataCustomType() {
 	conn := exampleConnect()
-	req := crud.MakeInsertObjectManyRequest(exampleSpace).Objects([]crud.Object{
+	req := crud.NewInsertObjectManyRequest(exampleSpace).Objects([]crud.Object{
 		crud.MapObject{
 			"id":        1,
 			"bucket_id": 3,
@@ -238,7 +238,7 @@ func ExampleResult_operationDataCustomType() {
 		Name     string `msgpack:"name,omitempty"`
 	}
 
-	ret := crud.MakeResult(reflect.TypeFor[Tuple]())
+	ret := crud.NewResult(reflect.TypeFor[Tuple]())
 	if err := conn.Do(req).GetTyped(&ret); err != nil {
 		crudErrs := err.(crud.ErrorMany)
 		fmt.Println("Erroneous data:")
@@ -260,7 +260,7 @@ func ExampleResult_operationDataCustomType() {
 // response from *ManyRequest.
 func ExampleResult_many() {
 	conn := exampleConnect()
-	req := crud.MakeReplaceManyRequest(exampleSpace).
+	req := crud.NewReplaceManyRequest(exampleSpace).
 		Tuples([]crud.Tuple{
 			[]any{uint(2010), nil, "bla"},
 			[]any{uint(2011), nil, "bla"},
@@ -284,7 +284,7 @@ func ExampleResult_many() {
 // whether it was successful or not.
 func ExampleResult_noreturn() {
 	conn := exampleConnect()
-	req := crud.MakeReplaceManyRequest(exampleSpace).
+	req := crud.NewReplaceManyRequest(exampleSpace).
 		Tuples([]crud.Tuple{
 			[]any{uint(2010), nil, "bla"},
 			[]any{uint(2011), nil, "bla"},
@@ -310,7 +310,7 @@ func ExampleResult_noreturn() {
 // to handle a crud error.
 func ExampleResult_error() {
 	conn := exampleConnect()
-	req := crud.MakeReplaceRequest("not_exist").
+	req := crud.NewReplaceRequest("not_exist").
 		Tuple([]any{uint(2010), nil, "bla"})
 
 	ret := crud.Result{}
@@ -329,13 +329,13 @@ func ExampleResult_error() {
 // to handle a crud error for a *ManyRequest.
 func ExampleResult_errorMany() {
 	conn := exampleConnect()
-	initReq := crud.MakeReplaceRequest("not_exist").
+	initReq := crud.NewReplaceRequest("not_exist").
 		Tuple([]any{uint(2010), nil, "bla"})
 	if _, err := conn.Do(initReq).Get(); err != nil {
 		fmt.Printf("Failed to initialize the example: %s\n", err)
 	}
 
-	req := crud.MakeInsertManyRequest(exampleSpace).
+	req := crud.NewInsertManyRequest(exampleSpace).
 		Tuples([]crud.Tuple{
 			[]any{uint(2010), nil, "bla"},
 			[]any{uint(2010), nil, "bla"},
@@ -363,7 +363,7 @@ func ExampleSelectRequest_pagination() {
 	)
 	var tuple any
 	for i := range allTuples {
-		req := crud.MakeReplaceRequest(exampleSpace).
+		req := crud.NewReplaceRequest(exampleSpace).
 			Tuple([]any{uint(3000 + i), nil, "bla"})
 		ret := crud.Result{}
 		if err := conn.Do(req).GetTyped(&ret); err != nil {
@@ -375,7 +375,7 @@ func ExampleSelectRequest_pagination() {
 		}
 	}
 
-	req := crud.MakeSelectRequest(exampleSpace).
+	req := crud.NewSelectRequest(exampleSpace).
 		Opts(crud.SelectOpts{
 			First: option.SomeInt64(2),
 			After: option.SomeAny(tuple),
@@ -395,7 +395,7 @@ func ExampleSelectRequest_pagination() {
 func ExampleSchema() {
 	conn := exampleConnect()
 
-	req := crud.MakeSchemaRequest()
+	req := crud.NewSchemaRequest()
 	var result crud.SchemaResult
 
 	if err := conn.Do(req).GetTyped(&result); err != nil {

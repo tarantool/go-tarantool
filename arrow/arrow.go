@@ -17,9 +17,9 @@ type Arrow struct {
 	data []byte
 }
 
-// MakeArrow returns a new arrow.Arrow object that contains
+// NewArrow returns a new arrow.Arrow object that contains
 // wrapped a raw arrow data buffer.
-func MakeArrow(arrow []byte) (Arrow, error) {
+func NewArrow(arrow []byte) (Arrow, error) {
 	return Arrow{arrow}, nil
 }
 

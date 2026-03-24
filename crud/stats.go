@@ -17,11 +17,11 @@ type StatsRequest struct {
 	space option.String
 }
 
-// MakeStatsRequest returns a new empty StatsRequest.
-func MakeStatsRequest() StatsRequest {
-	req := StatsRequest{}
-	req.impl = newCall("crud.stats")
-	return req
+// NewStatsRequest returns a new empty StatsRequest.
+func NewStatsRequest() StatsRequest {
+	return StatsRequest{
+		baseRequest: newBaseRequest("crud.stats"),
+	}
 }
 
 // Space sets the space name for the StatsRequest request.
