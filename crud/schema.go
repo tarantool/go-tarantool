@@ -53,9 +53,9 @@ type SchemaRequest struct {
 
 // MakeSchemaRequest returns a new empty SchemaRequest.
 func MakeSchemaRequest() SchemaRequest {
-	req := SchemaRequest{}
-	req.impl = newCall("crud.schema")
-	return req
+	return SchemaRequest{
+		baseRequest: newBaseRequest("crud.schema"),
+	}
 }
 
 // Space sets the space name for the SchemaRequest request.
