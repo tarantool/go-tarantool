@@ -14,10 +14,11 @@ type DeleteOpts = SimpleOperationOpts
 // DeleteRequest helps you to create request object to call `crud.delete`
 // for execution by a Connection.
 type DeleteRequest struct {
-	spaceRequest
+	baseRequest
 
-	key  Tuple
-	opts DeleteOpts
+	space string
+	key   Tuple
+	opts  DeleteOpts
 }
 
 type deleteArgs struct {
@@ -27,13 +28,13 @@ type deleteArgs struct {
 	Opts     DeleteOpts
 }
 
-// MakeDeleteRequest returns a new empty DeleteRequest.
-func MakeDeleteRequest(space string) DeleteRequest {
-	req := DeleteRequest{}
-	req.impl = newCall("crud.delete")
-	req.space = space
-	req.opts = DeleteOpts{}
-	return req
+// NewDeleteRequest returns a new empty DeleteRequest.
+func NewDeleteRequest(space string) DeleteRequest {
+	return DeleteRequest{
+		baseRequest: newBaseRequest("crud.delete"),
+		space:       space,
+		opts:        DeleteOpts{},
+	}
 }
 
 // Key sets the key for the DeleteRequest request.

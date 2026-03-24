@@ -103,12 +103,12 @@ type storageInfoArgs struct {
 	Opts     StorageInfoOpts
 }
 
-// MakeStorageInfoRequest returns a new empty StorageInfoRequest.
-func MakeStorageInfoRequest() StorageInfoRequest {
-	req := StorageInfoRequest{}
-	req.impl = newCall("crud.storage_info")
-	req.opts = StorageInfoOpts{}
-	return req
+// NewStorageInfoRequest returns a new empty StorageInfoRequest.
+func NewStorageInfoRequest() StorageInfoRequest {
+	return StorageInfoRequest{
+		baseRequest: newBaseRequest("crud.storage_info"),
+		opts:        StorageInfoOpts{},
+	}
 }
 
 // Opts sets the options for the torageInfoRequest request.

@@ -14,8 +14,9 @@ type InsertOpts = SimpleOperationOpts
 // InsertRequest helps you to create request object to call `crud.insert`
 // for execution by a Connection.
 type InsertRequest struct {
-	spaceRequest
+	baseRequest
 
+	space string
 	tuple Tuple
 	opts  InsertOpts
 }
@@ -27,13 +28,13 @@ type insertArgs struct {
 	Opts     InsertOpts
 }
 
-// MakeInsertRequest returns a new empty InsertRequest.
-func MakeInsertRequest(space string) InsertRequest {
-	req := InsertRequest{}
-	req.impl = newCall("crud.insert")
-	req.space = space
-	req.opts = InsertOpts{}
-	return req
+// NewInsertRequest returns a new empty InsertRequest.
+func NewInsertRequest(space string) InsertRequest {
+	return InsertRequest{
+		baseRequest: newBaseRequest("crud.insert"),
+		space:       space,
+		opts:        InsertOpts{},
+	}
 }
 
 // Tuple sets the tuple for the InsertRequest request.
@@ -73,8 +74,9 @@ type InsertObjectOpts = SimpleOperationObjectOpts
 // InsertObjectRequest helps you to create request object to call
 // `crud.insert_object` for execution by a Connection.
 type InsertObjectRequest struct {
-	spaceRequest
+	baseRequest
 
+	space  string
 	object Object
 	opts   InsertObjectOpts
 }
@@ -86,13 +88,13 @@ type insertObjectArgs struct {
 	Opts     InsertObjectOpts
 }
 
-// MakeInsertObjectRequest returns a new empty InsertObjectRequest.
-func MakeInsertObjectRequest(space string) InsertObjectRequest {
-	req := InsertObjectRequest{}
-	req.impl = newCall("crud.insert_object")
-	req.space = space
-	req.opts = InsertObjectOpts{}
-	return req
+// NewInsertObjectRequest returns a new empty InsertObjectRequest.
+func NewInsertObjectRequest(space string) InsertObjectRequest {
+	return InsertObjectRequest{
+		baseRequest: newBaseRequest("crud.insert_object"),
+		space:       space,
+		opts:        InsertObjectOpts{},
+	}
 }
 
 // Object sets the tuple for the InsertObjectRequest request.

@@ -14,8 +14,9 @@ type MinOpts = BorderOpts
 // MinRequest helps you to create request object to call `crud.min`
 // for execution by a Connection.
 type MinRequest struct {
-	spaceRequest
+	baseRequest
 
+	space string
 	index any
 	opts  MinOpts
 }
@@ -27,13 +28,13 @@ type minArgs struct {
 	Opts     MinOpts
 }
 
-// MakeMinRequest returns a new empty MinRequest.
-func MakeMinRequest(space string) MinRequest {
-	req := MinRequest{}
-	req.impl = newCall("crud.min")
-	req.space = space
-	req.opts = MinOpts{}
-	return req
+// NewMinRequest returns a new empty MinRequest.
+func NewMinRequest(space string) MinRequest {
+	return MinRequest{
+		baseRequest: newBaseRequest("crud.min"),
+		space:       space,
+		opts:        MinOpts{},
+	}
 }
 
 // Index sets the index name/id for the MinRequest request.

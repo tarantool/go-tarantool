@@ -71,7 +71,7 @@ func TestInsert_invalid(t *testing.T) {
 			data, err := hex.DecodeString(a.arrow)
 			require.NoError(t, err)
 
-			arr, err := arrow.MakeArrow(data)
+			arr, err := arrow.NewArrow(data)
 			require.NoError(t, err)
 
 			req := arrow.NewInsertRequest(space, arr)

@@ -56,8 +56,8 @@ type Result struct {
 	rowType  reflect.Type
 }
 
-// MakeResult create a Result object with a custom row type for decoding.
-func MakeResult(rowType reflect.Type) Result {
+// NewResult create a Result object with a custom row type for decoding.
+func NewResult(rowType reflect.Type) Result {
 	return Result{
 		rowType: rowType,
 	}

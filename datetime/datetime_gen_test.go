@@ -11,7 +11,7 @@ import (
 )
 
 func TestSomeOptionalDatetime(t *testing.T) {
-	val, err := MakeDatetime(time.Now().In(time.UTC))
+	val, err := NewDatetime(time.Now().In(time.UTC))
 	require.NoError(t, err)
 	opt := SomeOptionalDatetime(val)
 
@@ -34,7 +34,7 @@ func TestNoneOptionalDatetime(t *testing.T) {
 }
 
 func TestOptionalDatetime_MustGet(t *testing.T) {
-	val, err := MakeDatetime(time.Now().In(time.UTC))
+	val, err := NewDatetime(time.Now().In(time.UTC))
 	require.NoError(t, err)
 	optSome := SomeOptionalDatetime(val)
 	optNone := NoneOptionalDatetime()
@@ -44,7 +44,7 @@ func TestOptionalDatetime_MustGet(t *testing.T) {
 }
 
 func TestOptionalDatetime_Unwrap(t *testing.T) {
-	val, err := MakeDatetime(time.Now().In(time.UTC))
+	val, err := NewDatetime(time.Now().In(time.UTC))
 	require.NoError(t, err)
 	optSome := SomeOptionalDatetime(val)
 	optNone := NoneOptionalDatetime()
@@ -54,9 +54,9 @@ func TestOptionalDatetime_Unwrap(t *testing.T) {
 }
 
 func TestOptionalDatetime_UnwrapOr(t *testing.T) {
-	val, err := MakeDatetime(time.Now().In(time.UTC))
+	val, err := NewDatetime(time.Now().In(time.UTC))
 	require.NoError(t, err)
-	def, err := MakeDatetime(time.Now().Add(1 * time.Hour).In(time.UTC))
+	def, err := NewDatetime(time.Now().Add(1 * time.Hour).In(time.UTC))
 	require.NoError(t, err)
 	optSome := SomeOptionalDatetime(val)
 	optNone := NoneOptionalDatetime()
@@ -66,9 +66,9 @@ func TestOptionalDatetime_UnwrapOr(t *testing.T) {
 }
 
 func TestOptionalDatetime_UnwrapOrElse(t *testing.T) {
-	val, err := MakeDatetime(time.Now().In(time.UTC))
+	val, err := NewDatetime(time.Now().In(time.UTC))
 	require.NoError(t, err)
-	def, err := MakeDatetime(time.Now().Add(1 * time.Hour).In(time.UTC))
+	def, err := NewDatetime(time.Now().Add(1 * time.Hour).In(time.UTC))
 	require.NoError(t, err)
 	optSome := SomeOptionalDatetime(val)
 	optNone := NoneOptionalDatetime()
@@ -78,7 +78,7 @@ func TestOptionalDatetime_UnwrapOrElse(t *testing.T) {
 }
 
 func TestOptionalDatetime_EncodeDecodeMsgpack_Some(t *testing.T) {
-	val, err := MakeDatetime(time.Now().In(time.UTC))
+	val, err := NewDatetime(time.Now().In(time.UTC))
 	require.NoError(t, err)
 	some := SomeOptionalDatetime(val)
 

@@ -42,7 +42,7 @@ func Example() {
 		log.Fatalf("Failed to connect: %s", err)
 	}
 
-	arr, err := arrow.MakeArrow(arrowBinData)
+	arr, err := arrow.NewArrow(arrowBinData)
 	if err != nil {
 		log.Fatalf("Failed prepare Arrow data: %s", err)
 	}

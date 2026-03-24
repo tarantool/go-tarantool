@@ -208,21 +208,21 @@ var testProcessDataCases = []struct {
 	{
 		"Select",
 		2,
-		crud.MakeSelectRequest(spaceName).
+		crud.NewSelectRequest(spaceName).
 			Conditions(conditions).
 			Opts(selectOpts),
 	},
 	{
 		"Get",
 		2,
-		crud.MakeGetRequest(spaceName).
+		crud.NewGetRequest(spaceName).
 			Key(key).
 			Opts(getOpts),
 	},
 	{
 		"Update",
 		2,
-		crud.MakeUpdateRequest(spaceName).
+		crud.NewUpdateRequest(spaceName).
 			Key(key).
 			Operations(operations).
 			Opts(simpleOperationOpts),
@@ -230,61 +230,61 @@ var testProcessDataCases = []struct {
 	{
 		"Delete",
 		2,
-		crud.MakeDeleteRequest(spaceName).
+		crud.NewDeleteRequest(spaceName).
 			Key(key).
 			Opts(simpleOperationOpts),
 	},
 	{
 		"Min",
 		2,
-		crud.MakeMinRequest(spaceName).Opts(minOpts),
+		crud.NewMinRequest(spaceName).Opts(minOpts),
 	},
 	{
 		"Min",
 		2,
-		crud.MakeMinRequest(spaceName).Index(indexName).Opts(minOpts),
+		crud.NewMinRequest(spaceName).Index(indexName).Opts(minOpts),
 	},
 	{
 		"Max",
 		2,
-		crud.MakeMaxRequest(spaceName).Opts(maxOpts),
+		crud.NewMaxRequest(spaceName).Opts(maxOpts),
 	},
 	{
 		"Max",
 		2,
-		crud.MakeMaxRequest(spaceName).Index(indexName).Opts(maxOpts),
+		crud.NewMaxRequest(spaceName).Index(indexName).Opts(maxOpts),
 	},
 	{
 		"Truncate",
 		1,
-		crud.MakeTruncateRequest(spaceName).Opts(baseOpts),
+		crud.NewTruncateRequest(spaceName).Opts(baseOpts),
 	},
 	{
 		"Len",
 		1,
-		crud.MakeLenRequest(spaceName).Opts(baseOpts),
+		crud.NewLenRequest(spaceName).Opts(baseOpts),
 	},
 	{
 		"Count",
 		2,
-		crud.MakeCountRequest(spaceName).
+		crud.NewCountRequest(spaceName).
 			Conditions(conditions).
 			Opts(countOpts),
 	},
 	{
 		"Stats",
 		1,
-		crud.MakeStatsRequest().Space(spaceName),
+		crud.NewStatsRequest().Space(spaceName),
 	},
 	{
 		"StorageInfo",
 		1,
-		crud.MakeStorageInfoRequest().Opts(baseOpts),
+		crud.NewStorageInfoRequest().Opts(baseOpts),
 	},
 	{
 		"Schema",
 		1,
-		crud.MakeSchemaRequest().Opts(schemaOpts),
+		crud.NewSchemaRequest().Opts(schemaOpts),
 	},
 }
 
@@ -296,22 +296,22 @@ var testResultWithErrCases = []struct {
 	{
 		"BaseResult",
 		&crud.Result{},
-		crud.MakeSelectRequest(invalidSpaceName).Opts(selectOpts),
+		crud.NewSelectRequest(invalidSpaceName).Opts(selectOpts),
 	},
 	{
 		"ManyResult",
 		&crud.Result{},
-		crud.MakeReplaceManyRequest(invalidSpaceName).Tuples(tuples).Opts(opManyOpts),
+		crud.NewReplaceManyRequest(invalidSpaceName).Tuples(tuples).Opts(opManyOpts),
 	},
 	{
 		"NumberResult",
 		&crud.CountResult{},
-		crud.MakeCountRequest(invalidSpaceName).Opts(countOpts),
+		crud.NewCountRequest(invalidSpaceName).Opts(countOpts),
 	},
 	{
 		"BoolResult",
 		&crud.TruncateResult{},
-		crud.MakeTruncateRequest(invalidSpaceName).Opts(baseOpts),
+		crud.NewTruncateRequest(invalidSpaceName).Opts(baseOpts),
 	},
 }
 
@@ -328,7 +328,7 @@ var testGenerateDataCases = []struct {
 		"Insert",
 		1,
 		1,
-		crud.MakeInsertRequest(spaceName).
+		crud.NewInsertRequest(spaceName).
 			Tuple(tuple).
 			Opts(simpleOperationOpts),
 	},
@@ -336,7 +336,7 @@ var testGenerateDataCases = []struct {
 		"InsertObject",
 		1,
 		1,
-		crud.MakeInsertObjectRequest(spaceName).
+		crud.NewInsertObjectRequest(spaceName).
 			Object(object).
 			Opts(simpleOperationObjectOpts),
 	},
@@ -344,7 +344,7 @@ var testGenerateDataCases = []struct {
 		"InsertMany",
 		1,
 		10,
-		crud.MakeInsertManyRequest(spaceName).
+		crud.NewInsertManyRequest(spaceName).
 			Tuples(tuples).
 			Opts(opManyOpts),
 	},
@@ -352,7 +352,7 @@ var testGenerateDataCases = []struct {
 		"InsertObjectMany",
 		1,
 		10,
-		crud.MakeInsertObjectManyRequest(spaceName).
+		crud.NewInsertObjectManyRequest(spaceName).
 			Objects(objects).
 			Opts(opObjManyOpts),
 	},
@@ -360,7 +360,7 @@ var testGenerateDataCases = []struct {
 		"Replace",
 		1,
 		1,
-		crud.MakeReplaceRequest(spaceName).
+		crud.NewReplaceRequest(spaceName).
 			Tuple(tuple).
 			Opts(simpleOperationOpts),
 	},
@@ -368,7 +368,7 @@ var testGenerateDataCases = []struct {
 		"ReplaceObject",
 		1,
 		1,
-		crud.MakeReplaceObjectRequest(spaceName).
+		crud.NewReplaceObjectRequest(spaceName).
 			Object(object).
 			Opts(simpleOperationObjectOpts),
 	},
@@ -376,7 +376,7 @@ var testGenerateDataCases = []struct {
 		"ReplaceMany",
 		1,
 		10,
-		crud.MakeReplaceManyRequest(spaceName).
+		crud.NewReplaceManyRequest(spaceName).
 			Tuples(tuples).
 			Opts(opManyOpts),
 	},
@@ -384,7 +384,7 @@ var testGenerateDataCases = []struct {
 		"ReplaceObjectMany",
 		1,
 		10,
-		crud.MakeReplaceObjectManyRequest(spaceName).
+		crud.NewReplaceObjectManyRequest(spaceName).
 			Objects(objects).
 			Opts(opObjManyOpts),
 	},
@@ -392,7 +392,7 @@ var testGenerateDataCases = []struct {
 		"Upsert",
 		1,
 		1,
-		crud.MakeUpsertRequest(spaceName).
+		crud.NewUpsertRequest(spaceName).
 			Tuple(tuple).
 			Operations(operations).
 			Opts(simpleOperationOpts),
@@ -401,7 +401,7 @@ var testGenerateDataCases = []struct {
 		"UpsertObject",
 		1,
 		1,
-		crud.MakeUpsertObjectRequest(spaceName).
+		crud.NewUpsertObjectRequest(spaceName).
 			Object(object).
 			Operations(operations).
 			Opts(simpleOperationOpts),
@@ -410,7 +410,7 @@ var testGenerateDataCases = []struct {
 		"UpsertMany",
 		1,
 		10,
-		crud.MakeUpsertManyRequest(spaceName).
+		crud.NewUpsertManyRequest(spaceName).
 			TuplesOperationsData(tuplesOperationsData).
 			Opts(opManyOpts),
 	},
@@ -418,7 +418,7 @@ var testGenerateDataCases = []struct {
 		"UpsertObjectMany",
 		1,
 		10,
-		crud.MakeUpsertObjectManyRequest(spaceName).
+		crud.NewUpsertObjectManyRequest(spaceName).
 			ObjectsOperationsData(objectsOperationData).
 			Opts(opManyOpts),
 	},
@@ -593,7 +593,7 @@ func TestCrudUpdateSplice(t *testing.T) {
 	conn := connect(t)
 	defer func() { _ = conn.Close() }()
 
-	req := crud.MakeUpdateRequest(spaceName).
+	req := crud.NewUpdateRequest(spaceName).
 		Key(key).
 		Operations([]crud.Operation{
 			{
@@ -618,7 +618,7 @@ func TestCrudUpsertSplice(t *testing.T) {
 	conn := connect(t)
 	defer func() { _ = conn.Close() }()
 
-	req := crud.MakeUpsertRequest(spaceName).
+	req := crud.NewUpsertRequest(spaceName).
 		Tuple(tuple).
 		Operations([]crud.Operation{
 			{
@@ -643,7 +643,7 @@ func TestCrudUpsertObjectSplice(t *testing.T) {
 	conn := connect(t)
 	defer func() { _ = conn.Close() }()
 
-	req := crud.MakeUpsertObjectRequest(spaceName).
+	req := crud.NewUpsertObjectRequest(spaceName).
 		Object(object).
 		Operations([]crud.Operation{
 			{
@@ -700,7 +700,7 @@ func TestUnflattenRows(t *testing.T) {
 	defer func() { _ = conn.Close() }()
 
 	// Do `replace`.
-	req := crud.MakeReplaceRequest(spaceName).
+	req := crud.NewReplaceRequest(spaceName).
 		Tuple(tuple).
 		Opts(simpleOperationOpts)
 	data, err := conn.Do(req).Get()
@@ -756,7 +756,7 @@ func TestBoolResult(t *testing.T) {
 	conn := connect(t)
 	defer func() { _ = conn.Close() }()
 
-	req := crud.MakeTruncateRequest(spaceName).Opts(baseOpts)
+	req := crud.NewTruncateRequest(spaceName).Opts(baseOpts)
 	resp := crud.TruncateResult{}
 
 	testCrudRequestPrepareData(t, conn)
@@ -777,7 +777,7 @@ func TestNumberResult(t *testing.T) {
 	conn := connect(t)
 	defer func() { _ = conn.Close() }()
 
-	req := crud.MakeCountRequest(spaceName).Opts(countOpts)
+	req := crud.NewCountRequest(spaceName).Opts(countOpts)
 	resp := crud.CountResult{}
 
 	testCrudRequestPrepareData(t, conn)
@@ -816,7 +816,7 @@ func TestBaseResult(t *testing.T) {
 	conn := connect(t)
 	defer func() { _ = conn.Close() }()
 
-	req := crud.MakeSelectRequest(spaceName).Opts(selectOpts)
+	req := crud.NewSelectRequest(spaceName).Opts(selectOpts)
 	resp := crud.Result{}
 
 	testCrudRequestPrepareData(t, conn)
@@ -860,7 +860,7 @@ func TestManyResult(t *testing.T) {
 	conn := connect(t)
 	defer func() { _ = conn.Close() }()
 
-	req := crud.MakeReplaceManyRequest(spaceName).Tuples(tuples).Opts(opManyOpts)
+	req := crud.NewReplaceManyRequest(spaceName).Tuples(tuples).Opts(opManyOpts)
 	resp := crud.Result{}
 
 	testCrudRequestPrepareData(t, conn)
@@ -886,7 +886,7 @@ func TestStorageInfoResult(t *testing.T) {
 	conn := connect(t)
 	defer func() { _ = conn.Close() }()
 
-	req := crud.MakeStorageInfoRequest().Opts(baseOpts)
+	req := crud.NewStorageInfoRequest().Opts(baseOpts)
 	resp := crud.StorageInfoResult{}
 
 	err := conn.Do(req).GetTyped(&resp)
@@ -904,7 +904,7 @@ func TestGetAdditionalOpts(t *testing.T) {
 	conn := connect(t)
 	defer func() { _ = conn.Close() }()
 
-	req := crud.MakeGetRequest(spaceName).Key(key).Opts(crud.GetOpts{
+	req := crud.NewGetRequest(spaceName).Key(key).Opts(crud.GetOpts{
 		Timeout:       option.SomeFloat64(1.1),
 		Fields:        option.SomeAny([]any{"name"}),
 		Mode:          option.SomeString("read"),
@@ -925,7 +925,7 @@ var testMetadataCases = []struct {
 }{
 	{
 		"Insert",
-		crud.MakeInsertRequest(spaceName).
+		crud.NewInsertRequest(spaceName).
 			Tuple(tuple).
 			Opts(crud.InsertOpts{
 				FetchLatestMetadata: option.SomeBool(true),
@@ -933,7 +933,7 @@ var testMetadataCases = []struct {
 	},
 	{
 		"InsertObject",
-		crud.MakeInsertObjectRequest(spaceName).
+		crud.NewInsertObjectRequest(spaceName).
 			Object(object).
 			Opts(crud.InsertObjectOpts{
 				FetchLatestMetadata: option.SomeBool(true),
@@ -941,7 +941,7 @@ var testMetadataCases = []struct {
 	},
 	{
 		"InsertMany",
-		crud.MakeInsertManyRequest(spaceName).
+		crud.NewInsertManyRequest(spaceName).
 			Tuples(tuples).
 			Opts(crud.InsertManyOpts{
 				FetchLatestMetadata: option.SomeBool(true),
@@ -949,7 +949,7 @@ var testMetadataCases = []struct {
 	},
 	{
 		"InsertObjectMany",
-		crud.MakeInsertObjectManyRequest(spaceName).
+		crud.NewInsertObjectManyRequest(spaceName).
 			Objects(objects).
 			Opts(crud.InsertObjectManyOpts{
 				FetchLatestMetadata: option.SomeBool(true),
@@ -957,7 +957,7 @@ var testMetadataCases = []struct {
 	},
 	{
 		"Replace",
-		crud.MakeReplaceRequest(spaceName).
+		crud.NewReplaceRequest(spaceName).
 			Tuple(tuple).
 			Opts(crud.ReplaceOpts{
 				FetchLatestMetadata: option.SomeBool(true),
@@ -965,7 +965,7 @@ var testMetadataCases = []struct {
 	},
 	{
 		"ReplaceObject",
-		crud.MakeReplaceObjectRequest(spaceName).
+		crud.NewReplaceObjectRequest(spaceName).
 			Object(object).
 			Opts(crud.ReplaceObjectOpts{
 				FetchLatestMetadata: option.SomeBool(true),
@@ -973,7 +973,7 @@ var testMetadataCases = []struct {
 	},
 	{
 		"ReplaceMany",
-		crud.MakeReplaceManyRequest(spaceName).
+		crud.NewReplaceManyRequest(spaceName).
 			Tuples(tuples).
 			Opts(crud.ReplaceManyOpts{
 				FetchLatestMetadata: option.SomeBool(true),
@@ -981,7 +981,7 @@ var testMetadataCases = []struct {
 	},
 	{
 		"ReplaceObjectMany",
-		crud.MakeReplaceObjectManyRequest(spaceName).
+		crud.NewReplaceObjectManyRequest(spaceName).
 			Objects(objects).
 			Opts(crud.ReplaceObjectManyOpts{
 				FetchLatestMetadata: option.SomeBool(true),
@@ -989,7 +989,7 @@ var testMetadataCases = []struct {
 	},
 	{
 		"Upsert",
-		crud.MakeUpsertRequest(spaceName).
+		crud.NewUpsertRequest(spaceName).
 			Tuple(tuple).
 			Operations(operations).
 			Opts(crud.UpsertOpts{
@@ -998,7 +998,7 @@ var testMetadataCases = []struct {
 	},
 	{
 		"UpsertObject",
-		crud.MakeUpsertObjectRequest(spaceName).
+		crud.NewUpsertObjectRequest(spaceName).
 			Object(object).
 			Operations(operations).
 			Opts(crud.UpsertObjectOpts{
@@ -1007,7 +1007,7 @@ var testMetadataCases = []struct {
 	},
 	{
 		"UpsertMany",
-		crud.MakeUpsertManyRequest(spaceName).
+		crud.NewUpsertManyRequest(spaceName).
 			TuplesOperationsData(tuplesOperationsData).
 			Opts(crud.UpsertManyOpts{
 				FetchLatestMetadata: option.SomeBool(true),
@@ -1015,7 +1015,7 @@ var testMetadataCases = []struct {
 	},
 	{
 		"UpsertObjectMany",
-		crud.MakeUpsertObjectManyRequest(spaceName).
+		crud.NewUpsertObjectManyRequest(spaceName).
 			ObjectsOperationsData(objectsOperationData).
 			Opts(crud.UpsertObjectManyOpts{
 				FetchLatestMetadata: option.SomeBool(true),
@@ -1023,7 +1023,7 @@ var testMetadataCases = []struct {
 	},
 	{
 		"Select",
-		crud.MakeSelectRequest(spaceName).
+		crud.NewSelectRequest(spaceName).
 			Conditions(conditions).
 			Opts(crud.SelectOpts{
 				FetchLatestMetadata: option.SomeBool(true),
@@ -1031,7 +1031,7 @@ var testMetadataCases = []struct {
 	},
 	{
 		"Get",
-		crud.MakeGetRequest(spaceName).
+		crud.NewGetRequest(spaceName).
 			Key(key).
 			Opts(crud.GetOpts{
 				FetchLatestMetadata: option.SomeBool(true),
@@ -1039,7 +1039,7 @@ var testMetadataCases = []struct {
 	},
 	{
 		"Update",
-		crud.MakeUpdateRequest(spaceName).
+		crud.NewUpdateRequest(spaceName).
 			Key(key).
 			Operations(operations).
 			Opts(crud.UpdateOpts{
@@ -1048,7 +1048,7 @@ var testMetadataCases = []struct {
 	},
 	{
 		"Delete",
-		crud.MakeDeleteRequest(spaceName).
+		crud.NewDeleteRequest(spaceName).
 			Key(key).
 			Opts(crud.DeleteOpts{
 				FetchLatestMetadata: option.SomeBool(true),
@@ -1056,14 +1056,14 @@ var testMetadataCases = []struct {
 	},
 	{
 		"Min",
-		crud.MakeMinRequest(spaceName).
+		crud.NewMinRequest(spaceName).
 			Opts(crud.MinOpts{
 				FetchLatestMetadata: option.SomeBool(true),
 			}),
 	},
 	{
 		"Max",
-		crud.MakeMaxRequest(spaceName).
+		crud.NewMaxRequest(spaceName).
 			Opts(crud.MaxOpts{
 				FetchLatestMetadata: option.SomeBool(true),
 			}),
@@ -1105,7 +1105,7 @@ var testNoreturnCases = []struct {
 }{
 	{
 		"Insert",
-		crud.MakeInsertRequest(spaceName).
+		crud.NewInsertRequest(spaceName).
 			Tuple(tuple).
 			Opts(crud.InsertOpts{
 				Noreturn: option.SomeBool(true),
@@ -1113,7 +1113,7 @@ var testNoreturnCases = []struct {
 	},
 	{
 		"InsertObject",
-		crud.MakeInsertObjectRequest(spaceName).
+		crud.NewInsertObjectRequest(spaceName).
 			Object(object).
 			Opts(crud.InsertObjectOpts{
 				Noreturn: option.SomeBool(true),
@@ -1121,7 +1121,7 @@ var testNoreturnCases = []struct {
 	},
 	{
 		"InsertMany",
-		crud.MakeInsertManyRequest(spaceName).
+		crud.NewInsertManyRequest(spaceName).
 			Tuples(tuples).
 			Opts(crud.InsertManyOpts{
 				Noreturn: option.SomeBool(true),
@@ -1129,7 +1129,7 @@ var testNoreturnCases = []struct {
 	},
 	{
 		"InsertObjectMany",
-		crud.MakeInsertObjectManyRequest(spaceName).
+		crud.NewInsertObjectManyRequest(spaceName).
 			Objects(objects).
 			Opts(crud.InsertObjectManyOpts{
 				Noreturn: option.SomeBool(true),
@@ -1137,7 +1137,7 @@ var testNoreturnCases = []struct {
 	},
 	{
 		"Replace",
-		crud.MakeReplaceRequest(spaceName).
+		crud.NewReplaceRequest(spaceName).
 			Tuple(tuple).
 			Opts(crud.ReplaceOpts{
 				Noreturn: option.SomeBool(true),
@@ -1145,7 +1145,7 @@ var testNoreturnCases = []struct {
 	},
 	{
 		"ReplaceObject",
-		crud.MakeReplaceObjectRequest(spaceName).
+		crud.NewReplaceObjectRequest(spaceName).
 			Object(object).
 			Opts(crud.ReplaceObjectOpts{
 				Noreturn: option.SomeBool(true),
@@ -1153,7 +1153,7 @@ var testNoreturnCases = []struct {
 	},
 	{
 		"ReplaceMany",
-		crud.MakeReplaceManyRequest(spaceName).
+		crud.NewReplaceManyRequest(spaceName).
 			Tuples(tuples).
 			Opts(crud.ReplaceManyOpts{
 				Noreturn: option.SomeBool(true),
@@ -1161,7 +1161,7 @@ var testNoreturnCases = []struct {
 	},
 	{
 		"ReplaceObjectMany",
-		crud.MakeReplaceObjectManyRequest(spaceName).
+		crud.NewReplaceObjectManyRequest(spaceName).
 			Objects(objects).
 			Opts(crud.ReplaceObjectManyOpts{
 				Noreturn: option.SomeBool(true),
@@ -1169,7 +1169,7 @@ var testNoreturnCases = []struct {
 	},
 	{
 		"Upsert",
-		crud.MakeUpsertRequest(spaceName).
+		crud.NewUpsertRequest(spaceName).
 			Tuple(tuple).
 			Operations(operations).
 			Opts(crud.UpsertOpts{
@@ -1178,7 +1178,7 @@ var testNoreturnCases = []struct {
 	},
 	{
 		"UpsertObject",
-		crud.MakeUpsertObjectRequest(spaceName).
+		crud.NewUpsertObjectRequest(spaceName).
 			Object(object).
 			Operations(operations).
 			Opts(crud.UpsertObjectOpts{
@@ -1187,7 +1187,7 @@ var testNoreturnCases = []struct {
 	},
 	{
 		"UpsertMany",
-		crud.MakeUpsertManyRequest(spaceName).
+		crud.NewUpsertManyRequest(spaceName).
 			TuplesOperationsData(tuplesOperationsData).
 			Opts(crud.UpsertManyOpts{
 				Noreturn: option.SomeBool(true),
@@ -1195,7 +1195,7 @@ var testNoreturnCases = []struct {
 	},
 	{
 		"UpsertObjectMany",
-		crud.MakeUpsertObjectManyRequest(spaceName).
+		crud.NewUpsertObjectManyRequest(spaceName).
 			ObjectsOperationsData(objectsOperationData).
 			Opts(crud.UpsertObjectManyOpts{
 				Noreturn: option.SomeBool(true),
@@ -1203,7 +1203,7 @@ var testNoreturnCases = []struct {
 	},
 	{
 		"Update",
-		crud.MakeUpdateRequest(spaceName).
+		crud.NewUpdateRequest(spaceName).
 			Key(key).
 			Operations(operations).
 			Opts(crud.UpdateOpts{
@@ -1212,7 +1212,7 @@ var testNoreturnCases = []struct {
 	},
 	{
 		"Delete",
-		crud.MakeDeleteRequest(spaceName).
+		crud.NewDeleteRequest(spaceName).
 			Key(key).
 			Opts(crud.DeleteOpts{
 				Noreturn: option.SomeBool(true),
@@ -1361,7 +1361,7 @@ func TestSchemaTyped(t *testing.T) {
 	conn := connect(t)
 	defer func() { _ = conn.Close() }()
 
-	req := crud.MakeSchemaRequest()
+	req := crud.NewSchemaRequest()
 	var result crud.SchemaResult
 
 	err := conn.Do(req).GetTyped(&result)
@@ -1373,7 +1373,7 @@ func TestSpaceSchemaTyped(t *testing.T) {
 	conn := connect(t)
 	defer func() { _ = conn.Close() }()
 
-	req := crud.MakeSchemaRequest().Space("test")
+	req := crud.NewSchemaRequest().Space("test")
 	var result crud.SpaceSchemaResult
 
 	err := conn.Do(req).GetTyped(&result)
@@ -1385,7 +1385,7 @@ func TestSpaceSchemaTypedError(t *testing.T) {
 	conn := connect(t)
 	defer func() { _ = conn.Close() }()
 
-	req := crud.MakeSchemaRequest().Space("not_exist")
+	req := crud.NewSchemaRequest().Space("not_exist")
 	var result crud.SpaceSchemaResult
 
 	err := conn.Do(req).GetTyped(&result)
@@ -1413,14 +1413,14 @@ var testStorageYieldCases = []struct {
 }{
 	{
 		"Count",
-		crud.MakeCountRequest(spaceName).
+		crud.NewCountRequest(spaceName).
 			Opts(crud.CountOpts{
 				YieldEvery: option.SomeUint(500),
 			}),
 	},
 	{
 		"Select",
-		crud.MakeSelectRequest(spaceName).
+		crud.NewSelectRequest(spaceName).
 			Opts(crud.SelectOpts{
 				YieldEvery: option.SomeUint(500),
 			}),

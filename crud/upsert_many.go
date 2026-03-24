@@ -21,8 +21,9 @@ type TupleOperationsData struct {
 // UpsertManyRequest helps you to create request object to call
 // `crud.upsert_many` for execution by a Connection.
 type UpsertManyRequest struct {
-	spaceRequest
+	baseRequest
 
+	space                string
 	tuplesOperationsData []TupleOperationsData
 	opts                 UpsertManyOpts
 }
@@ -34,14 +35,14 @@ type upsertManyArgs struct {
 	Opts                 UpsertManyOpts
 }
 
-// MakeUpsertManyRequest returns a new empty UpsertManyRequest.
-func MakeUpsertManyRequest(space string) UpsertManyRequest {
-	req := UpsertManyRequest{}
-	req.impl = newCall("crud.upsert_many")
-	req.space = space
-	req.tuplesOperationsData = []TupleOperationsData{}
-	req.opts = UpsertManyOpts{}
-	return req
+// NewUpsertManyRequest returns a new empty UpsertManyRequest.
+func NewUpsertManyRequest(space string) UpsertManyRequest {
+	return UpsertManyRequest{
+		baseRequest:          newBaseRequest("crud.upsert_many"),
+		space:                space,
+		tuplesOperationsData: []TupleOperationsData{},
+		opts:                 UpsertManyOpts{},
+	}
 }
 
 // TuplesOperationsData sets tuples and operations for
@@ -88,8 +89,9 @@ type ObjectOperationsData struct {
 // UpsertObjectManyRequest helps you to create request object to call
 // `crud.upsert_object_many` for execution by a Connection.
 type UpsertObjectManyRequest struct {
-	spaceRequest
+	baseRequest
 
+	space                 string
 	objectsOperationsData []ObjectOperationsData
 	opts                  UpsertObjectManyOpts
 }
@@ -101,14 +103,14 @@ type upsertObjectManyArgs struct {
 	Opts                  UpsertObjectManyOpts
 }
 
-// MakeUpsertObjectManyRequest returns a new empty UpsertObjectManyRequest.
-func MakeUpsertObjectManyRequest(space string) UpsertObjectManyRequest {
-	req := UpsertObjectManyRequest{}
-	req.impl = newCall("crud.upsert_object_many")
-	req.space = space
-	req.objectsOperationsData = []ObjectOperationsData{}
-	req.opts = UpsertObjectManyOpts{}
-	return req
+// NewUpsertObjectManyRequest returns a new empty UpsertObjectManyRequest.
+func NewUpsertObjectManyRequest(space string) UpsertObjectManyRequest {
+	return UpsertObjectManyRequest{
+		baseRequest:           newBaseRequest("crud.upsert_object_many"),
+		space:                 space,
+		objectsOperationsData: []ObjectOperationsData{},
+		opts:                  UpsertObjectManyOpts{},
+	}
 }
 
 // ObjectsOperationsData sets objects and operations

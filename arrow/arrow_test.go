@@ -72,7 +72,7 @@ func TestEncodeArrow(t *testing.T) {
 			buf := bytes.NewBuffer([]byte{})
 			enc := msgpack.NewEncoder(buf)
 
-			arr, err := arrow.MakeArrow(tt.arr)
+			arr, err := arrow.NewArrow(tt.arr)
 			require.NoError(t, err)
 
 			err = enc.Encode(arr)

@@ -10,7 +10,7 @@ import (
 
 // Minimal benchmark without dependencies.
 func BenchmarkMinimal(b *testing.B) {
-	dec := MustMakeDecimal("123.45")
+	dec := MustNewDecimal("123.45")
 
 	b.Run("String", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
@@ -42,7 +42,7 @@ func BenchmarkDecimalString_SmallNumbers(b *testing.B) {
 
 	decimals := make([]Decimal, len(smallNumbers))
 	for i, str := range smallNumbers {
-		decimals[i] = MustMakeDecimal(str)
+		decimals[i] = MustNewDecimal(str)
 	}
 
 	b.ResetTimer()
@@ -74,7 +74,7 @@ func BenchmarkDecimalString_Int64Boundaries(b *testing.B) {
 
 	decimals := make([]Decimal, len(boundaryNumbers))
 	for i, str := range boundaryNumbers {
-		decimals[i] = MustMakeDecimal(str)
+		decimals[i] = MustNewDecimal(str)
 	}
 
 	b.ResetTimer()
@@ -106,7 +106,7 @@ func BenchmarkDecimalString_LargeNumbers(b *testing.B) {
 
 	decimals := make([]Decimal, len(largeNumbers))
 	for i, str := range largeNumbers {
-		decimals[i] = MustMakeDecimal(str)
+		decimals[i] = MustNewDecimal(str)
 	}
 
 	b.ResetTimer()
@@ -143,7 +143,7 @@ func BenchmarkDecimalString_Mixed(b *testing.B) {
 
 	decimals := make([]Decimal, len(mixedNumbers))
 	for i, str := range mixedNumbers {
-		decimals[i] = MustMakeDecimal(str)
+		decimals[i] = MustNewDecimal(str)
 	}
 
 	b.ResetTimer()
@@ -178,7 +178,7 @@ func BenchmarkDecimalString_DifferentPrecision(b *testing.B) {
 
 	for _, tc := range testCases {
 		b.Run(tc.name, func(b *testing.B) {
-			dec := MustMakeDecimal(tc.value)
+			dec := MustNewDecimal(tc.value)
 
 			b.Run("String", func(b *testing.B) {
 				for i := 0; i < b.N; i++ {
@@ -209,7 +209,7 @@ func BenchmarkDecimalString_Random(b *testing.B) {
 			scale := rng.Intn(10)
 
 			if scale == 0 {
-				return MustMakeDecimal(strconv.FormatInt(value, 10))
+				return MustNewDecimal(strconv.FormatInt(value, 10))
 			}
 
 			// For numbers with fractional part
@@ -225,14 +225,14 @@ func BenchmarkDecimalString_Random(b *testing.B) {
 				if value < 0 {
 					result = "-" + result
 				}
-				return MustMakeDecimal(result)
+				return MustNewDecimal(result)
 			} else {
 				zeros := scale - len(str)
 				result := "0." + strings.Repeat("0", zeros) + str
 				if value < 0 {
 					result = "-" + result
 				}
-				return MustMakeDecimal(result)
+				return MustNewDecimal(result)
 			}
 		} else {
 			// Large numbers (fallback) - generate correct strings
@@ -253,7 +253,7 @@ func BenchmarkDecimalString_Random(b *testing.B) {
 				if rng.Float64() < 0.5 {
 					bigNum = "-" + bigNum
 				}
-				return MustMakeDecimal(bigNum)
+				return MustNewDecimal(bigNum)
 			}
 
 			if scale < len(bigNum) {
@@ -263,14 +263,14 @@ func BenchmarkDecimalString_Random(b *testing.B) {
 				if rng.Float64() < 0.5 {
 					result = "-" + result
 				}
-				return MustMakeDecimal(result)
+				return MustNewDecimal(result)
 			} else {
 				zeros := scale - len(bigNum)
 				result := "0." + strings.Repeat("0", zeros) + bigNum
 				if rng.Float64() < 0.5 {
 					result = "-" + result
 				}
-				return MustMakeDecimal(result)
+				return MustNewDecimal(result)
 			}
 		}
 	}
@@ -308,7 +308,7 @@ func BenchmarkDecimalString_MemoryAllocations(b *testing.B) {
 
 	decimals := make([]Decimal, len(testNumbers))
 	for i, str := range testNumbers {
-		decimals[i] = MustMakeDecimal(str)
+		decimals[i] = MustNewDecimal(str)
 	}
 
 	b.ResetTimer()

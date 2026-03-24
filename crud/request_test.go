@@ -97,7 +97,7 @@ func BenchmarkLenRequest(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		buf.Reset()
-		req := crud.MakeLenRequest(spaceName).
+		req := crud.NewLenRequest(spaceName).
 			Opts(crud.LenOpts{
 				Timeout: option.SomeFloat64(3.5),
 			})
@@ -116,7 +116,7 @@ func BenchmarkSelectRequest(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		buf.Reset()
-		req := crud.MakeSelectRequest(spaceName).
+		req := crud.NewSelectRequest(spaceName).
 			Opts(crud.SelectOpts{
 				Timeout:      option.SomeFloat64(3.5),
 				VshardRouter: option.SomeString("asd"),
@@ -133,30 +133,30 @@ func TestRequestsCodes(t *testing.T) {
 		req   tarantool.Request
 		rtype iproto.Type
 	}{
-		{req: crud.MakeInsertRequest(validSpace), rtype: CrudRequestType},
-		{req: crud.MakeInsertObjectRequest(validSpace), rtype: CrudRequestType},
-		{req: crud.MakeInsertManyRequest(validSpace), rtype: CrudRequestType},
-		{req: crud.MakeInsertObjectManyRequest(validSpace), rtype: CrudRequestType},
-		{req: crud.MakeGetRequest(validSpace), rtype: CrudRequestType},
-		{req: crud.MakeUpdateRequest(validSpace), rtype: CrudRequestType},
-		{req: crud.MakeDeleteRequest(validSpace), rtype: CrudRequestType},
-		{req: crud.MakeReplaceRequest(validSpace), rtype: CrudRequestType},
-		{req: crud.MakeReplaceObjectRequest(validSpace), rtype: CrudRequestType},
-		{req: crud.MakeReplaceManyRequest(validSpace), rtype: CrudRequestType},
-		{req: crud.MakeReplaceObjectManyRequest(validSpace), rtype: CrudRequestType},
-		{req: crud.MakeUpsertRequest(validSpace), rtype: CrudRequestType},
-		{req: crud.MakeUpsertObjectRequest(validSpace), rtype: CrudRequestType},
-		{req: crud.MakeUpsertManyRequest(validSpace), rtype: CrudRequestType},
-		{req: crud.MakeUpsertObjectManyRequest(validSpace), rtype: CrudRequestType},
-		{req: crud.MakeMinRequest(validSpace), rtype: CrudRequestType},
-		{req: crud.MakeMaxRequest(validSpace), rtype: CrudRequestType},
-		{req: crud.MakeSelectRequest(validSpace), rtype: CrudRequestType},
-		{req: crud.MakeTruncateRequest(validSpace), rtype: CrudRequestType},
-		{req: crud.MakeLenRequest(validSpace), rtype: CrudRequestType},
-		{req: crud.MakeCountRequest(validSpace), rtype: CrudRequestType},
-		{req: crud.MakeStorageInfoRequest(), rtype: CrudRequestType},
-		{req: crud.MakeStatsRequest(), rtype: CrudRequestType},
-		{req: crud.MakeSchemaRequest(), rtype: CrudRequestType},
+		{req: crud.NewInsertRequest(validSpace), rtype: CrudRequestType},
+		{req: crud.NewInsertObjectRequest(validSpace), rtype: CrudRequestType},
+		{req: crud.NewInsertManyRequest(validSpace), rtype: CrudRequestType},
+		{req: crud.NewInsertObjectManyRequest(validSpace), rtype: CrudRequestType},
+		{req: crud.NewGetRequest(validSpace), rtype: CrudRequestType},
+		{req: crud.NewUpdateRequest(validSpace), rtype: CrudRequestType},
+		{req: crud.NewDeleteRequest(validSpace), rtype: CrudRequestType},
+		{req: crud.NewReplaceRequest(validSpace), rtype: CrudRequestType},
+		{req: crud.NewReplaceObjectRequest(validSpace), rtype: CrudRequestType},
+		{req: crud.NewReplaceManyRequest(validSpace), rtype: CrudRequestType},
+		{req: crud.NewReplaceObjectManyRequest(validSpace), rtype: CrudRequestType},
+		{req: crud.NewUpsertRequest(validSpace), rtype: CrudRequestType},
+		{req: crud.NewUpsertObjectRequest(validSpace), rtype: CrudRequestType},
+		{req: crud.NewUpsertManyRequest(validSpace), rtype: CrudRequestType},
+		{req: crud.NewUpsertObjectManyRequest(validSpace), rtype: CrudRequestType},
+		{req: crud.NewMinRequest(validSpace), rtype: CrudRequestType},
+		{req: crud.NewMaxRequest(validSpace), rtype: CrudRequestType},
+		{req: crud.NewSelectRequest(validSpace), rtype: CrudRequestType},
+		{req: crud.NewTruncateRequest(validSpace), rtype: CrudRequestType},
+		{req: crud.NewLenRequest(validSpace), rtype: CrudRequestType},
+		{req: crud.NewCountRequest(validSpace), rtype: CrudRequestType},
+		{req: crud.NewStorageInfoRequest(), rtype: CrudRequestType},
+		{req: crud.NewStatsRequest(), rtype: CrudRequestType},
+		{req: crud.NewSchemaRequest(), rtype: CrudRequestType},
 	}
 
 	for _, test := range tests {
@@ -169,30 +169,30 @@ func TestRequestsAsync(t *testing.T) {
 		req   tarantool.Request
 		async bool
 	}{
-		{req: crud.MakeInsertRequest(validSpace), async: false},
-		{req: crud.MakeInsertObjectRequest(validSpace), async: false},
-		{req: crud.MakeInsertManyRequest(validSpace), async: false},
-		{req: crud.MakeInsertObjectManyRequest(validSpace), async: false},
-		{req: crud.MakeGetRequest(validSpace), async: false},
-		{req: crud.MakeUpdateRequest(validSpace), async: false},
-		{req: crud.MakeDeleteRequest(validSpace), async: false},
-		{req: crud.MakeReplaceRequest(validSpace), async: false},
-		{req: crud.MakeReplaceObjectRequest(validSpace), async: false},
-		{req: crud.MakeReplaceManyRequest(validSpace), async: false},
-		{req: crud.MakeReplaceObjectManyRequest(validSpace), async: false},
-		{req: crud.MakeUpsertRequest(validSpace), async: false},
-		{req: crud.MakeUpsertObjectRequest(validSpace), async: false},
-		{req: crud.MakeUpsertManyRequest(validSpace), async: false},
-		{req: crud.MakeUpsertObjectManyRequest(validSpace), async: false},
-		{req: crud.MakeMinRequest(validSpace), async: false},
-		{req: crud.MakeMaxRequest(validSpace), async: false},
-		{req: crud.MakeSelectRequest(validSpace), async: false},
-		{req: crud.MakeTruncateRequest(validSpace), async: false},
-		{req: crud.MakeLenRequest(validSpace), async: false},
-		{req: crud.MakeCountRequest(validSpace), async: false},
-		{req: crud.MakeStorageInfoRequest(), async: false},
-		{req: crud.MakeStatsRequest(), async: false},
-		{req: crud.MakeSchemaRequest(), async: false},
+		{req: crud.NewInsertRequest(validSpace), async: false},
+		{req: crud.NewInsertObjectRequest(validSpace), async: false},
+		{req: crud.NewInsertManyRequest(validSpace), async: false},
+		{req: crud.NewInsertObjectManyRequest(validSpace), async: false},
+		{req: crud.NewGetRequest(validSpace), async: false},
+		{req: crud.NewUpdateRequest(validSpace), async: false},
+		{req: crud.NewDeleteRequest(validSpace), async: false},
+		{req: crud.NewReplaceRequest(validSpace), async: false},
+		{req: crud.NewReplaceObjectRequest(validSpace), async: false},
+		{req: crud.NewReplaceManyRequest(validSpace), async: false},
+		{req: crud.NewReplaceObjectManyRequest(validSpace), async: false},
+		{req: crud.NewUpsertRequest(validSpace), async: false},
+		{req: crud.NewUpsertObjectRequest(validSpace), async: false},
+		{req: crud.NewUpsertManyRequest(validSpace), async: false},
+		{req: crud.NewUpsertObjectManyRequest(validSpace), async: false},
+		{req: crud.NewMinRequest(validSpace), async: false},
+		{req: crud.NewMaxRequest(validSpace), async: false},
+		{req: crud.NewSelectRequest(validSpace), async: false},
+		{req: crud.NewTruncateRequest(validSpace), async: false},
+		{req: crud.NewLenRequest(validSpace), async: false},
+		{req: crud.NewCountRequest(validSpace), async: false},
+		{req: crud.NewStorageInfoRequest(), async: false},
+		{req: crud.NewStatsRequest(), async: false},
+		{req: crud.NewSchemaRequest(), async: false},
 	}
 
 	for _, test := range tests {
@@ -205,30 +205,30 @@ func TestRequestsCtx_default(t *testing.T) {
 		req      tarantool.Request
 		expected context.Context
 	}{
-		{req: crud.MakeInsertRequest(validSpace), expected: nil},
-		{req: crud.MakeInsertObjectRequest(validSpace), expected: nil},
-		{req: crud.MakeInsertManyRequest(validSpace), expected: nil},
-		{req: crud.MakeInsertObjectManyRequest(validSpace), expected: nil},
-		{req: crud.MakeGetRequest(validSpace), expected: nil},
-		{req: crud.MakeUpdateRequest(validSpace), expected: nil},
-		{req: crud.MakeDeleteRequest(validSpace), expected: nil},
-		{req: crud.MakeReplaceRequest(validSpace), expected: nil},
-		{req: crud.MakeReplaceObjectRequest(validSpace), expected: nil},
-		{req: crud.MakeReplaceManyRequest(validSpace), expected: nil},
-		{req: crud.MakeReplaceObjectManyRequest(validSpace), expected: nil},
-		{req: crud.MakeUpsertRequest(validSpace), expected: nil},
-		{req: crud.MakeUpsertObjectRequest(validSpace), expected: nil},
-		{req: crud.MakeUpsertManyRequest(validSpace), expected: nil},
-		{req: crud.MakeUpsertObjectManyRequest(validSpace), expected: nil},
-		{req: crud.MakeMinRequest(validSpace), expected: nil},
-		{req: crud.MakeMaxRequest(validSpace), expected: nil},
-		{req: crud.MakeSelectRequest(validSpace), expected: nil},
-		{req: crud.MakeTruncateRequest(validSpace), expected: nil},
-		{req: crud.MakeLenRequest(validSpace), expected: nil},
-		{req: crud.MakeCountRequest(validSpace), expected: nil},
-		{req: crud.MakeStorageInfoRequest(), expected: nil},
-		{req: crud.MakeStatsRequest(), expected: nil},
-		{req: crud.MakeSchemaRequest(), expected: nil},
+		{req: crud.NewInsertRequest(validSpace), expected: nil},
+		{req: crud.NewInsertObjectRequest(validSpace), expected: nil},
+		{req: crud.NewInsertManyRequest(validSpace), expected: nil},
+		{req: crud.NewInsertObjectManyRequest(validSpace), expected: nil},
+		{req: crud.NewGetRequest(validSpace), expected: nil},
+		{req: crud.NewUpdateRequest(validSpace), expected: nil},
+		{req: crud.NewDeleteRequest(validSpace), expected: nil},
+		{req: crud.NewReplaceRequest(validSpace), expected: nil},
+		{req: crud.NewReplaceObjectRequest(validSpace), expected: nil},
+		{req: crud.NewReplaceManyRequest(validSpace), expected: nil},
+		{req: crud.NewReplaceObjectManyRequest(validSpace), expected: nil},
+		{req: crud.NewUpsertRequest(validSpace), expected: nil},
+		{req: crud.NewUpsertObjectRequest(validSpace), expected: nil},
+		{req: crud.NewUpsertManyRequest(validSpace), expected: nil},
+		{req: crud.NewUpsertObjectManyRequest(validSpace), expected: nil},
+		{req: crud.NewMinRequest(validSpace), expected: nil},
+		{req: crud.NewMaxRequest(validSpace), expected: nil},
+		{req: crud.NewSelectRequest(validSpace), expected: nil},
+		{req: crud.NewTruncateRequest(validSpace), expected: nil},
+		{req: crud.NewLenRequest(validSpace), expected: nil},
+		{req: crud.NewCountRequest(validSpace), expected: nil},
+		{req: crud.NewStorageInfoRequest(), expected: nil},
+		{req: crud.NewStatsRequest(), expected: nil},
+		{req: crud.NewSchemaRequest(), expected: nil},
 	}
 
 	for _, test := range tests {
@@ -242,30 +242,30 @@ func TestRequestsCtx_setter(t *testing.T) {
 		req      tarantool.Request
 		expected context.Context
 	}{
-		{req: crud.MakeInsertRequest(validSpace).Context(ctx), expected: ctx},
-		{req: crud.MakeInsertObjectRequest(validSpace).Context(ctx), expected: ctx},
-		{req: crud.MakeInsertManyRequest(validSpace).Context(ctx), expected: ctx},
-		{req: crud.MakeInsertObjectManyRequest(validSpace).Context(ctx), expected: ctx},
-		{req: crud.MakeGetRequest(validSpace).Context(ctx), expected: ctx},
-		{req: crud.MakeUpdateRequest(validSpace).Context(ctx), expected: ctx},
-		{req: crud.MakeDeleteRequest(validSpace).Context(ctx), expected: ctx},
-		{req: crud.MakeReplaceRequest(validSpace).Context(ctx), expected: ctx},
-		{req: crud.MakeReplaceObjectRequest(validSpace).Context(ctx), expected: ctx},
-		{req: crud.MakeReplaceManyRequest(validSpace).Context(ctx), expected: ctx},
-		{req: crud.MakeReplaceObjectManyRequest(validSpace).Context(ctx), expected: ctx},
-		{req: crud.MakeUpsertRequest(validSpace).Context(ctx), expected: ctx},
-		{req: crud.MakeUpsertObjectRequest(validSpace).Context(ctx), expected: ctx},
-		{req: crud.MakeUpsertManyRequest(validSpace).Context(ctx), expected: ctx},
-		{req: crud.MakeUpsertObjectManyRequest(validSpace).Context(ctx), expected: ctx},
-		{req: crud.MakeMinRequest(validSpace).Context(ctx), expected: ctx},
-		{req: crud.MakeMaxRequest(validSpace).Context(ctx), expected: ctx},
-		{req: crud.MakeSelectRequest(validSpace).Context(ctx), expected: ctx},
-		{req: crud.MakeTruncateRequest(validSpace).Context(ctx), expected: ctx},
-		{req: crud.MakeLenRequest(validSpace).Context(ctx), expected: ctx},
-		{req: crud.MakeCountRequest(validSpace).Context(ctx), expected: ctx},
-		{req: crud.MakeStorageInfoRequest().Context(ctx), expected: ctx},
-		{req: crud.MakeStatsRequest().Context(ctx), expected: ctx},
-		{req: crud.MakeSchemaRequest().Context(ctx), expected: ctx},
+		{req: crud.NewInsertRequest(validSpace).Context(ctx), expected: ctx},
+		{req: crud.NewInsertObjectRequest(validSpace).Context(ctx), expected: ctx},
+		{req: crud.NewInsertManyRequest(validSpace).Context(ctx), expected: ctx},
+		{req: crud.NewInsertObjectManyRequest(validSpace).Context(ctx), expected: ctx},
+		{req: crud.NewGetRequest(validSpace).Context(ctx), expected: ctx},
+		{req: crud.NewUpdateRequest(validSpace).Context(ctx), expected: ctx},
+		{req: crud.NewDeleteRequest(validSpace).Context(ctx), expected: ctx},
+		{req: crud.NewReplaceRequest(validSpace).Context(ctx), expected: ctx},
+		{req: crud.NewReplaceObjectRequest(validSpace).Context(ctx), expected: ctx},
+		{req: crud.NewReplaceManyRequest(validSpace).Context(ctx), expected: ctx},
+		{req: crud.NewReplaceObjectManyRequest(validSpace).Context(ctx), expected: ctx},
+		{req: crud.NewUpsertRequest(validSpace).Context(ctx), expected: ctx},
+		{req: crud.NewUpsertObjectRequest(validSpace).Context(ctx), expected: ctx},
+		{req: crud.NewUpsertManyRequest(validSpace).Context(ctx), expected: ctx},
+		{req: crud.NewUpsertObjectManyRequest(validSpace).Context(ctx), expected: ctx},
+		{req: crud.NewMinRequest(validSpace).Context(ctx), expected: ctx},
+		{req: crud.NewMaxRequest(validSpace).Context(ctx), expected: ctx},
+		{req: crud.NewSelectRequest(validSpace).Context(ctx), expected: ctx},
+		{req: crud.NewTruncateRequest(validSpace).Context(ctx), expected: ctx},
+		{req: crud.NewLenRequest(validSpace).Context(ctx), expected: ctx},
+		{req: crud.NewCountRequest(validSpace).Context(ctx), expected: ctx},
+		{req: crud.NewStorageInfoRequest().Context(ctx), expected: ctx},
+		{req: crud.NewStatsRequest().Context(ctx), expected: ctx},
+		{req: crud.NewSchemaRequest().Context(ctx), expected: ctx},
 	}
 
 	for _, test := range tests {
@@ -283,148 +283,148 @@ func TestRequestsDefaultValues(t *testing.T) {
 			name: "InsertRequest",
 			ref: tarantool.NewCallRequest("crud.insert").Args(
 				[]any{validSpace, []any{}, map[string]any{}}),
-			target: crud.MakeInsertRequest(validSpace),
+			target: crud.NewInsertRequest(validSpace),
 		},
 		{
 			name: "InsertObjectRequest",
 			ref: tarantool.NewCallRequest("crud.insert_object").Args(
 				[]any{validSpace, map[string]any{}, map[string]any{}}),
-			target: crud.MakeInsertObjectRequest(validSpace),
+			target: crud.NewInsertObjectRequest(validSpace),
 		},
 		{
 			name: "InsertManyRequest",
 			ref: tarantool.NewCallRequest("crud.insert_many").Args(
 				[]any{validSpace, []any{}, map[string]any{}}),
-			target: crud.MakeInsertManyRequest(validSpace),
+			target: crud.NewInsertManyRequest(validSpace),
 		},
 		{
 			name: "InsertObjectManyRequest",
 			ref: tarantool.NewCallRequest("crud.insert_object_many").Args(
 				[]any{validSpace, []map[string]any{}, map[string]any{}}),
-			target: crud.MakeInsertObjectManyRequest(validSpace),
+			target: crud.NewInsertObjectManyRequest(validSpace),
 		},
 		{
 			name: "GetRequest",
 			ref: tarantool.NewCallRequest("crud.get").Args(
 				[]any{validSpace, []any{}, map[string]any{}}),
-			target: crud.MakeGetRequest(validSpace),
+			target: crud.NewGetRequest(validSpace),
 		},
 		{
 			name: "UpdateRequest",
 			ref: tarantool.NewCallRequest("crud.update").Args(
 				[]any{validSpace, []any{},
 					[]any{}, map[string]any{}}),
-			target: crud.MakeUpdateRequest(validSpace),
+			target: crud.NewUpdateRequest(validSpace),
 		},
 		{
 			name: "DeleteRequest",
 			ref: tarantool.NewCallRequest("crud.delete").Args(
 				[]any{validSpace, []any{}, map[string]any{}}),
-			target: crud.MakeDeleteRequest(validSpace),
+			target: crud.NewDeleteRequest(validSpace),
 		},
 		{
 			name: "ReplaceRequest",
 			ref: tarantool.NewCallRequest("crud.replace").Args(
 				[]any{validSpace, []any{}, map[string]any{}}),
-			target: crud.MakeReplaceRequest(validSpace),
+			target: crud.NewReplaceRequest(validSpace),
 		},
 		{
 			name: "ReplaceObjectRequest",
 			ref: tarantool.NewCallRequest("crud.replace_object").Args([]any{validSpace,
 				map[string]any{}, map[string]any{}}),
-			target: crud.MakeReplaceObjectRequest(validSpace),
+			target: crud.NewReplaceObjectRequest(validSpace),
 		},
 		{
 			name: "ReplaceManyRequest",
 			ref: tarantool.NewCallRequest("crud.replace_many").Args([]any{validSpace,
 				[]any{}, map[string]any{}}),
-			target: crud.MakeReplaceManyRequest(validSpace),
+			target: crud.NewReplaceManyRequest(validSpace),
 		},
 		{
 			name: "ReplaceObjectManyRequest",
 			ref: tarantool.NewCallRequest("crud.replace_object_many").Args(
 				[]any{validSpace, []map[string]any{}, map[string]any{}}),
-			target: crud.MakeReplaceObjectManyRequest(validSpace),
+			target: crud.NewReplaceObjectManyRequest(validSpace),
 		},
 		{
 			name: "UpsertRequest",
 			ref: tarantool.NewCallRequest("crud.upsert").Args(
 				[]any{validSpace, []any{}, []any{},
 					map[string]any{}}),
-			target: crud.MakeUpsertRequest(validSpace),
+			target: crud.NewUpsertRequest(validSpace),
 		},
 		{
 			name: "UpsertObjectRequest",
 			ref: tarantool.NewCallRequest("crud.upsert_object").Args(
 				[]any{validSpace, map[string]any{}, []any{},
 					map[string]any{}}),
-			target: crud.MakeUpsertObjectRequest(validSpace),
+			target: crud.NewUpsertObjectRequest(validSpace),
 		},
 		{
 			name: "UpsertManyRequest",
 			ref: tarantool.NewCallRequest("crud.upsert_many").Args(
 				[]any{validSpace, []any{}, map[string]any{}}),
-			target: crud.MakeUpsertManyRequest(validSpace),
+			target: crud.NewUpsertManyRequest(validSpace),
 		},
 		{
 			name: "UpsertObjectManyRequest",
 			ref: tarantool.NewCallRequest("crud.upsert_object_many").Args(
 				[]any{validSpace, []any{}, map[string]any{}}),
-			target: crud.MakeUpsertObjectManyRequest(validSpace),
+			target: crud.NewUpsertObjectManyRequest(validSpace),
 		},
 		{
 			name: "SelectRequest",
 			ref: tarantool.NewCallRequest("crud.select").Args(
 				[]any{validSpace, nil, map[string]any{}}),
-			target: crud.MakeSelectRequest(validSpace),
+			target: crud.NewSelectRequest(validSpace),
 		},
 		{
 			name: "MinRequest",
 			ref: tarantool.NewCallRequest("crud.min").Args(
 				[]any{validSpace, nil, map[string]any{}}),
-			target: crud.MakeMinRequest(validSpace),
+			target: crud.NewMinRequest(validSpace),
 		},
 		{
 			name: "MaxRequest",
 			ref: tarantool.NewCallRequest("crud.max").Args(
 				[]any{validSpace, nil, map[string]any{}}),
-			target: crud.MakeMaxRequest(validSpace),
+			target: crud.NewMaxRequest(validSpace),
 		},
 		{
 			name: "TruncateRequest",
 			ref: tarantool.NewCallRequest("crud.truncate").Args(
 				[]any{validSpace, map[string]any{}}),
-			target: crud.MakeTruncateRequest(validSpace),
+			target: crud.NewTruncateRequest(validSpace),
 		},
 		{
 			name: "LenRequest",
 			ref: tarantool.NewCallRequest("crud.len").Args(
 				[]any{validSpace, map[string]any{}}),
-			target: crud.MakeLenRequest(validSpace),
+			target: crud.NewLenRequest(validSpace),
 		},
 		{
 			name: "CountRequest",
 			ref: tarantool.NewCallRequest("crud.count").Args(
 				[]any{validSpace, nil, map[string]any{}}),
-			target: crud.MakeCountRequest(validSpace),
+			target: crud.NewCountRequest(validSpace),
 		},
 		{
 			name: "StorageInfoRequest",
 			ref: tarantool.NewCallRequest("crud.storage_info").Args(
 				[]any{map[string]any{}}),
-			target: crud.MakeStorageInfoRequest(),
+			target: crud.NewStorageInfoRequest(),
 		},
 		{
 			name: "StatsRequest",
 			ref: tarantool.NewCallRequest("crud.stats").Args(
 				[]any{}),
-			target: crud.MakeStatsRequest(),
+			target: crud.NewStatsRequest(),
 		},
 		{
 			name: "SchemaRequest",
 			ref: tarantool.NewCallRequest("crud.schema").Args(
 				[]any{nil, map[string]any{}}),
-			target: crud.MakeSchemaRequest(),
+			target: crud.NewSchemaRequest(),
 		},
 	}
 
@@ -445,162 +445,162 @@ func TestRequestsSetters(t *testing.T) {
 			name: "InsertRequest",
 			ref: tarantool.NewCallRequest("crud.insert").Args(
 				[]any{spaceName, tuple, expectedOpts}),
-			target: crud.MakeInsertRequest(spaceName).Tuple(tuple).Opts(simpleOperationOpts),
+			target: crud.NewInsertRequest(spaceName).Tuple(tuple).Opts(simpleOperationOpts),
 		},
 		{
 			name: "InsertObjectRequest",
 			ref: tarantool.NewCallRequest("crud.insert_object").Args(
 				[]any{spaceName, reqObject, expectedOpts}),
-			target: crud.MakeInsertObjectRequest(spaceName).Object(reqObject).
+			target: crud.NewInsertObjectRequest(spaceName).Object(reqObject).
 				Opts(simpleOperationObjectOpts),
 		},
 		{
 			name: "InsertManyRequest",
 			ref: tarantool.NewCallRequest("crud.insert_many").Args(
 				[]any{spaceName, tuples, expectedOpts}),
-			target: crud.MakeInsertManyRequest(spaceName).Tuples(tuples).Opts(opManyOpts),
+			target: crud.NewInsertManyRequest(spaceName).Tuples(tuples).Opts(opManyOpts),
 		},
 		{
 			name: "InsertObjectManyRequest",
 			ref: tarantool.NewCallRequest("crud.insert_object_many").Args(
 				[]any{spaceName, reqObjects, expectedOpts}),
-			target: crud.MakeInsertObjectManyRequest(spaceName).Objects(reqObjects).
+			target: crud.NewInsertObjectManyRequest(spaceName).Objects(reqObjects).
 				Opts(opObjManyOpts),
 		},
 		{
 			name: "GetRequest",
 			ref: tarantool.NewCallRequest("crud.get").Args(
 				[]any{spaceName, key, expectedOpts}),
-			target: crud.MakeGetRequest(spaceName).Key(key).Opts(getOpts),
+			target: crud.NewGetRequest(spaceName).Key(key).Opts(getOpts),
 		},
 		{
 			name: "UpdateRequest",
 			ref: tarantool.NewCallRequest("crud.update").Args(
 				[]any{spaceName, key, operations, expectedOpts}),
-			target: crud.MakeUpdateRequest(spaceName).Key(key).Operations(operations).
+			target: crud.NewUpdateRequest(spaceName).Key(key).Operations(operations).
 				Opts(simpleOperationOpts),
 		},
 		{
 			name: "DeleteRequest",
 			ref: tarantool.NewCallRequest("crud.delete").Args(
 				[]any{spaceName, key, expectedOpts}),
-			target: crud.MakeDeleteRequest(spaceName).Key(key).Opts(simpleOperationOpts),
+			target: crud.NewDeleteRequest(spaceName).Key(key).Opts(simpleOperationOpts),
 		},
 		{
 			name: "ReplaceRequest",
 			ref: tarantool.NewCallRequest("crud.replace").Args(
 				[]any{spaceName, tuple, expectedOpts}),
-			target: crud.MakeReplaceRequest(spaceName).Tuple(tuple).Opts(simpleOperationOpts),
+			target: crud.NewReplaceRequest(spaceName).Tuple(tuple).Opts(simpleOperationOpts),
 		},
 		{
 			name: "ReplaceObjectRequest",
 			ref: tarantool.NewCallRequest("crud.replace_object").Args(
 				[]any{spaceName, reqObject, expectedOpts}),
-			target: crud.MakeReplaceObjectRequest(spaceName).Object(reqObject).
+			target: crud.NewReplaceObjectRequest(spaceName).Object(reqObject).
 				Opts(simpleOperationObjectOpts),
 		},
 		{
 			name: "ReplaceManyRequest",
 			ref: tarantool.NewCallRequest("crud.replace_many").Args(
 				[]any{spaceName, tuples, expectedOpts}),
-			target: crud.MakeReplaceManyRequest(spaceName).Tuples(tuples).Opts(opManyOpts),
+			target: crud.NewReplaceManyRequest(spaceName).Tuples(tuples).Opts(opManyOpts),
 		},
 		{
 			name: "ReplaceObjectManyRequest",
 			ref: tarantool.NewCallRequest("crud.replace_object_many").Args(
 				[]any{spaceName, reqObjects, expectedOpts}),
-			target: crud.MakeReplaceObjectManyRequest(spaceName).Objects(reqObjects).
+			target: crud.NewReplaceObjectManyRequest(spaceName).Objects(reqObjects).
 				Opts(opObjManyOpts),
 		},
 		{
 			name: "UpsertRequest",
 			ref: tarantool.NewCallRequest("crud.upsert").Args(
 				[]any{spaceName, tuple, operations, expectedOpts}),
-			target: crud.MakeUpsertRequest(spaceName).Tuple(tuple).Operations(operations).
+			target: crud.NewUpsertRequest(spaceName).Tuple(tuple).Operations(operations).
 				Opts(simpleOperationOpts),
 		},
 		{
 			name: "UpsertObjectRequest",
 			ref: tarantool.NewCallRequest("crud.upsert_object").Args(
 				[]any{spaceName, reqObject, operations, expectedOpts}),
-			target: crud.MakeUpsertObjectRequest(spaceName).Object(reqObject).
+			target: crud.NewUpsertObjectRequest(spaceName).Object(reqObject).
 				Operations(operations).Opts(simpleOperationOpts),
 		},
 		{
 			name: "UpsertManyRequest",
 			ref: tarantool.NewCallRequest("crud.upsert_many").Args(
 				[]any{spaceName, tuplesOperationsData, expectedOpts}),
-			target: crud.MakeUpsertManyRequest(spaceName).
+			target: crud.NewUpsertManyRequest(spaceName).
 				TuplesOperationsData(tuplesOperationsData).Opts(opManyOpts),
 		},
 		{
 			name: "UpsertObjectManyRequest",
 			ref: tarantool.NewCallRequest("crud.upsert_object_many").Args(
 				[]any{spaceName, reqObjectsOperationsData, expectedOpts}),
-			target: crud.MakeUpsertObjectManyRequest(spaceName).
+			target: crud.NewUpsertObjectManyRequest(spaceName).
 				ObjectsOperationsData(reqObjectsOperationsData).Opts(opManyOpts),
 		},
 		{
 			name: "SelectRequest",
 			ref: tarantool.NewCallRequest("crud.select").Args(
 				[]any{spaceName, conditions, expectedOpts}),
-			target: crud.MakeSelectRequest(spaceName).Conditions(conditions).Opts(selectOpts),
+			target: crud.NewSelectRequest(spaceName).Conditions(conditions).Opts(selectOpts),
 		},
 		{
 			name: "MinRequest",
 			ref: tarantool.NewCallRequest("crud.min").Args(
 				[]any{spaceName, indexName, expectedOpts}),
-			target: crud.MakeMinRequest(spaceName).Index(indexName).Opts(minOpts),
+			target: crud.NewMinRequest(spaceName).Index(indexName).Opts(minOpts),
 		},
 		{
 			name: "MaxRequest",
 			ref: tarantool.NewCallRequest("crud.max").Args(
 				[]any{spaceName, indexName, expectedOpts}),
-			target: crud.MakeMaxRequest(spaceName).Index(indexName).Opts(maxOpts),
+			target: crud.NewMaxRequest(spaceName).Index(indexName).Opts(maxOpts),
 		},
 		{
 			name: "TruncateRequest",
 			ref: tarantool.NewCallRequest("crud.truncate").Args(
 				[]any{spaceName, expectedOpts}),
-			target: crud.MakeTruncateRequest(spaceName).Opts(baseOpts),
+			target: crud.NewTruncateRequest(spaceName).Opts(baseOpts),
 		},
 		{
 			name: "LenRequest",
 			ref: tarantool.NewCallRequest("crud.len").Args(
 				[]any{spaceName, expectedOpts}),
-			target: crud.MakeLenRequest(spaceName).Opts(baseOpts),
+			target: crud.NewLenRequest(spaceName).Opts(baseOpts),
 		},
 		{
 			name: "CountRequest",
 			ref: tarantool.NewCallRequest("crud.count").Args(
 				[]any{spaceName, conditions, expectedOpts}),
-			target: crud.MakeCountRequest(spaceName).Conditions(conditions).Opts(countOpts),
+			target: crud.NewCountRequest(spaceName).Conditions(conditions).Opts(countOpts),
 		},
 		{
 			name: "StorageInfoRequest",
 			ref: tarantool.NewCallRequest("crud.storage_info").Args(
 				[]any{expectedOpts}),
-			target: crud.MakeStorageInfoRequest().Opts(baseOpts),
+			target: crud.NewStorageInfoRequest().Opts(baseOpts),
 		},
 		{
 			name: "StatsRequest",
 			ref: tarantool.NewCallRequest("crud.stats").Args(
 				[]any{spaceName}),
-			target: crud.MakeStatsRequest().Space(spaceName),
+			target: crud.NewStatsRequest().Space(spaceName),
 		},
 		{
 			name: "SchemaRequest",
 			ref: tarantool.NewCallRequest("crud.schema").Args(
 				[]any{nil, schemaOpts},
 			),
-			target: crud.MakeSchemaRequest().Opts(schemaOpts),
+			target: crud.NewSchemaRequest().Opts(schemaOpts),
 		},
 		{
 			name: "SchemaRequestWithSpace",
 			ref: tarantool.NewCallRequest("crud.schema").Args(
 				[]any{spaceName, schemaOpts},
 			),
-			target: crud.MakeSchemaRequest().Space(spaceName).Opts(schemaOpts),
+			target: crud.NewSchemaRequest().Space(spaceName).Opts(schemaOpts),
 		},
 	}
 
@@ -624,7 +624,7 @@ func TestRequestsVshardRouter(t *testing.T) {
 				[]any{},
 				map[string]any{"vshard_router": "custom_router"},
 			}),
-			target: crud.MakeInsertRequest(validSpace).Opts(crud.InsertOpts{
+			target: crud.NewInsertRequest(validSpace).Opts(crud.InsertOpts{
 				VshardRouter: option.SomeString("custom_router"),
 			}),
 		},
@@ -635,7 +635,7 @@ func TestRequestsVshardRouter(t *testing.T) {
 				map[string]any{},
 				map[string]any{"vshard_router": "custom_router"},
 			}),
-			target: crud.MakeInsertObjectRequest(validSpace).Opts(crud.InsertObjectOpts{
+			target: crud.NewInsertObjectRequest(validSpace).Opts(crud.InsertObjectOpts{
 				VshardRouter: option.SomeString("custom_router"),
 			}),
 		},
@@ -646,7 +646,7 @@ func TestRequestsVshardRouter(t *testing.T) {
 				[]any{},
 				map[string]any{"vshard_router": "custom_router"},
 			}),
-			target: crud.MakeInsertManyRequest(validSpace).Opts(crud.InsertManyOpts{
+			target: crud.NewInsertManyRequest(validSpace).Opts(crud.InsertManyOpts{
 				VshardRouter: option.SomeString("custom_router"),
 			}),
 		},
@@ -657,7 +657,7 @@ func TestRequestsVshardRouter(t *testing.T) {
 				[]map[string]any{},
 				map[string]any{"vshard_router": "custom_router"},
 			}),
-			target: crud.MakeInsertObjectManyRequest(validSpace).Opts(crud.InsertObjectManyOpts{
+			target: crud.NewInsertObjectManyRequest(validSpace).Opts(crud.InsertObjectManyOpts{
 				VshardRouter: option.SomeString("custom_router"),
 			}),
 		},
@@ -668,7 +668,7 @@ func TestRequestsVshardRouter(t *testing.T) {
 				[]any{},
 				map[string]any{"vshard_router": "custom_router"},
 			}),
-			target: crud.MakeGetRequest(validSpace).Opts(crud.GetOpts{
+			target: crud.NewGetRequest(validSpace).Opts(crud.GetOpts{
 				VshardRouter: option.SomeString("custom_router"),
 			}),
 		},
@@ -680,7 +680,7 @@ func TestRequestsVshardRouter(t *testing.T) {
 				[]any{},
 				map[string]any{"vshard_router": "custom_router"},
 			}),
-			target: crud.MakeUpdateRequest(validSpace).Opts(crud.UpdateOpts{
+			target: crud.NewUpdateRequest(validSpace).Opts(crud.UpdateOpts{
 				VshardRouter: option.SomeString("custom_router"),
 			}),
 		},
@@ -691,7 +691,7 @@ func TestRequestsVshardRouter(t *testing.T) {
 				[]any{},
 				map[string]any{"vshard_router": "custom_router"},
 			}),
-			target: crud.MakeDeleteRequest(validSpace).Opts(crud.DeleteOpts{
+			target: crud.NewDeleteRequest(validSpace).Opts(crud.DeleteOpts{
 				VshardRouter: option.SomeString("custom_router"),
 			}),
 		},
@@ -702,7 +702,7 @@ func TestRequestsVshardRouter(t *testing.T) {
 				[]any{},
 				map[string]any{"vshard_router": "custom_router"},
 			}),
-			target: crud.MakeReplaceRequest(validSpace).Opts(crud.ReplaceOpts{
+			target: crud.NewReplaceRequest(validSpace).Opts(crud.ReplaceOpts{
 				VshardRouter: option.SomeString("custom_router"),
 			}),
 		},
@@ -713,7 +713,7 @@ func TestRequestsVshardRouter(t *testing.T) {
 				map[string]any{},
 				map[string]any{"vshard_router": "custom_router"},
 			}),
-			target: crud.MakeReplaceObjectRequest(validSpace).Opts(crud.ReplaceObjectOpts{
+			target: crud.NewReplaceObjectRequest(validSpace).Opts(crud.ReplaceObjectOpts{
 				VshardRouter: option.SomeString("custom_router"),
 			}),
 		},
@@ -724,7 +724,7 @@ func TestRequestsVshardRouter(t *testing.T) {
 				[]any{},
 				map[string]any{"vshard_router": "custom_router"},
 			}),
-			target: crud.MakeReplaceManyRequest(validSpace).Opts(crud.ReplaceManyOpts{
+			target: crud.NewReplaceManyRequest(validSpace).Opts(crud.ReplaceManyOpts{
 				VshardRouter: option.SomeString("custom_router"),
 			}),
 		},
@@ -735,7 +735,7 @@ func TestRequestsVshardRouter(t *testing.T) {
 				[]map[string]any{},
 				map[string]any{"vshard_router": "custom_router"},
 			}),
-			target: crud.MakeReplaceObjectManyRequest(validSpace).Opts(crud.ReplaceObjectManyOpts{
+			target: crud.NewReplaceObjectManyRequest(validSpace).Opts(crud.ReplaceObjectManyOpts{
 				VshardRouter: option.SomeString("custom_router"),
 			}),
 		},
@@ -747,7 +747,7 @@ func TestRequestsVshardRouter(t *testing.T) {
 				[]any{},
 				map[string]any{"vshard_router": "custom_router"},
 			}),
-			target: crud.MakeUpsertRequest(validSpace).Opts(crud.UpsertOpts{
+			target: crud.NewUpsertRequest(validSpace).Opts(crud.UpsertOpts{
 				VshardRouter: option.SomeString("custom_router"),
 			}),
 		},
@@ -759,7 +759,7 @@ func TestRequestsVshardRouter(t *testing.T) {
 				[]any{},
 				map[string]any{"vshard_router": "custom_router"},
 			}),
-			target: crud.MakeUpsertObjectRequest(validSpace).Opts(crud.UpsertObjectOpts{
+			target: crud.NewUpsertObjectRequest(validSpace).Opts(crud.UpsertObjectOpts{
 				VshardRouter: option.SomeString("custom_router"),
 			}),
 		},
@@ -770,7 +770,7 @@ func TestRequestsVshardRouter(t *testing.T) {
 				[]any{},
 				map[string]any{"vshard_router": "custom_router"},
 			}),
-			target: crud.MakeUpsertManyRequest(validSpace).Opts(crud.UpsertManyOpts{
+			target: crud.NewUpsertManyRequest(validSpace).Opts(crud.UpsertManyOpts{
 				VshardRouter: option.SomeString("custom_router"),
 			}),
 		},
@@ -781,7 +781,7 @@ func TestRequestsVshardRouter(t *testing.T) {
 				[]any{},
 				map[string]any{"vshard_router": "custom_router"},
 			}),
-			target: crud.MakeUpsertObjectManyRequest(validSpace).Opts(crud.UpsertObjectManyOpts{
+			target: crud.NewUpsertObjectManyRequest(validSpace).Opts(crud.UpsertObjectManyOpts{
 				VshardRouter: option.SomeString("custom_router"),
 			}),
 		},
@@ -792,7 +792,7 @@ func TestRequestsVshardRouter(t *testing.T) {
 				nil,
 				map[string]any{"vshard_router": "custom_router"},
 			}),
-			target: crud.MakeSelectRequest(validSpace).Opts(crud.SelectOpts{
+			target: crud.NewSelectRequest(validSpace).Opts(crud.SelectOpts{
 				VshardRouter: option.SomeString("custom_router"),
 			}),
 		},
@@ -803,7 +803,7 @@ func TestRequestsVshardRouter(t *testing.T) {
 				nil,
 				map[string]any{"vshard_router": "custom_router"},
 			}),
-			target: crud.MakeMinRequest(validSpace).Opts(crud.MinOpts{
+			target: crud.NewMinRequest(validSpace).Opts(crud.MinOpts{
 				VshardRouter: option.SomeString("custom_router"),
 			}),
 		},
@@ -814,7 +814,7 @@ func TestRequestsVshardRouter(t *testing.T) {
 				nil,
 				map[string]any{"vshard_router": "custom_router"},
 			}),
-			target: crud.MakeMaxRequest(validSpace).Opts(crud.MaxOpts{
+			target: crud.NewMaxRequest(validSpace).Opts(crud.MaxOpts{
 				VshardRouter: option.SomeString("custom_router"),
 			}),
 		},
@@ -824,7 +824,7 @@ func TestRequestsVshardRouter(t *testing.T) {
 				validSpace,
 				map[string]any{"vshard_router": "custom_router"},
 			}),
-			target: crud.MakeTruncateRequest(validSpace).Opts(crud.TruncateOpts{
+			target: crud.NewTruncateRequest(validSpace).Opts(crud.TruncateOpts{
 				VshardRouter: option.SomeString("custom_router"),
 			}),
 		},
@@ -834,7 +834,7 @@ func TestRequestsVshardRouter(t *testing.T) {
 				validSpace,
 				map[string]any{"vshard_router": "custom_router"},
 			}),
-			target: crud.MakeLenRequest(validSpace).Opts(crud.LenOpts{
+			target: crud.NewLenRequest(validSpace).Opts(crud.LenOpts{
 				VshardRouter: option.SomeString("custom_router"),
 			}),
 		},
@@ -845,7 +845,7 @@ func TestRequestsVshardRouter(t *testing.T) {
 				nil,
 				map[string]any{"vshard_router": "custom_router"},
 			}),
-			target: crud.MakeCountRequest(validSpace).Opts(crud.CountOpts{
+			target: crud.NewCountRequest(validSpace).Opts(crud.CountOpts{
 				VshardRouter: option.SomeString("custom_router"),
 			}),
 		},
@@ -854,7 +854,7 @@ func TestRequestsVshardRouter(t *testing.T) {
 			ref: tarantool.NewCallRequest("crud.storage_info").Args([]any{
 				map[string]any{"vshard_router": "custom_router"},
 			}),
-			target: crud.MakeStorageInfoRequest().Opts(crud.StorageInfoOpts{
+			target: crud.NewStorageInfoRequest().Opts(crud.StorageInfoOpts{
 				VshardRouter: option.SomeString("custom_router"),
 			}),
 		},
@@ -864,7 +864,7 @@ func TestRequestsVshardRouter(t *testing.T) {
 				nil,
 				map[string]any{"vshard_router": "custom_router"},
 			}),
-			target: crud.MakeSchemaRequest().Opts(crud.SchemaOpts{
+			target: crud.NewSchemaRequest().Opts(crud.SchemaOpts{
 				VshardRouter: option.SomeString("custom_router"),
 			}),
 		},
@@ -874,7 +874,7 @@ func TestRequestsVshardRouter(t *testing.T) {
 				validSpace,
 				map[string]any{"vshard_router": "custom_router"},
 			}),
-			target: crud.MakeSchemaRequest().Space(validSpace).Opts(crud.SchemaOpts{
+			target: crud.NewSchemaRequest().Space(validSpace).Opts(crud.SchemaOpts{
 				VshardRouter: option.SomeString("custom_router"),
 			}),
 		},

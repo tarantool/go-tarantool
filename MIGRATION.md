@@ -182,6 +182,51 @@ TODO
   stream, _ := conn.NewStream()
   log.Printf("opened stream on %v", conn)
   ```
+* All request types (`PingRequest`, `SelectRequest`, `CallRequest`, etc.) now
+  use value receivers and constructors return values instead of pointers.
+  Builder methods return modified copies instead of mutating in place.
+
+  **Breaking**: calling a builder method without using its return value silently
+  discards the change:
+  ```Go
+  // Before (pointer receivers, mutation in place):
+  req := NewSelectRequest("space")
+  req.Index("idx")           // mutated req directly
+  conn.Do(req)
+
+  // After (value receivers, must use return value):
+  req := NewSelectRequest("space")
+  req = req.Index("idx")     // must reassign
+  conn.Do(req)
+
+  // Or chain directly:
+  conn.Do(NewSelectRequest("space").Index("idx"))
+  ```
+
+  The same value-receiver pattern was applied to `arrow.InsertRequest` and
+  `settings.SetRequest`/`settings.GetRequest`.
+
+  In the `box` subpackage, request types (`InfoRequest`, `UserExistsRequest`,
+  `UserCreateRequest`, `SessionSuRequest`, etc.) no longer embed
+  `tarantool.CallRequest`. They store it as a private field and implement
+  their own `Context()` method returning the wrapper type. Usage stays clean:
+  ```Go
+  req := box.NewUserExistsRequest(username).Context(ctx)
+  ```
+* Renamed value constructors from `Make*` to `New*` for naming consistency
+  across the connector. Previously, the main package used `New*Request` while
+  the `crud` package and value-type constructors used `Make*`. They now all
+  use the `New*` prefix.
+
+  | Before | After |
+  |---|---|
+  | `datetime.MakeDatetime` | `datetime.NewDatetime` |
+  | `decimal.MakeDecimal` | `decimal.NewDecimal` |
+  | `decimal.MakeDecimalFromString` | `decimal.NewDecimalFromString` |
+  | `decimal.MustMakeDecimal` | `decimal.MustNewDecimal` |
+  | `arrow.MakeArrow` | `arrow.NewArrow` |
+  | `crud.MakeResult` | `crud.NewResult` |
+  | `crud.Make*Request` (all of them) | `crud.New*Request` |
 
 ## Migration from v1.x.x to v2.x.x
 
@@ -440,12 +485,13 @@ is supported.
 
 Now you need to use objects of the Datetime type instead of pointers to it. A
 new constructor `MakeDatetime` returns an object. `NewDatetime` has been
-removed.
+removed. (`MakeDatetime` was later renamed back to `NewDatetime` in v3.)
 
 ### decimal package
 
 Now you need to use objects of the Decimal type instead of pointers to it. A
 new constructor `MakeDecimal` returns an object. `NewDecimal` has been removed.
+(`MakeDecimal` was later renamed back to `NewDecimal` in v3.)
 
 ### multi package
 

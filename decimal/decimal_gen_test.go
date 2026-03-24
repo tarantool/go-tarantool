@@ -11,7 +11,7 @@ import (
 )
 
 func TestSomeOptionalDecimal(t *testing.T) {
-	val := MakeDecimal(decimal.NewFromFloat(1.23))
+	val := NewDecimal(decimal.NewFromFloat(1.23))
 	opt := SomeOptionalDecimal(val)
 
 	assert.True(t, opt.IsSome())
@@ -33,7 +33,7 @@ func TestNoneOptionalDecimal(t *testing.T) {
 }
 
 func TestOptionalDecimal_MustGet(t *testing.T) {
-	val := MakeDecimal(decimal.NewFromFloat(1.23))
+	val := NewDecimal(decimal.NewFromFloat(1.23))
 	optSome := SomeOptionalDecimal(val)
 	optNone := NoneOptionalDecimal()
 
@@ -42,7 +42,7 @@ func TestOptionalDecimal_MustGet(t *testing.T) {
 }
 
 func TestOptionalDecimal_Unwrap(t *testing.T) {
-	val := MakeDecimal(decimal.NewFromFloat(1.23))
+	val := NewDecimal(decimal.NewFromFloat(1.23))
 	optSome := SomeOptionalDecimal(val)
 	optNone := NoneOptionalDecimal()
 
@@ -51,8 +51,8 @@ func TestOptionalDecimal_Unwrap(t *testing.T) {
 }
 
 func TestOptionalDecimal_UnwrapOr(t *testing.T) {
-	val := MakeDecimal(decimal.NewFromFloat(1.23))
-	def := MakeDecimal(decimal.NewFromFloat(4.56))
+	val := NewDecimal(decimal.NewFromFloat(1.23))
+	def := NewDecimal(decimal.NewFromFloat(4.56))
 	optSome := SomeOptionalDecimal(val)
 	optNone := NoneOptionalDecimal()
 
@@ -61,8 +61,8 @@ func TestOptionalDecimal_UnwrapOr(t *testing.T) {
 }
 
 func TestOptionalDecimal_UnwrapOrElse(t *testing.T) {
-	val := MakeDecimal(decimal.NewFromFloat(1.23))
-	def := MakeDecimal(decimal.NewFromFloat(4.56))
+	val := NewDecimal(decimal.NewFromFloat(1.23))
+	def := NewDecimal(decimal.NewFromFloat(4.56))
 	optSome := SomeOptionalDecimal(val)
 	optNone := NoneOptionalDecimal()
 
@@ -71,7 +71,7 @@ func TestOptionalDecimal_UnwrapOrElse(t *testing.T) {
 }
 
 func TestOptionalDecimal_EncodeDecodeMsgpack_Some(t *testing.T) {
-	val := MakeDecimal(decimal.NewFromFloat(1.23))
+	val := NewDecimal(decimal.NewFromFloat(1.23))
 	some := SomeOptionalDecimal(val)
 
 	var buf bytes.Buffer

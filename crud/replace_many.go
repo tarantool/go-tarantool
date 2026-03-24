@@ -14,8 +14,9 @@ type ReplaceManyOpts = OperationManyOpts
 // ReplaceManyRequest helps you to create request object to call
 // `crud.replace_many` for execution by a Connection.
 type ReplaceManyRequest struct {
-	spaceRequest
+	baseRequest
 
+	space  string
 	tuples Tuples
 	opts   ReplaceManyOpts
 }
@@ -27,13 +28,13 @@ type replaceManyArgs struct {
 	Opts     ReplaceManyOpts
 }
 
-// MakeReplaceManyRequest returns a new empty ReplaceManyRequest.
-func MakeReplaceManyRequest(space string) ReplaceManyRequest {
-	req := ReplaceManyRequest{}
-	req.impl = newCall("crud.replace_many")
-	req.space = space
-	req.opts = ReplaceManyOpts{}
-	return req
+// NewReplaceManyRequest returns a new empty ReplaceManyRequest.
+func NewReplaceManyRequest(space string) ReplaceManyRequest {
+	return ReplaceManyRequest{
+		baseRequest: newBaseRequest("crud.replace_many"),
+		space:       space,
+		opts:        ReplaceManyOpts{},
+	}
 }
 
 // Tuples sets the tuples for the ReplaceManyRequest request.
@@ -73,8 +74,9 @@ type ReplaceObjectManyOpts = OperationObjectManyOpts
 // ReplaceObjectManyRequest helps you to create request object to call
 // `crud.replace_object_many` for execution by a Connection.
 type ReplaceObjectManyRequest struct {
-	spaceRequest
+	baseRequest
 
+	space   string
 	objects Objects
 	opts    ReplaceObjectManyOpts
 }
@@ -86,13 +88,13 @@ type replaceObjectManyArgs struct {
 	Opts     ReplaceObjectManyOpts
 }
 
-// MakeReplaceObjectManyRequest returns a new empty ReplaceObjectManyRequest.
-func MakeReplaceObjectManyRequest(space string) ReplaceObjectManyRequest {
-	req := ReplaceObjectManyRequest{}
-	req.impl = newCall("crud.replace_object_many")
-	req.space = space
-	req.opts = ReplaceObjectManyOpts{}
-	return req
+// NewReplaceObjectManyRequest returns a new empty ReplaceObjectManyRequest.
+func NewReplaceObjectManyRequest(space string) ReplaceObjectManyRequest {
+	return ReplaceObjectManyRequest{
+		baseRequest: newBaseRequest("crud.replace_object_many"),
+		space:       space,
+		opts:        ReplaceObjectManyOpts{},
+	}
 }
 
 // Objects sets the tuple for the ReplaceObjectManyRequest request.

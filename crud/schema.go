@@ -51,11 +51,11 @@ type SchemaRequest struct {
 	opts  SchemaOpts
 }
 
-// MakeSchemaRequest returns a new empty SchemaRequest.
-func MakeSchemaRequest() SchemaRequest {
-	req := SchemaRequest{}
-	req.impl = newCall("crud.schema")
-	return req
+// NewSchemaRequest returns a new empty SchemaRequest.
+func NewSchemaRequest() SchemaRequest {
+	return SchemaRequest{
+		baseRequest: newBaseRequest("crud.schema"),
+	}
 }
 
 // Space sets the space name for the SchemaRequest request.
