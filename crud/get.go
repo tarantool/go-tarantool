@@ -61,9 +61,10 @@ func (opts GetOpts) EncodeMsgpack(enc *msgpack.Encoder) error {
 // GetRequest helps you to create request object to call `crud.get`
 // for execution by a Connection.
 type GetRequest struct {
-	spaceRequest
-	key  Tuple
-	opts GetOpts
+	baseRequest
+	space string
+	key   Tuple
+	opts  GetOpts
 }
 
 type getArgs struct {
@@ -75,11 +76,11 @@ type getArgs struct {
 
 // MakeGetRequest returns a new empty GetRequest.
 func MakeGetRequest(space string) GetRequest {
-	req := GetRequest{}
-	req.impl = newCall("crud.get")
-	req.space = space
-	req.opts = GetOpts{}
-	return req
+	return GetRequest{
+		baseRequest: newBaseRequest("crud.get"),
+		space:       space,
+		opts:        GetOpts{},
+	}
 }
 
 // Key sets the key for the GetRequest request.

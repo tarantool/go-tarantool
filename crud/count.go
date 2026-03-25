@@ -68,7 +68,8 @@ func (opts CountOpts) EncodeMsgpack(enc *msgpack.Encoder) error {
 // CountRequest helps you to create request object to call `crud.count`
 // for execution by a Connection.
 type CountRequest struct {
-	spaceRequest
+	baseRequest
+	space      string
 	conditions []Condition
 	opts       CountOpts
 }
@@ -82,12 +83,11 @@ type countArgs struct {
 
 // MakeCountRequest returns a new empty CountRequest.
 func MakeCountRequest(space string) CountRequest {
-	req := CountRequest{}
-	req.impl = newCall("crud.count")
-	req.space = space
-	req.conditions = nil
-	req.opts = CountOpts{}
-	return req
+	return CountRequest{
+		baseRequest: newBaseRequest("crud.count"),
+		space:       space,
+		opts:        CountOpts{},
+	}
 }
 
 // Conditions sets the conditions for the CountRequest request.

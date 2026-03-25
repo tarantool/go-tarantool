@@ -274,32 +274,23 @@ type baseRequest struct {
 }
 
 // Type returns a IPROTO type for the request.
-func (req *baseRequest) Type() iproto.Type {
+func (req baseRequest) Type() iproto.Type {
 	return req.rtype
 }
 
 // Async returns true if the request does not require a response.
-func (req *baseRequest) Async() bool {
+func (req baseRequest) Async() bool {
 	return req.async
 }
 
 // Ctx returns a context of the request.
-func (req *baseRequest) Ctx() context.Context {
+func (req baseRequest) Ctx() context.Context {
 	return req.ctx
 }
 
 // Response creates a response for the baseRequest.
-func (req *baseRequest) Response(header Header, body io.Reader) (Response, error) {
+func (req baseRequest) Response(header Header, body io.Reader) (Response, error) {
 	return DecodeBaseResponse(header, body)
-}
-
-type spaceRequest struct {
-	baseRequest
-	space interface{}
-}
-
-func (req *spaceRequest) setSpace(space interface{}) {
-	req.space = space
 }
 
 func EncodeSpace(res SchemaResolver, enc *msgpack.Encoder, space interface{}) error {
@@ -311,15 +302,6 @@ func EncodeSpace(res SchemaResolver, enc *msgpack.Encoder, space interface{}) er
 		return err
 	}
 	return nil
-}
-
-type spaceIndexRequest struct {
-	spaceRequest
-	index interface{}
-}
-
-func (req *spaceIndexRequest) setIndex(index interface{}) {
-	req.index = index
 }
 
 // authRequest implements IPROTO_AUTH request.
@@ -413,14 +395,14 @@ type PingRequest struct {
 }
 
 // NewPingRequest returns a new PingRequest.
-func NewPingRequest() *PingRequest {
-	req := new(PingRequest)
-	req.rtype = iproto.IPROTO_PING
-	return req
+func NewPingRequest() PingRequest {
+	return PingRequest{
+		baseRequest: baseRequest{rtype: iproto.IPROTO_PING},
+	}
 }
 
 // Body fills an msgpack.Encoder with the ping request body.
-func (req *PingRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
+func (req PingRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
 	return enc.EncodeMapLen(0)
 }
 
@@ -430,7 +412,7 @@ func (req *PingRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
 // the timeout option for Connection does not affect the lifetime
 // of the request. For those purposes use context.WithTimeout() as
 // the root context.
-func (req *PingRequest) Context(ctx context.Context) *PingRequest {
+func (req PingRequest) Context(ctx context.Context) PingRequest {
 	req.ctx = ctx
 	return req
 }
@@ -438,7 +420,8 @@ func (req *PingRequest) Context(ctx context.Context) *PingRequest {
 // SelectRequest allows you to create a select request object for execution
 // by a Connection.
 type SelectRequest struct {
-	spaceIndexRequest
+	baseRequest
+	space, index            interface{}
 	isIteratorSet, fetchPos bool
 	offset, limit           uint32
 	iterator                Iter
@@ -446,43 +429,40 @@ type SelectRequest struct {
 }
 
 // NewSelectRequest returns a new empty SelectRequest.
-func NewSelectRequest(space interface{}) *SelectRequest {
-	req := new(SelectRequest)
-	req.rtype = iproto.IPROTO_SELECT
-	req.setSpace(space)
-	req.isIteratorSet = false
-	req.fetchPos = false
-	req.iterator = IterAll
-	req.key = []interface{}{}
-	req.after = nil
-	req.limit = 0xFFFFFFFF
-	return req
+func NewSelectRequest(space interface{}) SelectRequest {
+	return SelectRequest{
+		baseRequest: baseRequest{rtype: iproto.IPROTO_SELECT},
+		space:       space,
+		iterator:    IterAll,
+		key:         []interface{}{},
+		limit:       0xFFFFFFFF,
+	}
 }
 
 // Index sets the index for the select request.
 // Note: default value is 0.
-func (req *SelectRequest) Index(index interface{}) *SelectRequest {
-	req.setIndex(index)
+func (req SelectRequest) Index(index interface{}) SelectRequest {
+	req.index = index
 	return req
 }
 
 // Offset sets the offset for the select request.
 // Note: default value is 0.
-func (req *SelectRequest) Offset(offset uint32) *SelectRequest {
+func (req SelectRequest) Offset(offset uint32) SelectRequest {
 	req.offset = offset
 	return req
 }
 
 // Limit sets the limit for the select request.
 // Note: default value is 0xFFFFFFFF.
-func (req *SelectRequest) Limit(limit uint32) *SelectRequest {
+func (req SelectRequest) Limit(limit uint32) SelectRequest {
 	req.limit = limit
 	return req
 }
 
 // Iterator set the iterator for the select request.
 // Note: default value is IterAll if key is not set or IterEq otherwise.
-func (req *SelectRequest) Iterator(iterator Iter) *SelectRequest {
+func (req SelectRequest) Iterator(iterator Iter) SelectRequest {
 	req.iterator = iterator
 	req.isIteratorSet = true
 	return req
@@ -490,7 +470,7 @@ func (req *SelectRequest) Iterator(iterator Iter) *SelectRequest {
 
 // Key set the key for the select request.
 // Note: default value is empty.
-func (req *SelectRequest) Key(key interface{}) *SelectRequest {
+func (req SelectRequest) Key(key interface{}) SelectRequest {
 	req.key = key
 	if !req.isIteratorSet {
 		req.iterator = IterEq
@@ -506,7 +486,7 @@ func (req *SelectRequest) Key(key interface{}) *SelectRequest {
 // Requires Tarantool >= 2.11.
 //
 // Since 1.11.0.
-func (req *SelectRequest) FetchPos(fetch bool) *SelectRequest {
+func (req SelectRequest) FetchPos(fetch bool) SelectRequest {
 	req.fetchPos = fetch
 	return req
 }
@@ -519,13 +499,13 @@ func (req *SelectRequest) FetchPos(fetch bool) *SelectRequest {
 // Requires Tarantool >= 2.11.
 //
 // Since 1.11.0.
-func (req *SelectRequest) After(after interface{}) *SelectRequest {
+func (req SelectRequest) After(after interface{}) SelectRequest {
 	req.after = after
 	return req
 }
 
 // Body fills an encoder with the select request body.
-func (req *SelectRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
+func (req SelectRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 	spaceEnc, err := newSpaceEncoder(res, req.space)
 	if err != nil {
 		return err
@@ -615,13 +595,13 @@ func (req *SelectRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 // the timeout option for Connection does not affect the lifetime
 // of the request. For those purposes use context.WithTimeout() as
 // the root context.
-func (req *SelectRequest) Context(ctx context.Context) *SelectRequest {
+func (req SelectRequest) Context(ctx context.Context) SelectRequest {
 	req.ctx = ctx
 	return req
 }
 
 // Response creates a response for the SelectRequest.
-func (req *SelectRequest) Response(header Header, body io.Reader) (Response, error) {
+func (req SelectRequest) Response(header Header, body io.Reader) (Response, error) {
 	baseResp, err := createBaseResponse(header, body)
 	if err != nil {
 		return nil, err
@@ -633,28 +613,29 @@ func (req *SelectRequest) Response(header Header, body io.Reader) (Response, err
 // InsertRequest helps you to create an insert request object for execution
 // by a Connection.
 type InsertRequest struct {
-	spaceRequest
+	baseRequest
+	space interface{}
 	tuple interface{}
 }
 
 // NewInsertRequest returns a new empty InsertRequest.
-func NewInsertRequest(space interface{}) *InsertRequest {
-	req := new(InsertRequest)
-	req.rtype = iproto.IPROTO_INSERT
-	req.setSpace(space)
-	req.tuple = []interface{}{}
-	return req
+func NewInsertRequest(space interface{}) InsertRequest {
+	return InsertRequest{
+		baseRequest: baseRequest{rtype: iproto.IPROTO_INSERT},
+		space:       space,
+		tuple:       []interface{}{},
+	}
 }
 
 // Tuple sets the tuple for insertion the insert request.
 // Note: default value is nil.
-func (req *InsertRequest) Tuple(tuple interface{}) *InsertRequest {
+func (req InsertRequest) Tuple(tuple interface{}) InsertRequest {
 	req.tuple = tuple
 	return req
 }
 
 // Body fills an msgpack.Encoder with the insert request body.
-func (req *InsertRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
+func (req InsertRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 	spaceEnc, err := newSpaceEncoder(res, req.space)
 	if err != nil {
 		return err
@@ -681,7 +662,7 @@ func (req *InsertRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 // the timeout option for Connection does not affect the lifetime
 // of the request. For those purposes use context.WithTimeout() as
 // the root context.
-func (req *InsertRequest) Context(ctx context.Context) *InsertRequest {
+func (req InsertRequest) Context(ctx context.Context) InsertRequest {
 	req.ctx = ctx
 	return req
 }
@@ -689,28 +670,29 @@ func (req *InsertRequest) Context(ctx context.Context) *InsertRequest {
 // ReplaceRequest helps you to create a replace request object for execution
 // by a Connection.
 type ReplaceRequest struct {
-	spaceRequest
+	baseRequest
+	space interface{}
 	tuple interface{}
 }
 
 // NewReplaceRequest returns a new empty ReplaceRequest.
-func NewReplaceRequest(space interface{}) *ReplaceRequest {
-	req := new(ReplaceRequest)
-	req.rtype = iproto.IPROTO_REPLACE
-	req.setSpace(space)
-	req.tuple = []interface{}{}
-	return req
+func NewReplaceRequest(space interface{}) ReplaceRequest {
+	return ReplaceRequest{
+		baseRequest: baseRequest{rtype: iproto.IPROTO_REPLACE},
+		space:       space,
+		tuple:       []interface{}{},
+	}
 }
 
 // Tuple sets the tuple for replace by the replace request.
 // Note: default value is nil.
-func (req *ReplaceRequest) Tuple(tuple interface{}) *ReplaceRequest {
+func (req ReplaceRequest) Tuple(tuple interface{}) ReplaceRequest {
 	req.tuple = tuple
 	return req
 }
 
 // Body fills an msgpack.Encoder with the replace request body.
-func (req *ReplaceRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
+func (req ReplaceRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 	spaceEnc, err := newSpaceEncoder(res, req.space)
 	if err != nil {
 		return err
@@ -737,7 +719,7 @@ func (req *ReplaceRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error 
 // the timeout option for Connection does not affect the lifetime
 // of the request. For those purposes use context.WithTimeout() as
 // the root context.
-func (req *ReplaceRequest) Context(ctx context.Context) *ReplaceRequest {
+func (req ReplaceRequest) Context(ctx context.Context) ReplaceRequest {
 	req.ctx = ctx
 	return req
 }
@@ -745,35 +727,36 @@ func (req *ReplaceRequest) Context(ctx context.Context) *ReplaceRequest {
 // DeleteRequest helps you to create a delete request object for execution
 // by a Connection.
 type DeleteRequest struct {
-	spaceIndexRequest
-	key interface{}
+	baseRequest
+	space, index interface{}
+	key          interface{}
 }
 
 // NewDeleteRequest returns a new empty DeleteRequest.
-func NewDeleteRequest(space interface{}) *DeleteRequest {
-	req := new(DeleteRequest)
-	req.rtype = iproto.IPROTO_DELETE
-	req.setSpace(space)
-	req.key = []interface{}{}
-	return req
+func NewDeleteRequest(space interface{}) DeleteRequest {
+	return DeleteRequest{
+		baseRequest: baseRequest{rtype: iproto.IPROTO_DELETE},
+		space:       space,
+		key:         []interface{}{},
+	}
 }
 
 // Index sets the index for the delete request.
 // Note: default value is 0.
-func (req *DeleteRequest) Index(index interface{}) *DeleteRequest {
-	req.setIndex(index)
+func (req DeleteRequest) Index(index interface{}) DeleteRequest {
+	req.index = index
 	return req
 }
 
 // Key sets the key of tuple for the delete request.
 // Note: default value is empty.
-func (req *DeleteRequest) Key(key interface{}) *DeleteRequest {
+func (req DeleteRequest) Key(key interface{}) DeleteRequest {
 	req.key = key
 	return req
 }
 
 // Body fills an msgpack.Encoder with the delete request body.
-func (req *DeleteRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
+func (req DeleteRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 	spaceEnc, err := newSpaceEncoder(res, req.space)
 	if err != nil {
 		return err
@@ -797,7 +780,7 @@ func (req *DeleteRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 // the timeout option for Connection does not affect the lifetime
 // of the request. For those purposes use context.WithTimeout() as
 // the root context.
-func (req *DeleteRequest) Context(ctx context.Context) *DeleteRequest {
+func (req DeleteRequest) Context(ctx context.Context) DeleteRequest {
 	req.ctx = ctx
 	return req
 }
@@ -805,43 +788,44 @@ func (req *DeleteRequest) Context(ctx context.Context) *DeleteRequest {
 // UpdateRequest helps you to create an update request object for execution
 // by a Connection.
 type UpdateRequest struct {
-	spaceIndexRequest
-	key interface{}
-	ops *Operations
+	baseRequest
+	space, index interface{}
+	key          interface{}
+	ops          *Operations
 }
 
 // NewUpdateRequest returns a new empty UpdateRequest.
-func NewUpdateRequest(space interface{}) *UpdateRequest {
-	req := new(UpdateRequest)
-	req.rtype = iproto.IPROTO_UPDATE
-	req.setSpace(space)
-	req.key = []interface{}{}
-	return req
+func NewUpdateRequest(space interface{}) UpdateRequest {
+	return UpdateRequest{
+		baseRequest: baseRequest{rtype: iproto.IPROTO_UPDATE},
+		space:       space,
+		key:         []interface{}{},
+	}
 }
 
 // Index sets the index for the update request.
 // Note: default value is 0.
-func (req *UpdateRequest) Index(index interface{}) *UpdateRequest {
-	req.setIndex(index)
+func (req UpdateRequest) Index(index interface{}) UpdateRequest {
+	req.index = index
 	return req
 }
 
 // Key sets the key of tuple for the update request.
 // Note: default value is empty.
-func (req *UpdateRequest) Key(key interface{}) *UpdateRequest {
+func (req UpdateRequest) Key(key interface{}) UpdateRequest {
 	req.key = key
 	return req
 }
 
 // Operations sets operations to be performed on update.
 // Note: default value is empty.
-func (req *UpdateRequest) Operations(ops *Operations) *UpdateRequest {
+func (req UpdateRequest) Operations(ops *Operations) UpdateRequest {
 	req.ops = ops
 	return req
 }
 
 // Body fills an msgpack.Encoder with the update request body.
-func (req *UpdateRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
+func (req UpdateRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 	spaceEnc, err := newSpaceEncoder(res, req.space)
 	if err != nil {
 		return err
@@ -877,7 +861,7 @@ func (req *UpdateRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 // the timeout option for Connection does not affect the lifetime
 // of the request. For those purposes use context.WithTimeout() as
 // the root context.
-func (req *UpdateRequest) Context(ctx context.Context) *UpdateRequest {
+func (req UpdateRequest) Context(ctx context.Context) UpdateRequest {
 	req.ctx = ctx
 	return req
 }
@@ -885,36 +869,37 @@ func (req *UpdateRequest) Context(ctx context.Context) *UpdateRequest {
 // UpsertRequest helps you to create an upsert request object for execution
 // by a Connection.
 type UpsertRequest struct {
-	spaceRequest
+	baseRequest
+	space interface{}
 	tuple interface{}
 	ops   *Operations
 }
 
 // NewUpsertRequest returns a new empty UpsertRequest.
-func NewUpsertRequest(space interface{}) *UpsertRequest {
-	req := new(UpsertRequest)
-	req.rtype = iproto.IPROTO_UPSERT
-	req.setSpace(space)
-	req.tuple = []interface{}{}
-	return req
+func NewUpsertRequest(space interface{}) UpsertRequest {
+	return UpsertRequest{
+		baseRequest: baseRequest{rtype: iproto.IPROTO_UPSERT},
+		space:       space,
+		tuple:       []interface{}{},
+	}
 }
 
 // Tuple sets the tuple for insertion or update by the upsert request.
 // Note: default value is empty.
-func (req *UpsertRequest) Tuple(tuple interface{}) *UpsertRequest {
+func (req UpsertRequest) Tuple(tuple interface{}) UpsertRequest {
 	req.tuple = tuple
 	return req
 }
 
 // Operations sets operations to be performed on update case by the upsert request.
 // Note: default value is empty.
-func (req *UpsertRequest) Operations(ops *Operations) *UpsertRequest {
+func (req UpsertRequest) Operations(ops *Operations) UpsertRequest {
 	req.ops = ops
 	return req
 }
 
 // Body fills an msgpack.Encoder with the upsert request body.
-func (req *UpsertRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
+func (req UpsertRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 	spaceEnc, err := newSpaceEncoder(res, req.space)
 	if err != nil {
 		return err
@@ -953,7 +938,7 @@ func (req *UpsertRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 // the timeout option for Connection does not affect the lifetime
 // of the request. For those purposes use context.WithTimeout() as
 // the root context.
-func (req *UpsertRequest) Context(ctx context.Context) *UpsertRequest {
+func (req UpsertRequest) Context(ctx context.Context) UpsertRequest {
 	req.ctx = ctx
 	return req
 }
@@ -968,22 +953,22 @@ type CallRequest struct {
 
 // NewCallRequest returns a new empty CallRequest. It uses request code for
 // Tarantool >= 1.7.
-func NewCallRequest(function string) *CallRequest {
-	req := new(CallRequest)
-	req.rtype = iproto.IPROTO_CALL
-	req.function = function
-	return req
+func NewCallRequest(function string) CallRequest {
+	return CallRequest{
+		baseRequest: baseRequest{rtype: iproto.IPROTO_CALL},
+		function:    function,
+	}
 }
 
 // Args sets the args for the call request.
 // Note: default value is empty.
-func (req *CallRequest) Args(args interface{}) *CallRequest {
+func (req CallRequest) Args(args interface{}) CallRequest {
 	req.args = args
 	return req
 }
 
 // Body fills an encoder with the call request body.
-func (req *CallRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
+func (req CallRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
 	if err := enc.EncodeMapLen(2); err != nil {
 		return err
 	}
@@ -1013,7 +998,7 @@ func (req *CallRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
 // the timeout option for Connection does not affect the lifetime
 // of the request. For those purposes use context.WithTimeout() as
 // the root context.
-func (req *CallRequest) Context(ctx context.Context) *CallRequest {
+func (req CallRequest) Context(ctx context.Context) CallRequest {
 	req.ctx = ctx
 	return req
 }
@@ -1021,18 +1006,20 @@ func (req *CallRequest) Context(ctx context.Context) *CallRequest {
 // NewCall16Request returns a new empty Call16Request. It uses request code for
 // Tarantool 1.6.
 // Deprecated since Tarantool 1.7.2.
-func NewCall16Request(function string) *CallRequest {
-	req := NewCallRequest(function)
-	req.rtype = iproto.IPROTO_CALL_16
-	return req
+func NewCall16Request(function string) CallRequest {
+	return CallRequest{
+		baseRequest: baseRequest{rtype: iproto.IPROTO_CALL_16},
+		function:    function,
+	}
 }
 
 // NewCall17Request returns a new empty CallRequest. It uses request code for
 // Tarantool >= 1.7.
-func NewCall17Request(function string) *CallRequest {
-	req := NewCallRequest(function)
-	req.rtype = iproto.IPROTO_CALL
-	return req
+func NewCall17Request(function string) CallRequest {
+	return CallRequest{
+		baseRequest: baseRequest{rtype: iproto.IPROTO_CALL},
+		function:    function,
+	}
 }
 
 // EvalRequest helps you to create an eval request object for execution
@@ -1044,23 +1031,23 @@ type EvalRequest struct {
 }
 
 // NewEvalRequest returns a new empty EvalRequest.
-func NewEvalRequest(expr string) *EvalRequest {
-	req := new(EvalRequest)
-	req.rtype = iproto.IPROTO_EVAL
-	req.expr = expr
-	req.args = []interface{}{}
-	return req
+func NewEvalRequest(expr string) EvalRequest {
+	return EvalRequest{
+		baseRequest: baseRequest{rtype: iproto.IPROTO_EVAL},
+		expr:        expr,
+		args:        []interface{}{},
+	}
 }
 
 // Args sets the args for the eval request.
 // Note: default value is empty.
-func (req *EvalRequest) Args(args interface{}) *EvalRequest {
+func (req EvalRequest) Args(args interface{}) EvalRequest {
 	req.args = args
 	return req
 }
 
 // Body fills an msgpack.Encoder with the eval request body.
-func (req *EvalRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
+func (req EvalRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
 	if err := enc.EncodeMapLen(2); err != nil {
 		return err
 	}
@@ -1090,7 +1077,7 @@ func (req *EvalRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
 // the timeout option for Connection does not affect the lifetime
 // of the request. For those purposes use context.WithTimeout() as
 // the root context.
-func (req *EvalRequest) Context(ctx context.Context) *EvalRequest {
+func (req EvalRequest) Context(ctx context.Context) EvalRequest {
 	req.ctx = ctx
 	return req
 }
@@ -1104,23 +1091,23 @@ type ExecuteRequest struct {
 }
 
 // NewExecuteRequest returns a new empty ExecuteRequest.
-func NewExecuteRequest(expr string) *ExecuteRequest {
-	req := new(ExecuteRequest)
-	req.rtype = iproto.IPROTO_EXECUTE
-	req.expr = expr
-	req.args = []interface{}{}
-	return req
+func NewExecuteRequest(expr string) ExecuteRequest {
+	return ExecuteRequest{
+		baseRequest: baseRequest{rtype: iproto.IPROTO_EXECUTE},
+		expr:        expr,
+		args:        []interface{}{},
+	}
 }
 
 // Args sets the args for the execute request.
 // Note: default value is empty.
-func (req *ExecuteRequest) Args(args interface{}) *ExecuteRequest {
+func (req ExecuteRequest) Args(args interface{}) ExecuteRequest {
 	req.args = args
 	return req
 }
 
 // Body fills an msgpack.Encoder with the execute request body.
-func (req *ExecuteRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
+func (req ExecuteRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
 	if err := enc.EncodeMapLen(2); err != nil {
 		return err
 	}
@@ -1146,13 +1133,13 @@ func (req *ExecuteRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
 // the timeout option for Connection does not affect the lifetime
 // of the request. For those purposes use context.WithTimeout() as
 // the root context.
-func (req *ExecuteRequest) Context(ctx context.Context) *ExecuteRequest {
+func (req ExecuteRequest) Context(ctx context.Context) ExecuteRequest {
 	req.ctx = ctx
 	return req
 }
 
 // Response creates a response for the ExecuteRequest.
-func (req *ExecuteRequest) Response(header Header, body io.Reader) (Response, error) {
+func (req ExecuteRequest) Response(header Header, body io.Reader) (Response, error) {
 	baseResp, err := createBaseResponse(header, body)
 	if err != nil {
 		return nil, err
@@ -1169,15 +1156,15 @@ type WatchOnceRequest struct {
 }
 
 // NewWatchOnceRequest returns a new watchOnceRequest.
-func NewWatchOnceRequest(key string) *WatchOnceRequest {
-	req := new(WatchOnceRequest)
-	req.rtype = iproto.IPROTO_WATCH_ONCE
-	req.key = key
-	return req
+func NewWatchOnceRequest(key string) WatchOnceRequest {
+	return WatchOnceRequest{
+		baseRequest: baseRequest{rtype: iproto.IPROTO_WATCH_ONCE},
+		key:         key,
+	}
 }
 
 // Body fills an msgpack.Encoder with the watchOnce request body.
-func (req *WatchOnceRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
+func (req WatchOnceRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
 	if err := enc.EncodeMapLen(1); err != nil {
 		return err
 	}
@@ -1190,7 +1177,7 @@ func (req *WatchOnceRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error 
 }
 
 // Context sets a passed context to the request.
-func (req *WatchOnceRequest) Context(ctx context.Context) *WatchOnceRequest {
+func (req WatchOnceRequest) Context(ctx context.Context) WatchOnceRequest {
 	req.ctx = ctx
 	return req
 }

@@ -19,25 +19,25 @@ type InsertRequest struct {
 }
 
 // NewInsertRequest returns a new InsertRequest.
-func NewInsertRequest(space interface{}, arrow Arrow) *InsertRequest {
-	return &InsertRequest{
+func NewInsertRequest(space interface{}, arrow Arrow) InsertRequest {
+	return InsertRequest{
 		space: space,
 		arrow: arrow,
 	}
 }
 
 // Type returns a IPROTO_INSERT_ARROW type for the request.
-func (r *InsertRequest) Type() iproto.Type {
+func (r InsertRequest) Type() iproto.Type {
 	return iproto.IPROTO_INSERT_ARROW
 }
 
 // Async returns false to the request return a response.
-func (r *InsertRequest) Async() bool {
+func (r InsertRequest) Async() bool {
 	return false
 }
 
 // Ctx returns a context of the request.
-func (r *InsertRequest) Ctx() context.Context {
+func (r InsertRequest) Ctx() context.Context {
 	return r.ctx
 }
 
@@ -47,20 +47,20 @@ func (r *InsertRequest) Ctx() context.Context {
 // the timeout option for Connection does not affect the lifetime
 // of the request. For those purposes use context.WithTimeout() as
 // the root context.
-func (r *InsertRequest) Context(ctx context.Context) *InsertRequest {
+func (r InsertRequest) Context(ctx context.Context) InsertRequest {
 	r.ctx = ctx
 	return r
 }
 
 // Arrow sets the arrow for insertion the insert arrow request.
 // Note: default value is nil.
-func (r *InsertRequest) Arrow(arrow Arrow) *InsertRequest {
+func (r InsertRequest) Arrow(arrow Arrow) InsertRequest {
 	r.arrow = arrow
 	return r
 }
 
 // Body fills an msgpack.Encoder with the insert arrow request body.
-func (r *InsertRequest) Body(res tarantool.SchemaResolver, enc *msgpack.Encoder) error {
+func (r InsertRequest) Body(res tarantool.SchemaResolver, enc *msgpack.Encoder) error {
 	if err := enc.EncodeMapLen(2); err != nil {
 		return err
 	}
@@ -74,7 +74,7 @@ func (r *InsertRequest) Body(res tarantool.SchemaResolver, enc *msgpack.Encoder)
 }
 
 // Response creates a response for the InsertRequest.
-func (r *InsertRequest) Response(
+func (r InsertRequest) Response(
 	header tarantool.Header,
 	body io.Reader,
 ) (tarantool.Response, error) {

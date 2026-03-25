@@ -245,8 +245,7 @@ func ExampleSelectRequest_spaceAndIndexNames() {
 	conn := exampleConnect(dialer, opts)
 	defer func() { _ = conn.Close() }()
 
-	req := tarantool.NewSelectRequest(spaceName)
-	req.Index(indexName)
+	req := tarantool.NewSelectRequest(spaceName).Index(indexName)
 	data, err := conn.Do(req).Get()
 
 	if err != nil {
@@ -359,8 +358,7 @@ func ExampleDeleteRequest_spaceAndIndexNames() {
 	conn := exampleConnect(dialer, opts)
 	defer func() { _ = conn.Close() }()
 
-	req := tarantool.NewDeleteRequest(spaceName)
-	req.Index(indexName)
+	req := tarantool.NewDeleteRequest(spaceName).Index(indexName)
 	data, err := conn.Do(req).Get()
 
 	if err != nil {
@@ -473,8 +471,7 @@ func ExampleUpdateRequest_spaceAndIndexNames() {
 	conn := exampleConnect(dialer, opts)
 	defer func() { _ = conn.Close() }()
 
-	req := tarantool.NewUpdateRequest(spaceName)
-	req.Index(indexName)
+	req := tarantool.NewUpdateRequest(spaceName).Index(indexName)
 	data, err := conn.Do(req).Get()
 
 	if err != nil {

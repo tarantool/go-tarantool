@@ -26,6 +26,12 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Changed
 
+* All top-level `New*Request()` constructors now return values instead of
+  pointers. All methods on request types use value receivers and return
+  values, enabling immutable builder-style chaining.
+* Removed intermediate `spaceRequest`, `spaceIndexRequest` types — `space`
+  and `index` fields are now inlined directly into each request struct.
+  The same flattening was applied to `crud.spaceRequest`.
 * Required Go version is `1.24` now (#456).
 * `box.New` returns an error instead of panic (#448).
 * Now cases of `<-ctx.Done()` returns wrapped error provided by `ctx.Cause()`.

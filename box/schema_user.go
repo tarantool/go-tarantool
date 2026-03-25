@@ -24,7 +24,7 @@ func newSchemaUser(conn tarantool.Doer) *SchemaUser {
 
 // UserExistsRequest represents a request to check if a user exists in Tarantool.
 type UserExistsRequest struct {
-	*tarantool.CallRequest // Underlying Tarantool call request.
+	baseCallRequest
 }
 
 // UserExistsResponse represents the response to a user existence check.
@@ -55,8 +55,14 @@ func NewUserExistsRequest(username string) UserExistsRequest {
 	callReq := tarantool.NewCallRequest("box.schema.user.exists").Args([]interface{}{username})
 
 	return UserExistsRequest{
-		callReq,
+		baseCallRequest: baseCallRequest{call: callReq},
 	}
+}
+
+// Context sets a passed context to the request.
+func (req UserExistsRequest) Context(ctx context.Context) UserExistsRequest {
+	req.call = req.call.Context(ctx)
+	return req
 }
 
 // Exists checks if the specified user exists in Tarantool.
@@ -81,7 +87,7 @@ type UserCreateOptions struct {
 
 // UserCreateRequest represents a request to create a new user in Tarantool.
 type UserCreateRequest struct {
-	*tarantool.CallRequest // Underlying Tarantool call request.
+	baseCallRequest
 }
 
 // NewUserCreateRequest creates a new request to create a user with specified options.
@@ -90,8 +96,14 @@ func NewUserCreateRequest(username string, options UserCreateOptions) UserCreate
 		Args([]interface{}{username, options})
 
 	return UserCreateRequest{
-		callReq,
+		baseCallRequest: baseCallRequest{call: callReq},
 	}
+}
+
+// Context sets a passed context to the request.
+func (req UserCreateRequest) Context(ctx context.Context) UserCreateRequest {
+	req.call = req.call.Context(ctx)
+	return req
 }
 
 // UserCreateResponse represents the response to a user creation request.
@@ -127,7 +139,7 @@ type UserDropOptions struct {
 
 // UserDropRequest represents a request to drop a user from Tarantool.
 type UserDropRequest struct {
-	*tarantool.CallRequest // Underlying Tarantool call request.
+	baseCallRequest
 }
 
 // NewUserDropRequest creates a new request to drop a user with specified options.
@@ -136,8 +148,14 @@ func NewUserDropRequest(username string, options UserDropOptions) UserDropReques
 		Args([]interface{}{username, options})
 
 	return UserDropRequest{
-		callReq,
+		baseCallRequest: baseCallRequest{call: callReq},
 	}
+}
+
+// Context sets a passed context to the request.
+func (req UserDropRequest) Context(ctx context.Context) UserDropRequest {
+	req.call = req.call.Context(ctx)
+	return req
 }
 
 // UserDropResponse represents the response to a user drop request.
@@ -162,7 +180,7 @@ func (u *SchemaUser) Drop(ctx context.Context, username string, options UserDrop
 
 // UserPasswordRequest represents a request to retrieve a user's password from Tarantool.
 type UserPasswordRequest struct {
-	*tarantool.CallRequest // Underlying Tarantool call request.
+	baseCallRequest
 }
 
 // NewUserPasswordRequest creates a new request to fetch the user's password.
@@ -172,8 +190,14 @@ func NewUserPasswordRequest(username string) UserPasswordRequest {
 	callReq := tarantool.NewCallRequest("box.schema.user.password").Args([]interface{}{username})
 
 	return UserPasswordRequest{
-		callReq,
+		baseCallRequest: baseCallRequest{call: callReq},
 	}
+}
+
+// Context sets a passed context to the request.
+func (req UserPasswordRequest) Context(ctx context.Context) UserPasswordRequest {
+	req.call = req.call.Context(ctx)
+	return req
 }
 
 // UserPasswordResponse represents the response to the user password request.
@@ -225,7 +249,7 @@ func (u *SchemaUser) Password(ctx context.Context, password string) (string, err
 
 // UserPasswdRequest represents a request to change a user's password in Tarantool.
 type UserPasswdRequest struct {
-	*tarantool.CallRequest // Underlying Tarantool call request.
+	baseCallRequest
 }
 
 // NewUserPasswdRequest creates a new request to change  a user's password in Tarantool.
@@ -234,15 +258,21 @@ func NewUserPasswdRequest(args ...string) (UserPasswdRequest, error) {
 
 	switch len(args) {
 	case 1:
-		callReq.Args([]interface{}{args[0]})
+		callReq = callReq.Args([]interface{}{args[0]})
 	case 2:
-		callReq.Args([]interface{}{args[0], args[1]})
+		callReq = callReq.Args([]interface{}{args[0], args[1]})
 	default:
 		return UserPasswdRequest{}, fmt.Errorf("len of fields must be 1 or 2, got %d", len(args))
 
 	}
 
-	return UserPasswdRequest{callReq}, nil
+	return UserPasswdRequest{baseCallRequest: baseCallRequest{call: callReq}}, nil
+}
+
+// Context sets a passed context to the request.
+func (req UserPasswdRequest) Context(ctx context.Context) UserPasswdRequest {
+	req.call = req.call.Context(ctx)
+	return req
 }
 
 // UserPasswdResponse represents the response to a user passwd request.
@@ -258,7 +288,7 @@ func (u *SchemaUser) Passwd(ctx context.Context, args ...string) error {
 		return err
 	}
 
-	req.Context(ctx)
+	req = req.Context(ctx)
 
 	resp := &UserPasswdResponse{}
 
@@ -275,7 +305,7 @@ func (u *SchemaUser) Passwd(ctx context.Context, args ...string) error {
 
 // UserInfoRequest represents a request to get a user's info in Tarantool.
 type UserInfoRequest struct {
-	*tarantool.CallRequest // Underlying Tarantool call request.
+	baseCallRequest
 }
 
 // NewUserInfoRequest creates a new request to get user privileges.
@@ -283,8 +313,14 @@ func NewUserInfoRequest(username string) UserInfoRequest {
 	callReq := tarantool.NewCallRequest("box.schema.user.info").Args([]interface{}{username})
 
 	return UserInfoRequest{
-		callReq,
+		baseCallRequest: baseCallRequest{call: callReq},
 	}
+}
+
+// Context sets a passed context to the request.
+func (req UserInfoRequest) Context(ctx context.Context) UserInfoRequest {
+	req.call = req.call.Context(ctx)
+	return req
 }
 
 // PrivilegeType is a struct based on privilege object types list
@@ -472,7 +508,7 @@ type UserGrantOptions struct {
 
 // UserGrantRequest wraps a Tarantool call request for granting user permissions.
 type UserGrantRequest struct {
-	*tarantool.CallRequest // Underlying Tarantool call request.
+	baseCallRequest
 }
 
 // NewUserGrantRequest creates a new UserGrantRequest based on provided parameters.
@@ -483,7 +519,13 @@ func NewUserGrantRequest(username string, privilege Privilege,
 	// Create a new call request for the box.schema.user.grant method with the given args.
 	callReq := tarantool.NewCallRequest("box.schema.user.grant").Args(args)
 
-	return UserGrantRequest{callReq} // Return the UserGrantRequest.
+	return UserGrantRequest{baseCallRequest: baseCallRequest{call: callReq}}
+}
+
+// Context sets a passed context to the request.
+func (req UserGrantRequest) Context(ctx context.Context) UserGrantRequest {
+	req.call = req.call.Context(ctx)
+	return req
 }
 
 // UserGrantResponse represents the response from a user grant request.
@@ -512,7 +554,7 @@ type UserRevokeOptions struct {
 
 // UserRevokeRequest wraps a Tarantool call request for revoking user permissions.
 type UserRevokeRequest struct {
-	*tarantool.CallRequest // Underlying Tarantool call request.
+	baseCallRequest
 }
 
 // UserRevokeResponse represents the response from a user revoke request.
@@ -526,7 +568,13 @@ func NewUserRevokeRequest(username string, privilege Privilege,
 	// Create a new call request for the box.schema.user.revoke method with the given args.
 	callReq := tarantool.NewCallRequest("box.schema.user.revoke").Args(args)
 
-	return UserRevokeRequest{callReq}
+	return UserRevokeRequest{baseCallRequest: baseCallRequest{call: callReq}}
+}
+
+// Context sets a passed context to the request.
+func (req UserRevokeRequest) Context(ctx context.Context) UserRevokeRequest {
+	req.call = req.call.Context(ctx)
+	return req
 }
 
 // Revoke executes the user revoke operation in Tarantool, returning an error if it fails.

@@ -85,7 +85,8 @@ func (opts SelectOpts) EncodeMsgpack(enc *msgpack.Encoder) error {
 // SelectRequest helps you to create request object to call `crud.select`
 // for execution by a Connection.
 type SelectRequest struct {
-	spaceRequest
+	baseRequest
+	space      string
 	conditions []Condition
 	opts       SelectOpts
 }
@@ -99,12 +100,11 @@ type selectArgs struct {
 
 // MakeSelectRequest returns a new empty SelectRequest.
 func MakeSelectRequest(space string) SelectRequest {
-	req := SelectRequest{}
-	req.impl = newCall("crud.select")
-	req.space = space
-	req.conditions = nil
-	req.opts = SelectOpts{}
-	return req
+	return SelectRequest{
+		baseRequest: newBaseRequest("crud.select"),
+		space:       space,
+		opts:        SelectOpts{},
+	}
 }
 
 // Conditions sets the conditions for the SelectRequest request.

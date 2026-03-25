@@ -36,6 +36,37 @@ TODO
 * `ConnectionPool.Close()` returns a single error value, combining multiple errors using errors.Join()
 * `Future.Release()` call could be used to free resources allocated for the
   `Future` object created by a `Connection` object.
+* All request types (`PingRequest`, `SelectRequest`, `CallRequest`, etc.) now
+  use value receivers and constructors return values instead of pointers.
+  Builder methods return modified copies instead of mutating in place.
+
+  **Breaking**: calling a builder method without using its return value silently
+  discards the change:
+  ```Go
+  // Before (pointer receivers, mutation in place):
+  req := NewSelectRequest("space")
+  req.Index("idx")           // mutated req directly
+  conn.Do(req)
+
+  // After (value receivers, must use return value):
+  req := NewSelectRequest("space")
+  req = req.Index("idx")     // must reassign
+  conn.Do(req)
+
+  // Or chain directly:
+  conn.Do(NewSelectRequest("space").Index("idx"))
+  ```
+
+  The same value-receiver pattern was applied to `arrow.InsertRequest` and
+  `settings.SetRequest`/`settings.GetRequest`.
+
+  In the `box` subpackage, request types (`InfoRequest`, `UserExistsRequest`,
+  `UserCreateRequest`, `SessionSuRequest`, etc.) no longer embed
+  `tarantool.CallRequest`. They store it as a private field and implement
+  their own `Context()` method returning the wrapper type. Usage stays clean:
+  ```Go
+  req := box.NewUserExistsRequest(username).Context(ctx)
+  ```
 
 ## Migration from v1.x.x to v2.x.x
 
