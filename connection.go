@@ -861,18 +861,12 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 
 	go conn.eventer(events)
 
-	type resp struct {
-		header Header
-		buf    smallBuf
-	}
-
-	resps := make(chan resp, 1024)
-	defer close(resps)
+	resps := newResponseQueue(1024)
 
 	go func() {
-		var r resp
+		for atomic.LoadUint32(&conn.state) != connClosed {
+			r := resps.pop()
 
-		for r = range resps {
 			fut := conn.fetchFuture(r.header.RequestId)
 			if fut == nil {
 				r.buf.Release()
@@ -932,7 +926,7 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 			buf.Release()
 			conn.opts.Logger.Report(LogBoxSessionPushUnsupported, conn, header)
 		default:
-			resps <- resp{header: header, buf: buf}
+			resps.push(resp{header: header, buf: buf})
 		}
 	}
 }

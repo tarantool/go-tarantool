@@ -255,7 +255,9 @@ See the [migration guide](./MIGRATION.md) for more details.
   connection (#301).
 - New method `Pool.DoInstance` to execute a request on a target instance in
   a pool (#376).
-
+- `ResponseQueue` struct, implementing ring-buffer for
+  `Connection.reader()` (#549).
+  
 ### Changed
 
 - connection_pool renamed to pool (#239).
