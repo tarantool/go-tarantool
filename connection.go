@@ -849,31 +849,36 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 
 	go conn.eventer(events)
 
-	type resp struct {
-		header Header
-		buf    smallBuf
-	}
+	resps := NewResponseQueue(1024)
 
-	resps := make(chan resp, 1024)
-	defer close(resps)
+	go func(ctx context.Context) {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				r, ok := resps.Front()
+				if !ok {
+					runtime.Gosched()
+					continue
+				}
 
-	go func() {
-		var r resp
+				fut := conn.fetchFuture(r.header.RequestId)
+				if fut == nil {
+					conn.opts.Logger.Report(LogUnexpectedResultId, conn, r.header)
 
-		for r = range resps {
-			fut := conn.fetchFuture(r.header.RequestId)
-			if fut == nil {
-				conn.opts.Logger.Report(LogUnexpectedResultId, conn, r.header)
+					continue
+				}
 
-				continue
+				if err := fut.setResponse(r.header, &r.buf); err != nil {
+					fut.setError(fmt.Errorf("failed to set response: %w", err))
+				}
+				conn.markDone(fut)
+
+				resps.Advance()
 			}
-
-			if err := fut.setResponse(r.header, &r.buf); err != nil {
-				fut.setError(fmt.Errorf("failed to set response: %w", err))
-			}
-			conn.markDone(fut)
 		}
-	}()
+	}(context.Background())
 
 	buf := smallBuf{}
 
@@ -914,7 +919,7 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 		case iproto.IPROTO_CHUNK:
 			conn.opts.Logger.Report(LogBoxSessionPushUnsupported, conn, header)
 		default:
-			resps <- resp{header: header, buf: buf}
+			resps.Push(resp{header: header, buf: buf})
 		}
 	}
 }
