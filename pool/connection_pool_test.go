@@ -199,7 +199,7 @@ func TestConn_no_execute_unsupported(t *testing.T) {
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
 	connPool, err := pool.Connect(ctx,
-		[]pool.Instance{makeNoExecuteInstance(healthyServ, connOpts)})
+		[]pool.Instance{makeNoExecuteInstance(healthyServ, optsWithLogger)})
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
