@@ -13,6 +13,7 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+	"log/slog"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
