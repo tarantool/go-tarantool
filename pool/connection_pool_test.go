@@ -13,6 +13,7 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+	"log/slog"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -94,6 +95,16 @@ func makeInstances(servers []string, opts tarantool.Opts) []pool.Instance {
 var instances = makeInstances(servers, connOpts)
 var connOpts = tarantool.Opts{
 	Timeout: 5 * time.Second,
+	Logger:  tarantool.NewSlogLogger(slog.Default()),
+}
+
+func setupTestLogger() (*bytes.Buffer, *slog.Logger) {
+    var buf bytes.Buffer
+    handler := slog.NewTextHandler(&buf, &slog.HandlerOptions{
+        Level: slog.LevelInfo,
+    })
+    logger := slog.New(handler)
+    return &buf, logger
 }
 
 var defaultCountRetry = 5
@@ -179,9 +190,9 @@ func TestConn_no_execute_supported(t *testing.T) {
 func TestConn_no_execute_unsupported(t *testing.T) {
 	test_helpers.SkipIfWatchOnceSupported(t)
 
-	var buf bytes.Buffer
-	log.SetOutput(&buf)
-	defer log.SetOutput(os.Stderr)
+	buf, logger := setupTestLogger()
+	optsWithLogger := connOpts
+	optsWithLogger.Logger = tarantool.NewSlogLogger(logger)
 
 	healthyServ := servers[0]
 
