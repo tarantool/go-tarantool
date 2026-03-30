@@ -190,9 +190,13 @@ func TestConn_no_execute_supported(t *testing.T) {
 func TestConn_no_execute_unsupported(t *testing.T) {
 	test_helpers.SkipIfWatchOnceSupported(t)
 
-	buf, logger := setupTestLogger()
+	var logBuf bytes.Buffer
+	log.SetOutput(&logBuf)
+	defer log.SetOutput(os.Stderr)
+
+	slogBuf, slogLogger := setupTestLogger()
 	optsWithLogger := connOpts
-	optsWithLogger.Logger = tarantool.NewSlogLogger(logger)
+	optsWithLogger.Logger = tarantool.NewSlogLogger(slogLogger)
 
 	healthyServ := servers[0]
 
@@ -205,7 +209,9 @@ func TestConn_no_execute_unsupported(t *testing.T) {
 
 	defer func() { _ = connPool.Close() }()
 
-	require.Contains(t, buf.String(),
+	
+	fullLog := logBuf.String() + slogBuf.String()
+	require.Contains(t, fullLog,
 		fmt.Sprintf("connect to %s failed: Execute access to function "+
 			"'box.info' is denied for user '%s'", servers[0], userNoExec))
 
