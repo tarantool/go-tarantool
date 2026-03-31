@@ -10,6 +10,10 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Added
 
+* New pluggable architecture for connection selection in `ConnectionPool`:
+  `Store`, `Selector`, `Strategy`, `StrategyBuilder` interfaces (#509).
+* New `RoundRobinBuilder` and `ActiveStandbyBuilder` implementations and
+  `Opts.StrategyBuilder` option for custom strategies (#509).
 * New types for MessagePack extensions compatible with go-option (#459).
 * Added `box.MustNew` wrapper for `box.New` without an error (#448).
 * Added missing IPROTO feature flags to greeting negotiation
