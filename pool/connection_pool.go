@@ -81,6 +81,9 @@ type Opts struct {
 	CheckTimeout time.Duration
 	// ConnectionHandler provides an ability to handle connection updates.
 	ConnectionHandler ConnectionHandler
+	// StrategyBuilder creates strategies for connection selection.
+	// If nil, RoundRobinBuilder is used by default.
+	StrategyBuilder StrategyBuilder
 }
 
 /*
@@ -111,9 +114,8 @@ type ConnectionPool struct {
 
 	state            state
 	done             chan struct{}
-	roPool           *roundRobinStrategy
-	rwPool           *roundRobinStrategy
-	anyPool          *roundRobinStrategy
+	store            *Store
+	selector         *selector
 	poolsMutex       sync.RWMutex
 	watcherContainer watcherContainer
 }
@@ -167,18 +169,24 @@ func ConnectWithOpts(ctx context.Context, instances []Instance,
 	}
 
 	size := len(instances)
-	rwPool := newRoundRobinStrategy(size)
-	roPool := newRoundRobinStrategy(size)
-	anyPool := newRoundRobinStrategy(size)
+
+	store := NewStore()
+
+	builder := opts.StrategyBuilder
+	if builder == nil {
+		builder = RoundRobinBuilder{}
+	}
+
+	rwStrategy, roStrategy, anyStrategy := builder.Build(size)
+	selector := newSelector(store, rwStrategy, roStrategy, anyStrategy)
 
 	p := &ConnectionPool{
-		ends:    make(map[string]*endpoint),
-		opts:    opts,
-		state:   connectedState,
-		done:    make(chan struct{}),
-		rwPool:  rwPool,
-		roPool:  roPool,
-		anyPool: anyPool,
+		ends:     make(map[string]*endpoint),
+		opts:     opts,
+		state:    connectedState,
+		done:     make(chan struct{}),
+		store:    store,
+		selector: selector,
 	}
 
 	fillCtx, fillCancel := context.WithCancel(ctx)
@@ -242,20 +250,7 @@ func (p *ConnectionPool) ConnectedNow(mode Mode) (bool, error) {
 	if p.state.get() != connectedState {
 		return false, nil
 	}
-	switch mode {
-	case ANY:
-		return !p.anyPool.IsEmpty(), nil
-	case RW:
-		return !p.rwPool.IsEmpty(), nil
-	case RO:
-		return !p.roPool.IsEmpty(), nil
-	case PreferRW:
-		fallthrough
-	case PreferRO:
-		return !p.rwPool.IsEmpty() || !p.roPool.IsEmpty(), nil
-	default:
-		return false, ErrNoHealthyInstance
-	}
+	return !p.selector.IsEmpty(mode), nil
 }
 
 // ConfiguredTimeout gets timeout of current connection.
@@ -498,14 +493,8 @@ func (p *ConnectionPool) NewWatcher(key string,
 
 	watcher.container.add(watcher)
 
-	rr := p.anyPool
-	if mode == RW {
-		rr = p.rwPool
-	} else if mode == RO {
-		rr = p.roPool
-	}
+	conns := p.selector.ConnectionsByMode(mode)
 
-	conns := rr.GetConnections()
 	for _, conn := range conns {
 		// Check that connection supports watchers.
 		if !isFeatureInSlice(iproto.IPROTO_FEATURE_WATCHERS, conn.ProtocolInfo().Features) {
@@ -524,7 +513,7 @@ func (p *ConnectionPool) NewWatcher(key string,
 // the argument of type Mode is unused.
 func (p *ConnectionPool) Do(req tarantool.Request, userMode Mode) tarantool.Future {
 	if connectedReq, ok := req.(tarantool.ConnectedRequest); ok {
-		conns := p.anyPool.GetConnections()
+		conns := p.selector.Connections()
 		isOurConnection := false
 		for _, conn := range conns {
 			// Compare raw pointers.
@@ -548,7 +537,7 @@ func (p *ConnectionPool) Do(req tarantool.Request, userMode Mode) tarantool.Futu
 
 // DoInstance sends the request into a target instance and returns a future.
 func (p *ConnectionPool) DoInstance(req tarantool.Request, name string) tarantool.Future {
-	conn := p.anyPool.GetConnection(name)
+	conn := p.selector.Get(name)
 	if conn == nil {
 		return tarantool.NewFutureWithErr(nil, ErrNoHealthyInstance)
 	}
@@ -611,31 +600,28 @@ func (p *ConnectionPool) getConnectionRole(conn *tarantool.Connection) (Role, er
 }
 
 func (p *ConnectionPool) getConnectionFromPool(name string) (*tarantool.Connection, Role) {
-	if conn := p.rwPool.GetConnection(name); conn != nil {
-		return conn, MasterRole
+	entry, ok := p.store.Get(name)
+	if !ok {
+		return nil, UnknownRole
 	}
-
-	if conn := p.roPool.GetConnection(name); conn != nil {
-		return conn, ReplicaRole
-	}
-
-	return p.anyPool.GetConnection(name), UnknownRole
+	return entry.Conn, entry.Role
 }
 
 func (p *ConnectionPool) deleteConnection(name string) {
-	if conn := p.anyPool.DeleteConnection(name); conn != nil {
-		if conn := p.rwPool.DeleteConnection(name); conn == nil {
-			p.roPool.DeleteConnection(name)
-		}
-		// The internal connection deinitialization.
-		p.watcherContainer.mutex.RLock()
-		defer p.watcherContainer.mutex.RUnlock()
-
-		_ = p.watcherContainer.foreach(func(watcher *poolWatcher) error {
-			watcher.unwatch(conn)
-			return nil
-		})
+	entry, ok := p.store.Remove(name)
+	if !ok {
+		return
 	}
+	conn := entry.Conn
+
+	// The internal connection deinitialization.
+	p.watcherContainer.mutex.RLock()
+	defer p.watcherContainer.mutex.RUnlock()
+
+	_ = p.watcherContainer.foreach(func(watcher *poolWatcher) error {
+		watcher.unwatch(conn)
+		return nil
+	})
 }
 
 func (p *ConnectionPool) addConnection(name string,
@@ -673,14 +659,8 @@ func (p *ConnectionPool) addConnection(name string,
 		}
 	}
 
-	p.anyPool.AddConnection(name, conn)
+	p.store.Upsert(name, conn, role)
 
-	switch role {
-	case MasterRole:
-		p.rwPool.AddConnection(name, conn)
-	case ReplicaRole:
-		p.roPool.AddConnection(name, conn)
-	}
 	return nil
 }
 
@@ -750,39 +730,26 @@ func (p *ConnectionPool) updateConnection(e *endpoint) {
 
 	if role, err := p.getConnectionRole(e.conn); err == nil {
 		if e.role != role {
-			p.deleteConnection(e.name)
+			oldRole := e.role
+			p.store.UpdateRole(e.name, role)
+
+			// Update watchers for the connection.
+			p.updateConnectionWatchers(e.conn, oldRole, role)
+
 			p.poolsMutex.Unlock()
 
-			p.handlerDeactivated(e.name, e.conn, e.role)
+			p.handlerDeactivated(e.name, e.conn, oldRole)
 			opened := p.handlerDiscovered(e.name, e.conn, role)
 			if !opened {
 				_ = e.conn.Close()
+				p.store.Remove(e.name)
 				e.conn = nil
 				e.role = UnknownRole
 				return
 			}
 
-			p.poolsMutex.Lock()
-			if p.state.get() != connectedState {
-				p.poolsMutex.Unlock()
-
-				_ = e.conn.Close()
-				p.handlerDeactivated(e.name, e.conn, role)
-				e.conn = nil
-				e.role = UnknownRole
-				return
-			}
-
-			if p.addConnection(e.name, e.conn, role) != nil {
-				p.poolsMutex.Unlock()
-
-				_ = e.conn.Close()
-				p.handlerDeactivated(e.name, e.conn, role)
-				e.conn = nil
-				e.role = UnknownRole
-				return
-			}
 			e.role = role
+			return
 		}
 		p.poolsMutex.Unlock()
 		return
@@ -796,6 +763,44 @@ func (p *ConnectionPool) updateConnection(e *endpoint) {
 		e.role = UnknownRole
 		return
 	}
+}
+
+// updateConnectionWatchers updates watchers when connection role changes.
+func (p *ConnectionPool) updateConnectionWatchers(conn *tarantool.Connection,
+	oldRole, newRole Role) {
+	// Check if connection supports watchers
+	if !isFeatureInSlice(iproto.IPROTO_FEATURE_WATCHERS, conn.ProtocolInfo().Features) {
+		return
+	}
+
+	p.watcherContainer.mutex.RLock()
+	defer p.watcherContainer.mutex.RUnlock()
+
+	_ = p.watcherContainer.foreach(func(watcher *poolWatcher) error {
+		var wasWatching, shouldWatch bool
+
+		switch watcher.mode {
+		case RW:
+			wasWatching = oldRole == MasterRole
+			shouldWatch = newRole == MasterRole
+		case RO:
+			wasWatching = oldRole == ReplicaRole
+			shouldWatch = newRole == ReplicaRole
+		default: // ANY, PreferRW, PreferRO
+			wasWatching = oldRole == MasterRole || oldRole == ReplicaRole
+			shouldWatch = newRole == MasterRole || newRole == ReplicaRole
+		}
+
+		if wasWatching && !shouldWatch {
+			watcher.unwatch(conn)
+		} else if !wasWatching && shouldWatch {
+			if err := watcher.watch(conn); err != nil {
+				log.Printf("tarantool: failed to watch for %s after role change: %s", conn.Addr().String(), err)
+			}
+		}
+
+		return nil
+	})
 }
 
 func (p *ConnectionPool) tryConnect(ctx context.Context, e *endpoint) error {
@@ -854,26 +859,6 @@ func (p *ConnectionPool) tryConnect(ctx context.Context, e *endpoint) error {
 
 	p.poolsMutex.Unlock()
 	return err
-}
-
-func (p *ConnectionPool) reconnect(ctx context.Context, e *endpoint) {
-	p.poolsMutex.Lock()
-
-	if p.state.get() != connectedState {
-		p.poolsMutex.Unlock()
-		return
-	}
-
-	p.deleteConnection(e.name)
-	p.poolsMutex.Unlock()
-
-	p.handlerDeactivated(e.name, e.conn, e.role)
-	e.conn = nil
-	e.role = UnknownRole
-
-	if err := p.tryConnect(ctx, e); err != nil {
-		log.Printf("tarantool: reconnect to %s failed: %s\n", e.name, err)
-	}
 }
 
 func (p *ConnectionPool) controller(ctx context.Context, e *endpoint) {
@@ -943,33 +928,17 @@ func (p *ConnectionPool) controller(ctx context.Context, e *endpoint) {
 					// Will be processed at an upper level.
 				case <-e.shutdown:
 					// Will be processed at an upper level.
-				case <-e.notify:
-					if e.conn != nil && e.conn.ClosedNow() {
-						p.poolsMutex.Lock()
-						if p.state.get() == connectedState {
-							p.deleteConnection(e.name)
-							p.poolsMutex.Unlock()
-							p.handlerDeactivated(e.name, e.conn, e.role)
-							e.conn = nil
-							e.role = UnknownRole
-						} else {
-							p.poolsMutex.Unlock()
-						}
-					}
+				case event := <-e.notify:
+					p.handleConnEvent(e, event)
 				case <-timer.C:
-					// Reopen connection.
-					// Relocate connection between subpools
-					// if ro/rw was updated.
-					switch {
-					case e.conn == nil:
+					// Check for role updates and reconnect if needed.
+					if e.conn == nil {
+						// Try to reconnect if connection is nil.
 						if err := p.tryConnect(ctx, e); err != nil {
-							log.Printf("tarantool: reopen connection to %s failed: %s\n",
-								e.name, err)
+							log.Printf("tarantool: reconnect to %s failed: %s\n", e.name, err)
 						}
-					case !e.conn.ClosedNow():
+					} else if !e.conn.ClosedNow() {
 						p.updateConnection(e)
-					default:
-						p.reconnect(ctx, e)
 					}
 				}
 			}
@@ -977,38 +946,46 @@ func (p *ConnectionPool) controller(ctx context.Context, e *endpoint) {
 	}
 }
 
-func (p *ConnectionPool) getNextConnection(mode Mode) (*tarantool.Connection, error) {
-	switch mode {
-	case ANY:
-		if next := p.anyPool.GetNextConnection(); next != nil {
-			return next, nil
+// handleConnEvent processes connection events from Notify channel.
+func (p *ConnectionPool) handleConnEvent(e *endpoint, event tarantool.ConnEvent) {
+	switch event.Kind {
+	case tarantool.Disconnected:
+		p.poolsMutex.Lock()
+		if p.state.get() == connectedState {
+			p.store.UpdateHealth(e.name, false)
 		}
-	case RW:
-		if next := p.rwPool.GetNextConnection(); next != nil {
-			return next, nil
+		p.poolsMutex.Unlock()
+
+	case tarantool.ReconnectFailed:
+		p.poolsMutex.Lock()
+		if p.state.get() == connectedState {
+			p.store.UpdateHealth(e.name, false)
 		}
-		return nil, ErrNoRwInstance
-	case RO:
-		if next := p.roPool.GetNextConnection(); next != nil {
-			return next, nil
+		p.poolsMutex.Unlock()
+
+	case tarantool.Connected:
+		p.poolsMutex.Lock()
+		if p.state.get() == connectedState {
+			p.store.UpdateHealth(e.name, true)
 		}
-		return nil, ErrNoRoInstance
-	case PreferRW:
-		if next := p.rwPool.GetNextConnection(); next != nil {
-			return next, nil
-		}
-		if next := p.roPool.GetNextConnection(); next != nil {
-			return next, nil
-		}
-	case PreferRO:
-		if next := p.roPool.GetNextConnection(); next != nil {
-			return next, nil
-		}
-		if next := p.rwPool.GetNextConnection(); next != nil {
-			return next, nil
+		p.poolsMutex.Unlock()
+
+	case tarantool.Closed:
+		p.poolsMutex.Lock()
+		if p.state.get() == connectedState && e.conn != nil {
+			p.deleteConnection(e.name)
+			p.poolsMutex.Unlock()
+			p.handlerDeactivated(e.name, e.conn, e.role)
+			e.conn = nil
+			e.role = UnknownRole
+		} else {
+			p.poolsMutex.Unlock()
 		}
 	}
-	return nil, ErrNoHealthyInstance
+}
+
+func (p *ConnectionPool) getNextConnection(mode Mode) (*tarantool.Connection, error) {
+	return p.selector.Select(mode)
 }
 
 func isFeatureInSlice(expected iproto.Feature, actualSlice []iproto.Feature) bool {
