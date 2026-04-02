@@ -632,14 +632,13 @@ func (p *ConnectionPool) getConnectionFromPool(name string) (*tarantool.Connecti
 }
 
 func (p *ConnectionPool) deleteConnection(name string) {
-	if conn := p.anyPool.DeleteConnection(name); conn != nil {
-		if conn := p.rwPool.DeleteConnection(name); conn == nil {
-			p.roPool.DeleteConnection(name)
-		}
+	conn := p.anyPool.DeleteConnection(name)
+	p.rwPool.DeleteConnection(name)
+	p.roPool.DeleteConnection(name)
+	if conn != nil {
 		// The internal connection deinitialization.
 		p.watcherContainer.mutex.RLock()
 		defer p.watcherContainer.mutex.RUnlock()
-
 		_ = p.watcherContainer.foreach(func(watcher *poolWatcher) error {
 			watcher.unwatch(conn)
 			return nil
