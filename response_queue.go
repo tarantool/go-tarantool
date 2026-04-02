@@ -14,7 +14,7 @@ type resp struct {
 	buf    smallBuf
 }
 
-type Queue struct {
+type ResponseQueue struct {
 	_    CacheLinePad
 	buf  []resp
 	cap  uint64
@@ -40,16 +40,16 @@ type Queue struct {
 	producersWaiting int32
 	consumersWaiting int32
 
-	closed int32
+	closed atomic.Bool
 }
 
-func NewResponseQueue(size uint) *Queue {
+func NewResponseQueue(size uint) *ResponseQueue {
 	cap := uint64(1)
 	for cap < uint64(size) {
 		cap <<= 1
 	}
 
-	q := &Queue{
+	q := &ResponseQueue{
 		buf:  make([]resp, cap),
 		cap:  cap,
 		mask: cap - 1,
@@ -59,8 +59,8 @@ func NewResponseQueue(size uint) *Queue {
 	return q
 }
 
-func (q *Queue) Push(el resp) {
-	if atomic.LoadInt32(&q.closed) == 1 {
+func (q *ResponseQueue) Push(el resp) {
+	if q.closed.Load() {
 		return
 	}
 
@@ -90,7 +90,7 @@ func (q *Queue) Push(el resp) {
 	}
 }
 
-func (q *Queue) waitForSpace() {
+func (q *ResponseQueue) waitForSpace() {
 	atomic.AddInt32(&q.producersWaiting, 1)
 	defer atomic.AddInt32(&q.producersWaiting, -1)
 
@@ -107,7 +107,7 @@ func (q *Queue) waitForSpace() {
 			return
 		}
 
-		if atomic.LoadInt32(&q.closed) == 1 {
+		if q.closed.Load() {
 			return
 		}
 
@@ -115,8 +115,8 @@ func (q *Queue) waitForSpace() {
 	}
 }
 
-func (q *Queue) Pop() resp {
-	if atomic.LoadInt32(&q.closed) == 1 {
+func (q *ResponseQueue) Pop() resp {
+	if q.closed.Load() {
 		var t resp
 		return t
 	}
@@ -147,7 +147,7 @@ func (q *Queue) Pop() resp {
 	}
 }
 
-func (q *Queue) waitForData() {
+func (q *ResponseQueue) waitForData() {
 	atomic.AddInt32(&q.consumersWaiting, 1)
 	defer atomic.AddInt32(&q.consumersWaiting, -1)
 
@@ -163,7 +163,7 @@ func (q *Queue) waitForData() {
 			return
 		}
 
-		if atomic.LoadInt32(&q.closed) == 1 {
+		if q.closed.Load() {
 			return
 		}
 
@@ -171,33 +171,8 @@ func (q *Queue) waitForData() {
 	}
 }
 
-func (q *Queue) Front() (resp, bool) {
-	rIdx := atomic.LoadUint64(&q.rIdx)
-
-	if rIdx == q.wIdxCached {
-		q.wIdxCached = atomic.LoadUint64(&q.wIdx)
-		if rIdx == q.wIdxCached {
-			var t resp
-			return t, false
-		}
-	}
-
-	return q.buf[rIdx], true
-}
-
-func (q *Queue) Advance() {
-	rIdxNext := (q.rIdx + 1) & q.mask
-	atomic.StoreUint64(&q.rIdx, rIdxNext)
-
-	if atomic.LoadInt32(&q.producersWaiting) > 0 {
-		q.mu.Lock()
-		q.cond.Signal()
-		q.mu.Unlock()
-	}
-}
-
-func (q *Queue) Close() {
-	atomic.StoreInt32(&q.closed, 1)
+func (q *ResponseQueue) Close() {
+	q.closed.Store(true)
 	q.mu.Lock()
 	q.cond.Broadcast()
 	q.mu.Unlock()
