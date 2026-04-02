@@ -221,7 +221,7 @@ func ExampleRequest_Response_manual() {
 	defer func() { _ = conn.Close() }()
 
 	// Insert test data.
-	_, err := conn.Do(tarantool.NewInsertRequest(spaceNo).
+	_, err := conn.Do(tarantool.NewReplaceRequest(spaceNo).
 		Tuple([]interface{}{uint(1111), "hello", "world"}),
 	).Get()
 	if err != nil {
@@ -258,7 +258,7 @@ func ExampleRequest_Response_manualDecodeTyped() {
 	defer func() { _ = conn.Close() }()
 
 	// Insert test data.
-	_, err := conn.Do(tarantool.NewInsertRequest(spaceNo).
+	_, err := conn.Do(tarantool.NewReplaceRequest(spaceNo).
 		Tuple([]interface{}{uint(1111), "hello", "world"}),
 	).Get()
 	if err != nil {

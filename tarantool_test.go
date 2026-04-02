@@ -18,6 +18,7 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+	"unsafe"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -231,11 +232,16 @@ func BenchmarkSync_naive_with_custom_type_without_Release(b *testing.B) {
 
 func BenchmarkSync_naive_with_custom_type_with_Release(b *testing.B) {
 	releasedOpts := opts
-	releasedOpts.PoolSizes = tarantool.DefaultPool // []int{8, 12, 16}
+	allocator, err := tarantool.NewPoolAllocator([]int{8, 12, 16})
+	if err != nil {
+		b.Fatalf("failed to create pool allocator: %s", err)
+	}
+
+	releasedOpts.Allocator = allocator
 	conn := test_helpers.ConnectWithValidation(b, dialer, releasedOpts)
 	defer func() { _ = conn.Close() }()
 
-	_, err := conn.Do(
+	_, err = conn.Do(
 		NewReplaceRequest(spaceNo).
 			Tuple([]interface{}{uint(1111), "hello", "world"}),
 	).Get()
@@ -356,6 +362,10 @@ func TestBenchmarkAsync(t *testing.T) {
 	connections := 16
 
 	ops := opts
+	allocator, err := tarantool.NewPoolAllocator([]int{8, 12, 16})
+	require.NoError(t, err)
+
+	ops.Allocator = allocator
 	// ops.Concurrency = 2 // 4 max. // 2 max.
 
 	conns := make([]*Connection, 0, connections)
@@ -366,7 +376,7 @@ func TestBenchmarkAsync(t *testing.T) {
 		conns = append(conns, conn)
 	}
 
-	_, err := conns[0].Do(
+	_, err = conns[0].Do(
 		NewReplaceRequest(spaceNo).
 			Tuple([]interface{}{uint(1111), "hello", "world"}),
 	).Get()
@@ -418,6 +428,7 @@ func TestBenchmarkAsync(t *testing.T) {
 						if tuple.id != 1111 {
 							t.Errorf("invalid result")
 						}
+						fut.Release()
 					}
 				}()
 			}
@@ -4039,6 +4050,236 @@ func TestDoCommitRequest_NoSync(t *testing.T) {
 // Using defer + os.Exit is not works so TestMain body
 // is a separate function, see
 // https://stackoverflow.com/questions/27629380/how-to-exit-a-go-program-honoring-deferred-calls
+type mockAllocator struct {
+	mu        sync.Mutex
+	gets      []int
+	puts      []int
+	allocated map[uintptr]int
+	freed     map[uintptr]int
+}
+
+func newMockAllocator() *mockAllocator {
+	return &mockAllocator{
+		allocated: make(map[uintptr]int),
+		freed:     make(map[uintptr]int),
+	}
+}
+
+func (m *mockAllocator) Get(length int) *[]byte {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.gets = append(m.gets, length)
+	buf := make([]byte, length)
+	ptr := &buf
+	m.allocated[uintptr(unsafe.Pointer(ptr))] = length
+	return ptr
+}
+
+func (m *mockAllocator) Put(buf *[]byte) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.puts = append(m.puts, len(*buf))
+	ptr := uintptr(unsafe.Pointer(buf))
+	m.freed[ptr] = len(*buf)
+}
+
+func (m *mockAllocator) getCallCount() int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return len(m.gets)
+}
+
+func (m *mockAllocator) putCallCount() int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return len(m.puts)
+}
+
+func (m *mockAllocator) reset() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.gets = nil
+	m.puts = nil
+	m.allocated = make(map[uintptr]int)
+	m.freed = make(map[uintptr]int)
+}
+
+func (m *mockAllocator) allFreedWereAllocated() bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for ptr := range m.freed {
+		if _, ok := m.allocated[ptr]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
+func (m *mockAllocator) allAllocatedWereFreed() bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for ptr := range m.allocated {
+		if _, ok := m.freed[ptr]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
+func TestConnectionUsesAllocatorForAllocs(t *testing.T) {
+	mockAlloc := newMockAllocator()
+
+	testOpts := opts
+	testOpts.Allocator = mockAlloc
+
+	conn := test_helpers.ConnectWithValidation(t, dialer, testOpts)
+	defer func() { _ = conn.Close() }()
+
+	mockAlloc.reset()
+
+	_, err := conn.Do(
+		tarantool.NewReplaceRequest(spaceNo).
+			Tuple([]interface{}{uint(1111), "hello", "world"}),
+	).Get()
+	require.NoError(t, err)
+
+	_, err = conn.Do(
+		tarantool.NewSelectRequest(spaceNo).
+			Index(indexNo).
+			Iterator(tarantool.IterEq).
+			Key([]interface{}{uint(1111)}),
+	).Get()
+	require.NoError(t, err)
+
+	assert.Positive(t, mockAlloc.getCallCount())
+}
+
+func TestConnectionReleasesAllocatedSlices(t *testing.T) {
+	mockAlloc := newMockAllocator()
+
+	testOpts := opts
+	testOpts.Allocator = mockAlloc
+
+	conn := test_helpers.ConnectWithValidation(t, dialer, testOpts)
+	defer func() { _ = conn.Close() }()
+
+	mockAlloc.reset()
+
+	fut := conn.Do(
+		tarantool.NewReplaceRequest(spaceNo).
+			Tuple([]interface{}{uint(1111), "test", "data"}),
+	)
+	_, err := fut.Get()
+	require.NoError(t, err)
+
+	fut.Release()
+
+	assert.Positive(t, mockAlloc.putCallCount())
+	assert.True(t, mockAlloc.allFreedWereAllocated())
+	assert.True(t, mockAlloc.allAllocatedWereFreed())
+}
+
+func TestConnectionNoReleaseWithoutReleaseCall(t *testing.T) {
+	mockAlloc := newMockAllocator()
+
+	testOpts := opts
+	testOpts.Allocator = mockAlloc
+
+	conn := test_helpers.ConnectWithValidation(t, dialer, testOpts)
+	defer func() { _ = conn.Close() }()
+
+	mockAlloc.reset()
+
+	fut := conn.Do(
+		tarantool.NewReplaceRequest(spaceNo).
+			Tuple([]interface{}{uint(1111), "test", "data"}),
+	)
+	_, err := fut.Get()
+	require.NoError(t, err)
+
+	// Do not call Release().
+
+	assert.Zero(t, mockAlloc.putCallCount())
+}
+
+func TestConnectionReleasesAllocationsOnConnect(t *testing.T) {
+	mockAlloc := newMockAllocator()
+
+	testOpts := opts
+	testOpts.Allocator = mockAlloc
+
+	conn := test_helpers.ConnectWithValidation(t, dialer, testOpts)
+
+	assert.Positive(t, mockAlloc.getCallCount())
+
+	require.NoError(t, conn.Close())
+
+	assert.True(t, mockAlloc.allFreedWereAllocated())
+	assert.True(t, mockAlloc.allAllocatedWereFreed())
+}
+
+type nilMockAllocator struct {
+	mu      sync.Mutex
+	getCall int
+	putCall int
+}
+
+func newNilMockAllocator() *nilMockAllocator {
+	return &nilMockAllocator{}
+}
+
+func (m *nilMockAllocator) Get(length int) *[]byte {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.getCall++
+	return nil
+}
+
+func (m *nilMockAllocator) Put(buf *[]byte) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.putCall++
+}
+
+func (m *nilMockAllocator) getCallCount() int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.getCall
+}
+
+func (m *nilMockAllocator) putCallCount() int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.putCall
+}
+
+func TestConnectionNilAllocatorNeverCallsPut(t *testing.T) {
+	mockAlloc := newNilMockAllocator()
+
+	testOpts := opts
+	testOpts.Allocator = mockAlloc
+
+	conn := test_helpers.ConnectWithValidation(t, dialer, testOpts)
+	defer func() { _ = conn.Close() }()
+
+	_, err := conn.Do(
+		tarantool.NewReplaceRequest(spaceNo).
+			Tuple([]interface{}{uint(1111), "hello", "world"}),
+	).Get()
+	require.NoError(t, err)
+
+	_, err = conn.Do(
+		tarantool.NewSelectRequest(spaceNo).
+			Index(indexNo).
+			Iterator(tarantool.IterEq).
+			Key([]interface{}{uint(1111)}),
+	).Get()
+	require.NoError(t, err)
+
+	assert.Positive(t, mockAlloc.getCallCount())
+	assert.Zero(t, mockAlloc.putCallCount())
+}
+
 func runTestMain(m *testing.M) int {
 	// Tarantool supports streams and interactive transactions since version 2.10.0
 	isStreamUnsupported, err := test_helpers.IsTarantoolVersionLess(2, 10, 0)
