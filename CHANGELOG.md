@@ -23,6 +23,11 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 * Resources allocated for a `Future` object created by the `Connection` type
   could be released with the `Future.Release()` call.
 * Added function String() for type interval (#322).
+* New `Allocator` interface for custom allocation of response buffers (#493).
+* New `PoolAllocator` type that implements `Allocator` using sync.Pool for
+  power-of-two sized byte slices (#493).
+* New `Opts.Allocator` option to configure a custom allocator for a
+  connection (#493).
 
 ### Changed
 

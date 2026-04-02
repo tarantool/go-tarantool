@@ -395,10 +395,14 @@ func GetSchema(doer Doer) (Schema, error) {
 	req := NewSelectRequest(vspaceSpId).
 		Index(0).
 		Limit(maxSchemas)
-	err := doer.Do(req).GetTyped(&spaces)
+
+	fut := doer.Do(req)
+	err := fut.GetTyped(&spaces)
+	fut.Release()
 	if err != nil {
 		return Schema{}, err
 	}
+
 	for _, space := range spaces {
 		schema.SpacesById[space.Id] = space
 		schema.Spaces[space.Name] = space
@@ -409,10 +413,14 @@ func GetSchema(doer Doer) (Schema, error) {
 	req = NewSelectRequest(vindexSpId).
 		Index(0).
 		Limit(maxSchemas)
-	err = doer.Do(req).GetTyped(&indexes)
+
+	fut = doer.Do(req)
+	err = fut.GetTyped(&indexes)
+	fut.Release()
 	if err != nil {
 		return Schema{}, err
 	}
+
 	for _, index := range indexes {
 		spaceId := index.SpaceId
 		if _, ok := schema.SpacesById[spaceId]; ok {
