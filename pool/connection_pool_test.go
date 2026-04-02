@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"log/slog"
 	"net"
 	"os"
 	"reflect"
@@ -180,23 +181,36 @@ func TestConn_no_execute_unsupported(t *testing.T) {
 	test_helpers.SkipIfWatchOnceSupported(t)
 
 	var buf bytes.Buffer
-	log.SetOutput(&buf)
-	defer log.SetOutput(os.Stderr)
+	handler := slog.NewTextHandler(&buf, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	})
+	slogLogger := slog.New(handler)
+
+	poolOpts := pool.Opts{
+		CheckTimeout: 1 * time.Second,
+		Logger:       slogLogger,
+	}
+
+	optsWithLogger := connOpts
+	optsWithLogger.Logger = tarantool.NewSlogLogger(slogLogger)
 
 	healthyServ := servers[0]
 
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.Connect(ctx,
-		[]pool.Instance{makeNoExecuteInstance(healthyServ, connOpts)})
+	connPool, err := pool.ConnectWithOpts(ctx,
+		[]pool.Instance{makeNoExecuteInstance(healthyServ, optsWithLogger)},
+		poolOpts)
 	require.Nilf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
 	defer func() { _ = connPool.Close() }()
 
-	require.Contains(t, buf.String(),
-		fmt.Sprintf("connect to %s failed: Execute access to function "+
-			"'box.info' is denied for user '%s'", servers[0], userNoExec))
+	logOutput := buf.String()
+	require.Contains(t, logOutput, `msg="connect to instance failed"`)
+	require.Contains(t, logOutput, fmt.Sprintf("name=%s", healthyServ))
+	require.Contains(t, logOutput,
+		"Execute access to function 'box.info' is denied for user 'test_noexec'")
 
 	args := test_helpers.CheckStatusesArgs{
 		ConnPool:           connPool,
@@ -207,7 +221,6 @@ func TestConn_no_execute_unsupported(t *testing.T) {
 			healthyServ: false,
 		},
 	}
-
 	err = test_helpers.CheckPoolStatuses(args)
 	require.Nil(t, err)
 
