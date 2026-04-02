@@ -851,34 +851,22 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 
 	resps := NewResponseQueue(1024)
 
-	go func(ctx context.Context) {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				r, ok := resps.Front()
-				if !ok {
-					runtime.Gosched()
-					continue
-				}
+	go func() {
+		for atomic.LoadUint32(&conn.state) != connClosed {
+			r := resps.Pop()
+			fut := conn.fetchFuture(r.header.RequestId)
+			if fut == nil {
+				conn.opts.Logger.Report(LogUnexpectedResultId, conn, r.header)
 
-				fut := conn.fetchFuture(r.header.RequestId)
-				if fut == nil {
-					conn.opts.Logger.Report(LogUnexpectedResultId, conn, r.header)
-
-					continue
-				}
-
-				if err := fut.setResponse(r.header, &r.buf); err != nil {
-					fut.setError(fmt.Errorf("failed to set response: %w", err))
-				}
-				conn.markDone(fut)
-
-				resps.Advance()
+				continue
 			}
+
+			if err := fut.setResponse(r.header, &r.buf); err != nil {
+				fut.setError(fmt.Errorf("failed to set response: %w", err))
+			}
+			conn.markDone(fut)
 		}
-	}(context.Background())
+	}()
 
 	buf := smallBuf{}
 
