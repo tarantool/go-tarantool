@@ -850,18 +850,11 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 
 	go conn.eventer(events)
 
-	type resp struct {
-		header Header
-		buf    smallBuf
-	}
-
-	resps := make(chan resp, 1024)
-	defer close(resps)
+	resps := NewResponseQueue(1024)
 
 	go func() {
-		var r resp
-
-		for r = range resps {
+		for atomic.LoadUint32(&conn.state) != connClosed {
+			r := resps.Pop()
 			fut := conn.fetchFuture(r.header.RequestId)
 			if fut == nil {
 				conn.opts.Logger.Report(LogUnexpectedResultId, conn, r.header)
@@ -915,7 +908,7 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 		case iproto.IPROTO_CHUNK:
 			conn.opts.Logger.Report(LogBoxSessionPushUnsupported, conn, header)
 		default:
-			resps <- resp{header: header, buf: buf}
+			resps.Push(resp{header: header, buf: buf})
 		}
 	}
 }
