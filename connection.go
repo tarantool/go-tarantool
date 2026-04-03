@@ -210,6 +210,9 @@ type Connection struct {
 	shutdownWatcher Watcher
 	// requestCnt is a counter of active requests.
 	requestCnt int64
+
+	// alloc is an allocator for response buffers.
+	alloc Allocator
 }
 
 var _ = Connector(&Connection{}) // Check compatibility with connector interface.
@@ -327,6 +330,9 @@ type Opts struct {
 	Handle interface{}
 	// Logger is user specified logger used for error messages.
 	Logger Logger
+	// Allocator is used to allocate and deallocate response buffers.
+	// If nil, default Go allocation is used.
+	Allocator Allocator
 }
 
 // Connect creates and configures a new Connection.
@@ -373,7 +379,12 @@ func Connect(ctx context.Context, dialer Dialer, opts Opts) (conn *Connection, e
 		conn.opts.Logger = defaultLogger{}
 	}
 
+	if conn.opts.Allocator != nil {
+		conn.alloc = conn.opts.Allocator
+	}
+
 	conn.cond = sync.NewCond(&conn.mutex)
+
 	if conn.opts.Reconnect > 0 {
 		// We don't need these mutex.Lock()/mutex.Unlock() here, but
 		// runReconnects() expects mutex.Lock() to be set, so it's
@@ -864,12 +875,13 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 		for r = range resps {
 			fut := conn.fetchFuture(r.header.RequestId)
 			if fut == nil {
+				r.buf.Release()
 				conn.opts.Logger.Report(LogUnexpectedResultId, conn, r.header)
-
 				continue
 			}
 
 			if err := fut.setResponse(r.header, &r.buf); err != nil {
+				r.buf.Release()
 				fut.setError(fmt.Errorf("failed to set response: %w", err))
 			}
 			conn.markDone()
@@ -879,7 +891,10 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 	buf := smallBuf{}
 
 	for atomic.LoadUint32(&conn.state) != connClosed {
-		respBytes, err := read(r, conn.lenbuf[:])
+		var err error
+
+		buf, err = read(r, conn.lenbuf[:], conn.alloc)
+
 		if err != nil {
 			err = ClientError{
 				ErrIoError,
@@ -889,7 +904,6 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 			return
 		}
 
-		buf = smallBuf{b: respBytes}
 		header, code, err := decodeHeader(conn.dec, &buf)
 
 		if err != nil {
@@ -897,6 +911,7 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 				ErrProtocolError,
 				fmt.Sprintf("failed to decode IPROTO header: %s", err),
 			}
+			buf.Release()
 			conn.reconnect(err, c)
 			return
 		}
@@ -912,7 +927,9 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 				}
 				conn.opts.Logger.Report(LogWatchEventReadFailed, conn, err)
 			}
+			buf.Release()
 		case iproto.IPROTO_CHUNK:
+			buf.Release()
 			conn.opts.Logger.Report(LogBoxSessionPushUnsupported, conn, header)
 		default:
 			resps <- resp{header: header, buf: buf}
@@ -1210,16 +1227,20 @@ func (conn *Connection) timeouts() {
 	}
 }
 
-func read(r io.Reader, lenbuf []byte) (response []byte, err error) {
+// read reads a response from the reader and allocates a buffer using the
+// allocator. If alloc is nil, a regular Go allocation is used.
+// The returned buffer could be released using Release.
+func read(r io.Reader, lenbuf []byte, alloc Allocator) (smallBuf, error) {
 	var length uint64
 
-	if _, err = io.ReadFull(r, lenbuf); err != nil {
-		return
+	if _, err := io.ReadFull(r, lenbuf); err != nil {
+		return smallBuf{}, fmt.Errorf("failed to read response length: %w", err)
 	}
+
 	if lenbuf[0] != 0xce {
-		err = errors.New("wrong response header")
-		return
+		return smallBuf{}, errors.New("wrong response header")
 	}
+
 	length = (uint64(lenbuf[1]) << 24) +
 		(uint64(lenbuf[2]) << 16) +
 		(uint64(lenbuf[3]) << 8) +
@@ -1227,17 +1248,19 @@ func read(r io.Reader, lenbuf []byte) (response []byte, err error) {
 
 	switch {
 	case length == 0:
-		err = errors.New("response should not be 0 length")
-		return
+		return smallBuf{}, errors.New("response should not be 0 length")
 	case length > math.MaxUint32:
-		err = errors.New("response is too big")
-		return
+		return smallBuf{}, errors.New("response is too big")
 	}
 
-	response = make([]byte, length)
-	_, err = io.ReadFull(r, response)
+	buf := createBuf(alloc, int(length))
+	if _, err := io.ReadFull(r, buf.b); err != nil {
+		buf.Release()
 
-	return
+		return smallBuf{}, fmt.Errorf("failed to read response: %w", err)
+	}
+
+	return buf, nil
 }
 
 func (conn *Connection) nextRequestId(context bool) (requestId uint32) {

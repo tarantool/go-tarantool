@@ -1542,3 +1542,50 @@ func ExampleFdDialer() {
 	// Output:
 	// <nil>
 }
+
+// ExamplePoolAllocator demonstrates how to use PoolAllocator for
+// buffer pooling to reduce memory allocations when working with
+// a connection.
+func ExamplePoolAllocator() {
+	// Create a pool allocator with pools for 256, 1024, and 4096 byte slices.
+	// Exponents must be sorted in ascending order and in range [0, 31].
+	allocator, err := tarantool.NewPoolAllocator([]int{8, 10, 12})
+	if err != nil {
+		fmt.Printf("Failed to create allocator: %s\n", err)
+		return
+	}
+
+	// Use the allocator with a connection.
+	optsWithAlloc := opts
+	optsWithAlloc.Allocator = allocator
+
+	conn := exampleConnect(dialer, optsWithAlloc)
+	defer func() { _ = conn.Close() }()
+
+	// Insert a tuple.
+	fut := conn.Do(tarantool.NewReplaceRequest("test").
+		Tuple([]interface{}{uint(1111), "hello", "world"}))
+	_, err = fut.Get()
+	if err != nil {
+		fmt.Printf("Failed to replace: %s\n", err)
+		return
+	}
+	// Release the buffer back to the pool after use.
+	fut.Release()
+
+	// Select the tuple - the allocator will be used for response buffers.
+	fut = conn.Do(tarantool.NewSelectRequest("test").
+		Index("primary").
+		Key(tarantool.UintKey{1111}))
+	data, err := fut.Get()
+	if err != nil {
+		fmt.Printf("Failed to select: %s\n", err)
+		return
+	}
+	fmt.Println(data)
+	// Release the buffer back to the pool after use.
+	fut.Release()
+
+	// Output:
+	// [[1111 hello world]]
+}
