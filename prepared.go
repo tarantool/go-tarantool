@@ -90,8 +90,10 @@ func (req *PrepareRequest) Response(header Header, body io.Reader) (Response, er
 	if err != nil {
 		return nil, err
 	}
+	resp := preparesPool.Get().(*PrepareResponse)
+	resp.baseResponse = baseResp
 
-	return &PrepareResponse{baseResponse: baseResp}, nil
+	return resp, nil
 }
 
 // UnprepareRequest helps you to create an unprepare request object for
@@ -205,6 +207,8 @@ func (req *ExecutePreparedRequest) Response(header Header, body io.Reader) (Resp
 	if err != nil {
 		return nil, err
 	}
+	exec := executesPool.Get().(*ExecuteResponse)
+	exec.baseResponse = baseResp
 
-	return &ExecuteResponse{baseResponse: baseResp}, nil
+	return exec, nil
 }

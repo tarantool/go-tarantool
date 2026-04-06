@@ -1160,6 +1160,12 @@ func (req *ExecuteRequest) Context(ctx context.Context) *ExecuteRequest {
 	return req
 }
 
+var executesPool = sync.Pool{
+	New: func() interface{} {
+		return &ExecuteResponse{}
+	},
+}
+
 // Response creates a response for the ExecuteRequest.
 func (req *ExecuteRequest) Response(header Header, body io.Reader) (Response, error) {
 	baseResp, err := createBaseResponse(header, body)
@@ -1167,7 +1173,10 @@ func (req *ExecuteRequest) Response(header Header, body io.Reader) (Response, er
 		return nil, err
 	}
 
-	return &ExecuteResponse{baseResponse: baseResp}, nil
+	exec := executesPool.Get().(*ExecuteResponse)
+	exec.baseResponse = baseResp
+
+	return exec, nil
 }
 
 // WatchOnceRequest synchronously fetches the value currently associated with a

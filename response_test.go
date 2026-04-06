@@ -154,3 +154,89 @@ func TestSelectResponseReleaseMultipleObjects(t *testing.T) {
 	require.Equal(t, []interface{}{buf3}, data3)
 	require.Equal(t, header3, resp3.Header())
 }
+
+func TestExecuteResponseRelease(t *testing.T) {
+	req := tarantool.NewExecuteRequest(insertQuery)
+
+	header := tarantool.Header{RequestId: 123}
+	buf := []byte{'v', '3'}
+	resp, err := req.Response(header, encodeResponseData(t, buf))
+
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	resp.Release()
+
+	execResp, ok := resp.(*tarantool.ExecuteResponse)
+	require.True(t, ok)
+	require.Equal(t, tarantool.ExecuteResponse{}, *execResp)
+}
+
+func TestExecuteResponseReleaseReuse(t *testing.T) {
+	req := tarantool.NewExecuteRequest(insertQuery)
+
+	header1 := tarantool.Header{RequestId: 100}
+	buf1 := []byte{'d', 'a', 't', 'a', '1'}
+	resp1, err := req.Response(header1, encodeResponseData(t, buf1))
+	require.NoError(t, err)
+
+	data1, err := resp1.Decode()
+	require.NoError(t, err)
+	require.Equal(t, []interface{}{buf1}, data1)
+
+	resp1.Release()
+
+	header2 := tarantool.Header{RequestId: 200}
+	buf2 := []byte{'d', 'a', 't', 'a', '2'}
+	resp2, err := req.Response(header2, encodeResponseData(t, buf2))
+	require.NoError(t, err)
+
+	data2, err := resp2.Decode()
+	require.NoError(t, err)
+	require.Equal(t, []interface{}{buf2}, data2)
+	require.Equal(t, header2, resp2.Header())
+	require.Equal(t, []interface{}{buf2}, data2)
+}
+
+func TestPrepareResponseRelease(t *testing.T) {
+	req := tarantool.NewPrepareRequest(insertQuery)
+
+	header := tarantool.Header{RequestId: 123}
+	buf := []byte{'v', '3'}
+	resp, err := req.Response(header, encodeResponseData(t, buf))
+
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	resp.Release()
+
+	prepResp, ok := resp.(*tarantool.PrepareResponse)
+	require.True(t, ok)
+	require.Equal(t, tarantool.PrepareResponse{}, *prepResp)
+}
+
+func TestPrepareResponseReleaseReuse(t *testing.T) {
+	req := tarantool.NewPrepareRequest(insertQuery)
+
+	header1 := tarantool.Header{RequestId: 100}
+	buf1 := []byte{'d', 'a', 't', 'a', '1'}
+	resp1, err := req.Response(header1, encodeResponseData(t, buf1))
+	require.NoError(t, err)
+
+	data1, err := resp1.Decode()
+	require.NoError(t, err)
+	require.Equal(t, []interface{}{buf1}, data1)
+
+	resp1.Release()
+
+	header2 := tarantool.Header{RequestId: 200}
+	buf2 := []byte{'d', 'a', 't', 'a', '2'}
+	resp2, err := req.Response(header2, encodeResponseData(t, buf2))
+	require.NoError(t, err)
+
+	data2, err := resp2.Decode()
+	require.NoError(t, err)
+	require.Equal(t, []interface{}{buf2}, data2)
+	require.Equal(t, header2, resp2.Header())
+	require.Equal(t, []interface{}{buf2}, data2)
+}

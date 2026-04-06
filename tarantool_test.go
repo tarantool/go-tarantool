@@ -262,6 +262,33 @@ func BenchmarkSync_naive_with_custom_type_with_Release(b *testing.B) {
 	}
 }
 
+func BenchmarkSync_execute_with_Release(b *testing.B) {
+	test_helpers.SkipIfSQLUnsupported(b)
+
+	conn := test_helpers.ConnectWithValidation(b, dialer, opts)
+	defer func() { _ = conn.Close() }()
+
+	var mem []Member
+
+	req := NewExecuteRequest(selectTypedQuery).Args(
+		[]interface{}{1},
+	)
+
+	b.ResetTimer()
+
+	for b.Loop() {
+		fut := conn.Do(req)
+		if err := fut.GetTyped(&mem); err != nil {
+			b.Errorf("request error: %s", err)
+		}
+
+		if len(mem) != 1 || mem[0].Name != "test" {
+			b.Errorf("invalid result, got: %v", mem)
+		}
+		fut.Release()
+	}
+}
+
 func BenchmarkSync_multithread(b *testing.B) {
 	var err error
 
@@ -1520,6 +1547,30 @@ func TestNewPrepared(t *testing.T) {
 	if stmt.StatementID == 0 {
 		t.Errorf("failed to prepare: statement id is 0")
 	}
+}
+
+func TestExecutePrepareResponseRelease(t *testing.T) {
+	test_helpers.SkipIfSQLUnsupported(t)
+
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
+
+	stmt, err := conn.NewPrepared(selectNamedQuery2)
+	if err != nil {
+		t.Errorf("failed to prepare: %v", err)
+	}
+
+	req := NewExecutePreparedRequest(stmt)
+
+	resp, err := conn.Do(req.Args([]interface{}{1, "test"})).GetResponse()
+	if err != nil {
+		t.Errorf("failed to execute prepared: %v", err)
+	}
+
+	resp.Release()
+
+	exPrepResp, ok := resp.(*ExecuteResponse)
+	require.True(t, ok, "got wrong response type")
+	require.Equal(t, ExecuteResponse{}, *exPrepResp)
 }
 
 func TestConnection_DoWithStrangerConn(t *testing.T) {
