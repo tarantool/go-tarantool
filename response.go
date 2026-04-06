@@ -3,6 +3,7 @@ package tarantool
 import (
 	"fmt"
 	"io"
+	"sync"
 
 	"github.com/tarantool/go-iproto"
 	"github.com/vmihailenco/msgpack/v5"
@@ -78,6 +79,12 @@ type SelectResponse struct {
 // but it could be changed in the future.
 // You need to cast to PrepareResponse a response from PrepareRequest.
 type PrepareResponse ExecuteResponse
+
+var preparesPool = sync.Pool{
+	New: func() interface{} {
+		return &PrepareResponse{}
+	},
+}
 
 // ExecuteResponse is used for the execute requests.
 // It might contain meta-data and sql info.
@@ -697,6 +704,20 @@ func (resp *SelectResponse) Pos() ([]byte, error) {
 		}
 	}
 	return resp.pos, resp.err
+}
+
+func (resp *ExecuteResponse) Release() {
+	resp.baseResponse.Release()
+	*resp = ExecuteResponse{}
+
+	executesPool.Put(resp)
+}
+
+func (resp *PrepareResponse) Release() {
+	resp.baseResponse.Release()
+	*resp = PrepareResponse{}
+
+	preparesPool.Put(resp)
 }
 
 // MetaData returns ExecuteResponse meta-data.
