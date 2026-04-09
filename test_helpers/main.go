@@ -102,6 +102,24 @@ type TarantoolInstance struct {
 	st chan state
 }
 
+// T is a subset of testing.T interface used by test helpers.
+// It allows test helpers to be used in example functions, benchmarks,
+// and custom test frameworks. The standard *testing.T satisfies this
+// interface, so existing code continues to work without changes.
+type T interface {
+	// Helper marks the calling function as a test helper function.
+	Helper()
+	// Errorf marks the test as a test failure.
+	Errorf(format string, args ...interface{})
+	// Fatalf marks the test as a test failure and stops its execution.
+	Fatalf(format string, args ...interface{})
+	// Skipf marks the test as skipped.
+	Skipf(format string, args ...interface{})
+	// FailNow marks the function as having failed and stops its execution.
+	// It is required for github.com/stretchr/testify/require functions.
+	FailNow()
+}
+
 // IsExit checks if Tarantool process was terminated.
 func (t *TarantoolInstance) IsExit() bool {
 	st := <-t.st

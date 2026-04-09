@@ -2,7 +2,6 @@ package test_helpers
 
 import (
 	"fmt"
-	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
@@ -13,7 +12,7 @@ import (
 // ConnectWithValidation tries to connect to a Tarantool instance.
 // It returns a valid connection if it is successful, otherwise finishes a test
 // with an error.
-func ConnectWithValidation(t testing.TB,
+func ConnectWithValidation(t T,
 	dialer tarantool.Dialer,
 	opts tarantool.Opts) *tarantool.Connection {
 	t.Helper()
@@ -30,7 +29,7 @@ func ConnectWithValidation(t testing.TB,
 	return conn
 }
 
-func DeleteRecordByKey(t *testing.T, conn tarantool.Connector,
+func DeleteRecordByKey(t T, conn tarantool.Connector,
 	space interface{}, index interface{}, key []interface{}) {
 	t.Helper()
 
@@ -62,7 +61,7 @@ func WaitUntilReconnected(conn *tarantool.Connection, retries uint, timeout time
 	return err == nil
 }
 
-func SkipIfSQLUnsupported(t testing.TB) {
+func SkipIfSQLUnsupported(t T) {
 	t.Helper()
 
 	// Tarantool supports SQL since version 2.0.0
@@ -71,12 +70,12 @@ func SkipIfSQLUnsupported(t testing.TB) {
 		t.Fatalf("Could not check the Tarantool version: %s", err)
 	}
 	if isLess {
-		t.Skip()
+		t.Skipf("Skipping test for Tarantool without SQL support")
 	}
 }
 
 // SkipIfLess skips test run if Tarantool version is less than expected.
-func SkipIfLess(t *testing.T, reason string, major, minor, patch uint64) {
+func SkipIfLess(t T, reason string, major, minor, patch uint64) {
 	t.Helper()
 
 	isLess, err := IsTarantoolVersionLess(major, minor, patch)
@@ -91,7 +90,7 @@ func SkipIfLess(t *testing.T, reason string, major, minor, patch uint64) {
 
 // SkipIfGreaterOrEqual skips test run if Tarantool version is greater or equal
 // than expected.
-func SkipIfGreaterOrEqual(t *testing.T, reason string, major, minor, patch uint64) {
+func SkipIfGreaterOrEqual(t T, reason string, major, minor, patch uint64) {
 	t.Helper()
 
 	isLess, err := IsTarantoolVersionLess(major, minor, patch)
@@ -105,7 +104,7 @@ func SkipIfGreaterOrEqual(t *testing.T, reason string, major, minor, patch uint6
 }
 
 // SkipIfFeatureUnsupported skips test run if Tarantool does not yet support a feature.
-func SkipIfFeatureUnsupported(t *testing.T, feature string, major, minor, patch uint64) {
+func SkipIfFeatureUnsupported(t T, feature string, major, minor, patch uint64) {
 	t.Helper()
 
 	SkipIfLess(t, fmt.Sprintf("without %s support", feature), major, minor, patch)
@@ -114,7 +113,7 @@ func SkipIfFeatureUnsupported(t *testing.T, feature string, major, minor, patch 
 // SkipIfFeatureSupported skips test run if Tarantool supports a feature.
 // Helper if useful when we want to test if everything is alright
 // on older versions.
-func SkipIfFeatureSupported(t *testing.T, feature string, major, minor, patch uint64) {
+func SkipIfFeatureSupported(t T, feature string, major, minor, patch uint64) {
 	t.Helper()
 
 	SkipIfGreaterOrEqual(t, fmt.Sprintf("with %s support", feature), major, minor, patch)
@@ -122,7 +121,7 @@ func SkipIfFeatureSupported(t *testing.T, feature string, major, minor, patch ui
 
 // SkipIfFeatureDropped skips test run if Tarantool had dropped
 // support of a feature.
-func SkipIfFeatureDropped(t *testing.T, feature string, major, minor, patch uint64) {
+func SkipIfFeatureDropped(t T, feature string, major, minor, patch uint64) {
 	t.Helper()
 
 	SkipIfGreaterOrEqual(t, fmt.Sprintf("with %s support dropped", feature), major, minor, patch)
@@ -130,7 +129,7 @@ func SkipIfFeatureDropped(t *testing.T, feature string, major, minor, patch uint
 
 // SkipIfStreamsUnsupported skips test run if Tarantool without streams
 // support is used.
-func SkipIfStreamsUnsupported(t *testing.T) {
+func SkipIfStreamsUnsupported(t T) {
 	t.Helper()
 
 	SkipIfFeatureUnsupported(t, "streams", 2, 10, 0)
@@ -138,7 +137,7 @@ func SkipIfStreamsUnsupported(t *testing.T) {
 
 // SkipIfWatchersUnsupported skips test run if Tarantool without watchers
 // support is used.
-func SkipIfWatchersUnsupported(t *testing.T) {
+func SkipIfWatchersUnsupported(t T) {
 	t.Helper()
 
 	SkipIfFeatureUnsupported(t, "watchers", 2, 10, 0)
@@ -146,7 +145,7 @@ func SkipIfWatchersUnsupported(t *testing.T) {
 
 // SkipIfWatchersSupported skips test run if Tarantool with watchers
 // support is used.
-func SkipIfWatchersSupported(t *testing.T) {
+func SkipIfWatchersSupported(t T) {
 	t.Helper()
 
 	SkipIfFeatureSupported(t, "watchers", 2, 10, 0)
@@ -154,7 +153,7 @@ func SkipIfWatchersSupported(t *testing.T) {
 
 // SkipIfIdUnsupported skips test run if Tarantool without
 // IPROTO_ID support is used.
-func SkipIfIdUnsupported(t *testing.T) {
+func SkipIfIdUnsupported(t T) {
 	t.Helper()
 
 	SkipIfFeatureUnsupported(t, "id requests", 2, 10, 0)
@@ -163,7 +162,7 @@ func SkipIfIdUnsupported(t *testing.T) {
 // SkipIfIdSupported skips test run if Tarantool with
 // IPROTO_ID support is used. Skip is useful for tests validating
 // that protocol info is processed as expected even for pre-IPROTO_ID instances.
-func SkipIfIdSupported(t *testing.T) {
+func SkipIfIdSupported(t T) {
 	t.Helper()
 
 	SkipIfFeatureSupported(t, "id requests", 2, 10, 0)
@@ -171,7 +170,7 @@ func SkipIfIdSupported(t *testing.T) {
 
 // SkipIfErrorExtendedInfoUnsupported skips test run if Tarantool without
 // IPROTO_ERROR (0x52) support is used.
-func SkipIfErrorExtendedInfoUnsupported(t *testing.T) {
+func SkipIfErrorExtendedInfoUnsupported(t T) {
 	t.Helper()
 
 	SkipIfFeatureUnsupported(t, "error extended info", 2, 4, 1)
@@ -179,7 +178,7 @@ func SkipIfErrorExtendedInfoUnsupported(t *testing.T) {
 
 // SkipIfErrorMessagePackTypeUnsupported skips test run if Tarantool without
 // MP_ERROR type over iproto support is used.
-func SkipIfErrorMessagePackTypeUnsupported(t *testing.T) {
+func SkipIfErrorMessagePackTypeUnsupported(t T) {
 	t.Helper()
 
 	SkipIfFeatureUnsupported(t, "error type in MessagePack", 2, 10, 0)
@@ -187,7 +186,7 @@ func SkipIfErrorMessagePackTypeUnsupported(t *testing.T) {
 
 // SkipIfPaginationUnsupported skips test run if Tarantool without
 // pagination is used.
-func SkipIfPaginationUnsupported(t *testing.T) {
+func SkipIfPaginationUnsupported(t T) {
 	t.Helper()
 
 	SkipIfFeatureUnsupported(t, "pagination", 2, 11, 0)
@@ -195,7 +194,7 @@ func SkipIfPaginationUnsupported(t *testing.T) {
 
 // SkipIfWatchOnceUnsupported skips test run if Tarantool without WatchOnce
 // request type is used.
-func SkipIfWatchOnceUnsupported(t *testing.T) {
+func SkipIfWatchOnceUnsupported(t T) {
 	t.Helper()
 
 	SkipIfFeatureUnsupported(t, "watch once", 3, 0, 0)
@@ -203,7 +202,7 @@ func SkipIfWatchOnceUnsupported(t *testing.T) {
 
 // SkipIfWatchOnceSupported skips test run if Tarantool with WatchOnce
 // request type is used.
-func SkipIfWatchOnceSupported(t *testing.T) {
+func SkipIfWatchOnceSupported(t T) {
 	t.Helper()
 
 	SkipIfFeatureSupported(t, "watch once", 3, 0, 0)
@@ -212,7 +211,7 @@ func SkipIfWatchOnceSupported(t *testing.T) {
 // SkipIfCrudSpliceBroken skips test run if splice operation is broken
 // on the crud side.
 // https://github.com/tarantool/crud/issues/397
-func SkipIfCrudSpliceBroken(t *testing.T) {
+func SkipIfCrudSpliceBroken(t T) {
 	t.Helper()
 
 	SkipIfFeatureUnsupported(t, "crud update splice", 2, 0, 0)
@@ -220,7 +219,7 @@ func SkipIfCrudSpliceBroken(t *testing.T) {
 
 // SkipIfIsSyncUnsupported skips test run if Tarantool without
 // IS_SYNC support is used.
-func SkipIfIsSyncUnsupported(t *testing.T) {
+func SkipIfIsSyncUnsupported(t T) {
 	t.Helper()
 
 	SkipIfFeatureUnsupported(t, "is sync", 3, 1, 0)
@@ -239,7 +238,7 @@ func IsTcsSupported() (bool, error) {
 }
 
 // SkipIfTcsUnsupported skips test if no centralized storage support.
-func SkipIfTcsUnsupported(t testing.TB) {
+func SkipIfTcsUnsupported(t T) {
 	t.Helper()
 
 	ok, err := IsTcsSupported()
@@ -247,7 +246,7 @@ func SkipIfTcsUnsupported(t testing.TB) {
 		t.Fatalf("Could not check the Tarantool version: %s", err)
 	}
 	if !ok {
-		t.Skip("not found Tarantool EE 3.3+")
+		t.Skipf("not found Tarantool EE 3.3+")
 	}
 }
 
@@ -266,7 +265,7 @@ func SkipIfTcsUnsupported(t testing.TB) {
 // So we check equivalence of all attributes except for Line and File.
 // For Line and File, we check that they are filled with some non-default values
 // (lines are counted starting with 1 and empty file path is not expected too).
-func CheckEqualBoxErrors(t *testing.T, expected tarantool.BoxError, actual tarantool.BoxError) {
+func CheckEqualBoxErrors(t T, expected tarantool.BoxError, actual tarantool.BoxError) {
 	t.Helper()
 
 	require.Equalf(t, expected.Depth(), actual.Depth(), "Error stack depth is the same")
