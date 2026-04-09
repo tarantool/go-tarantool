@@ -28,8 +28,8 @@ TODO
 		Index(index).
 		Limit(1).
 		Key(key)
-  ).GetTyped(&tpl)
-  singleTpl := tpl[0]
+	).GetTyped(&tpl)
+	singleTpl := tpl[0]
   ```
 * Future.done replaced with Future.cond (sync.Cond) + Future.finished bool.
 * `Future` is an interface now.
@@ -39,6 +39,25 @@ TODO
 * Removed deprecated `NewCall16Request` and `NewCall17Request` constructors.
   Use `NewCallRequest` instead. `NewCallRequest` uses `IPROTO_CALL`, which
   has been the default since Tarantool 1.7.2.
+* New `T` interface added to allow test helpers to be used in example
+  functions, benchmarks, and custom test frameworks. `*testing.T` satisfies
+  this interface automatically, so existing code continues to work without
+  changes.
+
+  ```Go
+  // T is a subset of testing.T interface used by test helpers.
+  type T interface {
+      Helper()
+      Errorf(format string, args ...interface{})
+      Fatalf(format string, args ...interface{})
+      Skipf(format string, args ...interface{})
+      FailNow()
+  }
+  ```
+
+  All functions in `test_helpers` that previously accepted `*testing.T` now
+  accept the `T` interface instead, making them usable in broader contexts like
+  example functions and custom test runners.
 
 ## Migration from v1.x.x to v2.x.x
 

@@ -2,7 +2,6 @@ package test_helpers
 
 import (
 	"bytes"
-	"testing"
 
 	"github.com/tarantool/go-tarantool/v3"
 )
@@ -19,12 +18,12 @@ type MockDoer struct {
 	// It could be used to compare incoming requests with expected.
 	Requests  []tarantool.Request
 	responses []doerResponse
-	t         *testing.T
+	t         T
 }
 
 // NewMockDoer creates a MockDoer by given responses.
 // Each response could be one of two types: MockResponse or error.
-func NewMockDoer(t *testing.T, responses ...interface{}) MockDoer {
+func NewMockDoer(t T, responses ...interface{}) MockDoer {
 	t.Helper()
 
 	mockDoer := MockDoer{t: t}

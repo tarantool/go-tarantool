@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"testing"
 
 	"github.com/tarantool/go-tarantool/v3"
 	"github.com/tarantool/go-tarantool/v3/test_helpers"
@@ -21,7 +20,7 @@ var ErrNoValue = errors.New("required value not found")
 type TCS struct {
 	inst *test_helpers.TarantoolInstance
 	conn *tarantool.Connection
-	tb   testing.TB
+	t    test_helpers.T
 	port int
 }
 
@@ -82,10 +81,10 @@ func Start(port int) (TCS, error) {
 
 // StartTesting starts a Tarantool centralized configuration storage.
 // Returns a Tcs instance and a cleanup function.
-func StartTesting(tb testing.TB, port int) TCS {
+func StartTesting(t test_helpers.T, port int) TCS {
 	tcs, err := Start(port)
 	if err != nil {
-		tb.Fatal(err)
+		t.Fatalf(err.Error())
 	}
 	return tcs
 }
@@ -112,8 +111,8 @@ func (t *TCS) Credentials() (string, string) {
 
 // Stop stops the Tarantool centralized configuration storage.
 func (t *TCS) Stop() {
-	if t.tb != nil {
-		t.tb.Helper()
+	if t.t != nil {
+		t.t.Helper()
 	}
 	if t.conn != nil {
 		_ = t.conn.Close()
@@ -123,8 +122,8 @@ func (t *TCS) Stop() {
 
 // Put implements "config.storage.put" method.
 func (t *TCS) Put(ctx context.Context, path string, value string) error {
-	if t.tb != nil {
-		t.tb.Helper()
+	if t.t != nil {
+		t.t.Helper()
 	}
 	req := tarantool.NewCallRequest("config.storage.put").
 		Args([]any{path, value}).
@@ -137,8 +136,8 @@ func (t *TCS) Put(ctx context.Context, path string, value string) error {
 
 // Delete implements "config.storage.delete" method.
 func (t *TCS) Delete(ctx context.Context, path string) error {
-	if t.tb != nil {
-		t.tb.Helper()
+	if t.t != nil {
+		t.t.Helper()
 	}
 	req := tarantool.NewCallRequest("config.storage.delete").
 		Args([]any{path}).
@@ -151,8 +150,8 @@ func (t *TCS) Delete(ctx context.Context, path string) error {
 
 // Get implements "config.storage.get" method.
 func (t *TCS) Get(ctx context.Context, path string) (string, error) {
-	if t.tb != nil {
-		t.tb.Helper()
+	if t.t != nil {
+		t.t.Helper()
 	}
 	req := tarantool.NewCallRequest("config.storage.get").
 		Args([]any{path}).

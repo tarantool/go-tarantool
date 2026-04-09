@@ -3,7 +3,6 @@ package test_helpers
 import (
 	"bytes"
 	"io"
-	"testing"
 
 	"github.com/vmihailenco/msgpack/v5"
 
@@ -22,7 +21,7 @@ type MockResponse struct {
 // body should be passed as a structure to be encoded.
 // The encoded body is served as response data and will be decoded once the
 // response is decoded.
-func NewMockResponse(t *testing.T, body interface{}) *MockResponse {
+func NewMockResponse(t T, body interface{}) *MockResponse {
 	t.Helper()
 
 	buf := bytes.NewBuffer([]byte{})
