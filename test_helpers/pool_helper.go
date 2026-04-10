@@ -133,33 +133,37 @@ func Retry(f func(interface{}) error, args interface{}, count int, timeout time.
 func InsertOnInstance(ctx context.Context, dialer tarantool.Dialer, connOpts tarantool.Opts,
 	space interface{}, tuple interface{}) error {
 	conn, err := tarantool.Connect(ctx, dialer, connOpts)
-	if err != nil {
-		return fmt.Errorf("fail to connect: %s", err.Error())
-	}
-	if conn == nil {
+
+	switch {
+	case err != nil:
+		return fmt.Errorf("fail to connect: %w", err)
+	case conn == nil:
 		return fmt.Errorf("conn is nil after Connect")
 	}
+
 	defer func() { _ = conn.Close() }()
 
 	data, err := conn.Do(tarantool.NewInsertRequest(space).Tuple(tuple)).Get()
-	if err != nil {
-		return fmt.Errorf("failed to Insert: %s", err.Error())
-	}
-	if len(data) != 1 {
+
+	switch {
+	case err != nil:
+		return fmt.Errorf("failed to Insert: %w", err)
+	case len(data) != 1:
 		return fmt.Errorf("response Body len != 1")
 	}
-	if tpl, ok := data[0].([]interface{}); !ok {
-		return fmt.Errorf("unexpected body of Insert")
-	} else {
-		expectedTpl, ok := tuple.([]interface{})
-		if !ok {
-			return fmt.Errorf("failed to cast")
-		}
 
-		err = compareTuples(expectedTpl, tpl)
-		if err != nil {
-			return err
-		}
+	tpl, ok := data[0].([]interface{})
+	if !ok {
+		return fmt.Errorf("unexpected body of Insert")
+	}
+
+	expectedTpl, ok := tuple.([]interface{})
+	if !ok {
+		return fmt.Errorf("failed to cast")
+	}
+
+	if err := compareTuples(expectedTpl, tpl); err != nil {
+		return err
 	}
 
 	return nil
@@ -179,7 +183,7 @@ func InsertOnInstances(
 
 	err := SetClusterRO(ctx, dialers, connOpts, roles)
 	if err != nil {
-		return fmt.Errorf("fail to set roles for cluster: %s", err.Error())
+		return fmt.Errorf("fail to set roles for cluster: %w", err)
 	}
 
 	errs := make([]error, len(dialers))
@@ -214,6 +218,7 @@ func SetInstanceRO(ctx context.Context, dialer tarantool.Dialer, connOpts tarant
 
 	checkRole := func(conn *tarantool.Connection, isReplica bool) string {
 		data, err := conn.Do(tarantool.NewCallRequest("box.info")).Get()
+
 		switch {
 		case err != nil:
 			return fmt.Sprintf("failed to get box.info: %s", err)
@@ -228,6 +233,7 @@ func SetInstanceRO(ctx context.Context, dialer tarantool.Dialer, connOpts tarant
 
 		status, statusFound := boxInfo["status"]
 		readonly, readonlyFound := boxInfo["ro"]
+
 		switch {
 		case !statusFound:
 			return "box.info.status is missing"
