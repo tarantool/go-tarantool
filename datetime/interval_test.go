@@ -2,9 +2,10 @@ package datetime_test
 
 import (
 	"fmt"
-	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/tarantool/go-tarantool/v3"
 	. "github.com/tarantool/go-tarantool/v3/datetime"
 	"github.com/tarantool/go-tarantool/v3/test_helpers"
@@ -50,12 +51,8 @@ func TestIntervalAdd(t *testing.T) {
 
 	ival := orig.Add(add)
 
-	if !reflect.DeepEqual(ival, expected) {
-		t.Fatalf("Unexpected %v, expected %v", ival, expected)
-	}
-	if !reflect.DeepEqual(cpyOrig, orig) {
-		t.Fatalf("Original value changed %v, expected %v", orig, cpyOrig)
-	}
+	require.Equal(t, expected, ival, "Unexpected interval result")
+	require.Equal(t, cpyOrig, orig, "Original value changed")
 }
 
 func TestIntervalSub(t *testing.T) {
@@ -96,12 +93,8 @@ func TestIntervalSub(t *testing.T) {
 
 	ival := orig.Sub(sub)
 
-	if !reflect.DeepEqual(ival, expected) {
-		t.Fatalf("Unexpected %v, expected %v", ival, expected)
-	}
-	if !reflect.DeepEqual(cpyOrig, orig) {
-		t.Fatalf("Original value changed %v, expected %v", orig, cpyOrig)
-	}
+	require.Equal(t, expected, ival, "Unexpected interval result")
+	require.Equal(t, cpyOrig, orig, "Original value changed")
 }
 
 func TestIntervalTarantoolEncoding(t *testing.T) {
@@ -124,14 +117,10 @@ func TestIntervalTarantoolEncoding(t *testing.T) {
 			req := tarantool.NewCallRequest("call_interval_testdata").
 				Args([]interface{}{tc})
 			data, err := conn.Do(req).Get()
-			if err != nil {
-				t.Fatalf("Unexpected error: %s", err.Error())
-			}
+			require.NoError(t, err, "Unexpected error")
 
 			ret := data[0].(Interval)
-			if !reflect.DeepEqual(ret, tc) {
-				t.Fatalf("Unexpected response: %v, expected %v", ret, tc)
-			}
+			assert.Equal(t, tc, ret, "Unexpected response")
 		})
 	}
 }
@@ -260,9 +249,7 @@ func TestIntervalString(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := tt.interval.String()
-			if result != tt.expected {
-				t.Errorf("Interval.String() = %v, want %v", result, tt.expected)
-			}
+			assert.Equal(t, tt.expected, result, "Interval.String()")
 		})
 	}
 }
@@ -270,14 +257,10 @@ func TestIntervalString_WroksWithFmt(t *testing.T) {
 	ival := Interval{Hour: 2, Min: 30}
 	result := ival.String()
 	expected := "+2 hours, 30 minutes"
-	if result != expected {
-		t.Errorf("fmt.Sprintf('%%s') = %v, want %v", result, expected)
-	}
+	assert.Equal(t, expected, result, "fmt.Sprintf('%s')")
 
 	result = fmt.Sprintf("%v", ival)
-	if result != expected {
-		t.Errorf("fmt.Sprintf('%%v') = %v, want %v", result, expected)
-	}
+	assert.Equal(t, expected, result, "fmt.Sprintf('%v')")
 }
 
 func TestIntervalString_FromTarantool(t *testing.T) {
@@ -350,19 +333,11 @@ func TestIntervalString_FromTarantool(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.expected, func(t *testing.T) {
 			data, err := conn.Do(tarantool.NewEvalRequest(tc.luaExpr)).Get()
-			if err != nil {
-				t.Fatalf("Eval failed: %s", err)
-			}
-			if len(data) != 1 {
-				t.Fatalf("Expected 1 result, got %d", len(data))
-			}
+			require.NoError(t, err, "Eval failed")
+			require.Len(t, data, 1, "Expected 1 result")
 			ival, ok := data[0].(Interval)
-			if !ok {
-				t.Fatalf("Result is not Interval: %T", data[0])
-			}
-			if got := ival.String(); got != tc.expected {
-				t.Errorf("String() = %q, want %q", got, tc.expected)
-			}
+			require.True(t, ok, "Result is not Interval")
+			assert.Equal(t, tc.expected, ival.String(), "String()")
 		})
 	}
 }
@@ -389,12 +364,8 @@ func TestIntervalString_EdgeCases(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := tt.interval.String()
-			if result == "" {
-				t.Error("Interval.String() returned empty string")
-			}
-			if len(result) > 1000 {
-				t.Error("Interval.String() returned unexpectedly long string")
-			}
+			assert.NotEmpty(t, result, "Interval.String() returned empty string")
+			assert.LessOrEqual(t, len(result), 1000, "Interval.String() returned unexpectedly long string")
 		})
 	}
 }
