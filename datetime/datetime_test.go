@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"reflect"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/vmihailenco/msgpack/v5"
 
 	. "github.com/tarantool/go-tarantool/v3"
@@ -62,9 +63,7 @@ func skipIfDatetimeUnsupported(t *testing.T) {
 func TestDatetimeAdd(t *testing.T) {
 	tm := time.Unix(0, 0).UTC()
 	dt, err := MakeDatetime(tm)
-	if err != nil {
-		t.Fatalf("Unexpected error: %s", err.Error())
-	}
+	require.NoError(t, err, "Unexpected error")
 
 	newdt, err := dt.Add(Interval{
 		Year:  1,
@@ -76,14 +75,10 @@ func TestDatetimeAdd(t *testing.T) {
 		Sec:   6,
 		Nsec:  -3,
 	})
-	if err != nil {
-		t.Fatalf("Unexpected error: %s", err.Error())
-	}
+	require.NoError(t, err, "Unexpected error")
 
 	expected := "1970-10-25 19:05:05.999999997 +0000 UTC"
-	if newdt.ToTime().String() != expected {
-		t.Fatalf("Unexpected result: %s, expected: %s", newdt.ToTime().String(), expected)
-	}
+	assert.Equal(t, expected, newdt.ToTime().String(), "Unexpected result")
 }
 
 func TestDatetimeAddAdjust(t *testing.T) {
@@ -229,13 +224,9 @@ func TestDatetimeAddAdjust(t *testing.T) {
 
 	for _, tc := range cases {
 		tm, err := time.Parse(time.RFC3339, tc.date)
-		if err != nil {
-			t.Fatalf("Unexpected error: %s", err.Error())
-		}
+		require.NoError(t, err, "Unexpected error")
 		dt, err := MakeDatetime(tm)
-		if err != nil {
-			t.Fatalf("Unexpected error: %s", err.Error())
-		}
+		require.NoError(t, err, "Unexpected error")
 		t.Run(fmt.Sprintf("%d_%d_%d_%s", tc.year, tc.month, tc.adjust, tc.date),
 			func(t *testing.T) {
 				newdt, err := dt.Add(Interval{
@@ -243,13 +234,9 @@ func TestDatetimeAddAdjust(t *testing.T) {
 					Month:  tc.month,
 					Adjust: tc.adjust,
 				})
-				if err != nil {
-					t.Fatalf("Unable to add: %s", err.Error())
-				}
+				require.NoError(t, err, "Unable to add")
 				res := newdt.ToTime().Format(time.RFC3339)
-				if res != tc.want {
-					t.Fatalf("Unexpected result %s, expected %s", res, tc.want)
-				}
+				require.Equal(t, tc.want, res, "Unexpected result")
 			})
 	}
 }
@@ -257,9 +244,7 @@ func TestDatetimeAddAdjust(t *testing.T) {
 func TestDatetimeAddSubSymmetric(t *testing.T) {
 	tm := time.Unix(0, 0).UTC()
 	dt, err := MakeDatetime(tm)
-	if err != nil {
-		t.Fatalf("Unexpected error: %s", err.Error())
-	}
+	require.NoError(t, err, "Unexpected error")
 
 	newdtadd, err := dt.Add(Interval{
 		Year:  1,
@@ -271,9 +256,7 @@ func TestDatetimeAddSubSymmetric(t *testing.T) {
 		Sec:   6,
 		Nsec:  -3,
 	})
-	if err != nil {
-		t.Fatalf("Unexpected error: %s", err.Error())
-	}
+	require.NoError(t, err, "Unexpected error")
 
 	newdtsub, err := dt.Sub(Interval{
 		Year:  -1,
@@ -285,38 +268,22 @@ func TestDatetimeAddSubSymmetric(t *testing.T) {
 		Sec:   -6,
 		Nsec:  3,
 	})
-	if err != nil {
-		t.Fatalf("Unexpected error: %s", err.Error())
-	}
+	require.NoError(t, err, "Unexpected error")
 
 	expected := "1970-10-25 19:05:05.999999997 +0000 UTC"
-	addstr := newdtadd.ToTime().String()
-	substr := newdtsub.ToTime().String()
-
-	if addstr != expected {
-		t.Fatalf("Unexpected Add result: %s, expected: %s", addstr, expected)
-	}
-	if substr != expected {
-		t.Fatalf("Unexpected Sub result: %s, expected: %s", substr, expected)
-	}
+	require.Equal(t, expected, newdtadd.ToTime().String(), "Unexpected Add result")
+	require.Equal(t, expected, newdtsub.ToTime().String(), "Unexpected Sub result")
 }
 
-// We have a separate test for accurate Datetime boundaries.
 func TestDatetimeAddOutOfRange(t *testing.T) {
 	tm := time.Unix(0, 0).UTC()
 	dt, err := MakeDatetime(tm)
-	if err != nil {
-		t.Fatalf("Unexpected error: %s", err.Error())
-	}
+	require.NoError(t, err, "Unexpected error")
 
-	newdt, err := dt.Add(Interval{Year: 1000000000})
-	if err == nil {
-		t.Fatalf("Unexpected success: %v", newdt)
-	}
+	_, err = dt.Add(Interval{Year: 1000000000})
+	require.Error(t, err, "Expected error for out of range")
 	expected := "time 1000001970-01-01 00:00:00 +0000 UTC is out of supported range"
-	if err.Error() != expected {
-		t.Fatalf("Unexpected error: %s", err.Error())
-	}
+	require.Equal(t, expected, err.Error(), "Unexpected error")
 }
 
 func TestDatetimeInterval(t *testing.T) {
@@ -324,22 +291,14 @@ func TestDatetimeInterval(t *testing.T) {
 	var second = "2013-01-31T11:51:58.00000009+01:00"
 
 	tmFirst, err := time.Parse(time.RFC3339, first)
-	if err != nil {
-		t.Fatalf("Error in time.Parse(): %s", err)
-	}
+	require.NoError(t, err, "Error in time.Parse()")
 	tmSecond, err := time.Parse(time.RFC3339, second)
-	if err != nil {
-		t.Fatalf("Error in time.Parse(): %s", err)
-	}
+	require.NoError(t, err, "Error in time.Parse()")
 
 	dtFirst, err := MakeDatetime(tmFirst)
-	if err != nil {
-		t.Fatalf("Unable to create Datetime from %s: %s", tmFirst, err)
-	}
+	require.NoError(t, err, "Unable to create Datetime")
 	dtSecond, err := MakeDatetime(tmSecond)
-	if err != nil {
-		t.Fatalf("Unable to create Datetime from %s: %s", tmSecond, err)
-	}
+	require.NoError(t, err, "Unable to create Datetime")
 
 	ivalFirst := dtFirst.Interval(dtSecond)
 	ivalSecond := dtSecond.Interval(dtFirst)
@@ -347,21 +306,12 @@ func TestDatetimeInterval(t *testing.T) {
 	expectedFirst := Interval{-2, -2, 0, 11, -6, 61, 2, 81, NoneAdjust}
 	expectedSecond := Interval{2, 2, 0, -11, 6, -61, -2, -81, NoneAdjust}
 
-	if !reflect.DeepEqual(ivalFirst, expectedFirst) {
-		t.Errorf("Unexpected interval %v, expected %v", ivalFirst, expectedFirst)
-	}
-	if !reflect.DeepEqual(ivalSecond, expectedSecond) {
-		t.Errorf("Unexpected interval %v, expected %v", ivalSecond, expectedSecond)
-	}
+	assert.Equal(t, expectedFirst, ivalFirst, "Unexpected interval")
+	assert.Equal(t, expectedSecond, ivalSecond, "Unexpected interval")
 
 	dtFirst, err = dtFirst.Add(ivalFirst)
-	if err != nil {
-		t.Fatalf("Unable to add an interval: %s", err)
-	}
-	if !dtFirst.ToTime().Equal(dtSecond.ToTime()) {
-		t.Errorf("Incorrect add an interval result: %s, expected %s",
-			dtFirst.ToTime(), dtSecond.ToTime())
-	}
+	require.NoError(t, err, "Unable to add an interval")
+	assert.True(t, dtFirst.ToTime().Equal(dtSecond.ToTime()), "Incorrect add an interval result")
 }
 
 func TestDatetimeTarantoolInterval(t *testing.T) {
@@ -389,13 +339,9 @@ func TestDatetimeTarantoolInterval(t *testing.T) {
 	datetimes := []Datetime{}
 	for _, date := range dates {
 		tm, err := time.Parse(time.RFC3339, date)
-		if err != nil {
-			t.Fatalf("Error in time.Parse(%s): %s", date, err)
-		}
+		require.NoError(t, err, "Error in time.Parse()")
 		dt, err := MakeDatetime(tm)
-		if err != nil {
-			t.Fatalf("Error in MakeDatetime(%s): %s", tm, err)
-		}
+		require.NoError(t, err, "Error in MakeDatetime()")
 		datetimes = append(datetimes, dt)
 	}
 
@@ -406,70 +352,47 @@ func TestDatetimeTarantoolInterval(t *testing.T) {
 					req := NewCallRequest("call_datetime_interval").
 						Args([]interface{}{dti, dtj})
 					data, err := conn.Do(req).Get()
-					if err != nil {
-						t.Fatalf("Unable to call call_datetime_interval: %s", err)
-					}
+					require.NoError(t, err, "Unable to call call_datetime_interval")
 					ival := dti.Interval(dtj)
 					ret := data[0].(Interval)
-					if !reflect.DeepEqual(ival, ret) {
-						t.Fatalf("%v != %v", ival, ret)
-					}
+					require.Equal(t, ival, ret, "Interval mismatch")
 				})
 		}
 	}
 }
 
-// Expect that first element of tuple is time.Time. Compare extracted actual
-// and expected datetime values.
 func assertDatetimeIsEqual(t *testing.T, tuples []interface{}, tm time.Time) {
 	t.Helper()
 
 	dtIndex := 0
-	if tpl, ok := tuples[dtIndex].([]interface{}); !ok {
-		t.Fatalf("Unexpected return value body")
-	} else {
-		if len(tpl) != 2 {
-			t.Fatalf("Unexpected return value body (tuple len = %d)", len(tpl))
-		}
-		if val, ok := tpl[dtIndex].(Datetime); !ok || !val.ToTime().Equal(tm) {
-			t.Fatalf("Unexpected tuple %d field %v, expected %v",
-				dtIndex,
-				val,
-				tm)
-		}
-	}
+	tpl, ok := tuples[dtIndex].([]interface{})
+	require.True(t, ok, "Unexpected return value body")
+	require.Len(t, tpl, 2, "Unexpected return value body")
+	val, ok := tpl[dtIndex].(Datetime)
+	require.True(t, ok, "Unexpected tuple field type")
+	require.True(t, val.ToTime().Equal(tm), "Unexpected tuple field")
 }
 
 func TestTimezonesIndexMapping(t *testing.T) {
 	for _, index := range TimezoneToIndex {
-		if _, ok := IndexToTimezone[index]; !ok {
-			t.Errorf("Index %d not found", index)
-		}
+		assert.Contains(t, IndexToTimezone, index, "Index not found")
 	}
 }
 
 func TestTimezonesZonesMapping(t *testing.T) {
 	for _, zone := range IndexToTimezone {
-		if _, ok := TimezoneToIndex[zone]; !ok {
-			t.Errorf("Zone %s not found", zone)
-		}
+		assert.Contains(t, TimezoneToIndex, zone, "Zone not found")
 	}
 }
 
 func TestInvalidTimezone(t *testing.T) {
 	invalidLoc := time.FixedZone("AnyInvalid", 0)
 	tm, err := time.Parse(time.RFC3339, "2010-08-12T11:39:14Z")
-	if err != nil {
-		t.Fatalf("Time parse failed: %s", err)
-	}
+	require.NoError(t, err, "Time parse failed")
 	tm = tm.In(invalidLoc)
-	dt, err := MakeDatetime(tm)
-	if err == nil {
-		t.Fatalf("Unexpected success: %v", dt)
-	}
-	if err.Error() != "unknown timezone AnyInvalid with offset 0" {
-		t.Fatalf("Unexpected error: %s", err.Error())
-	}
+	_, err = MakeDatetime(tm)
+	require.Error(t, err, "Expected error for invalid timezone")
+	require.Equal(t, "unknown timezone AnyInvalid with offset 0", err.Error(), "Unexpected error")
 }
 
 func TestInvalidOffset(t *testing.T) {
@@ -495,16 +418,13 @@ func TestInvalidOffset(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			loc := time.FixedZone("MSK", testcase.offset)
 			tm, err := time.Parse(time.RFC3339, "2010-08-12T11:39:14Z")
-			if err != nil {
-				t.Fatalf("Time parse failed: %s", err)
-			}
+			require.NoError(t, err, "Time parse failed")
 			tm = tm.In(loc)
-			dt, err := MakeDatetime(tm)
-			if testcase.ok && err != nil {
-				t.Fatalf("Unexpected error: %s", err.Error())
-			}
-			if !testcase.ok && err == nil {
-				t.Fatalf("Unexpected success: %v", dt)
+			_, err = MakeDatetime(tm)
+			if testcase.ok {
+				require.NoError(t, err, "Unexpected error")
+			} else {
+				require.Error(t, err, "Expected error")
 			}
 			if testcase.ok && isDatetimeSupported {
 				conn := test_helpers.ConnectWithValidation(t, dialer, opts)
@@ -530,57 +450,39 @@ func TestCustomTimezone(t *testing.T) {
 
 	customLoc := time.FixedZone(customZone, customOffset)
 	tm, err := time.Parse(time.RFC3339, "2010-08-12T11:44:14Z")
-	if err != nil {
-		t.Fatalf("Time parse failed: %s", err)
-	}
+	require.NoError(t, err, "Time parse failed")
 	tm = tm.In(customLoc)
 	dt, err := MakeDatetime(tm)
-	if err != nil {
-		t.Fatalf("Unable to create datetime: %s", err.Error())
-	}
+	require.NoError(t, err, "Unable to create datetime")
 
 	req := NewReplaceRequest(spaceTuple1).Tuple([]interface{}{dt, "payload"})
 	data, err := conn.Do(req).Get()
-	if err != nil {
-		t.Fatalf("Datetime replace failed %s", err.Error())
-	}
+	require.NoError(t, err, "Datetime replace failed")
 	assertDatetimeIsEqual(t, data, tm)
 
 	tpl := data[0].([]interface{})
-	if respDt, ok := tpl[0].(Datetime); ok {
-		zone := respDt.ToTime().Location().String()
-		_, offset := respDt.ToTime().Zone()
-		if zone != customZone {
-			t.Fatalf("Expected zone %s instead of %s", customZone, zone)
-		}
-		if offset != zoneOffset {
-			t.Fatalf("Expected offset %d instead of %d", customOffset, offset)
-		}
+	respDt, ok := tpl[0].(Datetime)
+	require.True(t, ok, "Datetime doesn't match")
+	zone := respDt.ToTime().Location().String()
+	_, offset := respDt.ToTime().Zone()
+	require.Equal(t, customZone, zone, "Expected zone")
+	require.Equal(t, zoneOffset, offset, "Expected offset")
 
-		req := NewDeleteRequest(spaceTuple1).Key([]interface{}{dt})
-		_, err = conn.Do(req).Get()
-		if err != nil {
-			t.Fatalf("Datetime delete failed: %s", err.Error())
-		}
-	} else {
-		t.Fatalf("Datetime doesn't match")
-	}
+	delReq := NewDeleteRequest(spaceTuple1).Key([]interface{}{dt})
+	_, err = conn.Do(delReq).Get()
+	require.NoError(t, err, "Datetime delete failed")
 }
 
 func tupleInsertSelectDelete(t *testing.T, conn *Connection, tm time.Time) {
 	t.Helper()
 
 	dt, err := MakeDatetime(tm)
-	if err != nil {
-		t.Fatalf("Unable to create Datetime from %s: %s", tm, err)
-	}
+	require.NoError(t, err, "Unable to create Datetime from %s", tm)
 
 	// Insert tuple with datetime.
 	ins := NewInsertRequest(spaceTuple1).Tuple([]interface{}{dt, "payload"})
 	_, err = conn.Do(ins).Get()
-	if err != nil {
-		t.Fatalf("Datetime insert failed: %s", err.Error())
-	}
+	require.NoError(t, err, "Datetime insert failed")
 
 	// Select tuple with datetime.
 	var offset uint32 = 0
@@ -592,17 +494,13 @@ func tupleInsertSelectDelete(t *testing.T, conn *Connection, tm time.Time) {
 		Iterator(IterEq).
 		Key([]interface{}{dt})
 	data, err := conn.Do(sel).Get()
-	if err != nil {
-		t.Fatalf("Datetime select failed: %s", err.Error())
-	}
+	require.NoError(t, err, "Datetime select failed")
 	assertDatetimeIsEqual(t, data, tm)
 
 	// Delete tuple with datetime.
 	del := NewDeleteRequest(spaceTuple1).Index(index).Key([]interface{}{dt})
 	data, err = conn.Do(del).Get()
-	if err != nil {
-		t.Fatalf("Datetime delete failed: %s", err.Error())
-	}
+	require.NoError(t, err, "Datetime delete failed")
 	assertDatetimeIsEqual(t, data, tm)
 }
 
@@ -682,14 +580,10 @@ func TestDatetimeInsertSelectDelete(t *testing.T) {
 				tm = tm.In(noTimezoneLoc)
 			} else {
 				loc, err := time.LoadLocation(testcase.zone)
-				if err != nil {
-					t.Fatalf("Unable to load location: %s", err)
-				}
+				require.NoError(t, err, "Unable to load location")
 				tm = tm.In(loc)
 			}
-			if err != nil {
-				t.Fatalf("Time (%s) parse failed: %s", testcase.dt, err)
-			}
+			require.NoError(t, err, "Time (%s) parse failed", testcase.dt)
 			tupleInsertSelectDelete(t, conn, tm)
 		})
 	}
@@ -717,9 +611,7 @@ func TestDatetimeOutOfRange(t *testing.T) {
 	for _, tm := range greaterBoundaryTimes {
 		t.Run(tm.String(), func(t *testing.T) {
 			_, err := MakeDatetime(tm)
-			if err == nil {
-				t.Errorf("Time %s should be unsupported!", tm)
-			}
+			assert.Error(t, err, "Time %s should be unsupported!", tm)
 		})
 	}
 }
@@ -731,19 +623,14 @@ func TestDatetimeReplace(t *testing.T) {
 	defer func() { _ = conn.Close() }()
 
 	tm, err := time.Parse(time.RFC3339, "2007-01-02T15:04:05Z")
-	if err != nil {
-		t.Fatalf("Time parse failed: %s", err)
-	}
+	require.NoError(t, err, "Time parse failed")
 
 	dt, err := MakeDatetime(tm)
-	if err != nil {
-		t.Fatalf("Unable to create Datetime from %s: %s", tm, err)
-	}
+	require.NoError(t, err, "Unable to create Datetime from %s", tm)
+
 	rep := NewReplaceRequest(spaceTuple1).Tuple([]interface{}{dt, "payload"})
 	data, err := conn.Do(rep).Get()
-	if err != nil {
-		t.Fatalf("Datetime replace failed: %s", err)
-	}
+	require.NoError(t, err, "Datetime replace failed")
 	assertDatetimeIsEqual(t, data, tm)
 
 	sel := NewSelectRequest(spaceTuple1).
@@ -752,17 +639,13 @@ func TestDatetimeReplace(t *testing.T) {
 		Iterator(IterEq).
 		Key([]interface{}{dt})
 	data, err = conn.Do(sel).Get()
-	if err != nil {
-		t.Fatalf("Datetime select failed: %s", err)
-	}
+	require.NoError(t, err, "Datetime select failed")
 	assertDatetimeIsEqual(t, data, tm)
 
 	// Delete tuple with datetime.
 	del := NewDeleteRequest(spaceTuple1).Index(index).Key([]interface{}{dt})
 	_, err = conn.Do(del).Get()
-	if err != nil {
-		t.Fatalf("Datetime delete failed: %s", err.Error())
-	}
+	require.NoError(t, err, "Datetime delete failed")
 }
 
 type Event struct {
@@ -896,13 +779,9 @@ func TestCustomEncodeDecodeTuple1(t *testing.T) {
 	tm1, _ := time.Parse(time.RFC3339, "2010-05-24T17:51:56.000000009Z")
 	tm2, _ := time.Parse(time.RFC3339, "2022-05-24T17:51:56.000000009Z")
 	dt1, err := MakeDatetime(tm1)
-	if err != nil {
-		t.Fatalf("Unable to create Datetime from %s: %s", tm1, err)
-	}
+	require.NoError(t, err, "Unable to create Datetime from %s", tm1)
 	dt2, err := MakeDatetime(tm2)
-	if err != nil {
-		t.Fatalf("Unable to create Datetime from %s: %s", tm2, err)
-	}
+	require.NoError(t, err, "Unable to create Datetime from %s", tm2)
 	const cid = 13
 	const orig = "orig"
 
@@ -915,45 +794,32 @@ func TestCustomEncodeDecodeTuple1(t *testing.T) {
 	}
 	rep := NewReplaceRequest(spaceTuple2).Tuple(&tuple)
 	data, err := conn.Do(rep).Get()
-	if err != nil {
-		t.Fatalf("Failed to replace: %s", err.Error())
-	}
-	if len(data) != 1 {
-		t.Fatalf("Response Body len != 1")
-	}
+	require.NoError(t, err, "Failed to replace")
+	require.Len(t, data, 1, "Response Body len")
 
 	tpl, ok := data[0].([]interface{})
-	if !ok {
-		t.Fatalf("Unexpected body of Replace")
-	}
+	require.True(t, ok, "Unexpected body of Replace")
 
 	// Delete the tuple.
 	del := NewDeleteRequest(spaceTuple2).Index(index).Key([]interface{}{cid})
 	_, err = conn.Do(del).Get()
-	if err != nil {
-		t.Fatalf("Datetime delete failed: %s", err.Error())
-	}
+	require.NoError(t, err, "Datetime delete failed")
 
-	if len(tpl) != 3 {
-		t.Fatalf("Unexpected body of Replace (tuple len)")
-	}
-	if id, ok := tpl[0].(uint64); !ok || id != cid {
-		t.Fatalf("Unexpected body of Replace (%d)", cid)
-	}
-	if o, ok := tpl[1].(string); !ok || o != orig {
-		t.Fatalf("Unexpected body of Replace (%s)", orig)
-	}
+	require.Len(t, tpl, 3, "Unexpected body of Replace (tuple len)")
+	cidVal, ok := tpl[0].(uint64)
+	require.True(t, ok, "Unexpected body of Replace (cid)")
+	assert.Equal(t, uint64(cid), cidVal, "Unexpected body of Replace (cid)")
+	origVal, ok := tpl[1].(string)
+	require.True(t, ok, "Unexpected body of Replace (orig)")
+	assert.Equal(t, orig, origVal, "Unexpected body of Replace (orig)")
 
 	events, ok := tpl[2].([]interface{})
-	if !ok {
-		t.Fatalf("Unable to convert 2 field to []interface{}")
-	}
+	require.True(t, ok, "Unable to convert 2 field to []interface{}")
 
 	for i, tv := range []time.Time{tm1, tm2} {
 		dt, ok := events[i].([]interface{})[1].(Datetime)
-		if !ok || !dt.ToTime().Equal(tv) {
-			t.Fatalf("%v != %v", dt.ToTime(), tv)
-		}
+		require.True(t, ok, "Event datetime type")
+		assert.True(t, dt.ToTime().Equal(tv), "%v != %v", dt.ToTime(), tv)
 	}
 }
 
@@ -967,21 +833,13 @@ func TestCustomDecodeFunction(t *testing.T) {
 	var tuple [][]Tuple2
 	call := NewCallRequest("call_datetime_testdata").Args([]interface{}{1})
 	err := conn.Do(call).GetTyped(&tuple)
-	if err != nil {
-		t.Fatalf("Failed to CallTyped: %s", err.Error())
-	}
+	require.NoError(t, err, "Failed to CallTyped")
 
-	if cid := tuple[0][0].Cid; cid != 5 {
-		t.Fatalf("Wrong Cid (%d), should be 5", cid)
-	}
-	if orig := tuple[0][0].Orig; orig != "Go!" {
-		t.Fatalf("Wrong Orig (%s), should be 'Hello, there!'", orig)
-	}
+	require.Equal(t, uint(5), tuple[0][0].Cid, "Wrong Cid, should be 5")
+	require.Equal(t, "Go!", tuple[0][0].Orig, "Wrong Orig, should be 'Hello, there!'")
 
 	events := tuple[0][0].Events
-	if len(events) != 3 {
-		t.Fatalf("Wrong a number of Events (%d), should be 3", len(events))
-	}
+	require.Len(t, events, 3, "Wrong a number of Events, should be 3")
 
 	locations := []string{
 		"Klushino",
@@ -992,12 +850,8 @@ func TestCustomDecodeFunction(t *testing.T) {
 	for i, ev := range events {
 		loc := ev.Location
 		dt := ev.Datetime
-		if loc != locations[i] || dt.ToTime().IsZero() {
-			t.Fatalf("Expected: %s non-zero time, got %s %v",
-				locations[i],
-				loc,
-				dt.ToTime())
-		}
+		assert.Equal(t, locations[i], loc, "Location mismatch")
+		assert.False(t, dt.ToTime().IsZero(), "Expected non-zero time for %s, got %v", loc, dt.ToTime())
 	}
 }
 
@@ -1009,15 +863,11 @@ func TestCustomEncodeDecodeTuple5(t *testing.T) {
 
 	tm := time.Unix(500, 1000).In(time.FixedZone(NoTimezone, 0))
 	dt, err := MakeDatetime(tm)
-	if err != nil {
-		t.Fatalf("Unable to create Datetime from %s: %s", tm, err)
-	}
+	require.NoError(t, err, "Unable to create Datetime from %s", tm)
 
 	ins := NewInsertRequest(spaceTuple1).Tuple([]interface{}{dt})
 	_, err = conn.Do(ins).Get()
-	if err != nil {
-		t.Fatalf("Datetime insert failed: %s", err.Error())
-	}
+	require.NoError(t, err, "Datetime insert failed")
 
 	sel := NewSelectRequest(spaceTuple1).
 		Index(index).
@@ -1025,23 +875,17 @@ func TestCustomEncodeDecodeTuple5(t *testing.T) {
 		Iterator(IterEq).
 		Key([]interface{}{dt})
 	data, errSel := conn.Do(sel).Get()
-	if errSel != nil {
-		t.Errorf("Failed to Select: %s", errSel.Error())
-	}
-	if tpl, ok := data[0].([]interface{}); !ok {
-		t.Errorf("Unexpected body of Select")
-	} else {
-		if val, ok := tpl[0].(Datetime); !ok || !val.ToTime().Equal(tm) {
-			t.Fatalf("Unexpected body of Select")
-		}
-	}
+	require.NoError(t, errSel, "Failed to Select")
+	tpl, ok := data[0].([]interface{})
+	require.True(t, ok, "Unexpected body of Select")
+	val, ok := tpl[0].(Datetime)
+	require.True(t, ok, "Unexpected body of Select")
+	require.True(t, val.ToTime().Equal(tm), "Unexpected body of Select")
 
 	// Teardown: delete a value.
 	del := NewDeleteRequest(spaceTuple1).Index(index).Key([]interface{}{dt})
 	_, err = conn.Do(del).Get()
-	if err != nil {
-		t.Fatalf("Datetime delete failed: %s", err.Error())
-	}
+	require.NoError(t, err, "Datetime delete failed")
 }
 
 func TestMPEncode(t *testing.T) {
@@ -1052,29 +896,16 @@ func TestMPEncode(t *testing.T) {
 				tm = tm.In(noTimezoneLoc)
 			} else {
 				loc, err := time.LoadLocation(testcase.zone)
-				if err != nil {
-					t.Fatalf("Unable to load location: %s", err)
-				}
+				require.NoError(t, err, "Unable to load location")
 				tm = tm.In(loc)
 			}
-			if err != nil {
-				t.Fatalf("Time (%s) parse failed: %s", testcase.dt, err)
-			}
+			require.NoError(t, err, "Time (%s) parse failed", testcase.dt)
 			dt, err := MakeDatetime(tm)
-			if err != nil {
-				t.Fatalf("Unable to create Datetime from %s: %s", tm, err)
-			}
+			require.NoError(t, err, "Unable to create Datetime")
 			buf, err := msgpack.Marshal(dt)
-			if err != nil {
-				t.Fatalf("Marshalling failed: %s", err.Error())
-			}
+			require.NoError(t, err, "Marshalling failed")
 			refBuf, _ := hex.DecodeString(testcase.mpBuf)
-			if reflect.DeepEqual(buf, refBuf) != true {
-				t.Fatalf("Failed to encode datetime '%s', actual %x, expected %x",
-					tm,
-					buf,
-					refBuf)
-			}
+			assert.Equal(t, refBuf, buf, "Failed to encode datetime")
 		})
 	}
 }
@@ -1087,26 +918,17 @@ func TestMPDecode(t *testing.T) {
 				tm = tm.In(noTimezoneLoc)
 			} else {
 				loc, err := time.LoadLocation(testcase.zone)
-				if err != nil {
-					t.Fatalf("Unable to load location: %s", err)
-				}
+				require.NoError(t, err, "Unable to load location")
 				tm = tm.In(loc)
 			}
-			if err != nil {
-				t.Fatalf("Time (%s) parse failed: %s", testcase.dt, err)
-			}
+			require.NoError(t, err, "Time (%s) parse failed", testcase.dt)
 			buf, _ := hex.DecodeString(testcase.mpBuf)
 			var v Datetime
 			err = msgpack.Unmarshal(buf, &v)
-			if err != nil {
-				t.Fatalf("Unmarshalling failed: %s", err.Error())
-			}
-			if !tm.Equal(v.ToTime()) {
-				t.Fatalf("Failed to decode datetime buf '%s', actual %v, expected %v",
-					testcase.mpBuf,
-					testcase.dt,
-					v.ToTime())
-			}
+			require.NoError(t, err, "Unmarshalling failed")
+			assert.True(t, tm.Equal(v.ToTime()),
+				"Failed to decode datetime buf '%s', actual %v, expected %v",
+				testcase.mpBuf, testcase.dt, v.ToTime())
 		})
 	}
 }
@@ -1115,12 +937,8 @@ func TestUnmarshalMsgpackInvalidLength(t *testing.T) {
 	var v Datetime
 
 	err := msgpack.Unmarshal([]byte{0xd4, 0x04, 0x04}, &v)
-	if err == nil {
-		t.Fatalf("Unexpected success %v", v)
-	}
-	if err.Error() != "invalid data length: got 1, wanted 8 or 16" {
-		t.Fatalf("Unexpected error: %s", err.Error())
-	}
+	require.Error(t, err, "Unexpected success %v", v)
+	assert.Equal(t, "invalid data length: got 1, wanted 8 or 16", err.Error(), "Unexpected error")
 }
 
 func TestUnmarshalMsgpackInvalidZone(t *testing.T) {
@@ -1132,12 +950,8 @@ func TestUnmarshalMsgpackInvalidZone(t *testing.T) {
 	//  "d804b016b9430000000000000000b400ee00"}
 	buf, _ := hex.DecodeString("d804b016b9430000000000000000b400ee01")
 	err := msgpack.Unmarshal(buf, &v)
-	if err == nil {
-		t.Fatalf("Unexpected success %v", v)
-	}
-	if err.Error() != "unknown timezone index 494" {
-		t.Fatalf("Unexpected error: %s", err.Error())
-	}
+	require.Error(t, err, "Unexpected success %v", v)
+	assert.Equal(t, "unknown timezone index 494", err.Error(), "Unexpected error")
 }
 
 // runTestMain is a body of TestMain function
@@ -1180,16 +994,12 @@ func runTestMain(m *testing.M) int {
 func TestDatetimeString(t *testing.T) {
 	tm, _ := time.Parse(time.RFC3339Nano, "2010-05-24T17:51:56.000000009Z")
 	dt, err := MakeDatetime(tm)
-	if err != nil {
-		t.Fatalf("Unable to create Datetime from %s: %s", tm, err)
-	}
+	require.NoError(t, err, "Unable to create Datetime from %s", tm)
 
 	expected := "2010-05-24T17:51:56.000000009Z"
 
 	result := dt.String()
-	if result != expected {
-		t.Errorf("Expected %s, got %s", expected, result)
-	}
+	assert.Equal(t, expected, result, "String mismatch")
 }
 
 func TestMain(m *testing.M) {
