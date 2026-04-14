@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/vmihailenco/msgpack/v5"
 
 	. "github.com/tarantool/go-tarantool/v3"
@@ -55,20 +57,14 @@ func (t *TupleUUID) DecodeMsgpack(d *msgpack.Decoder) error {
 }
 
 func tupleValueIsId(t *testing.T, tuples []interface{}, id uuid.UUID) {
-	if len(tuples) != 1 {
-		t.Fatalf("Response Data len != 1")
-	}
+	require.Len(t, tuples, 1, "Response Data len != 1")
 
-	if tpl, ok := tuples[0].([]interface{}); !ok {
-		t.Errorf("Unexpected return value body")
-	} else {
-		if len(tpl) != 1 {
-			t.Errorf("Unexpected return value body (tuple len)")
-		}
-		if val, ok := tpl[0].(uuid.UUID); !ok || val != id {
-			t.Errorf("Unexpected return value body (tuple 0 field)")
-		}
-	}
+	tpl, ok := tuples[0].([]interface{})
+	require.True(t, ok, "Unexpected return value body")
+	require.Len(t, tpl, 1, "Unexpected return value body (tuple len)")
+	val, ok := tpl[0].(uuid.UUID)
+	require.True(t, ok, "Unexpected return value body (tuple 0 field)")
+	assert.Equal(t, id, val, "Unexpected return value body (tuple 0 field)")
 }
 
 func TestSelect(t *testing.T) {
@@ -80,9 +76,7 @@ func TestSelect(t *testing.T) {
 	defer func() { _ = conn.Close() }()
 
 	id, uuidErr := uuid.Parse("c8f0fa1f-da29-438c-a040-393f1126ad39")
-	if uuidErr != nil {
-		t.Fatalf("Failed to prepare test uuid: %s", uuidErr)
-	}
+	require.NoError(t, uuidErr, "Failed to prepare test uuid")
 
 	sel := NewSelectRequest(space).
 		Index(index).
@@ -90,22 +84,14 @@ func TestSelect(t *testing.T) {
 		Iterator(IterEq).
 		Key([]interface{}{id})
 	data, errSel := conn.Do(sel).Get()
-	if errSel != nil {
-		t.Fatalf("UUID select failed: %s", errSel.Error())
-	}
+	require.NoError(t, errSel, "UUID select failed")
 	tupleValueIsId(t, data, id)
 
 	var tuples []TupleUUID
 	errTyp := conn.Do(sel).GetTyped(&tuples)
-	if errTyp != nil {
-		t.Fatalf("Failed to SelectTyped: %s", errTyp.Error())
-	}
-	if len(tuples) != 1 {
-		t.Errorf("Result len of SelectTyped != 1")
-	}
-	if tuples[0].id != id {
-		t.Errorf("Bad value loaded from SelectTyped: %s", tuples[0].id)
-	}
+	require.NoError(t, errTyp, "Failed to SelectTyped")
+	require.Len(t, tuples, 1, "Result len of SelectTyped != 1")
+	assert.Equal(t, id, tuples[0].id, "Bad value loaded from SelectTyped")
 }
 
 func TestReplace(t *testing.T) {
@@ -117,15 +103,11 @@ func TestReplace(t *testing.T) {
 	defer func() { _ = conn.Close() }()
 
 	id, uuidErr := uuid.Parse("64d22e4d-ac92-4a23-899a-e59f34af5479")
-	if uuidErr != nil {
-		t.Errorf("Failed to prepare test uuid: %s", uuidErr)
-	}
+	require.NoError(t, uuidErr, "Failed to prepare test uuid")
 
 	rep := NewReplaceRequest(space).Tuple([]interface{}{id})
 	dataRep, errRep := conn.Do(rep).Get()
-	if errRep != nil {
-		t.Errorf("UUID replace failed: %s", errRep)
-	}
+	require.NoError(t, errRep, "UUID replace failed")
 	tupleValueIsId(t, dataRep, id)
 
 	sel := NewSelectRequest(space).
@@ -134,9 +116,7 @@ func TestReplace(t *testing.T) {
 		Iterator(IterEq).
 		Key([]interface{}{id})
 	dataSel, errSel := conn.Do(sel).Get()
-	if errSel != nil {
-		t.Errorf("UUID select failed: %s", errSel)
-	}
+	require.NoError(t, errSel, "UUID select failed")
 	tupleValueIsId(t, dataSel, id)
 }
 
