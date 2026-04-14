@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/vmihailenco/msgpack/v5"
 
 	. "github.com/tarantool/go-tarantool/v3"
@@ -39,9 +41,7 @@ func createQueue(t *testing.T, conn *Connection, name string, cfg queue.Cfg) que
 	t.Helper()
 
 	q := queue.New(conn, name)
-	if err := q.Create(cfg); err != nil {
-		t.Fatalf("Failed to create queue: %s", err)
-	}
+	require.NoError(t, q.Create(cfg), "Failed to create queue")
 
 	return q
 }
@@ -49,9 +49,7 @@ func createQueue(t *testing.T, conn *Connection, name string, cfg queue.Cfg) que
 func dropQueue(t *testing.T, q queue.Queue) {
 	t.Helper()
 
-	if err := q.Drop(); err != nil {
-		t.Fatalf("Failed to drop queue: %s", err)
-	}
+	require.NoError(t, q.Drop(), "Failed to drop queue")
 }
 
 // ///////QUEUE/////////
@@ -73,10 +71,10 @@ func TestQueue_Cfg(t *testing.T) {
 	q := createQueue(t, conn, name, queue.Cfg{Temporary: true, Kind: queue.FIFO})
 	defer dropQueue(t, q)
 
-	err := q.Cfg(queue.CfgOpts{InReplicaset: false, Ttr: 5 * time.Second})
-	if err != nil {
-		t.Fatalf("Unexpected q.Cfg() error: %s", err)
-	}
+	require.NoError(t, q.Cfg(queue.CfgOpts{
+		InReplicaset: false,
+		Ttr:          5 * time.Second,
+	}), "Unexpected q.Cfg() error")
 }
 
 func TestQueue_Identify(t *testing.T) {
@@ -88,18 +86,12 @@ func TestQueue_Identify(t *testing.T) {
 	defer dropQueue(t, q)
 
 	uuid, err := q.Identify(nil)
-	if err != nil {
-		t.Fatalf("Failed to identify: %s", err)
-	}
+	require.NoError(t, err, "Failed to identify")
 	cpy := uuid
 
 	uuid, err = q.Identify(&cpy)
-	if err != nil {
-		t.Fatalf("Failed to identify with uuid %s: %s", cpy, err)
-	}
-	if cpy.String() != uuid.String() {
-		t.Fatalf("Unequal UUIDs after re-identify: %s, expected %s", uuid, cpy)
-	}
+	require.NoError(t, err, "Failed to identify with uuid %s", cpy)
+	require.Equal(t, cpy.String(), uuid.String(), "Unequal UUIDs after re-identify")
 }
 
 func TestQueue_ReIdentify(t *testing.T) {
@@ -117,45 +109,27 @@ func TestQueue_ReIdentify(t *testing.T) {
 		Opts:      queue.Opts{Ttl: 5 * time.Second},
 	}
 	q := createQueue(t, conn, name, cfg)
-	err := q.Cfg(queue.CfgOpts{InReplicaset: false, Ttr: 5 * time.Second})
-	if err != nil {
-		t.Fatalf("Cfg failed: %s", err)
-	}
+	require.NoError(t, q.Cfg(queue.CfgOpts{InReplicaset: false, Ttr: 5 * time.Second}), "Cfg failed")
 	defer func() {
 		dropQueue(t, q)
 	}()
 
 	uuid, err := q.Identify(nil)
-	if err != nil {
-		t.Fatalf("Failed to identify: %s", err)
-	}
+	require.NoError(t, err, "Failed to identify")
 	newuuid, err := q.Identify(&uuid)
-	if err != nil {
-		t.Fatalf("Failed to identify: %s", err)
-	}
-	if newuuid.String() != uuid.String() {
-		t.Fatalf("Unequal UUIDs after re-identify: %s, expected %s", newuuid, uuid)
-	}
+	require.NoError(t, err, "Failed to identify")
+	require.Equal(t, uuid.String(), newuuid.String(), "Unequal UUIDs after re-identify")
 	// Put.
 	putData := "put_data"
 	task, err := q.Put(putData)
-	switch {
-	case err != nil:
-		_ = conn.Close()
-		t.Fatalf("Failed put to queue: %s", err)
-	case task == nil:
-		t.Fatalf("Task is nil after put")
-	case task.Data() != putData:
-		t.Errorf("Task data after put not equal with example. %s != %s", task.Data(), putData)
-	}
+	require.NoError(t, err, "Failed put to queue")
+	require.NotNil(t, task, "Task is nil after put")
+	assert.Equal(t, putData, task.Data(), "Task data after put not equal with example")
 
 	// Take.
 	task, err = q.TakeTimeout(2 * time.Second)
-	if err != nil {
-		t.Fatalf("Failed take from queue: %s", err)
-	} else if task == nil {
-		t.Fatalf("Task is nil after take")
-	}
+	require.NoError(t, err, "Failed take from queue")
+	require.NotNil(t, task, "Task is nil after take")
 
 	_ = conn.Close()
 	conn = nil
@@ -165,28 +139,18 @@ func TestQueue_ReIdentify(t *testing.T) {
 
 	// Identify in another connection.
 	newuuid, err = q.Identify(&uuid)
-	if err != nil {
-		t.Fatalf("Failed to identify: %s", err)
-	}
-	if newuuid.String() != uuid.String() {
-		t.Fatalf("Unequal UUIDs after re-identify: %s, expected %s", newuuid, uuid)
-	}
+	require.NoError(t, err, "Failed to identify")
+	require.Equal(t, uuid.String(), newuuid.String(), "Unequal UUIDs after re-identify")
 
 	// Peek in another connection.
 	task, err = q.Peek(task.Id())
-	if err != nil {
-		t.Fatalf("Failed take from queue: %s", err)
-	} else if task == nil {
-		t.Fatalf("Task is nil after take")
-	}
+	require.NoError(t, err, "Failed peek from queue")
+	require.NotNil(t, task, "Task is nil after peek")
 
 	// Ack in another connection.
 	err = task.Ack()
-	if err != nil {
-		t.Errorf("Failed ack %s", err)
-	} else if !task.IsDone() {
-		t.Errorf("Task status after take is not done. Status = %s", task.Status())
-	}
+	require.NoError(t, err, "Failed ack")
+	assert.True(t, task.IsDone(), "Task status after take is not done. Status = %s", task.Status())
 }
 
 func TestQueue_State(t *testing.T) {
@@ -198,12 +162,9 @@ func TestQueue_State(t *testing.T) {
 	defer dropQueue(t, q)
 
 	state, err := q.State()
-	if err != nil {
-		t.Fatalf("Failed to get queue state: %s", err)
-	}
-	if state != queue.InitState && state != queue.RunningState {
-		t.Fatalf("Unexpected state: %d", state)
-	}
+	require.NoError(t, err, "Failed to get queue state")
+	require.True(t, state == queue.InitState || state == queue.RunningState,
+		"Unexpected state: %d", state)
 }
 
 func TestFifoQueue_GetExist_Statistic(t *testing.T) {
@@ -215,25 +176,16 @@ func TestFifoQueue_GetExist_Statistic(t *testing.T) {
 	defer dropQueue(t, q)
 
 	ok, err := q.Exists()
-	if err != nil {
-		t.Fatalf("Failed to get exist queue: %s", err)
-	}
-	if !ok {
-		t.Fatal("Queue is not found")
-	}
+	require.NoError(t, err, "Failed to get exist queue")
+	require.True(t, ok, "Queue is not found")
 
 	putData := "put_data"
 	_, err = q.Put(putData)
-	if err != nil {
-		t.Fatalf("Failed to put queue: %s", err)
-	}
+	require.NoError(t, err, "Failed to put queue")
 
 	stat, err := q.Statistic()
-	if err != nil {
-		t.Errorf("Failed to get statistic queue: %s", err)
-	} else if stat == nil {
-		t.Error("Statistic is nil")
-	}
+	require.NoError(t, err, "Failed to get statistic queue")
+	assert.NotNil(t, stat, "Statistic is nil")
 }
 
 func TestFifoQueue_Put(t *testing.T) {
@@ -247,14 +199,9 @@ func TestFifoQueue_Put(t *testing.T) {
 	// Put.
 	putData := "put_data"
 	task, err := q.Put(putData)
-	switch {
-	case err != nil:
-		t.Fatalf("Failed put to queue: %s", err)
-	case task == nil:
-		t.Fatalf("Task is nil after put")
-	case task.Data() != putData:
-		t.Errorf("Task data after put not equal with example. %s != %s", task.Data(), putData)
-	}
+	require.NoError(t, err, "Failed put to queue")
+	require.NotNil(t, task, "Task is nil after put")
+	assert.Equal(t, putData, task.Data(), "Task data after put not equal with example")
 }
 
 func TestFifoQueue_Take(t *testing.T) {
@@ -268,38 +215,20 @@ func TestFifoQueue_Take(t *testing.T) {
 	// Put.
 	putData := "put_data"
 	task, err := q.Put(putData)
-	switch {
-	case err != nil:
-		t.Fatalf("Failed put to queue: %s", err)
-	case task == nil:
-		t.Fatalf("Task is nil after put")
-	case task.Data() != putData:
-		t.Errorf("Task data after put not equal with example. %s != %s", task.Data(), putData)
-	}
+	require.NoError(t, err, "Failed put to queue")
+	require.NotNil(t, task, "Task is nil after put")
+	assert.Equal(t, putData, task.Data(), "Task data after put not equal with example")
 
 	// Take.
 	task, err = q.TakeTimeout(2 * time.Second)
-	switch {
-	case err != nil:
-		t.Errorf("Failed take from queue: %s", err)
-	case task == nil:
-		t.Errorf("Task is nil after take")
-	default:
-		if task.Data() != putData {
-			t.Errorf("Task data after take not equal with example. %s != %s", task.Data(), putData)
-		}
+	require.NoError(t, err, "Failed take from queue")
+	require.NotNil(t, task, "Task is nil after take")
+	assert.Equal(t, putData, task.Data(), "Task data after take not equal with example")
+	assert.True(t, task.IsTaken(), "Task status after take is not taken. Status = %s", task.Status())
 
-		if !task.IsTaken() {
-			t.Errorf("Task status after take is not taken. Status = %s", task.Status())
-		}
-
-		err = task.Ack()
-		if err != nil {
-			t.Errorf("Failed ack %s", err)
-		} else if !task.IsDone() {
-			t.Errorf("Task status after take is not done. Status = %s", task.Status())
-		}
-	}
+	err = task.Ack()
+	require.NoError(t, err, "Failed ack")
+	assert.True(t, task.IsDone(), "Task status after take is not done. Status = %s", task.Status())
 }
 
 type customData struct {
@@ -342,58 +271,26 @@ func TestFifoQueue_TakeTyped(t *testing.T) {
 	// Put.
 	putData := &customData{customField: "put_data"}
 	task, err := q.Put(putData)
-	switch {
-	case err != nil:
-		t.Fatalf("Failed put to queue: %s", err)
-	case task == nil:
-		t.Fatalf("Task is nil after put")
-	default:
-		typedData, ok := task.Data().(*customData)
-		if !ok {
-			t.Errorf("Task data after put has different type. %#v != %#v",
-				task.Data(), putData)
-		}
-		if *typedData != *putData {
-			t.Errorf("Task data after put not equal with example. %s != %s",
-				task.Data(), putData)
-		}
-	}
+	require.NoError(t, err, "Failed put to queue")
+	require.NotNil(t, task, "Task is nil after put")
+	typedData, ok := task.Data().(*customData)
+	require.True(t, ok, "Task data after put has different type. %#v != %#v", task.Data(), putData)
+	assert.Equal(t, *putData, *typedData, "Task data after put not equal with example")
 
 	// Take.
 	takeData := &customData{}
 	task, err = q.TakeTypedTimeout(2*time.Second, takeData)
-	switch {
-	case err != nil:
-		t.Errorf("Failed take from queue: %s", err)
-	case task == nil:
-		t.Errorf("Task is nil after take")
-	default:
-		typedData, ok := task.Data().(*customData)
-		if !ok {
-			t.Errorf("Task data after put has different type. %#v != %#v",
-				task.Data(), putData)
-		}
-		if *typedData != *putData {
-			t.Errorf("Task data after take not equal with example. %#v != %#v",
-				task.Data(), putData)
-		}
-		if *takeData != *putData {
-			t.Errorf("Task data after take not equal with example. %#v != %#v",
-				task.Data(), putData)
-		}
-		if !task.IsTaken() {
-			t.Errorf("Task status after take is not taken. Status = %s",
-				task.Status())
-		}
+	require.NoError(t, err, "Failed take from queue")
+	require.NotNil(t, task, "Task is nil after take")
+	typedData, ok = task.Data().(*customData)
+	require.True(t, ok, "Task data after take has different type. %#v != %#v", task.Data(), putData)
+	assert.Equal(t, *putData, *typedData, "Task data after take not equal with example")
+	assert.Equal(t, *putData, *takeData, "Task data after take not equal with example")
+	assert.True(t, task.IsTaken(), "Task status after take is not taken. Status = %s", task.Status())
 
-		err = task.Ack()
-		if err != nil {
-			t.Errorf("Failed ack %s", err)
-		} else if !task.IsDone() {
-			t.Errorf("Task status after take is not done. Status = %s",
-				task.Status())
-		}
-	}
+	err = task.Ack()
+	require.NoError(t, err, "Failed ack")
+	assert.True(t, task.IsDone(), "Task status after take is not done. Status = %s", task.Status())
 }
 
 func TestFifoQueue_Peek(t *testing.T) {
@@ -407,27 +304,16 @@ func TestFifoQueue_Peek(t *testing.T) {
 	// Put.
 	putData := "put_data"
 	task, err := q.Put(putData)
-	switch {
-	case err != nil:
-		t.Fatalf("Failed put to queue: %s", err)
-	case task == nil:
-		t.Fatalf("Task is nil after put")
-	case task.Data() != putData:
-		t.Errorf("Task data after put not equal with example. %s != %s", task.Data(), putData)
-	}
+	require.NoError(t, err, "Failed put to queue")
+	require.NotNil(t, task, "Task is nil after put")
+	assert.Equal(t, putData, task.Data(), "Task data after put not equal with example")
 
 	// Peek.
 	task, err = q.Peek(task.Id())
-	switch {
-	case err != nil:
-		t.Errorf("Failed peek from queue: %s", err)
-	case task == nil:
-		t.Errorf("Task is nil after peek")
-	case task.Data() != putData:
-		t.Errorf("Task data after peek not equal with example. %s != %s", task.Data(), putData)
-	case !task.IsReady():
-		t.Errorf("Task status after peek is not ready. Status = %s", task.Status())
-	}
+	require.NoError(t, err, "Failed peek from queue")
+	require.NotNil(t, task, "Task is nil after peek")
+	assert.Equal(t, putData, task.Data(), "Task data after peek not equal with example")
+	assert.True(t, task.IsReady(), "Task status after peek is not ready. Status = %s", task.Status())
 }
 
 func TestFifoQueue_Bury_Kick(t *testing.T) {
@@ -441,56 +327,30 @@ func TestFifoQueue_Bury_Kick(t *testing.T) {
 	// Put.
 	putData := "put_data"
 	task, err := q.Put(putData)
-	switch {
-	case err != nil:
-		t.Fatalf("Failed put to queue: %s", err)
-	case task == nil:
-		t.Fatalf("Task is nil after put")
-	case task.Data() != putData:
-		t.Errorf("Task data after put not equal with example. %s != %s", task.Data(), putData)
-	}
+	require.NoError(t, err, "Failed put to queue")
+	require.NotNil(t, task, "Task is nil after put")
+	assert.Equal(t, putData, task.Data(), "Task data after put not equal with example")
 
 	// Bury.
 	err = task.Bury()
-	switch {
-	case err != nil:
-		t.Fatalf("Failed bury task %s", err)
-	case !task.IsBuried():
-		t.Errorf("Task status after bury is not buried. Status = %s", task.Status())
-	}
+	require.NoError(t, err, "Failed bury task")
+	assert.True(t, task.IsBuried(), "Task status after bury is not buried. Status = %s", task.Status())
 
 	// Kick.
 	count, err := q.Kick(1)
-	switch {
-	case err != nil:
-		t.Fatalf("Failed kick task %s", err)
-	case count != 1:
-		t.Fatalf("Kick result != 1")
-	}
+	require.NoError(t, err, "Failed kick task")
+	require.Equal(t, uint64(1), count, "Kick result != 1")
 
 	// Take.
 	task, err = q.TakeTimeout(2 * time.Second)
-	switch {
-	case err != nil:
-		t.Errorf("Failed take from queue: %s", err)
-	case task == nil:
-		t.Errorf("Task is nil after take")
-	default:
-		if task.Data() != putData {
-			t.Errorf("Task data after take not equal with example. %s != %s", task.Data(), putData)
-		}
+	require.NoError(t, err, "Failed take from queue")
+	require.NotNil(t, task, "Task is nil after take")
+	assert.Equal(t, putData, task.Data(), "Task data after take not equal with example")
+	assert.True(t, task.IsTaken(), "Task status after take is not taken. Status = %s", task.Status())
 
-		if !task.IsTaken() {
-			t.Errorf("Task status after take is not taken. Status = %s", task.Status())
-		}
-
-		err = task.Ack()
-		if err != nil {
-			t.Errorf("Failed ack %s", err)
-		} else if !task.IsDone() {
-			t.Errorf("Task status after take is not done. Status = %s", task.Status())
-		}
-	}
+	err = task.Ack()
+	require.NoError(t, err, "Failed ack")
+	assert.True(t, task.IsDone(), "Task status after take is not done. Status = %s", task.Status())
 }
 
 func TestFifoQueue_Delete(t *testing.T) {
@@ -509,42 +369,26 @@ func TestFifoQueue_Delete(t *testing.T) {
 
 	for i := 0; i < 2; i++ {
 		tasks[i], err = q.Put(putData)
-		switch {
-		case err != nil:
-			t.Fatalf("Failed put to queue: %s", err)
-		case tasks[i] == nil:
-			t.Fatalf("Task is nil after put")
-		case tasks[i].Data() != putData:
-			t.Errorf(
-				"Task data after put not equal with example. %s != %s",
-				tasks[i].Data(), putData)
-		}
+		require.NoError(t, err, "Failed put to queue")
+		require.NotNil(t, tasks[i], "Task is nil after put")
+		assert.Equal(t, putData, tasks[i].Data(), "Task data after put not equal with example")
 	}
 
 	// Delete by task method.
 	err = tasks[0].Delete()
-	if err != nil {
-		t.Fatalf("Failed bury task %s", err)
-	} else if !tasks[0].IsDone() {
-		t.Errorf("Task status after delete is not done. Status = %s", tasks[0].Status())
-	}
+	require.NoError(t, err, "Failed delete task")
+	assert.True(t, tasks[0].IsDone(),
+		"Task status after delete is not done. Status = %s", tasks[0].Status())
 
 	// Delete by task ID.
 	err = q.Delete(tasks[1].Id())
-	if err != nil {
-		t.Fatalf("Failed bury task %s", err)
-	} else if !tasks[0].IsDone() {
-		t.Errorf("Task status after delete is not done. Status = %s", tasks[0].Status())
-	}
+	require.NoError(t, err, "Failed delete task")
 
 	// Take.
 	for i := 0; i < 2; i++ {
 		tasks[i], err = q.TakeTimeout(2 * time.Second)
-		if err != nil {
-			t.Errorf("Failed take from queue: %s", err)
-		} else if tasks[i] != nil {
-			t.Errorf("Task is not nil after take. Task is %d", tasks[i].Id())
-		}
+		require.NoError(t, err, "Failed take from queue")
+		assert.Nil(t, tasks[i], "Task is not nil after take")
 	}
 }
 
@@ -558,57 +402,29 @@ func TestFifoQueue_Release(t *testing.T) {
 
 	putData := "put_data"
 	task, err := q.Put(putData)
-	switch {
-	case err != nil:
-		t.Fatalf("Failed put to queue: %s", err)
-	case task == nil:
-		t.Fatalf("Task is nil after put")
-	case task.Data() != putData:
-		t.Errorf("Task data after put not equal with example. %s != %s", task.Data(), putData)
-	}
+	require.NoError(t, err, "Failed put to queue")
+	require.NotNil(t, task, "Task is nil after put")
+	assert.Equal(t, putData, task.Data(), "Task data after put not equal with example")
 
 	// Take.
 	task, err = q.Take()
-	switch {
-	case err != nil:
-		t.Fatalf("Failed take from queue: %s", err)
-	case task == nil:
-		t.Fatal("Task is nil after take")
-	}
+	require.NoError(t, err, "Failed take from queue")
+	require.NotNil(t, task, "Task is nil after take")
 
 	// Release.
-	err = task.Release()
-	if err != nil {
-		t.Fatalf("Failed release task %s", err)
-	}
-
-	if !task.IsReady() {
-		t.Fatalf("Task status is not ready, but %s", task.Status())
-	}
+	require.NoError(t, task.Release(), "Failed release task")
+	require.True(t, task.IsReady(), "Task status is not ready, but %s", task.Status())
 
 	// Take.
 	task, err = q.Take()
-	switch {
-	case err != nil:
-		t.Fatalf("Failed take from queue: %s", err)
-	case task == nil:
-		t.Fatal("Task is nil after take")
-	default:
-		if task.Data() != putData {
-			t.Errorf("Task data after take not equal with example. %s != %s", task.Data(), putData)
-		}
+	require.NoError(t, err, "Failed take from queue")
+	require.NotNil(t, task, "Task is nil after take")
+	assert.Equal(t, putData, task.Data(), "Task data after take not equal with example")
+	assert.True(t, task.IsTaken(), "Task status after take is not taken. Status = %s", task.Status())
 
-		if !task.IsTaken() {
-			t.Errorf("Task status after take is not taken. Status = %s", task.Status())
-		}
-
-		err = task.Ack()
-		if err != nil {
-			t.Errorf("Failed ack %s", err)
-		} else if !task.IsDone() {
-			t.Errorf("Task status after take is not done. Status = %s", task.Status())
-		}
-	}
+	err = task.Ack()
+	require.NoError(t, err, "Failed ack")
+	assert.True(t, task.IsDone(), "Task status after take is not done. Status = %s", task.Status())
 }
 
 func TestQueue_ReleaseAll(t *testing.T) {
@@ -621,61 +437,32 @@ func TestQueue_ReleaseAll(t *testing.T) {
 
 	putData := "put_data"
 	task, err := q.Put(putData)
-	switch {
-	case err != nil:
-		t.Fatalf("Failed put to queue: %s", err)
-	case task == nil:
-		t.Fatalf("Task is nil after put")
-	case task.Data() != putData:
-		t.Errorf("Task data after put not equal with example. %s != %s", task.Data(), putData)
-	}
+	require.NoError(t, err, "Failed put to queue")
+	require.NotNil(t, task, "Task is nil after put")
+	assert.Equal(t, putData, task.Data(), "Task data after put not equal with example")
 
 	// Take.
 	task, err = q.Take()
-	switch {
-	case err != nil:
-		t.Fatalf("Failed take from queue: %s", err)
-	case task == nil:
-		t.Fatal("Task is nil after take")
-	}
+	require.NoError(t, err, "Failed take from queue")
+	require.NotNil(t, task, "Task is nil after take")
 
 	// ReleaseAll.
-	err = q.ReleaseAll()
-	if err != nil {
-		t.Fatalf("Failed release task %s", err)
-	}
+	require.NoError(t, q.ReleaseAll(), "Failed release task")
 
 	task, err = q.Peek(task.Id())
-	if err != nil {
-		t.Fatalf("Failed to peek task %s", err)
-	}
-	if !task.IsReady() {
-		t.Fatalf("Task status is not ready, but %s", task.Status())
-	}
+	require.NoError(t, err, "Failed to peek task")
+	require.True(t, task.IsReady(), "Task status is not ready, but %s", task.Status())
 
 	// Take.
 	task, err = q.Take()
-	switch {
-	case err != nil:
-		t.Fatalf("Failed take from queue: %s", err)
-	case task == nil:
-		t.Fatal("Task is nil after take")
-	default:
-		if task.Data() != putData {
-			t.Errorf("Task data after take not equal with example. %s != %s", task.Data(), putData)
-		}
+	require.NoError(t, err, "Failed take from queue")
+	require.NotNil(t, task, "Task is nil after take")
+	assert.Equal(t, putData, task.Data(), "Task data after take not equal with example")
+	assert.True(t, task.IsTaken(), "Task status after take is not taken. Status = %s", task.Status())
 
-		if !task.IsTaken() {
-			t.Errorf("Task status after take is not taken. Status = %s", task.Status())
-		}
-
-		err = task.Ack()
-		if err != nil {
-			t.Errorf("Failed ack %s", err)
-		} else if !task.IsDone() {
-			t.Errorf("Task status after take is not done. Status = %s", task.Status())
-		}
-	}
+	err = task.Ack()
+	require.NoError(t, err, "Failed ack")
+	assert.True(t, task.IsDone(), "Task status after take is not done. Status = %s", task.Status())
 }
 
 func TestTtlQueue(t *testing.T) {
@@ -693,25 +480,16 @@ func TestTtlQueue(t *testing.T) {
 
 	putData := "put_data"
 	task, err := q.Put(putData)
-	switch {
-	case err != nil:
-		t.Fatalf("Failed put to queue: %s", err)
-	case task == nil:
-		t.Fatalf("Task is nil after put")
-	case task.Data() != putData:
-		t.Errorf("Task data after put not equal with example. %s != %s", task.Data(), putData)
-	}
+	require.NoError(t, err, "Failed put to queue")
+	require.NotNil(t, task, "Task is nil after put")
+	assert.Equal(t, putData, task.Data(), "Task data after put not equal with example")
 
 	time.Sleep(10 * time.Second)
 
 	// Take.
 	task, err = q.TakeTimeout(2 * time.Second)
-	switch {
-	case err != nil:
-		t.Errorf("Failed take from queue: %s", err)
-	case task != nil:
-		t.Errorf("Task is not nil after sleep")
-	}
+	require.NoError(t, err, "Failed take from queue")
+	assert.Nil(t, task, "Task is not nil after sleep")
 }
 
 func TestTtlQueue_Put(t *testing.T) {
@@ -729,41 +507,22 @@ func TestTtlQueue_Put(t *testing.T) {
 
 	putData := "put_data"
 	task, err := q.PutWithOpts(putData, queue.Opts{Ttl: 10 * time.Second})
-	switch {
-	case err != nil:
-		t.Fatalf("Failed put to queue: %s", err)
-	case task == nil:
-		t.Fatalf("Task is nil after put")
-	case task.Data() != putData:
-		t.Errorf("Task data after put not equal with example. %s != %s", task.Data(), putData)
-	}
+	require.NoError(t, err, "Failed put to queue")
+	require.NotNil(t, task, "Task is nil after put")
+	assert.Equal(t, putData, task.Data(), "Task data after put not equal with example")
 
 	time.Sleep(2 * time.Second)
 
 	// Take.
 	task, err = q.TakeTimeout(2 * time.Second)
-	switch {
-	case err != nil:
-		t.Errorf("Failed take from queue: %s", err)
-	case task == nil:
-		t.Errorf("Task is nil after sleep")
-	default:
-		if task.Data() != putData {
-			t.Errorf("Task data after take not equal with example. %s != %s", task.Data(), putData)
-		}
+	require.NoError(t, err, "Failed take from queue")
+	require.NotNil(t, task, "Task is nil after sleep")
+	assert.Equal(t, putData, task.Data(), "Task data after take not equal with example")
+	assert.True(t, task.IsTaken(), "Task status after take is not taken. Status = %s", task.Status())
 
-		if !task.IsTaken() {
-			t.Errorf("Task status after take is not taken. Status = %s", task.Status())
-		}
-
-		err = task.Ack()
-		switch {
-		case err != nil:
-			t.Errorf("Failed ack %s", err)
-		case !task.IsDone():
-			t.Errorf("Task status after take is not done. Status = %s", task.Status())
-		}
-	}
+	err = task.Ack()
+	require.NoError(t, err, "Failed ack")
+	assert.True(t, task.IsDone(), "Task status after take is not done. Status = %s", task.Status())
 }
 
 func TestUtube_Put(t *testing.T) {
@@ -781,62 +540,50 @@ func TestUtube_Put(t *testing.T) {
 
 	data1 := &customData{"test-data-0"}
 	_, err := q.PutWithOpts(data1, queue.Opts{Utube: "test-utube-consumer-key"})
-	if err != nil {
-		t.Fatalf("Failed put task to queue: %s", err)
-	}
+	require.NoError(t, err, "Failed put task to queue")
 	data2 := &customData{"test-data-1"}
 	_, err = q.PutWithOpts(data2, queue.Opts{Utube: "test-utube-consumer-key"})
-	if err != nil {
-		t.Fatalf("Failed put task to queue: %s", err)
-	}
+	require.NoError(t, err, "Failed put task to queue")
 
-	errChan := make(chan struct{})
+	errChan := make(chan error, 2)
 	go func() {
-		t1, err := q.TakeTimeout(2 * time.Second)
-		if err != nil {
-			t.Errorf("Failed to take task from utube: %s", err)
-			errChan <- struct{}{}
+		t1, gerr := q.TakeTimeout(2 * time.Second)
+		if gerr != nil {
+			errChan <- fmt.Errorf("failed to take task from utube: %w", gerr)
 			return
 		}
 
 		time.Sleep(2 * time.Second)
-		if err := t1.Ack(); err != nil {
-			t.Errorf("Failed to ack task: %s", err)
-			errChan <- struct{}{}
+		if gerr := t1.Ack(); gerr != nil {
+			errChan <- fmt.Errorf("failed to ack task: %w", gerr)
 			return
 		}
 		close(errChan)
 	}()
 
 	time.Sleep(500 * time.Millisecond)
-	// the queue should be blocked for ~2 seconds
+	// The queue should be blocked for ~2 seconds.
+	defer func() {
+		select {
+		case gerr := <-errChan:
+			require.NoError(t, gerr)
+		default:
+		}
+	}()
 	start := time.Now()
 	t2, err := q.TakeTimeout(2 * time.Second)
-	if err != nil {
-		<-errChan
-		t.Fatalf("Failed to take task from utube: %s", err)
-	}
+	require.NoError(t, err, "Failed to take task from utube")
+	require.NotNil(t, t2, "Got nil task")
 
-	if t2 == nil {
-		<-errChan
-		t.Fatalf("Got nil task")
-	}
-
-	if err := t2.Ack(); err != nil {
-		<-errChan
-		t.Fatalf("Failed to ack task: %s", err)
-	}
+	err = t2.Ack()
+	require.NoError(t, err, "Failed to ack task")
 	end := time.Now()
-	if _, ok := <-errChan; ok {
-		t.Fatalf("One of tasks failed")
-	}
 
 	timeSpent := math.Abs(float64(end.Sub(start) - 2*time.Second))
 
-	if timeSpent > float64(700*time.Millisecond) {
-		t.Fatalf("Blocking time is less than expected: actual = %.2fs, expected = 1s",
-			end.Sub(start).Seconds())
-	}
+	assert.LessOrEqual(t, timeSpent, float64(700*time.Millisecond),
+		"Blocking time is less than expected: actual = %.2fs, expected = 1s",
+		end.Sub(start).Seconds())
 }
 
 func TestTask_Touch(t *testing.T) {
@@ -887,9 +634,7 @@ func TestTask_Touch(t *testing.T) {
 			q := createQueue(t, conn, tc.name, tc.cfg)
 			defer func() {
 				if task != nil {
-					if err := task.Ack(); err != nil {
-						t.Fatalf("Failed to Ack: %s", err)
-					}
+					require.NoError(t, task.Ack(), "Failed to Ack")
 				}
 				dropQueue(t, q)
 			}()
@@ -900,20 +645,16 @@ func TestTask_Touch(t *testing.T) {
 					Ttl:   10 * time.Second,
 					Utube: "test_utube",
 				})
-			if err != nil {
-				t.Fatalf("Failed put a task: %s", err)
-			}
+			require.NoError(t, err, "Failed put a task")
 
 			task, err = q.TakeTimeout(2 * time.Second)
-			if err != nil {
-				t.Fatalf("Failed to take task from utube: %s", err)
-			}
+			require.NoError(t, err, "Failed to take task from utube")
 
 			err = task.Touch(1 * time.Second)
-			if tc.ok && err != nil {
-				t.Fatalf("Failed to touch: %s", err)
-			} else if !tc.ok && err == nil {
-				t.Fatalf("Unexpected success")
+			if tc.ok {
+				require.NoError(t, err, "Failed to touch")
+			} else {
+				require.Error(t, err, "Unexpected success")
 			}
 		})
 	}
