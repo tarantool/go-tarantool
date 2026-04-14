@@ -178,18 +178,14 @@ func connect(t testing.TB) *tarantool.Connection {
 		ctx, cancel := test_helpers.GetConnectContext()
 		conn, err := tarantool.Connect(ctx, dialer, opts)
 		cancel()
-		if err != nil {
-			t.Fatalf("Failed to connect: %s", err)
-		}
+		require.NoError(t, err, "Failed to connect")
 
 		ret := struct {
 			_msgpack struct{} `msgpack:",asArray"`
 			Result   bool
 		}{}
 		err = conn.Do(tarantool.NewCall17Request("is_ready")).GetTyped(&ret)
-		if err != nil {
-			t.Fatalf("Failed to check is_ready: %s", err)
-		}
+		require.NoError(t, err, "Failed to check is_ready")
 
 		if ret.Result {
 			return conn
@@ -198,7 +194,7 @@ func connect(t testing.TB) *tarantool.Connection {
 		time.Sleep(time.Second)
 	}
 
-	t.Fatalf("Failed to wait for a ready state connect.")
+	require.Fail(t, "Failed to wait for a ready state connect.")
 	return nil
 }
 
@@ -505,9 +501,8 @@ func testCrudRequestPrepareData(t *testing.T, conn tarantool.Connector) {
 	for i := 1010; i < 1020; i++ {
 		req := tarantool.NewReplaceRequest(spaceName).Tuple(
 			[]interface{}{uint(i), nil, "bla"})
-		if _, err := conn.Do(req).Get(); err != nil {
-			t.Fatalf("Unable to prepare tuples: %s", err)
-		}
+		_, err := conn.Do(req).Get()
+		require.NoError(t, err, "Unable to prepare tuples")
 	}
 }
 
@@ -519,35 +514,23 @@ func testSelectGeneratedData(t *testing.T, conn tarantool.Connector,
 		Iterator(tarantool.IterGe).
 		Key([]interface{}{uint(1010)})
 	data, err := conn.Do(req).Get()
-	if err != nil {
-		t.Fatalf("Failed to Select: %s", err.Error())
-	}
-	if len(data) != expectedTuplesCount {
-		t.Fatalf("Response Data len %d != %d", len(data), expectedTuplesCount)
-	}
+	require.NoError(t, err, "Failed to Select")
+	require.Len(t, data, expectedTuplesCount, "Response Data len mismatch")
 }
 
 func testCrudRequestCheck(t *testing.T, req tarantool.Request,
 	data []interface{}, err error, expectedLen int) {
 	t.Helper()
 
-	if err != nil {
-		t.Fatalf("Failed to Do CRUD request: %s", err.Error())
-	}
-
-	if len(data) < expectedLen {
-		t.Fatalf("Response Body len < %#v, actual len %#v",
-			expectedLen, len(data))
-	}
+	require.NoError(t, err, "Failed to Do CRUD request")
+	require.GreaterOrEqual(t, len(data), expectedLen, "Response Body len")
 
 	// resp.Data[0] - CRUD res.
 	// resp.Data[1] - CRUD err.
 	if expectedLen >= 2 && data[1] != nil {
-		if crudErr, err := getCrudError(req, data[1]); err != nil {
-			t.Fatalf("Failed to get CRUD error: %#v", err)
-		} else if crudErr != nil {
-			t.Fatalf("Failed to perform CRUD request on CRUD side: %#v", crudErr)
-		}
+		crudErr, getErr := getCrudError(req, data[1])
+		require.NoError(t, getErr, "Failed to get CRUD error")
+		require.Nil(t, crudErr, "Failed to perform CRUD request on CRUD side")
 	}
 }
 
@@ -719,49 +702,34 @@ func TestUnflattenRows(t *testing.T) {
 	data, err := conn.Do(req).Get()
 	testCrudRequestCheck(t, req, data, err, 2)
 
-	if res, ok = data[0].(map[interface{}]interface{}); !ok {
-		t.Fatalf("Unexpected CRUD result: %#v", data[0])
-	}
+	res, ok = data[0].(map[interface{}]interface{})
+	require.True(t, ok, "Unexpected CRUD result")
 
-	if rawMetadata, ok := res["metadata"]; !ok {
-		t.Fatalf("Failed to get CRUD metadata")
-	} else {
-		if metadata, ok = rawMetadata.([]interface{}); !ok {
-			t.Fatalf("Unexpected CRUD metadata: %#v", rawMetadata)
-		}
-	}
+	rawMetadata, ok := res["metadata"]
+	require.True(t, ok, "Failed to get CRUD metadata")
+	metadata, ok = rawMetadata.([]interface{})
+	require.True(t, ok, "Unexpected CRUD metadata")
 
-	if rawTuples, ok := res["rows"]; !ok {
-		t.Fatalf("Failed to get CRUD rows")
-	} else {
-		if tpls, ok = rawTuples.([]interface{}); !ok {
-			t.Fatalf("Unexpected CRUD rows: %#v", rawTuples)
-		}
-	}
+	rawTuples, ok := res["rows"]
+	require.True(t, ok, "Failed to get CRUD rows")
+	tpls, ok = rawTuples.([]interface{})
+	require.True(t, ok, "Unexpected CRUD rows")
 
 	// Format `replace` result with UnflattenRows.
 	objs, err := crud.UnflattenRows(tpls, metadata)
-	if err != nil {
-		t.Fatalf("Failed to unflatten rows: %#v", err)
-	}
-	if len(objs) < 1 {
-		t.Fatalf("Unexpected unflatten rows result: %#v", objs)
-	}
+	require.NoError(t, err, "Failed to unflatten rows")
+	require.GreaterOrEqual(t, len(objs), 1, "Unexpected unflatten rows result")
 
-	if _, ok := objs[0]["bucket_id"]; ok {
-		delete(objs[0], "bucket_id")
-	} else {
-		t.Fatalf("Expected `bucket_id` field")
-	}
+	_, ok = objs[0]["bucket_id"]
+	require.True(t, ok, "Expected `bucket_id` field")
+	delete(objs[0], "bucket_id")
 
 	require.Len(t, object, len(objs[0]))
-	if expectedId, err = test_helpers.ConvertUint64(object["id"]); err != nil {
-		t.Fatalf("Unexpected `id` type")
-	}
+	expectedId, err = test_helpers.ConvertUint64(object["id"])
+	require.NoError(t, err, "Unexpected `id` type")
 
-	if actualId, err = test_helpers.ConvertUint64(objs[0]["id"]); err != nil {
-		t.Fatalf("Unexpected `id` type")
-	}
+	actualId, err = test_helpers.ConvertUint64(objs[0]["id"])
+	require.NoError(t, err, "Unexpected `id` type")
 
 	require.Equal(t, expectedId, actualId)
 	require.Equal(t, object["name"], objs[0]["name"])
@@ -774,9 +742,7 @@ func TestResultWithErr(t *testing.T) {
 	for _, testCase := range testResultWithErrCases {
 		t.Run(testCase.name, func(t *testing.T) {
 			err := conn.Do(testCase.req).GetTyped(testCase.resp)
-			if err == nil {
-				t.Fatalf("Expected CRUD fails with error, but error is not received")
-			}
+			require.Error(t, err, "Expected CRUD fails with error, but error is not received")
 			require.Contains(t, err.Error(), "Space \"invalid\" doesn't exist")
 		})
 	}
@@ -792,13 +758,8 @@ func TestBoolResult(t *testing.T) {
 	testCrudRequestPrepareData(t, conn)
 
 	err := conn.Do(req).GetTyped(&resp)
-	if err != nil {
-		t.Fatalf("Failed to Do CRUD request: %s", err.Error())
-	}
-
-	if resp.Value != true {
-		t.Fatalf("Unexpected response value: %#v != %#v", resp.Value, true)
-	}
+	require.NoError(t, err, "Failed to Do CRUD request")
+	require.True(t, resp.Value, "Unexpected response value")
 
 	for i := 1010; i < 1020; i++ {
 		req := tarantool.NewDeleteRequest(spaceName).
@@ -818,13 +779,8 @@ func TestNumberResult(t *testing.T) {
 	testCrudRequestPrepareData(t, conn)
 
 	err := conn.Do(req).GetTyped(&resp)
-	if err != nil {
-		t.Fatalf("Failed to Do CRUD request: %s", err.Error())
-	}
-
-	if resp.Value != 10 {
-		t.Fatalf("Unexpected response value: %#v != %#v", resp.Value, 10)
-	}
+	require.NoError(t, err, "Failed to Do CRUD request")
+	require.Equal(t, uint64(10), resp.Value, "Unexpected response value")
 
 	for i := 1010; i < 1020; i++ {
 		req := tarantool.NewDeleteRequest(spaceName).
@@ -862,15 +818,13 @@ func TestBaseResult(t *testing.T) {
 	testCrudRequestPrepareData(t, conn)
 
 	err := conn.Do(req).GetTyped(&resp)
-	if err != nil {
-		t.Fatalf("Failed to Do CRUD request: %s", err)
-	}
+	require.NoError(t, err, "Failed to Do CRUD request")
 
 	require.ElementsMatch(t, resp.Metadata, expectedMetadata)
 
-	if len(resp.Rows.([]interface{})) != 10 {
-		t.Fatalf("Unexpected rows: %#v", resp.Rows)
-	}
+	rows, ok := resp.Rows.([]interface{})
+	require.True(t, ok, "Unexpected rows type")
+	require.Len(t, rows, 10, "Unexpected rows count")
 
 	for i := 1010; i < 1020; i++ {
 		req := tarantool.NewDeleteRequest(spaceName).
@@ -908,15 +862,13 @@ func TestManyResult(t *testing.T) {
 	testCrudRequestPrepareData(t, conn)
 
 	err := conn.Do(req).GetTyped(&resp)
-	if err != nil {
-		t.Fatalf("Failed to Do CRUD request: %s", err.Error())
-	}
+	require.NoError(t, err, "Failed to Do CRUD request")
 
 	require.ElementsMatch(t, resp.Metadata, expectedMetadata)
 
-	if len(resp.Rows.([]interface{})) != 10 {
-		t.Fatalf("Unexpected rows: %#v", resp.Rows)
-	}
+	rows, ok := resp.Rows.([]interface{})
+	require.True(t, ok, "Unexpected rows type")
+	require.Len(t, rows, 10, "Unexpected rows count")
 
 	for i := 1010; i < 1020; i++ {
 		req := tarantool.NewDeleteRequest(spaceName).
@@ -934,26 +886,13 @@ func TestStorageInfoResult(t *testing.T) {
 	resp := crud.StorageInfoResult{}
 
 	err := conn.Do(req).GetTyped(&resp)
-	if err != nil {
-		t.Fatalf("Failed to Do CRUD request: %s", err.Error())
-	}
-
-	if resp.Info == nil {
-		t.Fatalf("Failed to Do CRUD storage info request")
-	}
+	require.NoError(t, err, "Failed to Do CRUD request")
+	require.NotNil(t, resp.Info, "Failed to Do CRUD storage info request")
 
 	for _, info := range resp.Info {
-		if info.Status != "running" {
-			t.Fatalf("Unexpected Status: %s != running", info.Status)
-		}
-
-		if info.IsMaster != true {
-			t.Fatalf("Unexpected IsMaster: %v != true", info.IsMaster)
-		}
-
-		if msg := info.Message; msg != "" {
-			t.Fatalf("Unexpected Message: %s", msg)
-		}
+		require.Equal(t, "running", info.Status, "Unexpected Status")
+		require.True(t, info.IsMaster, "Unexpected IsMaster")
+		require.Empty(t, info.Message, "Unexpected Message")
 	}
 }
 
@@ -973,9 +912,7 @@ func TestGetAdditionalOpts(t *testing.T) {
 	testCrudRequestPrepareData(t, conn)
 
 	err := conn.Do(req).GetTyped(&resp)
-	if err != nil {
-		t.Fatalf("Failed to Do CRUD request: %s", err)
-	}
+	require.NoError(t, err, "Failed to Do CRUD request")
 }
 
 var testMetadataCases = []struct {
@@ -1145,13 +1082,8 @@ func TestFetchLatestMetadataOption(t *testing.T) {
 			resp := crud.Result{}
 
 			err := conn.Do(testCase.req).GetTyped(&resp)
-			if err != nil {
-				t.Fatalf("Failed to Do CRUD request: %s", err)
-			}
-
-			if len(resp.Metadata) == 0 {
-				t.Fatalf("Failed to get relevant metadata")
-			}
+			require.NoError(t, err, "Failed to Do CRUD request")
+			require.NotEmpty(t, resp.Metadata, "Failed to get relevant metadata")
 
 			for i := 1010; i < 1020; i++ {
 				req := tarantool.NewDeleteRequest(spaceName).
@@ -1298,20 +1230,11 @@ func TestNoreturnOption(t *testing.T) {
 			}
 
 			data, err := conn.Do(testCase.req).Get()
-			if err != nil {
-				t.Fatalf("Failed to Do CRUD request: %s", err)
-			}
-
-			if len(data) == 0 {
-				t.Fatalf("Expected explicit nil")
-			}
-
-			if data[0] != nil {
-				t.Fatalf("Expected nil result, got %v", data[0])
-			}
-
-			if len(data) >= 2 && data[1] != nil {
-				t.Fatalf("Expected no returned errors, got %v", data[1])
+			require.NoError(t, err, "Failed to Do CRUD request")
+			require.NotEmpty(t, data, "Expected data with explicit nil value")
+			require.Nil(t, data[0], "Expected nil result")
+			if len(data) >= 2 {
+				require.Nil(t, data[1], "Expected no returned errors")
 			}
 
 			for i := 1010; i < 1020; i++ {
@@ -1340,17 +1263,9 @@ func TestNoreturnOptionTyped(t *testing.T) {
 			resp := crud.Result{}
 
 			err := conn.Do(testCase.req).GetTyped(&resp)
-			if err != nil {
-				t.Fatalf("Failed to Do CRUD request: %s", err)
-			}
-
-			if resp.Rows != nil {
-				t.Fatalf("Expected nil rows, got %v", resp.Rows)
-			}
-
-			if len(resp.Metadata) != 0 {
-				t.Fatalf("Expected no metadata")
-			}
+			require.NoError(t, err, "Failed to Do CRUD request")
+			require.Nil(t, resp.Rows, "Expected nil rows")
+			require.Empty(t, resp.Metadata, "Expected no metadata")
 
 			for i := 1010; i < 1020; i++ {
 				req := tarantool.NewDeleteRequest(spaceName).
@@ -1513,9 +1428,7 @@ func TestYieldEveryOption(t *testing.T) {
 	for _, testCase := range testStorageYieldCases {
 		t.Run(testCase.name, func(t *testing.T) {
 			_, err := conn.Do(testCase.req).Get()
-			if err != nil {
-				t.Fatalf("Failed to Do CRUD request: %s", err)
-			}
+			require.NoError(t, err, "Failed to Do CRUD request")
 		})
 	}
 }

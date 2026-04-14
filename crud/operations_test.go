@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/vmihailenco/msgpack/v5"
 
 	"github.com/tarantool/go-tarantool/v3/crud"
@@ -104,20 +106,12 @@ func TestOperation_EncodeMsgpack(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			var refBuf bytes.Buffer
 			encRef := msgpack.NewEncoder(&refBuf)
-			if err := encRef.Encode(test.ref); err != nil {
-				t.Errorf("error while encoding: %v", err.Error())
-			}
+			require.NoError(t, encRef.Encode(test.ref), "error while encoding reference")
 
 			var buf bytes.Buffer
 			enc := msgpack.NewEncoder(&buf)
-
-			if err := enc.Encode(test.op); err != nil {
-				t.Errorf("error while encoding: %v", err.Error())
-			}
-			if !bytes.Equal(refBuf.Bytes(), buf.Bytes()) {
-				t.Errorf("encode response is wrong:\n expected %v\n got: %v",
-					refBuf, buf.Bytes())
-			}
+			require.NoError(t, enc.Encode(test.op), "error while encoding operation")
+			assert.Equal(t, refBuf.Bytes(), buf.Bytes(), "encode response is wrong")
 		})
 	}
 }

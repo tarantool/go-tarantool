@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/tarantool/go-iproto"
 	"github.com/tarantool/go-option"
 	"github.com/vmihailenco/msgpack/v5"
@@ -78,18 +80,12 @@ func assertBodyEqual(t testing.TB, reference tarantool.Request, req tarantool.Re
 	t.Helper()
 
 	reqBody, err := extractRequestBody(req)
-	if err != nil {
-		t.Fatalf("An unexpected Response.Body() error: %q", err.Error())
-	}
+	require.NoError(t, err, "An unexpected Response.Body() error")
 
 	refBody, err := extractRequestBody(reference)
-	if err != nil {
-		t.Fatalf("An unexpected Response.Body() error: %q", err.Error())
-	}
+	require.NoError(t, err, "An unexpected Response.Body() error")
 
-	if !bytes.Equal(reqBody, refBody) {
-		t.Errorf("Encoded request %v != reference %v", reqBody, refBody)
-	}
+	assert.Equal(t, refBody, reqBody, "Encoded request body mismatch")
 }
 
 func BenchmarkLenRequest(b *testing.B) {
@@ -164,9 +160,7 @@ func TestRequestsCodes(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		if rtype := test.req.Type(); rtype != test.rtype {
-			t.Errorf("An invalid request type 0x%x, expected 0x%x", rtype, test.rtype)
-		}
+		assert.Equal(t, test.rtype, test.req.Type(), "An invalid request type")
 	}
 }
 
@@ -202,9 +196,7 @@ func TestRequestsAsync(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		if async := test.req.Async(); async != test.async {
-			t.Errorf("An invalid async %t, expected %t", async, test.async)
-		}
+		assert.Equal(t, test.async, test.req.Async(), "An invalid async value")
 	}
 }
 
@@ -240,9 +232,7 @@ func TestRequestsCtx_default(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		if ctx := test.req.Ctx(); ctx != test.expected {
-			t.Errorf("An invalid ctx %t, expected %t", ctx, test.expected)
-		}
+		assert.Equal(t, test.expected, test.req.Ctx(), "An invalid ctx value")
 	}
 }
 
@@ -279,9 +269,7 @@ func TestRequestsCtx_setter(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		if ctx := test.req.Ctx(); ctx != test.expected {
-			t.Errorf("An invalid ctx %t, expected %t", ctx, test.expected)
-		}
+		assert.Equal(t, test.expected, test.req.Ctx(), "An invalid ctx value")
 	}
 }
 
