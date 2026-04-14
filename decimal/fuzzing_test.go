@@ -7,15 +7,15 @@ import (
 	"testing"
 
 	"github.com/shopspring/decimal"
+	"github.com/stretchr/testify/require"
 
 	. "github.com/tarantool/go-tarantool/v3/decimal"
 )
 
 func strToDecimal(t *testing.T, buf string, exp int) decimal.Decimal {
+	t.Helper()
 	decNum, err := decimal.NewFromString(buf)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if exp != 0 {
 		decNum = decNum.Shift(int32(exp))
 	}
@@ -39,12 +39,9 @@ func FuzzEncodeDecodeBCD(f *testing.F) {
 		}
 
 		dec, exp, err := DecodeStringFromBCD(bcdBuf)
-		if err != nil {
-			t.Fatalf("Failed to decode encoded value ('%s')", orig)
-		}
+		require.NoError(t, err, "Failed to decode encoded value ('%s')", orig)
 
-		if !strToDecimal(t, dec, exp).Equal(strToDecimal(t, orig, 0)) {
-			t.Fatal("Decimal numbers are not equal")
-		}
+		require.True(t, strToDecimal(t, dec, exp).Equal(strToDecimal(t, orig, 0)),
+			"Decimal numbers are not equal")
 	})
 }

@@ -11,6 +11,7 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/vmihailenco/msgpack/v5"
 
 	. "github.com/tarantool/go-tarantool/v3"
@@ -165,24 +166,17 @@ func TestMPEncodeDecode(t *testing.T) {
 	for _, testcase := range benchmarkSamples {
 		t.Run(testcase.numString, func(t *testing.T) {
 			decNum, err := MakeDecimalFromString(testcase.numString)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			var buf []byte
 			tuple := TupleDecimal{number: decNum}
-			if buf, err = msgpack.Marshal(&tuple); err != nil {
-				t.Fatalf(
-					"Failed to msgpack.Encoder decimal number '%s' to a MessagePack buffer: %s",
-					testcase.numString, err)
-			}
+			buf, err = msgpack.Marshal(&tuple)
+			require.NoError(t, err,
+				"Failed to msgpack.Encoder decimal number '%s' to a MessagePack buffer",
+				testcase.numString)
 			var v TupleDecimal
-			if err = msgpack.Unmarshal(buf, &v); err != nil {
-				t.Fatalf("Failed to decode MessagePack buffer '%x' to a decimal number: %s",
-					buf, err)
-			}
-			if !decNum.Equal(v.number.Decimal) {
-				t.Fatal("Decimal numbers are not equal")
-			}
+			err = msgpack.Unmarshal(buf, &v)
+			require.NoError(t, err, "Failed to decode MessagePack buffer '%x' to a decimal number", buf)
+			require.True(t, decNum.Equal(v.number.Decimal), "Decimal numbers are not equal")
 		})
 	}
 }
@@ -210,64 +204,38 @@ func TestGetNumberLength(t *testing.T) {
 	for _, testcase := range lengthSamples {
 		t.Run(testcase.numString, func(t *testing.T) {
 			l := GetNumberLength(testcase.numString)
-			if l != testcase.length {
-				t.Fatalf("Length is wrong: correct %d, incorrect %d", testcase.length, l)
-			}
+			require.Equal(t, testcase.length, l, "Length is wrong")
 		})
 	}
 
-	if l := GetNumberLength(""); l != 0 {
-		t.Fatalf("Length is wrong: correct 0, incorrect %d", l)
-	}
-
-	if l := GetNumberLength("0"); l != 1 {
-		t.Fatalf("Length is wrong: correct 0, incorrect %d", l)
-	}
-
-	if l := GetNumberLength("10"); l != 2 {
-		t.Fatalf("Length is wrong: correct 0, incorrect %d", l)
-	}
+	require.Equal(t, 0, GetNumberLength(""), "Length is wrong for empty string")
+	require.Equal(t, 1, GetNumberLength("0"), "Length is wrong for '0'")
+	require.Equal(t, 2, GetNumberLength("10"), "Length is wrong for '10'")
 }
 
 func TestEncodeStringToBCDIncorrectNumber(t *testing.T) {
 	referenceErrMsg := "number contains more than one point"
 	var numString = "0.1.0"
 	buf, err := EncodeStringToBCD(numString)
-	if err == nil {
-		t.Fatalf("no error on encoding a string with incorrect number")
-	}
-	if buf != nil {
-		t.Fatalf("buf is not nil on encoding of a string with double points")
-	}
-	if err.Error() != referenceErrMsg {
-		t.Fatalf("wrong error message on encoding of a string double points")
-	}
+	require.Error(t, err, "no error on encoding a string with incorrect number")
+	require.Nil(t, buf, "buf is not nil on encoding of a string with double points")
+	require.EqualError(t, err, referenceErrMsg,
+		"wrong error message on encoding of a string double points")
 
 	referenceErrMsg = "length of number is zero"
 	numString = ""
 	buf, err = EncodeStringToBCD(numString)
-	if err == nil {
-		t.Fatalf("no error on encoding of an empty string")
-	}
-	if buf != nil {
-		t.Fatalf("buf is not nil on encoding of an empty string")
-	}
-	if err.Error() != referenceErrMsg {
-		t.Fatalf("wrong error message on encoding of an empty string")
-	}
+	require.Error(t, err, "no error on encoding of an empty string")
+	require.Nil(t, buf, "buf is not nil on encoding of an empty string")
+	require.EqualError(t, err, referenceErrMsg, "wrong error message on encoding of an empty string")
 
 	referenceErrMsg = "failed to convert symbol 'a' to a digit"
 	numString = "0.1a"
 	buf, err = EncodeStringToBCD(numString)
-	if err == nil {
-		t.Fatalf("no error on encoding of a string number with non-digit symbol")
-	}
-	if buf != nil {
-		t.Fatalf("buf is not nil on encoding of a string number with non-digit symbol")
-	}
-	if err.Error() != referenceErrMsg {
-		t.Fatalf("wrong error message on encoding of a string number with non-digit symbol")
-	}
+	require.Error(t, err, "no error on encoding of a string number with non-digit symbol")
+	require.Nil(t, buf, "buf is not nil on encoding of a string number with non-digit symbol")
+	require.EqualError(t, err, referenceErrMsg,
+		"wrong error message on encoding of a string number with non-digit symbol")
 }
 
 func TestEncodeMaxNumber(t *testing.T) {
@@ -276,12 +244,10 @@ func TestEncodeMaxNumber(t *testing.T) {
 	decNum := decimal.New(1, DecimalPrecision) // // 10^DecimalPrecision
 	tuple := TupleDecimal{number: MakeDecimal(decNum)}
 	_, err := msgpack.Marshal(&tuple)
-	if err == nil {
-		t.Fatalf("It is possible to msgpack.Encoder a number unsupported by Tarantool")
-	}
-	if err.Error() != referenceErrMsg {
-		t.Fatalf("Incorrect error message on attempt to msgpack.Encoder number unsupported")
-	}
+	require.Error(t, err,
+		"It is possible to msgpack.Encoder a number unsupported by Tarantool")
+	require.EqualError(t, err, referenceErrMsg,
+		"Incorrect error message on attempt to msgpack.Encoder number unsupported")
 }
 
 func TestEncodeMinNumber(t *testing.T) {
@@ -291,12 +257,10 @@ func TestEncodeMinNumber(t *testing.T) {
 	decNum := decimal.New(1, DecimalPrecision).Neg().Sub(two) // -10^DecimalPrecision - 2
 	tuple := TupleDecimal{number: MakeDecimal(decNum)}
 	_, err := msgpack.Marshal(&tuple)
-	if err == nil {
-		t.Fatalf("It is possible to msgpack.Encoder a number unsupported by Tarantool")
-	}
-	if err.Error() != referenceErrMsg {
-		t.Fatalf("Incorrect error message on attempt to msgpack.Encoder number unsupported")
-	}
+	require.Error(t, err,
+		"It is possible to msgpack.Encoder a number unsupported by Tarantool")
+	require.EqualError(t, err, referenceErrMsg,
+		"Incorrect error message on attempt to msgpack.Encoder number unsupported")
 }
 
 func benchmarkMPEncodeDecode(b *testing.B, src decimal.Decimal) {
@@ -367,20 +331,14 @@ func BenchmarkMPDecodeDecimal(b *testing.B) {
 }
 
 func tupleValueIsDecimal(t *testing.T, tuples []interface{}, number decimal.Decimal) {
-	if len(tuples) != 1 {
-		t.Fatalf("Response Data len (%d) != 1", len(tuples))
-	}
+	require.Len(t, tuples, 1, "Response Data len != 1")
 
-	if tpl, ok := tuples[0].([]interface{}); !ok {
-		t.Fatalf("Unexpected return value body")
-	} else {
-		if len(tpl) != 1 {
-			t.Fatalf("Unexpected return value body (tuple len)")
-		}
-		if val, ok := tpl[0].(Decimal); !ok || !val.Equal(number) {
-			t.Fatalf("Unexpected return value body (tuple 0 field)")
-		}
-	}
+	tpl, ok := tuples[0].([]interface{})
+	require.True(t, ok, "Unexpected return value body")
+	require.Len(t, tpl, 1, "Unexpected return value body (tuple len)")
+	val, ok := tpl[0].(Decimal)
+	require.True(t, ok, "Unexpected return value body (tuple 0 field)")
+	require.True(t, val.Equal(number), "Unexpected return value body (tuple 0 field)")
 }
 
 func trimMPHeader(mpBuf []byte, fixExt bool) []byte {
@@ -398,17 +356,11 @@ func TestEncodeStringToBCD(t *testing.T) {
 	for _, testcase := range samples {
 		t.Run(testcase.numString, func(t *testing.T) {
 			buf, err := EncodeStringToBCD(testcase.numString)
-			if err != nil {
-				t.Fatalf("Failed to msgpack.Encoder decimal '%s' to BCD: %s",
-					testcase.numString, err)
-			}
+			require.NoError(t, err, "Failed to msgpack.Encoder decimal '%s' to BCD", testcase.numString)
 			b, _ := hex.DecodeString(testcase.mpBuf)
 			bcdBuf := trimMPHeader(b, testcase.fixExt)
-			if reflect.DeepEqual(buf, bcdBuf) != true {
-				t.Fatalf(
-					"Failed to msgpack.Encoder decimal '%s' to BCD: expected '%x', actual '%x'",
-					testcase.numString, bcdBuf, buf)
-			}
+			require.Equal(t, bcdBuf, buf,
+				"Failed to msgpack.Encoder decimal '%s' to BCD", testcase.numString)
 		})
 	}
 }
@@ -423,26 +375,18 @@ func TestDecodeStringFromBCD(t *testing.T) {
 			b, _ := hex.DecodeString(testcase.mpBuf)
 			bcdBuf := trimMPHeader(b, testcase.fixExt)
 			s, exp, err := DecodeStringFromBCD(bcdBuf)
-			if err != nil {
-				t.Fatalf("Failed to decode BCD '%x' to decimal: %s", bcdBuf, err)
-			}
+			require.NoError(t, err, "Failed to decode BCD '%x' to decimal", bcdBuf)
 
 			decActual, err := decimal.NewFromString(s)
+			require.NoError(t, err, "Failed to msgpack.Encoder string ('%s') to decimal", s)
 			if exp != 0 {
 				decActual = decActual.Shift(int32(exp))
 			}
-			if err != nil {
-				t.Fatalf("Failed to msgpack.Encoder string ('%s') to decimal", s)
-			}
 			decExpected, err := decimal.NewFromString(testcase.numString)
-			if err != nil {
-				t.Fatalf("Failed to msgpack.Encoder string ('%s') to decimal", testcase.numString)
-			}
-			if !decExpected.Equal(decActual) {
-				t.Fatalf(
-					"Decoded decimal from BCD ('%x') is incorrect: expected '%s', actual '%s'",
-					bcdBuf, testcase.numString, s)
-			}
+			require.NoError(t, err, "Failed to msgpack.Encoder string ('%s') to decimal", testcase.numString)
+			require.True(t, decExpected.Equal(decActual),
+				"Decoded decimal from BCD ('%x') is incorrect: expected '%s', actual '%s'",
+				bcdBuf, testcase.numString, s)
 		})
 	}
 }
@@ -454,20 +398,11 @@ func TestMPEncode(t *testing.T) {
 	for _, testcase := range samples {
 		t.Run(testcase.numString, func(t *testing.T) {
 			dec, err := MakeDecimalFromString(testcase.numString)
-			if err != nil {
-				t.Fatalf("MakeDecimalFromString() failed: %s", err.Error())
-			}
+			require.NoError(t, err, "MakeDecimalFromString() failed")
 			buf, err := msgpack.Marshal(dec)
-			if err != nil {
-				t.Fatalf("Marshalling failed: %s", err.Error())
-			}
+			require.NoError(t, err, "Marshalling failed")
 			refBuf, _ := hex.DecodeString(testcase.mpBuf)
-			if reflect.DeepEqual(buf, refBuf) != true {
-				t.Fatalf("Failed to msgpack.Encoder decimal '%s', actual %x, expected %x",
-					testcase.numString,
-					buf,
-					refBuf)
-			}
+			require.Equal(t, refBuf, buf, "Failed to msgpack.Encoder decimal '%s'", testcase.numString)
 		})
 	}
 }
@@ -479,26 +414,17 @@ func TestMPDecode(t *testing.T) {
 	for _, testcase := range samples {
 		t.Run(testcase.numString, func(t *testing.T) {
 			mpBuf, err := hex.DecodeString(testcase.mpBuf)
-			if err != nil {
-				t.Fatalf("hex.DecodeString() failed: %s", err)
-			}
+			require.NoError(t, err, "hex.DecodeString() failed")
 			var v interface{}
 			err = msgpack.Unmarshal(mpBuf, &v)
-			if err != nil {
-				t.Fatalf("Unmsgpack.Marshalling failed: %s", err.Error())
-			}
+			require.NoError(t, err, "Unmsgpack.Marshalling failed")
 			decActual, ok := v.(Decimal)
-			if !ok {
-				t.Fatalf("Unable to convert to Decimal")
-			}
+			require.True(t, ok, "Unable to convert to Decimal")
 
 			decExpected, err := decimal.NewFromString(testcase.numString)
-			if err != nil {
-				t.Fatalf("decimal.NewFromString() failed: %s", err.Error())
-			}
-			if !decExpected.Equal(decActual.Decimal) {
-				t.Fatalf("Decoded decimal ('%s') is incorrect", testcase.mpBuf)
-			}
+			require.NoError(t, err, "decimal.NewFromString() failed")
+			require.True(t, decExpected.Equal(decActual.Decimal),
+				"Decoded decimal ('%s') is incorrect", testcase.mpBuf)
 		})
 	}
 }
@@ -536,15 +462,11 @@ func TestSelect(t *testing.T) {
 	defer func() { _ = conn.Close() }()
 
 	number, err := decimal.NewFromString("-12.34")
-	if err != nil {
-		t.Fatalf("Failed to prepare test decimal: %s", err)
-	}
+	require.NoError(t, err, "Failed to prepare test decimal")
 
 	ins := NewInsertRequest(space).Tuple([]interface{}{MakeDecimal(number)})
 	data, err := conn.Do(ins).Get()
-	if err != nil {
-		t.Fatalf("Decimal insert failed: %s", err)
-	}
+	require.NoError(t, err, "Decimal insert failed")
 	tupleValueIsDecimal(t, data, number)
 
 	var offset uint32 = 0
@@ -556,16 +478,12 @@ func TestSelect(t *testing.T) {
 		Iterator(IterEq).
 		Key([]interface{}{MakeDecimal(number)})
 	data, err = conn.Do(sel).Get()
-	if err != nil {
-		t.Fatalf("Decimal select failed: %s", err.Error())
-	}
+	require.NoError(t, err, "Decimal select failed")
 	tupleValueIsDecimal(t, data, number)
 
 	del := NewDeleteRequest(space).Index(index).Key([]interface{}{MakeDecimal(number)})
 	data, err = conn.Do(del).Get()
-	if err != nil {
-		t.Fatalf("Decimal delete failed: %s", err)
-	}
+	require.NoError(t, err, "Decimal delete failed")
 	tupleValueIsDecimal(t, data, number)
 }
 
@@ -582,16 +500,12 @@ func TestUnmarshal_from_decimal_new(t *testing.T) {
 		str := testcase.numString
 		t.Run(str, func(t *testing.T) {
 			number, err := decimal.NewFromString(str)
-			if err != nil {
-				t.Fatalf("Failed to prepare test decimal: %s", err)
-			}
+			require.NoError(t, err, "Failed to prepare test decimal")
 
 			call := NewEvalRequest("return require('decimal').new(...)").
 				Args([]interface{}{str})
 			data, err := conn.Do(call).Get()
-			if err != nil {
-				t.Fatalf("Decimal create failed: %s", err)
-			}
+			require.NoError(t, err, "Decimal create failed")
 			tupleValueIsDecimal(t, []interface{}{data}, number)
 		})
 	}
@@ -599,22 +513,16 @@ func TestUnmarshal_from_decimal_new(t *testing.T) {
 
 func assertInsert(t *testing.T, conn *Connection, numString string) {
 	number, err := decimal.NewFromString(numString)
-	if err != nil {
-		t.Fatalf("Failed to prepare test decimal: %s", err)
-	}
+	require.NoError(t, err, "Failed to prepare test decimal")
 
 	ins := NewInsertRequest(space).Tuple([]interface{}{MakeDecimal(number)})
 	data, err := conn.Do(ins).Get()
-	if err != nil {
-		t.Fatalf("Decimal insert failed: %s", err)
-	}
+	require.NoError(t, err, "Decimal insert failed")
 	tupleValueIsDecimal(t, data, number)
 
 	del := NewDeleteRequest(space).Index(index).Key([]interface{}{MakeDecimal(number)})
 	data, err = conn.Do(del).Get()
-	if err != nil {
-		t.Fatalf("Decimal delete failed: %s", err)
-	}
+	require.NoError(t, err, "Decimal delete failed")
 	tupleValueIsDecimal(t, data, number)
 }
 
@@ -640,15 +548,11 @@ func TestReplace(t *testing.T) {
 	defer func() { _ = conn.Close() }()
 
 	number, err := decimal.NewFromString("-12.34")
-	if err != nil {
-		t.Fatalf("Failed to prepare test decimal: %s", err)
-	}
+	require.NoError(t, err, "Failed to prepare test decimal")
 
 	rep := NewReplaceRequest(space).Tuple([]interface{}{MakeDecimal(number)})
 	dataRep, errRep := conn.Do(rep).Get()
-	if errRep != nil {
-		t.Fatalf("Decimal replace failed: %s", errRep)
-	}
+	require.NoError(t, errRep, "Decimal replace failed")
 	tupleValueIsDecimal(t, dataRep, number)
 
 	sel := NewSelectRequest(space).
@@ -657,9 +561,7 @@ func TestReplace(t *testing.T) {
 		Iterator(IterEq).
 		Key([]interface{}{MakeDecimal(number)})
 	dataSel, errSel := conn.Do(sel).Get()
-	if errSel != nil {
-		t.Fatalf("Decimal select failed: %s", errSel)
-	}
+	require.NoError(t, errSel, "Decimal select failed")
 	tupleValueIsDecimal(t, dataSel, number)
 }
 
