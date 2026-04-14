@@ -3,6 +3,8 @@ package pool
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/tarantool/go-tarantool/v3"
 )
 
@@ -23,12 +25,10 @@ func TestRoundRobinAddDelete(t *testing.T) {
 
 	for i, addr := range addrs {
 		if conn := rr.DeleteConnection(addr); conn != conns[i] {
-			t.Errorf("Unexpected connection on address %s", addr)
+			assert.Equal(t, conns[i], conn, "Unexpected connection on address %s", addr)
 		}
 	}
-	if !rr.IsEmpty() {
-		t.Errorf("RoundRobin does not empty")
-	}
+	assert.True(t, rr.IsEmpty(), "RoundRobin does not empty")
 }
 
 func TestRoundRobinAddDuplicateDelete(t *testing.T) {
@@ -40,15 +40,9 @@ func TestRoundRobinAddDuplicateDelete(t *testing.T) {
 	rr.AddConnection(validAddr1, conn1)
 	rr.AddConnection(validAddr1, conn2)
 
-	if rr.DeleteConnection(validAddr1) != conn2 {
-		t.Errorf("Unexpected deleted connection")
-	}
-	if !rr.IsEmpty() {
-		t.Errorf("RoundRobin does not empty")
-	}
-	if rr.DeleteConnection(validAddr1) != nil {
-		t.Errorf("Unexpected value after second deletion")
-	}
+	assert.Equal(t, conn2, rr.DeleteConnection(validAddr1), "Unexpected deleted connection")
+	assert.True(t, rr.IsEmpty(), "RoundRobin does not empty")
+	assert.Nil(t, rr.DeleteConnection(validAddr1), "Unexpected value after second deletion")
 }
 
 func TestRoundRobinGetNextConnection(t *testing.T) {
@@ -63,9 +57,7 @@ func TestRoundRobinGetNextConnection(t *testing.T) {
 
 	expectedConns := []*tarantool.Connection{conns[0], conns[1], conns[0], conns[1]}
 	for i, expected := range expectedConns {
-		if rr.GetNextConnection() != expected {
-			t.Errorf("Unexpected connection on %d call", i)
-		}
+		assert.Equal(t, expected, rr.GetNextConnection(), "Unexpected connection on %d call", i)
 	}
 }
 
@@ -83,8 +75,6 @@ func TestRoundRobinStrategy_GetConnections(t *testing.T) {
 	rrConns := rr.GetConnections()
 
 	for i, addr := range addrs {
-		if conns[i] != rrConns[addr] {
-			t.Errorf("Unexpected connection on %s addr", addr)
-		}
+		assert.Equal(t, conns[i], rrConns[addr], "Unexpected connection on %s addr", addr)
 	}
 }

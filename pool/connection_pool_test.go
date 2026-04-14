@@ -7,7 +7,6 @@ import (
 	"log"
 	"net"
 	"os"
-	"reflect"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -323,13 +322,10 @@ func TestConnErrorAfterCtxCancel(t *testing.T) {
 	cancel()
 	connPool, err = pool.Connect(ctx, makeInstances(servers, connLongReconnectOpts))
 
-	if connPool != nil || err == nil {
-		t.Fatalf("ConnectionPool was created after cancel")
-	}
-	if !strings.Contains(err.Error(), "context canceled") {
-		t.Fatalf("Unexpected error, expected to contain %s, got %v",
-			"operation was canceled", err)
-	}
+	require.Nil(t, connPool, "ConnectionPool was created after cancel")
+	require.Error(t, err, "ConnectionPool was created after cancel")
+	require.Contains(t, err.Error(), "context canceled",
+		"Unexpected error, expected to contain %s", "operation was canceled")
 }
 
 type mockClosingDialer struct {
@@ -1168,9 +1164,7 @@ func TestConnectionHandlerOpenUpdateClose(t *testing.T) {
 		time.Sleep(poolOpts.CheckTimeout)
 	}
 
-	for _, err := range h.errs {
-		t.Errorf("Unexpected error: %s", err)
-	}
+	assert.Empty(t, h.errs, "Unexpected errors")
 	connected, err := connPool.ConnectedNow(pool.ANY)
 	require.NoErrorf(t, err, "failed to get connected state")
 	require.Falsef(t, connected, "connection pool still be connected")
@@ -2960,50 +2954,30 @@ func TestNewPrepared(t *testing.T) {
 	unprepareReq := tarantool.NewUnprepareRequest(stmt)
 
 	resp, err := connPool.Do(executeReq.Args([]interface{}{1, "test"}), pool.ANY).GetResponse()
-	if err != nil {
-		t.Fatalf("failed to execute prepared: %v", err)
-	}
-	if resp == nil {
-		t.Fatalf("nil response")
-	}
+	require.NoError(t, err, "failed to execute prepared")
+	require.NotNil(t, resp, "nil response")
 	data, err := resp.Decode()
-	if err != nil {
-		t.Fatalf("failed to Decode: %s", err.Error())
-	}
-	if reflect.DeepEqual(data[0], []interface{}{1, "test"}) {
-		t.Error("Select with named arguments failed")
-	}
+	require.NoError(t, err, "failed to Decode")
+	assert.NotEqual(t, []interface{}{1, "test"}, data[0], "Select with named arguments failed")
 	prepResp, ok := resp.(*tarantool.ExecuteResponse)
-	if !ok {
-		t.Fatalf("Not a Prepare response")
-	}
+	require.True(t, ok, "Not a Prepare response")
 	metaData, err := prepResp.MetaData()
-	if err != nil {
-		t.Errorf("Error while getting MetaData: %s", err.Error())
-	}
-	if metaData[0].FieldType != "unsigned" ||
-		metaData[0].FieldName != "NAME0" ||
-		metaData[1].FieldType != "string" ||
-		metaData[1].FieldName != "NAME1" {
-		t.Error("Wrong metadata")
-	}
+	require.NoError(t, err, "Error while getting MetaData")
+	assert.Equal(t, "unsigned", metaData[0].FieldType)
+	assert.Equal(t, "NAME0", metaData[0].FieldName)
+	assert.Equal(t, "string", metaData[1].FieldType)
+	assert.Equal(t, "NAME1", metaData[1].FieldName)
 
 	// the second argument for unprepare request is unused - it already belongs to some connection
 	_, err = connPool.Do(unprepareReq, pool.ANY).Get()
-	if err != nil {
-		t.Errorf("failed to unprepare prepared statement: %v", err)
-	}
+	require.NoError(t, err, "failed to unprepare prepared statement")
 
 	_, err = connPool.Do(unprepareReq, pool.ANY).Get()
-	if err == nil {
-		t.Errorf("the statement must be already unprepared")
-	}
+	require.Error(t, err, "the statement must be already unprepared")
 	require.Contains(t, err.Error(), "Prepared statement with id")
 
 	_, err = connPool.Do(executeReq, pool.ANY).Get()
-	if err == nil {
-		t.Errorf("the statement must be already unprepared")
-	}
+	require.Error(t, err, "the statement must be already unprepared")
 	require.Contains(t, err.Error(), "Prepared statement with id")
 }
 
@@ -3028,12 +3002,8 @@ func TestDoWithStrangerConn(t *testing.T) {
 	req := test_helpers.NewMockRequest()
 
 	_, err = connPool.Do(req, pool.ANY).Get()
-	if err == nil {
-		t.Fatalf("nil error caught")
-	}
-	if err.Error() != expectedErr.Error() {
-		t.Fatalf("Unexpected error caught")
-	}
+	require.Error(t, err, "nil error caught")
+	require.EqualError(t, err, expectedErr.Error(), "Unexpected error caught")
 }
 
 func TestStream_Commit(t *testing.T) {
@@ -3328,7 +3298,7 @@ func TestConnectionPool_NewWatcher_no_watchers(t *testing.T) {
 	case <-time.After(time.Second):
 		break
 	case <-ch:
-		t.Fatalf("watcher was created for connection that doesn't support it")
+		require.Fail(t, "watcher was created for connection that doesn't support it")
 	}
 }
 
@@ -3393,17 +3363,15 @@ func TestConnectionPool_NewWatcher_modes(t *testing.T) {
 						testMap[addr] = 1
 					}
 				case <-time.After(time.Second):
-					t.Errorf("Failed to get a watch event.")
+					assert.Fail(t, "Failed to get a watch event.")
 					break
 				}
 			}
 
 			for _, server := range expectedServers {
-				if val, ok := testMap[server]; !ok {
-					t.Errorf("Server not found: %s", server)
-				} else if val != 1 {
-					t.Errorf("Too many events %d for server %s", val, server)
-				}
+				val, ok := testMap[server]
+				assert.True(t, ok, "Server not found: %s", server)
+				assert.Equal(t, 1, val, "Too many events for server %s", server)
 			}
 		})
 	}
@@ -3456,7 +3424,7 @@ func TestConnectionPool_NewWatcher_update(t *testing.T) {
 				testMap[addr] = 1
 			}
 		case <-time.After(poolOpts.CheckTimeout * 2):
-			t.Errorf("Failed to get a watch init event.")
+			assert.Fail(t, "Failed to get a watch init event.")
 			break
 		}
 	}
@@ -3482,18 +3450,16 @@ func TestConnectionPool_NewWatcher_update(t *testing.T) {
 				testMap[addr] = 1
 			}
 		case <-time.After(time.Second):
-			t.Errorf("Failed to get a watch update event.")
+			assert.Fail(t, "Failed to get a watch update event.")
 			break
 		}
 	}
 
 	// Check that all an event happen for an each connection.
 	for _, server := range servers {
-		if val, ok := testMap[server]; !ok {
-			t.Errorf("Server not found: %s", server)
-		} else {
-			require.Equalf(t, 1, val, "for server %s", server)
-		}
+		val, ok := testMap[server]
+		assert.True(t, ok, "Server not found: %s", server)
+		require.Equalf(t, 1, val, "for server %s", server)
 	}
 }
 
@@ -3530,7 +3496,7 @@ func TestWatcher_Unregister(t *testing.T) {
 		select {
 		case <-events:
 		case <-time.After(time.Second):
-			t.Fatalf("Failed to skip initial events.")
+			require.Fail(t, "Failed to skip initial events.")
 		}
 	}
 	watcher.Unregister()
@@ -3543,7 +3509,7 @@ func TestWatcher_Unregister(t *testing.T) {
 
 	select {
 	case event := <-events:
-		t.Fatalf("Get unexpected event: %v", event)
+		require.Fail(t, "Get unexpected event", "event: %v", event)
 	case <-time.After(time.Second):
 	}
 
@@ -3584,9 +3550,7 @@ func TestConnectionPool_NewWatcher_concurrent(t *testing.T) {
 			defer wg.Done()
 
 			watcher, err := connPool.NewWatcher(key, callback, mode)
-			if err != nil {
-				t.Errorf("Failed to create a watcher: %s", err)
-			} else {
+			if assert.NoError(t, err, "Failed to create a watcher") {
 				watcher.Unregister()
 			}
 		}()
