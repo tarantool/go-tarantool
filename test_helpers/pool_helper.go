@@ -86,20 +86,16 @@ func ProcessListenOnInstance(args interface{}) error {
 
 	for i := 0; i < listenArgs.ServersNumber; i++ {
 		req := tarantool.NewEvalRequest("return box.cfg.listen")
-		data, err := listenArgs.ConnPool.Do(req, listenArgs.Mode).Get()
+		var data []string
+		err := listenArgs.ConnPool.Do(req, listenArgs.Mode).GetTyped(&data)
 		if err != nil {
-			return fmt.Errorf("fail to Eval: %s", err.Error())
+			return fmt.Errorf("failed to get response: %w", err)
 		}
-		if len(data) < 1 {
-			return fmt.Errorf("response.Data is empty after Eval")
-		}
-
-		port, ok := data[0].(string)
-		if !ok {
-			return fmt.Errorf("response.Data is incorrect after Eval")
+		if len(data) == 0 {
+			return errors.New("empty response from Eval")
 		}
 
-		actualPorts[port] = true
+		actualPorts[data[0]] = true
 	}
 
 	equal := reflect.DeepEqual(actualPorts, listenArgs.ExpectedPorts)
