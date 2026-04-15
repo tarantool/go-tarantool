@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"reflect"
 	"sync"
 	"time"
 
@@ -35,6 +34,26 @@ func compareTuples(expectedTpl []interface{}, actualTpl []interface{}) error {
 	for i, field := range actualTpl {
 		if field != expectedTpl[i] {
 			return fmt.Errorf("unexpected field, expected: %v actual: %v", expectedTpl[i], field)
+		}
+	}
+
+	return nil
+}
+
+func comparePortMaps(expected map[string]bool, actual map[string]bool) error {
+	if len(actual) != len(expected) {
+		return fmt.Errorf("unexpected number of ports: expected %d, actual %d",
+			len(expected), len(actual))
+	}
+
+	for port, expectedValue := range expected {
+		actualValue, ok := actual[port]
+		if !ok {
+			return fmt.Errorf("missing expected port: %s", port)
+		}
+		if actualValue != expectedValue {
+			return fmt.Errorf("unexpected value for port %s: expected %t, actual %t",
+				port, expectedValue, actualValue)
 		}
 	}
 
@@ -98,10 +117,8 @@ func ProcessListenOnInstance(args interface{}) error {
 		actualPorts[data[0]] = true
 	}
 
-	equal := reflect.DeepEqual(actualPorts, listenArgs.ExpectedPorts)
-	if !equal {
-		return fmt.Errorf("expected ports: %v, actual ports: %v",
-			listenArgs.ExpectedPorts, actualPorts)
+	if err := comparePortMaps(listenArgs.ExpectedPorts, actualPorts); err != nil {
+		return err
 	}
 
 	return nil
