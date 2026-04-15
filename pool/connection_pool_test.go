@@ -1277,13 +1277,9 @@ func TestConnectionHandlerUpdateError(t *testing.T) {
 	require.NoErrorf(t, err, "failed to get ConnectedNow()")
 	require.Truef(t, connected, "should be connected")
 
-	for i := 0; i < len(poolServers); i++ {
-		_, err = connPool.Do(tarantool.NewCall17Request("box.cfg").
-			Args([]interface{}{map[string]bool{
-				"read_only": true,
-			}}), pool.RW).Get()
-		require.NoErrorf(t, err, "failed to make ro")
-	}
+	roles = []bool{true, true}
+	err = test_helpers.SetClusterRO(ctx, makeDialers(poolServers), connOpts, roles)
+	require.NoErrorf(t, err, "failed to make ro")
 
 	for i := 0; i < 100; i++ {
 		// Wait for updates done.
