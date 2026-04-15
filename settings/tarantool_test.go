@@ -552,9 +552,9 @@ func TestSQLReverseUnorderedSelectsSetting(t *testing.T) {
 
 	// Select multiple records.
 	query := "SELECT * FROM seqscan data;"
-	if isSeqScanOld, err := test_helpers.IsTarantoolVersionLess(3, 0, 0); err != nil {
-		t.Fatalf("Could not check the Tarantool version: %s", err)
-	} else if isSeqScanOld {
+	isSeqScanOld, err := test_helpers.IsTarantoolVersionLess(3, 0, 0)
+	require.NoErrorf(t, err, "Could not check the Tarantool version")
+	if isSeqScanOld {
 		query = "SELECT * FROM data;"
 	}
 
