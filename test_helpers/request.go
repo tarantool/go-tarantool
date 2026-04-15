@@ -50,3 +50,18 @@ func (req *MockRequest) Response(header tarantool.Header,
 	resp, err := CreateMockResponse(header, body)
 	return resp, err
 }
+
+// MockRequestNamed is a mock request with a name used for testing purposes.
+// It is useful for verifying that a specific request was sent via the
+// MockDoer by checking the Name field of recorded requests.
+type MockRequestNamed struct {
+	MockRequest
+	Name string
+}
+
+var _ tarantool.Request = (*MockRequestNamed)(nil)
+
+// NewMockRequestNamed creates a MockRequestNamed with the given name.
+func NewMockRequestNamed(name string) *MockRequestNamed {
+	return &MockRequestNamed{Name: name}
+}

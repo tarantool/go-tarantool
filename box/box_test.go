@@ -29,17 +29,16 @@ func TestMustNew(t *testing.T) {
 func TestMocked_BoxNew(t *testing.T) {
 	t.Parallel()
 
-	mock := test_helpers.NewMockDoer(t,
-		test_helpers.NewMockResponse(t, "valid"),
-	)
+	mock := test_helpers.NewMockDoer(t).
+		AddResponseRaw("valid")
 
-	b, err := box.New(&mock)
+	b, err := box.New(mock)
 	require.NoError(t, err)
 	require.NotNil(t, b)
 
-	assert.Empty(t, mock.Requests)
+	assert.Empty(t, mock.Requests())
 	_, _ = b.Schema().User().Exists(box.NewInfoRequest().Ctx(), "")
-	require.Len(t, mock.Requests, 1)
+	require.Len(t, mock.Requests(), 1)
 }
 
 func TestMocked_BoxInfo(t *testing.T) {
@@ -57,10 +56,9 @@ func TestMocked_BoxInfo(t *testing.T) {
 			"replication": nil,
 		},
 	}
-	mock := test_helpers.NewMockDoer(t,
-		test_helpers.NewMockResponse(t, data),
-	)
-	b := box.MustNew(&mock)
+	mock := test_helpers.NewMockDoer(t).
+		AddResponseRaw(data)
+	b := box.MustNew(mock)
 
 	info, err := b.Info()
 	require.NoError(t, err)
@@ -77,10 +75,9 @@ func TestMocked_BoxSchemaUserInfo(t *testing.T) {
 			[]interface{}{"read,write,execute", "universe", ""},
 		},
 	}
-	mock := test_helpers.NewMockDoer(t,
-		test_helpers.NewMockResponse(t, data),
-	)
-	b := box.MustNew(&mock)
+	mock := test_helpers.NewMockDoer(t).
+		AddResponseRaw(data)
+	b := box.MustNew(mock)
 
 	privs, err := b.Schema().User().Info(context.Background(), "username")
 	require.NoError(t, err)
@@ -101,11 +98,10 @@ func TestMocked_BoxSchemaUserInfo(t *testing.T) {
 func TestMocked_BoxSessionSu(t *testing.T) {
 	t.Parallel()
 
-	mock := test_helpers.NewMockDoer(t,
-		test_helpers.NewMockResponse(t, []interface{}{}),
-		errors.New("user not found or supplied credentials are invalid"),
-	)
-	b := box.MustNew(&mock)
+	mock := test_helpers.NewMockDoer(t).
+		AddResponseRaw([]interface{}{}).
+		AddResponseError(errors.New("user not found or supplied credentials are invalid"))
+	b := box.MustNew(mock)
 
 	err := b.Session().Su(context.Background(), "admin")
 	require.NoError(t, err)

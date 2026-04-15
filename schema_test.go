@@ -43,8 +43,8 @@ func TestGetSchema_ok(t *testing.T) {
 		FieldsById: make(map[uint32]tarantool.Field),
 	}
 
-	mockDoer := test_helpers.NewMockDoer(t,
-		test_helpers.NewMockResponse(t, [][]interface{}{
+	mockDoer := test_helpers.NewMockDoer(t).
+		AddResponseRaw([][]interface{}{
 			{
 				uint32(1),
 				"skip",
@@ -59,8 +59,8 @@ func TestGetSchema_ok(t *testing.T) {
 				"",
 				0,
 			},
-		}),
-		test_helpers.NewMockResponse(t, [][]interface{}{
+		}).
+		AddResponseRaw([][]interface{}{
 			{
 				uint32(2),
 				uint32(1),
@@ -69,8 +69,7 @@ func TestGetSchema_ok(t *testing.T) {
 				uint8(1),
 				uint8(0),
 			},
-		}),
-	)
+		})
 
 	expectedSchema := tarantool.Schema{
 		SpacesById: map[uint32]tarantool.Space{
@@ -83,33 +82,35 @@ func TestGetSchema_ok(t *testing.T) {
 		},
 	}
 
-	schema, err := tarantool.GetSchema(&mockDoer)
+	schema, err := tarantool.GetSchema(mockDoer)
 	require.NoError(t, err)
 	require.Equal(t, expectedSchema, schema)
 }
 
 func TestGetSchema_spaces_select_error(t *testing.T) {
-	mockDoer := test_helpers.NewMockDoer(t, fmt.Errorf("some error"))
+	mockDoer := test_helpers.NewMockDoer(t).
+		AddResponseError(fmt.Errorf("some error"))
 
-	schema, err := tarantool.GetSchema(&mockDoer)
+	schema, err := tarantool.GetSchema(mockDoer)
 	require.EqualError(t, err, "some error")
 	require.Equal(t, tarantool.Schema{}, schema)
 }
 
 func TestGetSchema_index_select_error(t *testing.T) {
-	mockDoer := test_helpers.NewMockDoer(t,
-		test_helpers.NewMockResponse(t, [][]interface{}{
-			{
-				uint32(1),
-				"skip",
-				"name1",
-				"",
-				0,
-			},
-		}),
-		fmt.Errorf("some error"))
+	mockDoer := test_helpers.NewMockDoer(t).
+		AddResponseRaw(
+			[][]interface{}{
+				{
+					uint32(1),
+					"skip",
+					"name1",
+					"",
+					0,
+				},
+			}).
+		AddResponseError(fmt.Errorf("some error"))
 
-	schema, err := tarantool.GetSchema(&mockDoer)
+	schema, err := tarantool.GetSchema(mockDoer)
 	require.EqualError(t, err, "some error")
 	require.Equal(t, tarantool.Schema{}, schema)
 }
