@@ -11,9 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"reflect"
 	"regexp"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -407,9 +405,7 @@ func TestBenchmarkAsync(t *testing.T) {
 		NewReplaceRequest(spaceNo).
 			Tuple([]interface{}{uint(1111), "hello", "world"}),
 	).Get()
-	if err != nil {
-		t.Fatalf("failed to initialize database: %s", err)
-	}
+	require.NoError(t, err, "failed to initialize database")
 
 	req := NewSelectRequest(spaceNo).
 		Index(indexNo).
@@ -448,13 +444,9 @@ func TestBenchmarkAsync(t *testing.T) {
 
 					for fut := range ch {
 						err := fut.GetTyped(&tuple)
-						if err != nil {
-							t.Errorf("request error: %s", err)
-						}
+						assert.NoError(t, err, "request error")
 
-						if tuple.id != 1111 {
-							t.Errorf("invalid result")
-						}
+						assert.Equal(t, uint(1111), tuple.id, "invalid result")
 						fut.Release()
 					}
 				}()
@@ -572,7 +564,7 @@ func TestNetDialer_BadUser(t *testing.T) {
 	require.ErrorContains(t, err, "failed to authenticate")
 	if conn != nil {
 		_ = conn.Close()
-		t.Errorf("connection is not nil")
+		assert.Fail(t, "connection is not nil")
 	}
 }
 
@@ -590,7 +582,7 @@ func TestNetDialer_PapSha256Auth(t *testing.T) {
 	conn, err := authDialer.Dial(ctx, DialOpts{})
 	if conn != nil {
 		_ = conn.Close()
-		t.Fatalf("Connection created successfully")
+		require.Fail(t, "Connection created successfully")
 	}
 
 	assert.ErrorContains(t, err, "failed to authenticate")
@@ -613,23 +605,15 @@ func TestFutureMultipleGetGetTyped(t *testing.T) {
 
 		if get {
 			data, err := fut.Get()
-			if err != nil {
-				t.Errorf("Failed to call Get(): %s", err)
-			}
-			if val, ok := data[0].(string); !ok || val != "11" {
-				t.Errorf("Wrong Get() result: %v", data)
-			}
+			require.NoError(t, err, "Failed to call Get()")
+			assert.Equal(t, "11", data[0], "Wrong Get() result")
 		} else {
 			tpl := struct {
 				Val string
 			}{}
 			err := fut.GetTyped(&tpl)
-			if err != nil {
-				t.Errorf("Failed to call GetTyped(): %s", err)
-			}
-			if tpl.Val != "11" {
-				t.Errorf("Wrong GetTyped() result: %v", tpl)
-			}
+			require.NoError(t, err, "Failed to call GetTyped()")
+			assert.Equal(t, "11", tpl.Val, "Wrong GetTyped() result")
 		}
 	}
 }
@@ -641,9 +625,8 @@ func TestFutureMultipleGetWithError(t *testing.T) {
 	fut := conn.Do(NewCall17Request("non_exist").Args([]interface{}{"1"}))
 
 	for i := 0; i < 2; i++ {
-		if _, err := fut.Get(); err == nil {
-			t.Fatalf("An error expected")
-		}
+		_, err := fut.Get()
+		require.Error(t, err, "An error expected")
 	}
 }
 
@@ -660,15 +643,9 @@ func TestFutureMultipleGetTypedWithError(t *testing.T) {
 		Val string
 	}{}
 
-	if err := fut.GetTyped(&wrongTpl); err == nil {
-		t.Fatalf("An error expected")
-	}
-	if err := fut.GetTyped(&goodTpl); err != nil {
-		t.Fatalf("Unexpected error: %s", err)
-	}
-	if goodTpl.Val != "11" {
-		t.Fatalf("Wrong result: %s", goodTpl.Val)
-	}
+	require.Error(t, fut.GetTyped(&wrongTpl), "An error expected")
+	require.NoError(t, fut.GetTyped(&goodTpl), "Unexpected error")
+	require.Equal(t, "11", goodTpl.Val, "Wrong result")
 }
 
 // /////////////////
@@ -685,104 +662,61 @@ func TestClient(t *testing.T) {
 	// Ping
 	req = NewPingRequest()
 	data, err := conn.Do(req).Get()
-	if err != nil {
-		t.Fatalf("Failed to Ping: %s", err)
-	}
-	if data != nil {
-		t.Fatalf("Response data is not nil after Ping")
-	}
+	require.NoError(t, err, "Failed to Ping")
+	require.Nil(t, data, "Response data is not nil after Ping")
 
 	// Insert
 	req = NewInsertRequest(spaceNo).Tuple([]interface{}{uint(1), "hello", "world"})
 	data, err = conn.Do(req).Get()
-	if err != nil {
-		t.Fatalf("Failed to Insert: %s", err)
-	}
-	if len(data) != 1 {
-		t.Errorf("Response Body len != 1")
-	}
+	require.NoError(t, err, "Failed to Insert")
+	assert.Len(t, data, 1, "Response Body len != 1")
 	if tpl, ok := data[0].([]interface{}); !ok {
-		t.Errorf("Unexpected body of Insert")
+		assert.Fail(t, "Unexpected body of Insert")
 	} else {
-		if len(tpl) != 3 {
-			t.Errorf("Unexpected body of Insert (tuple len)")
-		}
-		if id, err := test_helpers.ConvertUint64(tpl[0]); err != nil || id != 1 {
-			t.Errorf("Unexpected body of Insert (0)")
-		}
-		if h, ok := tpl[1].(string); !ok || h != "hello" {
-			t.Errorf("Unexpected body of Insert (1)")
-		}
+		assert.Len(t, tpl, 3, "Unexpected body of Insert (tuple len)")
+		assert.EqualValues(t, 1, tpl[0], "Unexpected body of Insert (0)")
+		assert.Equal(t, "hello", tpl[1], "Unexpected body of Insert (1)")
 	}
 	req = NewInsertRequest(spaceNo).Tuple(&Tuple{Id: 1, Msg: "hello", Name: "world"})
 	data, err = conn.Do(req).Get()
-	if tntErr, ok := err.(Error); !ok || tntErr.Code != iproto.ER_TUPLE_FOUND {
-		t.Errorf("Expected %s but got: %v", iproto.ER_TUPLE_FOUND, err)
-	}
-	if len(data) != 0 {
-		t.Errorf("Response Body len != 0")
-	}
+	tntErr, ok := err.(Error)
+	require.True(t, ok, "Expected Error type")
+	assert.Equal(t, iproto.ER_TUPLE_FOUND, tntErr.Code,
+		"Expected %s but got: %v", iproto.ER_TUPLE_FOUND, err)
+	assert.Empty(t, data, "Response Body len != 0")
 
 	// Delete
 	req = NewDeleteRequest(spaceNo).Index(indexNo).Key([]interface{}{uint(1)})
 	data, err = conn.Do(req).Get()
-	if err != nil {
-		t.Fatalf("Failed to Delete: %s", err)
-	}
-	if len(data) != 1 {
-		t.Errorf("Response Body len != 1")
-	}
+	require.NoError(t, err, "Failed to Delete")
+	assert.Len(t, data, 1, "Response Body len != 1")
 	if tpl, ok := data[0].([]interface{}); !ok {
-		t.Errorf("Unexpected body of Delete")
+		assert.Fail(t, "Unexpected body of Delete")
 	} else {
-		if len(tpl) != 3 {
-			t.Errorf("Unexpected body of Delete (tuple len)")
-		}
-		if id, err := test_helpers.ConvertUint64(tpl[0]); err != nil || id != 1 {
-			t.Errorf("Unexpected body of Delete (0)")
-		}
-		if h, ok := tpl[1].(string); !ok || h != "hello" {
-			t.Errorf("Unexpected body of Delete (1)")
-		}
+		assert.Len(t, tpl, 3, "Unexpected body of Delete (tuple len)")
+		assert.EqualValues(t, 1, tpl[0], "Unexpected body of Delete (0)")
+		assert.Equal(t, "hello", tpl[1], "Unexpected body of Delete (1)")
 	}
 	req = NewDeleteRequest(spaceNo).Index(indexNo).Key([]interface{}{uint(101)})
 	data, err = conn.Do(req).Get()
-	if err != nil {
-		t.Fatalf("Failed to Delete: %s", err)
-	}
-	if len(data) != 0 {
-		t.Errorf("Response Data len != 0")
-	}
+	require.NoError(t, err, "Failed to Delete")
+	assert.Empty(t, data, "Response Data len != 0")
 
 	// Replace
 	req = NewReplaceRequest(spaceNo).Tuple([]interface{}{uint(2), "hello", "world"})
 	data, err = conn.Do(req).Get()
-	if err != nil {
-		t.Fatalf("Failed to Replace: %s", err)
-	}
-	if data == nil {
-		t.Fatalf("Response is nil after Replace")
-	}
+	require.NoError(t, err, "Failed to Replace")
+	require.NotNil(t, data, "Response is nil after Replace")
 	req = NewReplaceRequest(spaceNo).Tuple([]interface{}{uint(2), "hi", "planet"})
 	data, err = conn.Do(req).Get()
-	if err != nil {
-		t.Fatalf("Failed to Replace (duplicate): %s", err)
-	}
-	if len(data) != 1 {
-		t.Errorf("Response Data len != 1")
-	}
+	require.NoError(t, err, "Failed to Replace (duplicate)")
+	assert.Len(t, data, 1, "Response Data len != 1")
 	if tpl, ok := data[0].([]interface{}); !ok {
-		t.Errorf("Unexpected body of Replace")
+		assert.Fail(t, "Unexpected body of Replace")
 	} else {
-		if len(tpl) != 3 {
-			t.Errorf("Unexpected body of Replace (tuple len)")
-		}
-		if id, err := test_helpers.ConvertUint64(tpl[0]); err != nil || id != 2 {
-			t.Errorf("Unexpected body of Replace (0)")
-		}
-		if h, ok := tpl[1].(string); !ok || h != "hi" {
-			t.Errorf("Unexpected body of Replace (1)")
-		}
+		assert.Len(t, tpl, 3, "Unexpected body of Replace (tuple len)")
+		assert.EqualValues(t, 2, tpl[0], "Unexpected body of Replace (0)")
+		assert.Equal(t, "hi", tpl[1], "Unexpected body of Replace (1)")
 	}
 
 	// Update
@@ -791,24 +725,14 @@ func TestClient(t *testing.T) {
 		Key([]interface{}{uint(2)}).
 		Operations(NewOperations().Assign(1, "bye").Delete(2, 1))
 	data, err = conn.Do(req).Get()
-	if err != nil {
-		t.Fatalf("Failed to Update: %s", err)
-	}
-	if len(data) != 1 {
-		t.Errorf("Response Data len != 1")
-	}
+	require.NoError(t, err, "Failed to Update")
+	assert.Len(t, data, 1, "Response Data len != 1")
 	if tpl, ok := data[0].([]interface{}); !ok {
-		t.Errorf("Unexpected body of Update")
+		assert.Fail(t, "Unexpected body of Update")
 	} else {
-		if len(tpl) != 2 {
-			t.Errorf("Unexpected body of Update (tuple len)")
-		}
-		if id, err := test_helpers.ConvertUint64(tpl[0]); err != nil || id != 2 {
-			t.Errorf("Unexpected body of Update (0)")
-		}
-		if h, ok := tpl[1].(string); !ok || h != "bye" {
-			t.Errorf("Unexpected body of Update (1)")
-		}
+		assert.Len(t, tpl, 2, "Unexpected body of Update (tuple len)")
+		assert.EqualValues(t, 2, tpl[0], "Unexpected body of Update (0)")
+		assert.Equal(t, "bye", tpl[1], "Unexpected body of Update (1)")
 	}
 
 	// Upsert
@@ -816,34 +740,22 @@ func TestClient(t *testing.T) {
 		Tuple([]interface{}{uint(3), 1}).
 		Operations(NewOperations().Add(1, 1))
 	data, err = conn.Do(req).Get()
-	if err != nil {
-		t.Fatalf("Failed to Upsert (insert): %s", err)
-	}
-	if data == nil {
-		t.Fatalf("Response is nil after Upsert (insert)")
-	}
+	require.NoError(t, err, "Failed to Upsert (insert)")
+	require.NotNil(t, data, "Response is nil after Upsert (insert)")
 	req = NewUpsertRequest(spaceNo).
 		Tuple([]interface{}{uint(3), 1}).
 		Operations(NewOperations().Add(1, 1))
 	data, err = conn.Do(req).Get()
-	if err != nil {
-		t.Fatalf("Failed to Upsert (update): %s", err)
-	}
-	if data == nil {
-		t.Errorf("Response is nil after Upsert (update)")
-	}
+	require.NoError(t, err, "Failed to Upsert (update)")
+	assert.NotNil(t, data, "Response is nil after Upsert (update)")
 
 	// Select
 	for i := 10; i < 20; i++ {
 		req = NewReplaceRequest(spaceNo).
 			Tuple([]interface{}{uint(i), fmt.Sprintf("val %d", i), "bla"})
 		data, err = conn.Do(req).Get()
-		if err != nil {
-			t.Fatalf("Failed to Replace: %s", err)
-		}
-		if data == nil {
-			t.Errorf("Response is nil after Replace")
-		}
+		require.NoError(t, err, "Failed to Replace")
+		assert.NotNil(t, data, "Response is nil after Replace")
 	}
 	req = NewSelectRequest(spaceNo).
 		Index(indexNo).
@@ -852,21 +764,13 @@ func TestClient(t *testing.T) {
 		Iterator(IterEq).
 		Key([]interface{}{uint(10)})
 	data, err = conn.Do(req).Get()
-	if err != nil {
-		t.Fatalf("Failed to Select: %s", err)
-	}
-	if len(data) != 1 {
-		t.Fatalf("Response Data len != 1")
-	}
+	require.NoError(t, err, "Failed to Select")
+	require.Len(t, data, 1, "Response Data len != 1")
 	if tpl, ok := data[0].([]interface{}); !ok {
-		t.Errorf("Unexpected body of Select")
+		assert.Fail(t, "Unexpected body of Select")
 	} else {
-		if id, err := test_helpers.ConvertUint64(tpl[0]); err != nil || id != 10 {
-			t.Errorf("Unexpected body of Select (0)")
-		}
-		if h, ok := tpl[1].(string); !ok || h != "val 10" {
-			t.Errorf("Unexpected body of Select (1)")
-		}
+		assert.EqualValues(t, 10, tpl[0], "Unexpected body of Select (0)")
+		assert.Equal(t, "val 10", tpl[1], "Unexpected body of Select (1)")
 	}
 
 	// Select empty
@@ -877,12 +781,8 @@ func TestClient(t *testing.T) {
 		Iterator(IterEq).
 		Key([]interface{}{uint(30)})
 	data, err = conn.Do(req).Get()
-	if err != nil {
-		t.Fatalf("Failed to Select: %s", err)
-	}
-	if len(data) != 0 {
-		t.Errorf("Response Data len != 0")
-	}
+	require.NoError(t, err, "Failed to Select")
+	assert.Empty(t, data, "Response Data len != 0")
 
 	// Select Typed
 	var tpl []Tuple
@@ -893,17 +793,9 @@ func TestClient(t *testing.T) {
 		Iterator(IterEq).
 		Key([]interface{}{uint(10)})
 	err = conn.Do(req).GetTyped(&tpl)
-	if err != nil {
-		t.Fatalf("Failed to SelectTyped: %s", err)
-	}
-	if len(tpl) != 1 {
-		t.Errorf("Result len of SelectTyped != 1")
-	} else {
-		singleTpl := tpl[0]
-		if singleTpl.Id != 10 {
-			t.Errorf("Bad value loaded from SelectTyped")
-		}
-	}
+	require.NoError(t, err, "Failed to SelectTyped")
+	assert.Len(t, tpl, 1, "Result len of SelectTyped != 1")
+	assert.Equal(t, uint(10), tpl[0].Id, "Bad value loaded from SelectTyped")
 
 	// Select Typed for one tuple
 	var tpl1 [1]Tuple
@@ -914,14 +806,9 @@ func TestClient(t *testing.T) {
 		Iterator(IterEq).
 		Key([]interface{}{uint(10)})
 	err = conn.Do(req).GetTyped(&tpl1)
-	if err != nil {
-		t.Fatalf("Failed to SelectTyped: %s", err)
-	}
-	if len(tpl1) != 1 {
-		t.Errorf("Result len of SelectTyped != 1")
-	} else if tpl1[0].Id != 10 {
-		t.Errorf("Bad value loaded from SelectTyped")
-	}
+	require.NoError(t, err, "Failed to SelectTyped")
+	assert.Len(t, tpl1, 1, "Result len of SelectTyped != 1")
+	assert.Equal(t, uint(10), tpl1[0].Id, "Bad value loaded from SelectTyped")
 
 	// Get Typed Empty
 	var singleTpl2 Tuple
@@ -932,12 +819,8 @@ func TestClient(t *testing.T) {
 		Iterator(IterEq).
 		Key([]interface{}{uint(30)})
 	err = conn.Do(req).GetTyped(&singleTpl2)
-	if err != nil {
-		t.Fatalf("Failed to GetTyped: %s", err)
-	}
-	if singleTpl2.Id != 0 {
-		t.Errorf("Bad value loaded from GetTyped")
-	}
+	require.NoError(t, err, "Failed to GetTyped")
+	assert.Equal(t, uint(0), singleTpl2.Id, "Bad value loaded from GetTyped")
 
 	// Select Typed Empty
 	var tpl2 []Tuple
@@ -948,54 +831,32 @@ func TestClient(t *testing.T) {
 		Iterator(IterEq).
 		Key([]interface{}{uint(30)})
 	err = conn.Do(req).GetTyped(&tpl2)
-	if err != nil {
-		t.Fatalf("Failed to SelectTyped: %s", err)
-	}
-	if len(tpl2) != 0 {
-		t.Errorf("Result len of SelectTyped != 1")
-	}
+	require.NoError(t, err, "Failed to SelectTyped")
+	assert.Empty(t, tpl2, "Result len of SelectTyped != 1")
 
 	// Call16
 	req = NewCall16Request("box.info").Args([]interface{}{"box.schema.SPACE_ID"})
 	data, err = conn.Do(req).Get()
-	if err != nil {
-		t.Fatalf("Failed to Call16: %s", err)
-	}
-	if len(data) < 1 {
-		t.Errorf("Response.Data is empty after Eval")
-	}
+	require.NoError(t, err, "Failed to Call16")
+	assert.GreaterOrEqual(t, len(data), 1, "Response.Data is empty after Eval")
 
 	// Call16 vs Call17
 	req = NewCall16Request("simple_concat").Args([]interface{}{"1"})
 	data, err = conn.Do(req).Get()
-	if err != nil {
-		t.Errorf("Failed to use Call16")
-	}
-	if val, ok := data[0].([]interface{})[0].(string); !ok || val != "11" {
-		t.Errorf("result is not {{1}} : %v", data)
-	}
+	require.NoError(t, err, "Failed to use Call16")
+	assert.Equal(t, "11", data[0].([]interface{})[0], "result is not {{1}}")
 
 	req = NewCall17Request("simple_concat").Args([]interface{}{"1"})
 	data, err = conn.Do(req).Get()
-	if err != nil {
-		t.Errorf("Failed to use Call")
-	}
-	if val, ok := data[0].(string); !ok || val != "11" {
-		t.Errorf("result is not {{1}} : %v", data)
-	}
+	require.NoError(t, err, "Failed to use Call")
+	assert.Equal(t, "11", data[0], "result is not {{1}}")
 
 	// Eval
 	req = NewEvalRequest("return 5 + 6").Args([]interface{}{})
 	data, err = conn.Do(req).Get()
-	if err != nil {
-		t.Fatalf("Failed to Eval: %s", err)
-	}
-	if len(data) < 1 {
-		t.Errorf("Response.Data is empty after Eval")
-	}
-	if val, err := test_helpers.ConvertUint64(data[0]); err != nil || val != 11 {
-		t.Errorf("5 + 6 == 11, but got %v", val)
-	}
+	require.NoError(t, err, "Failed to Eval")
+	assert.GreaterOrEqual(t, len(data), 1, "Response.Data is empty after Eval")
+	assert.EqualValues(t, 11, data[0], "5 + 6 == 11, but got")
 }
 
 const (
@@ -1033,9 +894,9 @@ func TestSQL(t *testing.T) {
 	}
 
 	selectSpanDifQuery := selectSpanDifQueryNew
-	if isSeqScanOld, err := test_helpers.IsTarantoolVersionLess(3, 0, 0); err != nil {
-		t.Fatalf("Could not check the Tarantool version: %s", err)
-	} else if isSeqScanOld {
+	isSeqScanOld, err := test_helpers.IsTarantoolVersionLess(3, 0, 0)
+	require.NoError(t, err, "Could not check the Tarantool version")
+	if isSeqScanOld {
 		selectSpanDifQuery = selectSpanDifQueryOld
 	}
 
@@ -1207,18 +1068,10 @@ func TestSQLTyped(t *testing.T) {
 	require.NoError(t, err, "Error while getting SQLInfo")
 	meta, err := exResp.MetaData()
 	require.NoError(t, err, "Error while getting MetaData")
-	if info.AffectedCount != 0 {
-		t.Errorf("Rows affected count must be 0")
-	}
-	if len(meta) != 2 {
-		t.Errorf("Meta data is not full")
-	}
-	if len(mem) != 1 {
-		t.Errorf("Wrong length of result")
-	}
-	if err != nil {
-		t.Error(err)
-	}
+	assert.Equal(t, uint64(0), info.AffectedCount, "Rows affected count must be 0")
+	assert.Len(t, meta, 2, "Meta data is not full")
+	assert.Len(t, mem, 1, "Wrong length of result")
+	assert.NoError(t, err)
 }
 
 func TestSQLBindings(t *testing.T) {
@@ -1277,82 +1130,54 @@ func TestSQLBindings(t *testing.T) {
 	for _, bind := range namedSQLBinds {
 		req := NewExecuteRequest(selectNamedQuery2).Args(bind)
 		resp, err := conn.Do(req).GetResponse()
-		if err != nil {
-			t.Fatalf("Failed to Execute: %s", err)
-		}
-		if resp == nil {
-			t.Fatal("Response is nil after Execute")
-		}
+		require.NoError(t, err, "Failed to Execute")
+		require.NotNil(t, resp, "Response is nil after Execute")
 		data, err := resp.Decode()
-		if err != nil {
-			t.Errorf("Failed to Decode: %s", err)
-		}
-		if reflect.DeepEqual(data[0], []interface{}{1, testData[1]}) {
-			t.Error("Select with named arguments failed")
-		}
+		require.NoError(t, err, "Failed to Decode")
+		assert.NotEqual(t, []interface{}{1, testData[1]}, data[0],
+			"Select with named arguments failed")
 		exResp, ok := resp.(*ExecuteResponse)
 		assert.True(t, ok, "Got wrong response type")
 		metaData, err := exResp.MetaData()
 		require.NoError(t, err, "Error while getting MetaData")
-		if metaData[0].FieldType != "unsigned" ||
-			metaData[0].FieldName != "NAME0" ||
-			metaData[1].FieldType != "string" ||
-			metaData[1].FieldName != "NAME1" {
-			t.Error("Wrong metadata")
-		}
+		assert.Equal(t, "unsigned", metaData[0].FieldType, "Wrong metadata")
+		assert.Equal(t, "NAME0", metaData[0].FieldName, "Wrong metadata")
+		assert.Equal(t, "string", metaData[1].FieldType, "Wrong metadata")
+		assert.Equal(t, "NAME1", metaData[1].FieldName, "Wrong metadata")
 	}
 
 	req := NewExecuteRequest(selectPosQuery2).Args(sqlBind5)
 	resp, err := conn.Do(req).GetResponse()
-	if err != nil {
-		t.Fatalf("Failed to Execute: %s", err)
-	}
-	if resp == nil {
-		t.Fatal("Response is nil after Execute")
-	}
+	require.NoError(t, err, "Failed to Execute")
+	require.NotNil(t, resp, "Response is nil after Execute")
 	data, err := resp.Decode()
-	if err != nil {
-		t.Errorf("Failed to Decode: %s", err)
-	}
-	if reflect.DeepEqual(data[0], []interface{}{1, testData[1]}) {
-		t.Error("Select with positioned arguments failed")
-	}
+	require.NoError(t, err, "Failed to Decode")
+	assert.NotEqual(t, []interface{}{1, testData[1]}, data[0],
+		"Select with positioned arguments failed")
 	exResp, ok := resp.(*ExecuteResponse)
 	assert.True(t, ok, "Got wrong response type")
 	metaData, err := exResp.MetaData()
 	require.NoError(t, err, "Error while getting MetaData")
-	if metaData[0].FieldType != "unsigned" ||
-		metaData[0].FieldName != "NAME0" ||
-		metaData[1].FieldType != "string" ||
-		metaData[1].FieldName != "NAME1" {
-		t.Error("Wrong metadata")
-	}
+	assert.Equal(t, "unsigned", metaData[0].FieldType, "Wrong metadata")
+	assert.Equal(t, "NAME0", metaData[0].FieldName, "Wrong metadata")
+	assert.Equal(t, "string", metaData[1].FieldType, "Wrong metadata")
+	assert.Equal(t, "NAME1", metaData[1].FieldName, "Wrong metadata")
 
 	req = NewExecuteRequest(mixedQuery).Args(sqlBind6)
 	resp, err = conn.Do(req).GetResponse()
-	if err != nil {
-		t.Fatalf("Failed to Execute: %s", err)
-	}
-	if resp == nil {
-		t.Fatal("Response is nil after Execute")
-	}
+	require.NoError(t, err, "Failed to Execute")
+	require.NotNil(t, resp, "Response is nil after Execute")
 	data, err = resp.Decode()
-	if err != nil {
-		t.Errorf("Failed to Decode: %s", err)
-	}
-	if reflect.DeepEqual(data[0], []interface{}{1, testData[1]}) {
-		t.Error("Select with positioned arguments failed")
-	}
+	require.NoError(t, err, "Failed to Decode")
+	assert.NotEqual(t, []interface{}{1, testData[1]}, data[0], "Select with mixed arguments failed")
 	exResp, ok = resp.(*ExecuteResponse)
 	assert.True(t, ok, "Got wrong response type")
 	metaData, err = exResp.MetaData()
 	require.NoError(t, err, "Error while getting MetaData")
-	if metaData[0].FieldType != "unsigned" ||
-		metaData[0].FieldName != "NAME0" ||
-		metaData[1].FieldType != "string" ||
-		metaData[1].FieldName != "NAME1" {
-		t.Error("Wrong metadata")
-	}
+	assert.Equal(t, "unsigned", metaData[0].FieldType, "Wrong metadata")
+	assert.Equal(t, "NAME0", metaData[0].FieldName, "Wrong metadata")
+	assert.Equal(t, "string", metaData[1].FieldType, "Wrong metadata")
+	assert.Equal(t, "NAME1", metaData[1].FieldName, "Wrong metadata")
 }
 
 func TestStressSQL(t *testing.T) {
@@ -1363,130 +1188,82 @@ func TestStressSQL(t *testing.T) {
 
 	req := NewExecuteRequest(createTableQuery)
 	resp, err := conn.Do(req).GetResponse()
-	if err != nil {
-		t.Fatalf("Failed to create an Execute: %s", err)
-	}
-	if resp == nil {
-		t.Fatal("Response is nil after Execute")
-	}
+	require.NoError(t, err, "Failed to create an Execute")
+	require.NotNil(t, resp, "Response is nil after Execute")
 	exResp, ok := resp.(*ExecuteResponse)
 	assert.True(t, ok, "Got wrong response type")
 	sqlInfo, err := exResp.SQLInfo()
 	require.NoError(t, err, "Error while getting SQLInfo")
-	if sqlInfo.AffectedCount != 1 {
-		t.Errorf("Incorrect count of created spaces: %d", sqlInfo.AffectedCount)
-	}
+	assert.Equal(t, uint64(1), sqlInfo.AffectedCount, "Incorrect count of created spaces")
 
 	// create table with the same name
 	req = NewExecuteRequest(createTableQuery)
 	resp, err = conn.Do(req).GetResponse()
-	if err != nil {
-		t.Fatalf("Failed to create an Execute: %s", err)
-	}
-	if resp == nil {
-		t.Fatal("Response is nil after Execute")
-	}
+	require.NoError(t, err, "Failed to create an Execute")
+	require.NotNil(t, resp, "Response is nil after Execute")
 	_, err = resp.Decode()
 	require.Error(t, err, "Expected error while decoding")
 
 	tntErr, ok := err.(Error)
 	assert.True(t, ok)
 	assert.Equal(t, iproto.ER_SPACE_EXISTS, tntErr.Code)
-	if resp.Header().Error != iproto.ER_SPACE_EXISTS {
-		t.Fatalf("Unexpected response error: %d", resp.Header().Error)
-	}
+	require.Equal(t, iproto.ER_SPACE_EXISTS, resp.Header().Error, "Unexpected response error")
 	prevErr := err
 
 	exResp, ok = resp.(*ExecuteResponse)
 	assert.True(t, ok, "Got wrong response type")
 	sqlInfo, err = exResp.SQLInfo()
 	assert.Equal(t, prevErr, err)
-	if sqlInfo.AffectedCount != 0 {
-		t.Errorf("Incorrect count of created spaces: %d", sqlInfo.AffectedCount)
-	}
+	assert.Equal(t, uint64(0), sqlInfo.AffectedCount, "Incorrect count of created spaces")
 
 	// execute with nil argument
 	req = NewExecuteRequest(createTableQuery).Args(nil)
 	resp, err = conn.Do(req).GetResponse()
-	if err != nil {
-		t.Fatalf("Failed to create an Execute: %s", err)
-	}
-	if resp == nil {
-		t.Fatal("Response is nil after Execute")
-	}
-	if resp.Header().Error == ErrorNo {
-		t.Fatal("Unexpected successful Execute")
-	}
+	require.NoError(t, err, "Failed to create an Execute")
+	require.NotNil(t, resp, "Response is nil after Execute")
+	require.NotEqual(t, ErrorNo, resp.Header().Error, "Unexpected successful Execute")
 	exResp, ok = resp.(*ExecuteResponse)
 	assert.True(t, ok, "Got wrong response type")
 	sqlInfo, err = exResp.SQLInfo()
 	require.Error(t, err, "Expected an error")
-	if sqlInfo.AffectedCount != 0 {
-		t.Errorf("Incorrect count of created spaces: %d", sqlInfo.AffectedCount)
-	}
+	assert.Equal(t, uint64(0), sqlInfo.AffectedCount, "Incorrect count of created spaces")
 
 	// execute with zero string
 	req = NewExecuteRequest("")
 	resp, err = conn.Do(req).GetResponse()
-	if err != nil {
-		t.Fatalf("Failed to create an Execute: %s", err)
-	}
-	if resp == nil {
-		t.Fatal("Response is nil after Execute")
-	}
-	if resp.Header().Error == ErrorNo {
-		t.Fatal("Unexpected successful Execute")
-	}
+	require.NoError(t, err, "Failed to create an Execute")
+	require.NotNil(t, resp, "Response is nil after Execute")
+	require.NotEqual(t, ErrorNo, resp.Header().Error, "Unexpected successful Execute")
 	exResp, ok = resp.(*ExecuteResponse)
 	assert.True(t, ok, "Got wrong response type")
 	sqlInfo, err = exResp.SQLInfo()
 	require.Error(t, err, "Expected an error")
-	if sqlInfo.AffectedCount != 0 {
-		t.Errorf("Incorrect count of created spaces: %d", sqlInfo.AffectedCount)
-	}
+	assert.Equal(t, uint64(0), sqlInfo.AffectedCount, "Incorrect count of created spaces")
 
 	// drop table query
 	req = NewExecuteRequest(dropQuery2)
 	resp, err = conn.Do(req).GetResponse()
-	if err != nil {
-		t.Fatalf("Failed to Execute: %s", err)
-	}
-	if resp == nil {
-		t.Fatal("Response is nil after Execute")
-	}
+	require.NoError(t, err, "Failed to Execute")
+	require.NotNil(t, resp, "Response is nil after Execute")
 	exResp, ok = resp.(*ExecuteResponse)
 	assert.True(t, ok, "Got wrong response type")
 	sqlInfo, err = exResp.SQLInfo()
 	require.NoError(t, err, "Error while getting SQLInfo")
-	if sqlInfo.AffectedCount != 1 {
-		t.Errorf("Incorrect count of dropped spaces: %d", sqlInfo.AffectedCount)
-	}
+	assert.Equal(t, uint64(1), sqlInfo.AffectedCount, "Incorrect count of dropped spaces")
 
 	// drop the same table
 	req = NewExecuteRequest(dropQuery2)
 	resp, err = conn.Do(req).GetResponse()
-	if err != nil {
-		t.Fatalf("Failed to create an Execute: %s", err)
-	}
-	if resp == nil {
-		t.Fatal("Response is nil after Execute")
-	}
-	if resp.Header().Error == ErrorNo {
-		t.Fatal("Unexpected successful Execute")
-	}
+	require.NoError(t, err, "Failed to create an Execute")
+	require.NotNil(t, resp, "Response is nil after Execute")
+	require.NotEqual(t, ErrorNo, resp.Header().Error, "Unexpected successful Execute")
 	_, err = resp.Decode()
-	if err == nil {
-		t.Fatal("Unexpected lack of error")
-	}
+	require.Error(t, err, "Unexpected lack of error")
 	exResp, ok = resp.(*ExecuteResponse)
 	assert.True(t, ok, "Got wrong response type")
 	sqlInfo, err = exResp.SQLInfo()
-	if err == nil {
-		t.Fatal("Unexpected lack of error")
-	}
-	if sqlInfo.AffectedCount != 0 {
-		t.Errorf("Incorrect count of created spaces: %d", sqlInfo.AffectedCount)
-	}
+	require.Error(t, err, "Unexpected lack of error")
+	assert.Equal(t, uint64(0), sqlInfo.AffectedCount, "Incorrect count of created spaces")
 }
 
 func TestNewPrepared(t *testing.T) {
@@ -1496,71 +1273,44 @@ func TestNewPrepared(t *testing.T) {
 	defer func() { _ = conn.Close() }()
 
 	stmt, err := conn.NewPrepared(selectNamedQuery2)
-	if err != nil {
-		t.Errorf("failed to prepare: %v", err)
-	}
+	require.NoError(t, err, "failed to prepare")
 
 	executeReq := NewExecutePreparedRequest(stmt)
 	unprepareReq := NewUnprepareRequest(stmt)
 
 	resp, err := conn.Do(executeReq.Args([]interface{}{1, "test"})).GetResponse()
-	if err != nil {
-		t.Errorf("failed to execute prepared: %v", err)
-	}
+	require.NoError(t, err, "failed to execute prepared")
 	data, err := resp.Decode()
-	if err != nil {
-		t.Errorf("Failed to Decode: %s", err)
-	}
-	if reflect.DeepEqual(data[0], []interface{}{1, "test"}) {
-		t.Error("Select with named arguments failed")
-	}
+	require.NoError(t, err, "Failed to Decode")
+	assert.NotEqual(t, []interface{}{1, "test"}, data[0], "Select with named arguments failed")
 	prepResp, ok := resp.(*ExecuteResponse)
 	assert.True(t, ok, "Got wrong response type")
 	metaData, err := prepResp.MetaData()
 	require.NoError(t, err, "Error while getting MetaData")
-	if metaData[0].FieldType != "unsigned" ||
-		metaData[0].FieldName != "NAME0" ||
-		metaData[1].FieldType != "string" ||
-		metaData[1].FieldName != "NAME1" {
-		t.Error("Wrong metadata")
-	}
+	assert.Equal(t, "unsigned", metaData[0].FieldType, "Wrong metadata")
+	assert.Equal(t, "NAME0", metaData[0].FieldName, "Wrong metadata")
+	assert.Equal(t, "string", metaData[1].FieldType, "Wrong metadata")
+	assert.Equal(t, "NAME1", metaData[1].FieldName, "Wrong metadata")
 
 	_, err = conn.Do(unprepareReq).Get()
-	if err != nil {
-		t.Errorf("failed to unprepare prepared statement: %v", err)
-	}
+	require.NoError(t, err, "failed to unprepare prepared statement")
 
 	_, err = conn.Do(unprepareReq).Get()
-	if err == nil {
-		t.Errorf("the statement must be already unprepared")
-	}
+	require.Error(t, err, "the statement must be already unprepared")
 	require.Contains(t, err.Error(), "Prepared statement with id")
 
 	_, err = conn.Do(executeReq).Get()
-	if err == nil {
-		t.Errorf("the statement must be already unprepared")
-	}
+	require.Error(t, err, "the statement must be already unprepared")
 	require.Contains(t, err.Error(), "Prepared statement with id")
 
 	prepareReq := NewPrepareRequest(selectNamedQuery2)
 	data, err = conn.Do(prepareReq).Get()
-	if err != nil {
-		t.Errorf("failed to prepare: %v", err)
-	}
-	if data == nil {
-		t.Errorf("failed to prepare: Data is nil")
-	}
-
-	if len(data) == 0 {
-		t.Errorf("failed to prepare: response Data has no elements")
-	}
+	require.NoError(t, err, "failed to prepare")
+	require.NotNil(t, data, "failed to prepare: Data is nil")
+	require.NotEmpty(t, data, "failed to prepare: response Data has no elements")
 	stmt, ok = data[0].(*Prepared)
-	if !ok {
-		t.Errorf("failed to prepare: failed to cast the response Data to Prepared object")
-	}
-	if stmt.StatementID == 0 {
-		t.Errorf("failed to prepare: statement id is 0")
-	}
+	require.True(t, ok, "failed to prepare: failed to cast the response Data to Prepared object")
+	require.NotZero(t, stmt.StatementID, "failed to prepare: statement id is 0")
 }
 
 func TestExecutePrepareResponseRelease(t *testing.T) {
@@ -1569,16 +1319,12 @@ func TestExecutePrepareResponseRelease(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 
 	stmt, err := conn.NewPrepared(selectNamedQuery2)
-	if err != nil {
-		t.Errorf("failed to prepare: %v", err)
-	}
+	require.NoError(t, err, "failed to prepare")
 
 	req := NewExecutePreparedRequest(stmt)
 
 	resp, err := conn.Do(req.Args([]interface{}{1, "test"})).GetResponse()
-	if err != nil {
-		t.Errorf("failed to execute prepared: %v", err)
-	}
+	require.NoError(t, err, "failed to execute prepared")
 
 	resp.Release()
 
@@ -1595,12 +1341,8 @@ func TestConnection_DoWithStrangerConn(t *testing.T) {
 	req := test_helpers.NewMockRequest()
 
 	_, err := conn1.Do(req).Get()
-	if err == nil {
-		t.Fatalf("nil error caught")
-	}
-	if err.Error() != expectedErr.Error() {
-		t.Fatalf("Unexpected error caught")
-	}
+	require.Error(t, err, "nil error caught")
+	require.Equal(t, expectedErr.Error(), err.Error(), "Unexpected error caught")
 }
 
 func TestConnection_SetResponse_failed(t *testing.T) {
@@ -1620,12 +1362,8 @@ func TestGetSchema(t *testing.T) {
 	defer func() { _ = conn.Close() }()
 
 	s, err := GetSchema(conn)
-	if err != nil {
-		t.Errorf("unexpected error: %s", err.Error())
-	}
-	if s.Version != 0 || s.Spaces[spaceName].Id != spaceNo {
-		t.Errorf("GetSchema() returns incorrect schema")
-	}
+	require.NoError(t, err, "unexpected error")
+	assert.Equal(t, spaceNo, s.Spaces[spaceName].Id, "GetSchema() returns incorrect schema")
 }
 
 func TestConnection_SetSchema_Changes(t *testing.T) {
@@ -1635,14 +1373,10 @@ func TestConnection_SetSchema_Changes(t *testing.T) {
 	req := NewInsertRequest(spaceName)
 	req.Tuple([]interface{}{uint(1010), "Tarantool"})
 	_, err := conn.Do(req).Get()
-	if err != nil {
-		t.Fatalf("Failed to Insert: %s", err)
-	}
+	require.NoError(t, err, "Failed to Insert")
 
 	s, err := GetSchema(conn)
-	if err != nil {
-		t.Errorf("unexpected error: %s", err.Error())
-	}
+	require.NoError(t, err, "unexpected error")
 	conn.SetSchema(s)
 
 	// Check if changes of the SetSchema result will do nothing to the
@@ -1652,12 +1386,8 @@ func TestConnection_SetSchema_Changes(t *testing.T) {
 	reqS := NewSelectRequest(spaceName)
 	reqS.Key([]interface{}{uint(1010)})
 	data, err := conn.Do(reqS).Get()
-	if err != nil {
-		t.Fatalf("failed to Select: %s", err)
-	}
-	if data[0].([]interface{})[1] != "Tarantool" {
-		t.Errorf("wrong Select body: %v", data)
-	}
+	require.NoError(t, err, "failed to Select")
+	assert.Equal(t, "Tarantool", data[0].([]interface{})[1], "wrong Select body")
 }
 
 func TestSchema(t *testing.T) {
@@ -1666,148 +1396,82 @@ func TestSchema(t *testing.T) {
 
 	// Schema
 	schema, err := GetSchema(conn)
-	if err != nil {
-		t.Errorf("unexpected error: %s", err.Error())
-	}
-	if schema.SpacesById == nil {
-		t.Errorf("schema.SpacesById is nil")
-	}
-	if schema.Spaces == nil {
-		t.Errorf("schema.Spaces is nil")
-	}
+	require.NoError(t, err, "unexpected error")
+	assert.NotNil(t, schema.SpacesById, "schema.SpacesById is nil")
+	assert.NotNil(t, schema.Spaces, "schema.Spaces is nil")
 	var space, space2 Space
 	var ok bool
-	if space, ok = schema.SpacesById[616]; !ok {
-		t.Errorf("space with id = 616 was not found in schema.SpacesById")
-	}
-	if space2, ok = schema.Spaces["schematest"]; !ok {
-		t.Errorf("space with name 'schematest' was not found in schema.SpacesById")
-	}
+	space, ok = schema.SpacesById[616]
+	require.True(t, ok, "space with id = 616 was not found in schema.SpacesById")
+	space2, ok = schema.Spaces["schematest"]
+	require.True(t, ok, "space with name 'schematest' was not found in schema.SpacesById")
 	assert.Equal(t, space, space2,
 		"space with id = 616 and space with name schematest are different")
-	if space.Id != 616 {
-		t.Errorf("space 616 has incorrect Id")
-	}
-	if space.Name != "schematest" {
-		t.Errorf("space 616 has incorrect Name")
-	}
-	if !space.Temporary {
-		t.Errorf("space 616 should be temporary")
-	}
-	if space.Engine != "memtx" {
-		t.Errorf("space 616 engine should be memtx")
-	}
-	if space.FieldsCount != 8 {
-		t.Errorf("space 616 has incorrect fields count")
-	}
+	assert.Equal(t, uint32(616), space.Id, "space 616 has incorrect Id")
+	assert.Equal(t, "schematest", space.Name, "space 616 has incorrect Name")
+	assert.True(t, space.Temporary, "space 616 should be temporary")
+	assert.Equal(t, "memtx", space.Engine, "space 616 engine should be memtx")
+	assert.Equal(t, uint32(8), space.FieldsCount, "space 616 has incorrect fields count")
 
-	if space.FieldsById == nil {
-		t.Errorf("space.FieldsById is nill")
-	}
-	if space.Fields == nil {
-		t.Errorf("space.Fields is nill")
-	}
-	if len(space.FieldsById) != 7 {
-		t.Errorf("space.FieldsById len is incorrect")
-	}
-	if len(space.Fields) != 7 {
-		t.Errorf("space.Fields len is incorrect")
-	}
+	assert.NotNil(t, space.FieldsById, "space.FieldsById is nill")
+	assert.NotNil(t, space.Fields, "space.Fields is nill")
+	assert.Len(t, space.FieldsById, 7, "space.FieldsById len is incorrect")
+	assert.Len(t, space.Fields, 7, "space.Fields len is incorrect")
 
 	var field1, field2, field5, field1n, field5n Field
-	if field1, ok = space.FieldsById[1]; !ok {
-		t.Errorf("field id = 1 was not found")
-	}
-	if field2, ok = space.FieldsById[2]; !ok {
-		t.Errorf("field id = 2 was not found")
-	}
-	if field5, ok = space.FieldsById[5]; !ok {
-		t.Errorf("field id = 5 was not found")
-	}
+	field1, ok = space.FieldsById[1]
+	require.True(t, ok, "field id = 1 was not found")
+	field2, ok = space.FieldsById[2]
+	require.True(t, ok, "field id = 2 was not found")
+	field5, ok = space.FieldsById[5]
+	require.True(t, ok, "field id = 5 was not found")
 
-	if field1n, ok = space.Fields["name1"]; !ok {
-		t.Errorf("field name = name1 was not found")
-	}
-	if field5n, ok = space.Fields["name5"]; !ok {
-		t.Errorf("field name = name5 was not found")
-	}
-	if field1 != field1n || field5 != field5n {
-		t.Errorf("field with id = 1 and field with name 'name1' are different")
-	}
-	if field1.Name != "name1" {
-		t.Errorf("field 1 has incorrect Name")
-	}
-	if field1.Type != "unsigned" {
-		t.Errorf("field 1 has incorrect Type")
-	}
-	if field2.Name != "name2" {
-		t.Errorf("field 2 has incorrect Name")
-	}
-	if field2.Type != "string" {
-		t.Errorf("field 2 has incorrect Type")
-	}
+	field1n, ok = space.Fields["name1"]
+	require.True(t, ok, "field name = name1 was not found")
+	field5n, ok = space.Fields["name5"]
+	require.True(t, ok, "field name = name5 was not found")
+	assert.Equal(t, field1n, field1, "field with id = 1 and field with name 'name1' are different")
+	assert.Equal(t, field5n, field5, "field with id = 5 and field with name 'name5' are different")
+	assert.Equal(t, "name1", field1.Name, "field 1 has incorrect Name")
+	assert.Equal(t, "unsigned", field1.Type, "field 1 has incorrect Type")
+	assert.Equal(t, "name2", field2.Name, "field 2 has incorrect Name")
+	assert.Equal(t, "string", field2.Type, "field 2 has incorrect Type")
 
-	if space.IndexesById == nil {
-		t.Errorf("space.IndexesById is nill")
-	}
-	if space.Indexes == nil {
-		t.Errorf("space.Indexes is nill")
-	}
-	if len(space.IndexesById) != 2 {
-		t.Errorf("space.IndexesById len is incorrect")
-	}
-	if len(space.Indexes) != 2 {
-		t.Errorf("space.Indexes len is incorrect")
-	}
+	assert.NotNil(t, space.IndexesById, "space.IndexesById is nill")
+	assert.NotNil(t, space.Indexes, "space.Indexes is nill")
+	assert.Len(t, space.IndexesById, 2, "space.IndexesById len is incorrect")
+	assert.Len(t, space.Indexes, 2, "space.Indexes len is incorrect")
 
 	var index0, index3, index0n, index3n Index
-	if index0, ok = space.IndexesById[0]; !ok {
-		t.Errorf("index id = 0 was not found")
-	}
-	if index3, ok = space.IndexesById[3]; !ok {
-		t.Errorf("index id = 3 was not found")
-	}
-	if index0n, ok = space.Indexes["primary"]; !ok {
-		t.Errorf("index name = primary was not found")
-	}
-	if index3n, ok = space.Indexes["secondary"]; !ok {
-		t.Errorf("index name = secondary was not found")
-	}
+	index0, ok = space.IndexesById[0]
+	require.True(t, ok, "index id = 0 was not found")
+	index3, ok = space.IndexesById[3]
+	require.True(t, ok, "index id = 3 was not found")
+	index0n, ok = space.Indexes["primary"]
+	require.True(t, ok, "index name = primary was not found")
+	index3n, ok = space.Indexes["secondary"]
+	require.True(t, ok, "index name = secondary was not found")
 	assert.Equal(t, index0, index0n,
 		"index with id = 0 and index with name 'primary' are different")
 	assert.Equal(t, index3, index3n,
 		"index with id = 3 and index with name 'secondary' are different")
-	if index3.Id != 3 {
-		t.Errorf("index has incorrect Id")
-	}
-	if index0.Name != "primary" {
-		t.Errorf("index has incorrect Name")
-	}
-	if index0.Type != "hash" || index3.Type != "tree" {
-		t.Errorf("index has incorrect Type")
-	}
-	if !index0.Unique || index3.Unique {
-		t.Errorf("index has incorrect Unique")
-	}
-	if index3.Fields == nil {
-		t.Errorf("index.Fields is nil")
-	}
-	if len(index3.Fields) != 2 {
-		t.Errorf("index.Fields len is incorrect")
-	}
+	assert.Equal(t, uint32(3), index3.Id, "index has incorrect Id")
+	assert.Equal(t, "primary", index0.Name, "index has incorrect Name")
+	assert.Equal(t, "hash", index0.Type, "index has incorrect Type")
+	assert.Equal(t, "tree", index3.Type, "index has incorrect Type")
+	assert.True(t, index0.Unique, "index has incorrect Unique")
+	assert.False(t, index3.Unique, "index has incorrect Unique")
+	assert.NotNil(t, index3.Fields, "index.Fields is nil")
+	assert.Len(t, index3.Fields, 2, "index.Fields len is incorrect")
 
 	ifield1 := index3.Fields[0]
 	ifield2 := index3.Fields[1]
-	if (ifield1 == IndexField{}) || (ifield2 == IndexField{}) {
-		t.Fatalf("index field is nil")
-	}
-	if ifield1.Id != 1 || ifield2.Id != 2 {
-		t.Errorf("index field has incorrect Id")
-	}
-	if (ifield1.Type != "num" && ifield1.Type != "unsigned") ||
-		(ifield2.Type != "STR" && ifield2.Type != "string") {
-		t.Errorf("index field has incorrect Type '%s'", ifield2.Type)
-	}
+	require.NotEmpty(t, ifield1, "index field is nil")
+	require.NotEmpty(t, ifield2, "index field is nil")
+	assert.Equal(t, uint32(1), ifield1.Id, "index field has incorrect Id")
+	assert.Equal(t, uint32(2), ifield2.Id, "index field has incorrect Id")
+	assert.Contains(t, []string{"num", "unsigned"}, ifield1.Type, "index field has incorrect Type")
+	assert.Contains(t, []string{"STR", "string"}, ifield2.Type, "index field has incorrect Type")
 }
 
 func TestSchema_IsNullable(t *testing.T) {
@@ -1815,35 +1479,24 @@ func TestSchema_IsNullable(t *testing.T) {
 	defer func() { _ = conn.Close() }()
 
 	schema, err := GetSchema(conn)
-	if err != nil {
-		t.Errorf("unexpected error: %s", err.Error())
-	}
-	if schema.Spaces == nil {
-		t.Errorf("schema.Spaces is nil")
-	}
+	require.NoError(t, err, "unexpected error")
+	assert.NotNil(t, schema.Spaces, "schema.Spaces is nil")
 
 	var space Space
 	var ok bool
-	if space, ok = schema.SpacesById[616]; !ok {
-		t.Errorf("space with id = 616 was not found in schema.SpacesById")
-	}
+	space, ok = schema.SpacesById[616]
+	require.True(t, ok, "space with id = 616 was not found in schema.SpacesById")
 
 	var field, field_nullable Field
 	for i := 0; i <= 5; i++ {
 		name := fmt.Sprintf("name%d", i)
-		if field, ok = space.Fields[name]; !ok {
-			t.Errorf("field name = %s was not found", name)
-		}
-		if field.IsNullable {
-			t.Errorf("field %s has incorrect IsNullable", name)
-		}
+		field, ok = space.Fields[name]
+		require.Truef(t, ok, "field name = %s was not found", name)
+		assert.Falsef(t, field.IsNullable, "field %s has incorrect IsNullable", name)
 	}
-	if field_nullable, ok = space.Fields["nullable"]; !ok {
-		t.Errorf("field name = nullable was not found")
-	}
-	if !field_nullable.IsNullable {
-		t.Errorf("field nullable has incorrect IsNullable")
-	}
+	field_nullable, ok = space.Fields["nullable"]
+	require.True(t, ok, "field name = nullable was not found")
+	assert.True(t, field_nullable.IsNullable, "field nullable has incorrect IsNullable")
 }
 
 func TestNewPreparedFromResponse(t *testing.T) {
@@ -1888,32 +1541,20 @@ func TestClientNamed(t *testing.T) {
 	// Insert
 	req = NewInsertRequest(spaceName).Tuple([]interface{}{uint(1001), "hello2", "world2"})
 	data, err = conn.Do(req).Get()
-	if err != nil {
-		t.Fatalf("Failed to Insert: %s", err)
-	}
-	if data == nil {
-		t.Errorf("Response is nil after Insert")
-	}
+	require.NoError(t, err, "Failed to Insert")
+	require.NotNil(t, data, "Response is nil after Insert")
 
 	// Delete
 	req = NewDeleteRequest(spaceName).Index(indexName).Key([]interface{}{uint(1001)})
 	data, err = conn.Do(req).Get()
-	if err != nil {
-		t.Fatalf("Failed to Delete: %s", err)
-	}
-	if data == nil {
-		t.Errorf("Response is nil after Delete")
-	}
+	require.NoError(t, err, "Failed to Delete")
+	require.NotNil(t, data, "Response is nil after Delete")
 
 	// Replace
 	req = NewReplaceRequest(spaceName).Tuple([]interface{}{uint(1002), "hello", "world"})
 	data, err = conn.Do(req).Get()
-	if err != nil {
-		t.Fatalf("Failed to Replace: %s", err)
-	}
-	if data == nil {
-		t.Errorf("Response is nil after Replace")
-	}
+	require.NoError(t, err, "Failed to Replace")
+	require.NotNil(t, data, "Response is nil after Replace")
 
 	// Update
 	req = NewUpdateRequest(spaceName).
@@ -1921,47 +1562,31 @@ func TestClientNamed(t *testing.T) {
 		Key([]interface{}{uint(1002)}).
 		Operations(NewOperations().Assign(1, "buy").Delete(2, 1))
 	data, err = conn.Do(req).Get()
-	if err != nil {
-		t.Fatalf("Failed to Update: %s", err)
-	}
-	if data == nil {
-		t.Errorf("Response is nil after Update")
-	}
+	require.NoError(t, err, "Failed to Update")
+	require.NotNil(t, data, "Response is nil after Update")
 
 	// Upsert
 	req = NewUpsertRequest(spaceName).
 		Tuple([]interface{}{uint(1003), 1}).
 		Operations(NewOperations().Add(1, 1))
 	data, err = conn.Do(req).Get()
-	if err != nil {
-		t.Fatalf("Failed to Upsert (insert): %s", err)
-	}
-	if data == nil {
-		t.Errorf("Response is nil after Upsert (insert)")
-	}
+	require.NoError(t, err, "Failed to Upsert (insert)")
+	require.NotNil(t, data, "Response is nil after Upsert (insert)")
 
 	req = NewUpsertRequest(spaceName).
 		Tuple([]interface{}{uint(1003), 1}).
 		Operations(NewOperations().Add(1, 1))
 	data, err = conn.Do(req).Get()
-	if err != nil {
-		t.Fatalf("Failed to Upsert (update): %s", err)
-	}
-	if data == nil {
-		t.Errorf("Response is nil after Upsert (update)")
-	}
+	require.NoError(t, err, "Failed to Upsert (update)")
+	require.NotNil(t, data, "Response is nil after Upsert (update)")
 
 	// Select
 	for i := 1010; i < 1020; i++ {
 		req = NewReplaceRequest(spaceName).
 			Tuple([]interface{}{uint(i), fmt.Sprintf("val %d", i), "bla"})
 		data, err = conn.Do(req).Get()
-		if err != nil {
-			t.Fatalf("Failed to Replace: %s", err)
-		}
-		if data == nil {
-			t.Errorf("Response is nil after Replace")
-		}
+		require.NoError(t, err, "Failed to Replace")
+		require.NotNil(t, data, "Response is nil after Replace")
 	}
 	req = NewSelectRequest(spaceName).
 		Index(indexName).
@@ -1970,12 +1595,8 @@ func TestClientNamed(t *testing.T) {
 		Iterator(IterEq).
 		Key([]interface{}{uint(1010)})
 	data, err = conn.Do(req).Get()
-	if err != nil {
-		t.Fatalf("Failed to Select: %s", err)
-	}
-	if data == nil {
-		t.Errorf("Response is nil after Select")
-	}
+	require.NoError(t, err, "Failed to Select")
+	require.NotNil(t, data, "Response is nil after Select")
 
 	// Select Typed
 	var tpl []Tuple
@@ -1986,12 +1607,8 @@ func TestClientNamed(t *testing.T) {
 		Iterator(IterEq).
 		Key([]interface{}{uint(1010)})
 	err = conn.Do(req).GetTyped(&tpl)
-	if err != nil {
-		t.Fatalf("Failed to SelectTyped: %s", err)
-	}
-	if len(tpl) != 1 {
-		t.Errorf("Result len of SelectTyped != 1")
-	}
+	require.NoError(t, err, "Failed to SelectTyped")
+	assert.Len(t, tpl, 1, "Result len of SelectTyped != 1")
 }
 
 func TestClientRequestObjects(t *testing.T) {
@@ -2006,12 +1623,8 @@ func TestClientRequestObjects(t *testing.T) {
 	// Ping
 	req = NewPingRequest()
 	data, err := conn.Do(req).Get()
-	if err != nil {
-		t.Fatalf("Failed to Ping: %s", err)
-	}
-	if len(data) != 0 {
-		t.Errorf("Response Body len != 0")
-	}
+	require.NoError(t, err, "Failed to Ping")
+	assert.Empty(t, data, "Response Body len != 0")
 
 	// The code prepares data.
 	for i := 1010; i < 1020; i++ {
@@ -2023,27 +1636,15 @@ func TestClientRequestObjects(t *testing.T) {
 		req = NewInsertRequest(spaceName).
 			Tuple([]interface{}{uint(i), fmt.Sprintf("val %d", i), "bla"})
 		data, err = conn.Do(req).Get()
-		if err != nil {
-			t.Fatalf("Failed to Insert: %s", err)
-		}
-		if len(data) != 1 {
-			t.Fatalf("Response Body len != 1")
-		}
+		require.NoError(t, err, "Failed to Insert")
+		require.Len(t, data, 1, "Response Body len != 1")
 		if tpl, ok := data[0].([]interface{}); !ok {
-			t.Errorf("Unexpected body of Insert")
+			assert.Fail(t, "Unexpected body of Insert")
 		} else {
-			if len(tpl) != 3 {
-				t.Errorf("Unexpected body of Insert (tuple len)")
-			}
-			if id, err := test_helpers.ConvertUint64(tpl[0]); err != nil || id != uint64(i) {
-				t.Errorf("Unexpected body of Insert (0)")
-			}
-			if h, ok := tpl[1].(string); !ok || h != fmt.Sprintf("val %d", i) {
-				t.Errorf("Unexpected body of Insert (1)")
-			}
-			if h, ok := tpl[2].(string); !ok || h != "bla" {
-				t.Errorf("Unexpected body of Insert (2)")
-			}
+			assert.Len(t, tpl, 3, "Unexpected body of Insert (tuple len)")
+			assert.EqualValues(t, i, tpl[0], "Unexpected body of Insert (0)")
+			assert.Equal(t, fmt.Sprintf("val %d", i), tpl[1], "Unexpected body of Insert (1)")
+			assert.Equal(t, "bla", tpl[2], "Unexpected body of Insert (2)")
 		}
 	}
 
@@ -2052,27 +1653,15 @@ func TestClientRequestObjects(t *testing.T) {
 		req = NewReplaceRequest(spaceName).
 			Tuple([]interface{}{uint(i), fmt.Sprintf("val %d", i), "blar"})
 		data, err = conn.Do(req).Get()
-		if err != nil {
-			t.Fatalf("Failed to Decode: %s", err)
-		}
-		if len(data) != 1 {
-			t.Fatalf("Response Body len != 1")
-		}
+		require.NoError(t, err, "Failed to Decode")
+		require.Len(t, data, 1, "Response Body len != 1")
 		if tpl, ok := data[0].([]interface{}); !ok {
-			t.Errorf("Unexpected body of Replace")
+			assert.Fail(t, "Unexpected body of Replace")
 		} else {
-			if len(tpl) != 3 {
-				t.Errorf("Unexpected body of Replace (tuple len)")
-			}
-			if id, err := test_helpers.ConvertUint64(tpl[0]); err != nil || id != uint64(i) {
-				t.Errorf("Unexpected body of Replace (0)")
-			}
-			if h, ok := tpl[1].(string); !ok || h != fmt.Sprintf("val %d", i) {
-				t.Errorf("Unexpected body of Replace (1)")
-			}
-			if h, ok := tpl[2].(string); !ok || h != "blar" {
-				t.Errorf("Unexpected body of Replace (2)")
-			}
+			assert.Len(t, tpl, 3, "Unexpected body of Replace (tuple len)")
+			assert.EqualValues(t, i, tpl[0], "Unexpected body of Replace (0)")
+			assert.Equal(t, fmt.Sprintf("val %d", i), tpl[1], "Unexpected body of Replace (1)")
+			assert.Equal(t, "blar", tpl[2], "Unexpected body of Replace (2)")
 		}
 	}
 
@@ -2080,30 +1669,16 @@ func TestClientRequestObjects(t *testing.T) {
 	req = NewDeleteRequest(spaceName).
 		Key([]interface{}{uint(1016)})
 	data, err = conn.Do(req).Get()
-	if err != nil {
-		t.Fatalf("Failed to Delete: %s", err)
-	}
-	if data == nil {
-		t.Fatalf("Response data is nil after Delete")
-	}
-	if len(data) != 1 {
-		t.Fatalf("Response Body len != 1")
-	}
+	require.NoError(t, err, "Failed to Delete")
+	require.NotNil(t, data, "Response data is nil after Delete")
+	require.Len(t, data, 1, "Response Body len != 1")
 	if tpl, ok := data[0].([]interface{}); !ok {
-		t.Errorf("Unexpected body of Delete")
+		assert.Fail(t, "Unexpected body of Delete")
 	} else {
-		if len(tpl) != 3 {
-			t.Errorf("Unexpected body of Delete (tuple len)")
-		}
-		if id, err := test_helpers.ConvertUint64(tpl[0]); err != nil || id != uint64(1016) {
-			t.Errorf("Unexpected body of Delete (0)")
-		}
-		if h, ok := tpl[1].(string); !ok || h != "val 1016" {
-			t.Errorf("Unexpected body of Delete (1)")
-		}
-		if h, ok := tpl[2].(string); !ok || h != "blar" {
-			t.Errorf("Unexpected body of Delete (2)")
-		}
+		assert.Len(t, tpl, 3, "Unexpected body of Delete (tuple len)")
+		assert.EqualValues(t, 1016, tpl[0], "Unexpected body of Delete (0)")
+		assert.Equal(t, "val 1016", tpl[1], "Unexpected body of Delete (1)")
+		assert.Equal(t, "blar", tpl[2], "Unexpected body of Delete (2)")
 	}
 
 	// Update without operations.
@@ -2111,27 +1686,15 @@ func TestClientRequestObjects(t *testing.T) {
 		Index(indexName).
 		Key([]interface{}{uint(1010)})
 	data, err = conn.Do(req).Get()
-	if err != nil {
-		t.Errorf("Failed to Update: %s", err)
-	}
-	if data == nil {
-		t.Fatalf("Response data is nil after Update")
-	}
-	if len(data) != 1 {
-		t.Fatalf("Response Data len != 1")
-	}
+	require.NoError(t, err, "Failed to Update")
+	require.NotNil(t, data, "Response data is nil after Update")
+	require.Len(t, data, 1, "Response Data len != 1")
 	if tpl, ok := data[0].([]interface{}); !ok {
-		t.Errorf("Unexpected body of Update")
+		assert.Fail(t, "Unexpected body of Update")
 	} else {
-		if id, err := test_helpers.ConvertUint64(tpl[0]); err != nil || id != uint64(1010) {
-			t.Errorf("Unexpected body of Update (0)")
-		}
-		if h, ok := tpl[1].(string); !ok || h != "val 1010" {
-			t.Errorf("Unexpected body of Update (1)")
-		}
-		if h, ok := tpl[2].(string); !ok || h != "bla" {
-			t.Errorf("Unexpected body of Update (2)")
-		}
+		assert.EqualValues(t, 1010, tpl[0], "Unexpected body of Update (0)")
+		assert.Equal(t, "val 1010", tpl[1], "Unexpected body of Update (1)")
+		assert.Equal(t, "bla", tpl[2], "Unexpected body of Update (2)")
 	}
 
 	// Update.
@@ -2140,136 +1703,82 @@ func TestClientRequestObjects(t *testing.T) {
 		Key([]interface{}{uint(1010)}).
 		Operations(NewOperations().Assign(1, "bye").Insert(2, 1))
 	data, err = conn.Do(req).Get()
-	if err != nil {
-		t.Errorf("Failed to Update: %s", err)
-	}
-	if len(data) != 1 {
-		t.Fatalf("Response Data len != 1")
-	}
+	require.NoError(t, err, "Failed to Update")
+	require.Len(t, data, 1, "Response Data len != 1")
 	if tpl, ok := data[0].([]interface{}); !ok {
-		t.Errorf("Unexpected body of Select")
+		assert.Fail(t, "Unexpected body of Select")
 	} else {
-		if id, err := test_helpers.ConvertUint64(tpl[0]); err != nil || id != 1010 {
-			t.Errorf("Unexpected body of Update (0)")
-		}
-		if h, ok := tpl[1].(string); !ok || h != "bye" {
-			t.Errorf("Unexpected body of Update (1)")
-		}
-		if h, err := test_helpers.ConvertUint64(tpl[2]); err != nil || h != 1 {
-			t.Errorf("Unexpected body of Update (2)")
-		}
+		assert.EqualValues(t, 1010, tpl[0], "Unexpected body of Update (0)")
+		assert.Equal(t, "bye", tpl[1], "Unexpected body of Update (1)")
+		assert.EqualValues(t, 1, tpl[2], "Unexpected body of Update (2)")
 	}
 
 	// Upsert without operations.
 	req = NewUpsertRequest(spaceNo).
 		Tuple([]interface{}{uint(1010), "hi", "hi"})
 	data, err = conn.Do(req).Get()
-	if err != nil {
-		t.Errorf("Failed to Upsert (update): %s", err)
-	}
-	if len(data) != 0 {
-		t.Fatalf("Response Data len != 0")
-	}
+	require.NoError(t, err, "Failed to Upsert (update)")
+	require.Empty(t, data, "Response Data len != 0")
 
 	// Upsert.
 	req = NewUpsertRequest(spaceNo).
 		Tuple([]interface{}{uint(1010), "hi", "hi"}).
 		Operations(NewOperations().Assign(2, "bye"))
 	data, err = conn.Do(req).Get()
-	if err != nil {
-		t.Errorf("Failed to Upsert (update): %s", err)
-	}
-	if len(data) != 0 {
-		t.Fatalf("Response Data len != 0")
-	}
+	require.NoError(t, err, "Failed to Upsert (update)")
+	require.Empty(t, data, "Response Data len != 0")
 
 	// Call16 vs Call17
 	req = NewCall16Request("simple_concat").Args([]interface{}{"1"})
 	data, err = conn.Do(req).Get()
-	if err != nil {
-		t.Errorf("Failed to use Call")
-	}
-	if val, ok := data[0].([]interface{})[0].(string); !ok || val != "11" {
-		t.Errorf("result is not {{1}} : %v", data)
-	}
+	require.NoError(t, err, "Failed to use Call")
+	assert.Equal(t, "11", data[0].([]interface{})[0], "result is not {{1}}")
 
 	// Call17
 	req = NewCall17Request("simple_concat").Args([]interface{}{"1"})
 	data, err = conn.Do(req).Get()
-	if err != nil {
-		t.Errorf("Failed to use Call17")
-	}
-	if val, ok := data[0].(string); !ok || val != "11" {
-		t.Errorf("result is not {{1}} : %v", data)
-	}
+	require.NoError(t, err, "Failed to use Call17")
+	assert.Equal(t, "11", data[0], "result is not {{1}}")
 
 	// Eval
 	req = NewEvalRequest("return 5 + 6")
 	data, err = conn.Do(req).Get()
-	if err != nil {
-		t.Fatalf("Failed to Eval: %s", err)
-	}
-	if len(data) < 1 {
-		t.Errorf("Response.Data is empty after Eval")
-	}
-	if val, err := test_helpers.ConvertUint64(data[0]); err != nil || val != 11 {
-		t.Errorf("5 + 6 == 11, but got %v", val)
-	}
+	require.NoError(t, err, "Failed to Eval")
+	assert.GreaterOrEqual(t, len(data), 1, "Response.Data is empty after Eval")
+	assert.EqualValues(t, 11, data[0], "5 + 6 == 11, but got")
 
 	// Tarantool supports SQL since version 2.0.0
 	isLess, err := test_helpers.IsTarantoolVersionLess(2, 0, 0)
-	if err != nil {
-		t.Fatalf("Could not check the Tarantool version: %s", err)
-	}
+	require.NoError(t, err, "Could not check the Tarantool version")
 	if isLess {
 		return
 	}
 
 	req = NewExecuteRequest(createTableQuery)
 	resp, err := conn.Do(req).GetResponse()
-	if err != nil {
-		t.Fatalf("Failed to Execute: %s", err)
-	}
-	if resp == nil {
-		t.Fatal("Response is nil after Execute")
-	}
+	require.NoError(t, err, "Failed to Execute")
+	require.NotNil(t, resp, "Response is nil after Execute")
 	data, err = resp.Decode()
-	if err != nil {
-		t.Fatalf("Failed to Decode: %s", err)
-	}
-	if len(data) != 0 {
-		t.Fatalf("Response Body len != 0")
-	}
+	require.NoError(t, err, "Failed to Decode")
+	require.Empty(t, data, "Response Body len != 0")
 	exResp, ok := resp.(*ExecuteResponse)
 	assert.True(t, ok, "Got wrong response type")
 	sqlInfo, err := exResp.SQLInfo()
 	require.NoError(t, err, "Error while getting SQLInfo")
-	if sqlInfo.AffectedCount != 1 {
-		t.Errorf("Incorrect count of created spaces: %d", sqlInfo.AffectedCount)
-	}
+	assert.Equal(t, uint64(1), sqlInfo.AffectedCount, "Incorrect count of created spaces")
 
 	req = NewExecuteRequest(dropQuery2)
 	resp, err = conn.Do(req).GetResponse()
-	if err != nil {
-		t.Fatalf("Failed to Execute: %s", err)
-	}
-	if resp == nil {
-		t.Fatal("Response is nil after Execute")
-	}
+	require.NoError(t, err, "Failed to Execute")
+	require.NotNil(t, resp, "Response is nil after Execute")
 	data, err = resp.Decode()
-	if err != nil {
-		t.Fatalf("Failed to Decode: %s", err)
-	}
-	if len(data) != 0 {
-		t.Fatalf("Response Body len != 0")
-	}
+	require.NoError(t, err, "Failed to Decode")
+	require.Empty(t, data, "Response Body len != 0")
 	exResp, ok = resp.(*ExecuteResponse)
 	assert.True(t, ok, "Got wrong response type")
 	sqlInfo, err = exResp.SQLInfo()
 	require.NoError(t, err, "Error while getting SQLInfo")
-	if sqlInfo.AffectedCount != 1 {
-		t.Errorf("Incorrect count of dropped spaces: %d", sqlInfo.AffectedCount)
-	}
+	assert.Equal(t, uint64(1), sqlInfo.AffectedCount, "Incorrect count of dropped spaces")
 }
 
 func testConnectionDoSelectRequestPrepare(t *testing.T, conn Connector) {
@@ -2278,9 +1787,8 @@ func testConnectionDoSelectRequestPrepare(t *testing.T, conn Connector) {
 	for i := 1010; i < 1020; i++ {
 		req := NewReplaceRequest(spaceName).Tuple(
 			[]interface{}{uint(i), fmt.Sprintf("val %d", i), "bla"})
-		if _, err := conn.Do(req).Get(); err != nil {
-			t.Fatalf("Unable to prepare tuples: %s", err)
-		}
+		_, err := conn.Do(req).Get()
+		require.NoError(t, err, "Unable to prepare tuples")
 	}
 }
 
@@ -2288,47 +1796,28 @@ func testConnectionDoSelectRequestCheck(t *testing.T,
 	resp *SelectResponse, err error, pos bool, dataLen int, firstKey uint64) {
 	t.Helper()
 
-	if err != nil {
-		t.Fatalf("Failed to Select: %s", err)
-	}
-	if resp == nil {
-		t.Fatalf("Response is nil after Select")
-	}
+	require.NoError(t, err, "Failed to Select")
+	require.NotNil(t, resp, "Response is nil after Select")
 	respPos, err := resp.Pos()
-	if err != nil {
-		t.Errorf("Error while getting Pos: %s", err)
+	require.NoError(t, err, "Error while getting Pos")
+	if !pos {
+		assert.Nil(t, respPos, "Response should not have a position descriptor")
 	}
-	if !pos && respPos != nil {
-		t.Errorf("Response should not have a position descriptor")
-	}
-	if pos && respPos == nil {
-		t.Fatalf("A response must have a position descriptor")
+	if pos {
+		require.NotNil(t, respPos, "A response must have a position descriptor")
 	}
 	data, err := resp.Decode()
-	if err != nil {
-		t.Fatalf("Failed to Decode: %s", err)
-	}
-	if len(data) != dataLen {
-		t.Fatalf("Response Data len %d != %d", len(data), dataLen)
-	}
+	require.NoError(t, err, "Failed to Decode")
+	require.Len(t, data, dataLen, "Response Data len")
 	for i := 0; i < dataLen; i++ {
 		key := firstKey + uint64(i)
 		if tpl, ok := data[i].([]interface{}); !ok {
-			t.Errorf("Unexpected body of Select")
+			assert.Fail(t, "Unexpected body of Select")
 		} else {
-			if id, err := test_helpers.ConvertUint64(tpl[0]); err != nil || id != key {
-				t.Errorf("Unexpected body of Select (0) %v, expected %d",
-					tpl[0], key)
-			}
+			assert.EqualValues(t, key, tpl[0], "Unexpected body of Select (0)")
 			expectedSecond := fmt.Sprintf("val %d", key)
-			if h, ok := tpl[1].(string); !ok || h != expectedSecond {
-				t.Errorf("Unexpected body of Select (1) %q, expected %q",
-					tpl[1].(string), expectedSecond)
-			}
-			if h, ok := tpl[2].(string); !ok || h != "bla" {
-				t.Errorf("Unexpected body of Select (2) %q, expected %q",
-					tpl[2].(string), "bla")
-			}
+			assert.Equal(t, expectedSecond, tpl[1], "Unexpected body of Select (1)")
+			assert.Equal(t, "bla", tpl[2], "Unexpected body of Select (2)")
 		}
 	}
 }
@@ -2359,17 +1848,11 @@ func TestConnectionDoWatchOnceRequest(t *testing.T) {
 	defer func() { _ = conn.Close() }()
 
 	_, err := conn.Do(NewBroadcastRequest("hello").Value("world")).Get()
-	if err != nil {
-		t.Fatalf("Failed to create a broadcast : %s", err.Error())
-	}
+	require.NoError(t, err, "Failed to create a broadcast")
 
 	data, err := conn.Do(NewWatchOnceRequest("hello")).Get()
-	if err != nil {
-		t.Fatalf("Failed to WatchOnce: %s", err.Error())
-	}
-	if len(data) < 1 || data[0] != "world" {
-		t.Errorf("Failed to WatchOnce: wrong value returned %v", data)
-	}
+	require.NoError(t, err, "Failed to WatchOnce")
+	assert.Equal(t, "world", data[0], "Failed to WatchOnce: wrong value returned")
 }
 
 func TestConnectionDoWatchOnceOnEmptyKey(t *testing.T) {
@@ -2379,12 +1862,8 @@ func TestConnectionDoWatchOnceOnEmptyKey(t *testing.T) {
 	defer func() { _ = conn.Close() }()
 
 	data, err := conn.Do(NewWatchOnceRequest("notexists!")).Get()
-	if err != nil {
-		t.Fatalf("Failed to WatchOnce: %s", err.Error())
-	}
-	if len(data) > 0 {
-		t.Errorf("Failed to WatchOnce: wrong value returned %v", data)
-	}
+	require.NoError(t, err, "Failed to WatchOnce")
+	assert.Empty(t, data, "Failed to WatchOnce: wrong value returned")
 }
 
 func TestConnectionDoSelectRequest_fetch_pos(t *testing.T) {
@@ -2471,12 +1950,8 @@ func TestCallRequest(t *testing.T) {
 
 	req := NewCallRequest("simple_concat").Args([]interface{}{"1"})
 	data, err := conn.Do(req).Get()
-	if err != nil {
-		t.Errorf("Failed to use Call")
-	}
-	if val, ok := data[0].(string); !ok || val != "11" {
-		t.Errorf("result is not {{1}} : %v", data)
-	}
+	require.NoError(t, err, "Failed to use Call")
+	assert.Equal(t, "11", data[0], "result is not {{1}}")
 }
 
 func TestClientRequestObjectsWithNilContext(t *testing.T) {
@@ -2484,12 +1959,8 @@ func TestClientRequestObjectsWithNilContext(t *testing.T) {
 	defer func() { _ = conn.Close() }()
 	req := NewPingRequest().Context(nil)
 	data, err := conn.Do(req).Get()
-	if err != nil {
-		t.Fatalf("Failed to Ping: %s", err)
-	}
-	if len(data) != 0 {
-		t.Errorf("Response Body len != 0")
-	}
+	require.NoError(t, err, "Failed to Ping")
+	assert.Empty(t, data, "Response Body len != 0")
 }
 
 func TestClientRequestObjectsWithPassedCanceledContext(t *testing.T) {
@@ -2500,12 +1971,10 @@ func TestClientRequestObjectsWithPassedCanceledContext(t *testing.T) {
 	req := NewPingRequest().Context(ctx)
 	cancel()
 	resp, err := conn.Do(req).Get()
-	if !contextDoneErrRegexp.MatchString(err.Error()) {
-		t.Fatalf("Failed to catch an error from done context")
-	}
-	if resp != nil {
-		t.Fatalf("Response is not nil after the occurred error")
-	}
+	require.True(t,
+		contextDoneErrRegexp.MatchString(err.Error()),
+		"Failed to catch an error from done context")
+	require.Nil(t, resp, "Response is not nil after the occurred error")
 }
 
 // Checking comparable with simple context.WithCancel.
@@ -2599,20 +2068,12 @@ func TestClientRequestObjectsWithContext(t *testing.T) {
 	req.wg.Done()
 
 	futWg.Wait()
-	if fut == nil {
-		t.Fatalf("fut must be not nil")
-	}
+	require.NotNil(t, fut, "fut must be not nil")
 
 	resp, err := fut.Get()
-	if resp != nil {
-		t.Fatalf("response must be nil")
-	}
-	if err == nil {
-		t.Fatalf("caught nil error")
-	}
-	if !contextDoneErrRegexp.MatchString(err.Error()) {
-		t.Fatalf("wrong error caught: %v", err)
-	}
+	require.Nil(t, resp, "response must be nil")
+	require.Error(t, err, "caught nil error")
+	require.True(t, contextDoneErrRegexp.MatchString(err.Error()), "wrong error caught")
 }
 
 func TestComplexStructs(t *testing.T) {
@@ -2623,9 +2084,7 @@ func TestComplexStructs(t *testing.T) {
 
 	tuple := Tuple2{Cid: 777, Orig: "orig", Members: []Member{{"lol", "", 1}, {"wut", "", 3}}}
 	_, err = conn.Do(NewReplaceRequest(spaceNo).Tuple(&tuple)).Get()
-	if err != nil {
-		t.Fatalf("Failed to insert: %s", err)
-	}
+	require.NoError(t, err, "Failed to insert")
 
 	var tuples [1]Tuple2
 	err = conn.Do(NewSelectRequest(spaceNo).
@@ -2634,21 +2093,12 @@ func TestComplexStructs(t *testing.T) {
 		Iterator(IterEq).
 		Key([]interface{}{777}),
 	).GetTyped(&tuples)
-	if err != nil {
-		t.Fatalf("Failed to selectTyped: %s", err)
-	}
+	require.NoError(t, err, "Failed to selectTyped")
 
-	if len(tuples) != 1 {
-		t.Errorf("Failed to selectTyped: unexpected array length %d", len(tuples))
-		return
-	}
-
-	if tuple.Cid != tuples[0].Cid ||
-		len(tuple.Members) != len(tuples[0].Members) ||
-		tuple.Members[1].Name != tuples[0].Members[1].Name {
-		t.Errorf("Failed to selectTyped: incorrect data")
-		return
-	}
+	assert.Len(t, tuples, 1, "Failed to selectTyped: unexpected array length")
+	assert.Equal(t, tuple.Cid, tuples[0].Cid)
+	assert.Len(t, tuple.Members, len(tuples[0].Members))
+	assert.Equal(t, tuple.Members[1].Name, tuples[0].Members[1].Name)
 }
 
 func TestStream_IdValues(t *testing.T) {
@@ -2676,9 +2126,7 @@ func TestStream_IdValues(t *testing.T) {
 		t.Run(fmt.Sprintf("%d", id), func(t *testing.T) {
 			stream.Id = id
 			_, err := stream.Do(req).Get()
-			if err != nil {
-				t.Fatalf("Failed to Ping: %s", err)
-			}
+			require.NoError(t, err, "Failed to Ping")
 		})
 	}
 }
@@ -2698,17 +2146,13 @@ func TestStream_Commit(t *testing.T) {
 	// Begin transaction
 	req = NewBeginRequest()
 	_, err = stream.Do(req).Get()
-	if err != nil {
-		t.Fatalf("Failed to Begin: %s", err)
-	}
+	require.NoError(t, err, "Failed to Begin")
 
 	// Insert in stream
 	req = NewInsertRequest(spaceName).
 		Tuple([]interface{}{uint(1001), "hello2", "world2"})
 	_, err = stream.Do(req).Get()
-	if err != nil {
-		t.Fatalf("Failed to Insert: %s", err)
-	}
+	require.NoError(t, err, "Failed to Insert")
 	defer test_helpers.DeleteRecordByKey(t, conn, spaceNo, indexNo, []interface{}{uint(1001)})
 
 	// Select not related to the transaction
@@ -2720,62 +2164,36 @@ func TestStream_Commit(t *testing.T) {
 		Iterator(IterEq).
 		Key([]interface{}{uint(1001)})
 	data, err := conn.Do(selectReq).Get()
-	if err != nil {
-		t.Fatalf("Failed to Select: %s", err)
-	}
-	if len(data) != 0 {
-		t.Fatalf("Response Data len != 0")
-	}
+	require.NoError(t, err, "Failed to Select")
+	require.Empty(t, data, "Response Data len != 0")
 
 	// Select in stream
 	data, err = stream.Do(selectReq).Get()
-	if err != nil {
-		t.Fatalf("Failed to Select: %s", err)
-	}
-	if len(data) != 1 {
-		t.Fatalf("Response Data len != 1")
-	}
+	require.NoError(t, err, "Failed to Select")
+	require.Len(t, data, 1, "Response Data len != 1")
 	if tpl, ok := data[0].([]interface{}); !ok {
-		t.Fatalf("Unexpected body of Select")
+		require.Fail(t, "Unexpected body of Select")
 	} else {
-		if id, err := test_helpers.ConvertUint64(tpl[0]); err != nil || id != 1001 {
-			t.Fatalf("Unexpected body of Select (0)")
-		}
-		if h, ok := tpl[1].(string); !ok || h != "hello2" {
-			t.Fatalf("Unexpected body of Select (1)")
-		}
-		if h, ok := tpl[2].(string); !ok || h != "world2" {
-			t.Fatalf("Unexpected body of Select (2)")
-		}
+		require.EqualValues(t, 1001, tpl[0], "Unexpected body of Select (0)")
+		require.Equal(t, "hello2", tpl[1], "Unexpected body of Select (1)")
+		require.Equal(t, "world2", tpl[2], "Unexpected body of Select (2)")
 	}
 
 	// Commit transaction
 	req = NewCommitRequest()
 	_, err = stream.Do(req).Get()
-	if err != nil {
-		t.Fatalf("Failed to Commit: %s", err)
-	}
+	require.NoError(t, err, "Failed to Commit")
 
 	// Select outside of transaction
 	data, err = conn.Do(selectReq).Get()
-	if err != nil {
-		t.Fatalf("Failed to Select: %s", err)
-	}
-	if len(data) != 1 {
-		t.Fatalf("Response Data len != 1")
-	}
+	require.NoError(t, err, "Failed to Select")
+	require.Len(t, data, 1, "Response Data len != 1")
 	if tpl, ok := data[0].([]interface{}); !ok {
-		t.Fatalf("Unexpected body of Select")
+		require.Fail(t, "Unexpected body of Select")
 	} else {
-		if id, err := test_helpers.ConvertUint64(tpl[0]); err != nil || id != 1001 {
-			t.Fatalf("Unexpected body of Select (0)")
-		}
-		if h, ok := tpl[1].(string); !ok || h != "hello2" {
-			t.Fatalf("Unexpected body of Select (1)")
-		}
-		if h, ok := tpl[2].(string); !ok || h != "world2" {
-			t.Fatalf("Unexpected body of Select (2)")
-		}
+		require.EqualValues(t, 1001, tpl[0], "Unexpected body of Select (0)")
+		require.Equal(t, "hello2", tpl[1], "Unexpected body of Select (1)")
+		require.Equal(t, "world2", tpl[2], "Unexpected body of Select (2)")
 	}
 }
 
@@ -2794,17 +2212,13 @@ func TestStream_Rollback(t *testing.T) {
 	// Begin transaction
 	req = NewBeginRequest()
 	_, err = stream.Do(req).Get()
-	if err != nil {
-		t.Fatalf("Failed to Begin: %s", err)
-	}
+	require.NoErrorf(t, err, "Failed to Begin")
 
 	// Insert in stream
 	req = NewInsertRequest(spaceName).
 		Tuple([]interface{}{uint(1001), "hello2", "world2"})
 	_, err = stream.Do(req).Get()
-	if err != nil {
-		t.Fatalf("Failed to Insert: %s", err)
-	}
+	require.NoErrorf(t, err, "Failed to Insert")
 	defer test_helpers.DeleteRecordByKey(t, conn, spaceNo, indexNo, []interface{}{uint(1001)})
 
 	// Select not related to the transaction
@@ -2816,59 +2230,43 @@ func TestStream_Rollback(t *testing.T) {
 		Iterator(IterEq).
 		Key([]interface{}{uint(1001)})
 	data, err := conn.Do(selectReq).Get()
-	if err != nil {
-		t.Fatalf("Failed to Select: %s", err)
-	}
-	if len(data) != 0 {
-		t.Fatalf("Response Data len != 0")
-	}
+	require.NoErrorf(t, err, "Failed to Select")
+	require.Emptyf(t, data, "Response Data len != 0")
 
 	// Select in stream
 	data, err = stream.Do(selectReq).Get()
-	if err != nil {
-		t.Fatalf("Failed to Select: %s", err)
-	}
-	if len(data) != 1 {
-		t.Fatalf("Response Data len != 1")
-	}
-	if tpl, ok := data[0].([]interface{}); !ok {
-		t.Fatalf("Unexpected body of Select")
-	} else {
-		if id, err := test_helpers.ConvertUint64(tpl[0]); err != nil || id != 1001 {
-			t.Fatalf("Unexpected body of Select (0)")
-		}
-		if h, ok := tpl[1].(string); !ok || h != "hello2" {
-			t.Fatalf("Unexpected body of Select (1)")
-		}
-		if h, ok := tpl[2].(string); !ok || h != "world2" {
-			t.Fatalf("Unexpected body of Select (2)")
-		}
-	}
+	require.NoErrorf(t, err, "Failed to Select")
+	require.Lenf(t, data, 1, "Response Data len != 1")
+
+	tpl, ok := data[0].([]interface{})
+	require.Truef(t, ok, "Unexpected body of Select")
+
+	id, err := test_helpers.ConvertUint64(tpl[0])
+	require.NoErrorf(t, err, "Unexpected body of Select (0)")
+	require.Equalf(t, uint64(1001), id, "Unexpected body of Select (0)")
+
+	h, ok := tpl[1].(string)
+	require.Truef(t, ok, "Unexpected body of Select (1)")
+	require.Equalf(t, "hello2", h, "Unexpected body of Select (1)")
+
+	h2, ok := tpl[2].(string)
+	require.Truef(t, ok, "Unexpected body of Select (2)")
+	require.Equalf(t, "world2", h2, "Unexpected body of Select (2)")
 
 	// Rollback transaction
 	req = NewRollbackRequest()
 	_, err = stream.Do(req).Get()
-	if err != nil {
-		t.Fatalf("Failed to Rollback: %s", err)
-	}
+	require.NoErrorf(t, err, "Failed to Rollback")
 
 	// Select outside of transaction
 	data, err = conn.Do(selectReq).Get()
-	if err != nil {
-		t.Fatalf("Failed to Select: %s", err)
-	}
-	if len(data) != 0 {
-		t.Fatalf("Response Data len != 0")
-	}
+	require.NoErrorf(t, err, "Failed to Select")
+	require.Emptyf(t, data, "Response Data len != 0")
 
 	// Select inside of stream after rollback
 	_, err = stream.Do(selectReq).Get()
-	if err != nil {
-		t.Fatalf("Failed to Select: %s", err)
-	}
-	if len(data) != 0 {
-		t.Fatalf("Response Data len != 0")
-	}
+	require.NoErrorf(t, err, "Failed to Select")
+	require.Emptyf(t, data, "Response Data len != 0")
 }
 
 func TestStream_TxnIsolationLevel(t *testing.T) {
@@ -2963,12 +2361,8 @@ func TestStream_DoWithStrangerConn(t *testing.T) {
 	req := test_helpers.NewMockRequest()
 
 	_, err := stream.Do(req).Get()
-	if err == nil {
-		t.Fatalf("nil error has been caught")
-	}
-	if err.Error() != expectedErr.Error() {
-		t.Fatalf("Unexpected error has been caught: %s", err.Error())
-	}
+	require.Errorf(t, err, "nil error has been caught")
+	require.EqualError(t, err, expectedErr.Error())
 }
 
 func TestStream_DoWithClosedConn(t *testing.T) {
@@ -2984,12 +2378,8 @@ func TestStream_DoWithClosedConn(t *testing.T) {
 	// Begin transaction
 	req := NewBeginRequest()
 	_, err := stream.Do(req).Get()
-	if err == nil {
-		t.Fatalf("nil error has been caught")
-	}
-	if !strings.Contains(err.Error(), expectedErr.Error()) {
-		t.Fatalf("Unexpected error has been caught: %s", err.Error())
-	}
+	require.Errorf(t, err, "nil error has been caught")
+	require.Contains(t, err.Error(), expectedErr.Error())
 }
 
 func TestConnectionBoxSessionPushUnsupported(t *testing.T) {
@@ -3357,24 +2747,16 @@ func TestConnection_NewWatcher(t *testing.T) {
 	watcher, err := conn.NewWatcher(key, func(event WatchEvent) {
 		events <- event
 	})
-	if err != nil {
-		t.Fatalf("Failed to create a watch: %s", err)
-	}
+	require.NoErrorf(t, err, "Failed to create a watch")
 	defer watcher.Unregister()
 
 	select {
 	case event := <-events:
-		if event.Conn != conn {
-			t.Errorf("Unexpected event connection: %v", event.Conn)
-		}
-		if event.Key != key {
-			t.Errorf("Unexpected event key: %s", event.Key)
-		}
-		if event.Value != nil {
-			t.Errorf("Unexpected event value: %v", event.Value)
-		}
+		assert.Equal(t, conn, event.Conn, "Unexpected event connection")
+		assert.Equal(t, key, event.Key, "Unexpected event key")
+		assert.Nil(t, event.Value, "Unexpected event value")
 	case <-time.After(time.Second):
-		t.Fatalf("Failed to get watch event.")
+		require.Fail(t, "Failed to get watch event.")
 	}
 }
 
@@ -3394,9 +2776,7 @@ func newWatcherReconnectionPrepareTestConnection(t *testing.T) (*Connection, con
 		RetryTimeout: 500 * time.Millisecond,
 	})
 	t.Cleanup(func() { test_helpers.StopTarantoolWithCleanup(inst) })
-	if err != nil {
-		t.Fatalf("Unable to start Tarantool: %s", err)
-	}
+	require.NoErrorf(t, err, "Unable to start Tarantool")
 
 	ctx, cancel := test_helpers.GetConnectContext()
 
@@ -3405,9 +2785,7 @@ func newWatcherReconnectionPrepareTestConnection(t *testing.T) (*Connection, con
 	reconnectOpts.MaxReconnects = 0
 	reconnectOpts.Notify = make(chan ConnEvent)
 	conn, err := Connect(ctx, testDialer, reconnectOpts)
-	if err != nil {
-		t.Fatalf("Connection was not established: %v", err)
-	}
+	require.NoErrorf(t, err, "Connection was not established")
 
 	test_helpers.StopTarantool(inst)
 
@@ -3479,9 +2857,7 @@ func TestConnection_NewWatcher_reconnect(t *testing.T) {
 		RetryTimeout: 500 * time.Millisecond,
 	})
 	defer test_helpers.StopTarantoolWithCleanup(inst)
-	if err != nil {
-		t.Fatalf("Unable to start Tarantool: %s", err)
-	}
+	require.NoErrorf(t, err, "Unable to start Tarantool")
 
 	reconnectOpts := opts
 	reconnectOpts.Reconnect = 100 * time.Millisecond
@@ -3495,23 +2871,19 @@ func TestConnection_NewWatcher_reconnect(t *testing.T) {
 	watcher, err := conn.NewWatcher(key, func(event WatchEvent) {
 		events <- event
 	})
-	if err != nil {
-		t.Fatalf("Failed to create a watch: %s", err)
-	}
+	require.NoErrorf(t, err, "Failed to create a watch")
 	defer watcher.Unregister()
 
 	<-events
 
 	test_helpers.StopTarantool(inst)
-	if err := test_helpers.RestartTarantool(inst); err != nil {
-		t.Fatalf("Unable to restart Tarantool: %s", err)
-	}
+	require.NoErrorf(t, test_helpers.RestartTarantool(inst), "Unable to restart Tarantool")
 
 	maxTime := reconnectOpts.Reconnect * time.Duration(reconnectOpts.MaxReconnects)
 	select {
 	case <-events:
 	case <-time.After(maxTime):
-		t.Fatalf("Failed to get watch event.")
+		require.Fail(t, "Failed to get watch event.")
 	}
 }
 
@@ -3525,12 +2897,8 @@ func TestBroadcastRequest(t *testing.T) {
 	defer func() { _ = conn.Close() }()
 
 	data, err := conn.Do(NewBroadcastRequest(key).Value(value)).Get()
-	if err != nil {
-		t.Fatalf("Got broadcast error: %s", err)
-	}
-	if !reflect.DeepEqual(data, []interface{}{}) {
-		t.Errorf("Got unexpected broadcast response data: %v", data)
-	}
+	require.NoErrorf(t, err, "Got broadcast error")
+	assert.Equal(t, []interface{}{}, data, "Got unexpected broadcast response data")
 
 	events := make(chan WatchEvent)
 	defer close(events)
@@ -3538,24 +2906,16 @@ func TestBroadcastRequest(t *testing.T) {
 	watcher, err := conn.NewWatcher(key, func(event WatchEvent) {
 		events <- event
 	})
-	if err != nil {
-		t.Fatalf("Failed to create a watch: %s", err)
-	}
+	require.NoErrorf(t, err, "Failed to create a watch")
 	defer watcher.Unregister()
 
 	select {
 	case event := <-events:
-		if event.Conn != conn {
-			t.Errorf("Unexpected event connection: %v", event.Conn)
-		}
-		if event.Key != key {
-			t.Errorf("Unexpected event key: %s", event.Key)
-		}
-		if event.Value != value {
-			t.Errorf("Unexpected event value: %v", event.Value)
-		}
+		assert.Equal(t, conn, event.Conn, "Unexpected event connection")
+		assert.Equal(t, key, event.Key, "Unexpected event key")
+		assert.Equal(t, value, event.Value, "Unexpected event value")
 	case <-time.After(time.Second):
-		t.Fatalf("Failed to get watch event.")
+		require.Fail(t, "Failed to get watch event.")
 	}
 }
 
@@ -3573,31 +2933,21 @@ func TestBroadcastRequest_multi(t *testing.T) {
 	watcher, err := conn.NewWatcher(key, func(event WatchEvent) {
 		events <- event
 	})
-	if err != nil {
-		t.Fatalf("Failed to create a watch: %s", err)
-	}
+	require.NoErrorf(t, err, "Failed to create a watch")
 	defer watcher.Unregister()
 
 	<-events // Skip an initial event.
 	for i := 0; i < 10; i++ {
 		val := fmt.Sprintf("%d", i)
 		_, err := conn.Do(NewBroadcastRequest(key).Value(val)).Get()
-		if err != nil {
-			t.Fatalf("Failed to send a broadcast request: %s", err)
-		}
+		require.NoErrorf(t, err, "Failed to send a broadcast request")
 		select {
 		case event := <-events:
-			if event.Conn != conn {
-				t.Errorf("Unexpected event connection: %v", event.Conn)
-			}
-			if event.Key != key {
-				t.Errorf("Unexpected event key: %s", event.Key)
-			}
-			if event.Value.(string) != val {
-				t.Errorf("Unexpected event value: %v", event.Value)
-			}
+			assert.Equal(t, conn, event.Conn, "Unexpected event connection")
+			assert.Equal(t, key, event.Key, "Unexpected event key")
+			assert.Equal(t, val, event.Value.(string), "Unexpected event value")
 		case <-time.After(time.Second):
-			t.Fatalf("Failed to get watch event %d", i)
+			require.Failf(t, "Failed to get watch event", "%d", i)
 		}
 	}
 }
@@ -3624,9 +2974,7 @@ func TestConnection_NewWatcher_multiOnKey(t *testing.T) {
 		watcher, err := conn.NewWatcher(key, func(event WatchEvent) {
 			channel <- event
 		})
-		if err != nil {
-			t.Fatalf("Failed to create a watch: %s", err)
-		}
+		require.NoErrorf(t, err, "Failed to create a watch")
 		defer watcher.Unregister()
 	}
 
@@ -3634,29 +2982,21 @@ func TestConnection_NewWatcher_multiOnKey(t *testing.T) {
 		select {
 		case <-ch: // Skip an initial event.
 		case <-time.After(2 * time.Second):
-			t.Fatalf("Failed to skip watch event for %d callback", i)
+			require.Failf(t, "Failed to skip watch event for callback", "%d", i)
 		}
 	}
 
 	_, err := conn.Do(NewBroadcastRequest(key).Value(value)).Get()
-	if err != nil {
-		t.Fatalf("Failed to send a broadcast request: %s", err)
-	}
+	require.NoErrorf(t, err, "Failed to send a broadcast request")
 
 	for i, ch := range events {
 		select {
 		case event := <-ch:
-			if event.Conn != conn {
-				t.Errorf("Unexpected event connection: %v", event.Conn)
-			}
-			if event.Key != key {
-				t.Errorf("Unexpected event key: %s", event.Key)
-			}
-			if event.Value.(string) != value {
-				t.Errorf("Unexpected event value: %v", event.Value)
-			}
+			assert.Equal(t, conn, event.Conn, "Unexpected event connection")
+			assert.Equal(t, key, event.Key, "Unexpected event key")
+			assert.Equal(t, value, event.Value.(string), "Unexpected event value")
 		case <-time.After(2 * time.Second):
-			t.Fatalf("Failed to get watch event from callback %d", i)
+			require.Failf(t, "Failed to get watch event from callback", "%d", i)
 		}
 	}
 }
@@ -3675,21 +3015,17 @@ func TestWatcher_Unregister(t *testing.T) {
 	watcher, err := conn.NewWatcher(key, func(event WatchEvent) {
 		events <- event
 	})
-	if err != nil {
-		t.Fatalf("Failed to create a watch: %s", err)
-	}
+	require.NoErrorf(t, err, "Failed to create a watch")
 
 	<-events
 	watcher.Unregister()
 
 	_, err = conn.Do(NewBroadcastRequest(key).Value(value)).Get()
-	if err != nil {
-		t.Fatalf("Got broadcast error: %s", err)
-	}
+	require.NoErrorf(t, err, "Got broadcast error")
 
 	select {
 	case event := <-events:
-		t.Fatalf("Get unexpected events: %v", event)
+		require.Failf(t, "Get unexpected events", "%v", event)
 	case <-time.After(time.Second):
 	}
 }
@@ -3732,7 +3068,7 @@ func TestConnection_NewWatcher_concurrent(t *testing.T) {
 	close(errors)
 
 	for err := range errors {
-		t.Errorf("An error found: %s", err)
+		assert.NoError(t, err, "An error found")
 	}
 }
 
@@ -3746,9 +3082,7 @@ func TestWatcher_Unregister_concurrent(t *testing.T) {
 	defer func() { _ = conn.Close() }()
 
 	watcher, err := conn.NewWatcher(key, func(event WatchEvent) {})
-	if err != nil {
-		t.Fatalf("Failed to create a watch: %s", err)
-	}
+	require.NoErrorf(t, err, "Failed to create a watch")
 
 	var wg sync.WaitGroup
 	wg.Add(testConcurrency)
@@ -3777,9 +3111,7 @@ func TestConnection_named_index_after_reconnect(t *testing.T) {
 		RetryTimeout: 500 * time.Millisecond,
 	})
 	defer test_helpers.StopTarantoolWithCleanup(inst)
-	if err != nil {
-		t.Fatalf("Unable to start Tarantool: %s", err)
-	}
+	require.NoErrorf(t, err, "Unable to start Tarantool")
 
 	reconnectOpts := opts
 	reconnectOpts.Reconnect = 100 * time.Millisecond
@@ -3792,13 +3124,9 @@ func TestConnection_named_index_after_reconnect(t *testing.T) {
 
 	request := NewSelectRequest("test").Index("primary").Limit(1)
 	_, err = conn.Do(request).Get()
-	if err == nil {
-		t.Fatalf("An error expected.")
-	}
+	require.Errorf(t, err, "An error expected")
 
-	if err := test_helpers.RestartTarantool(inst); err != nil {
-		t.Fatalf("Unable to restart Tarantool: %s", err)
-	}
+	require.NoErrorf(t, test_helpers.RestartTarantool(inst), "Unable to restart Tarantool")
 
 	maxTime := reconnectOpts.Reconnect * time.Duration(reconnectOpts.MaxReconnects)
 	timeout := time.After(maxTime)
@@ -3806,7 +3134,8 @@ func TestConnection_named_index_after_reconnect(t *testing.T) {
 	for {
 		select {
 		case <-timeout:
-			t.Fatalf("Failed to execute request without an error, last error: %s", err)
+			require.Failf(t, "Failed to execute request without an error",
+				"last error: %s", err)
 		default:
 		}
 
@@ -3837,7 +3166,7 @@ func TestConnect_schema_update(t *testing.T) {
 		}
 
 		if _, err := fut.Get(); err != nil {
-			t.Errorf("Failed to call create_spaces: %s", err)
+			assert.Errorf(t, err, "Failed to call create_spaces")
 		}
 	}
 }
@@ -3857,13 +3186,9 @@ func TestConnect_context_cancel(t *testing.T) {
 	cancel()
 	conn, err = Connect(ctx, dialer, connLongReconnectOpts)
 
-	if conn != nil || err == nil {
-		t.Fatalf("Connection was created after cancel")
-	}
-	if !strings.Contains(err.Error(), "operation was canceled") {
-		t.Fatalf("Unexpected error, expected to contain %s, got %v",
-			"operation was canceled", err)
-	}
+	require.Nilf(t, conn, "Connection was created after cancel")
+	require.Errorf(t, err, "Expected error on connect")
+	require.Contains(t, err.Error(), "operation was canceled")
 }
 
 // A dialer that rejects the first few connection requests.
@@ -3894,9 +3219,7 @@ func TestConnectIsBlocked(t *testing.T) {
 		RetryTimeout: 500 * time.Millisecond,
 	})
 	defer test_helpers.StopTarantoolWithCleanup(inst)
-	if err != nil {
-		t.Fatalf("Unable to start Tarantool: %s", err)
-	}
+	require.NoErrorf(t, err, "Unable to start Tarantool")
 
 	var counter int
 	mockDialer := mockSlowDialer{original: testDialer, counter: &counter}

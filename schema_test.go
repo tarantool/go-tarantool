@@ -124,18 +124,14 @@ func TestResolverCalledWithoutNameSupport(t *testing.T) {
 	reqEnc := msgpack.NewEncoder(&reqBuf)
 
 	err := req.Body(&resolver, reqEnc)
-	if err != nil {
-		t.Errorf("An unexpected Response.Body() error: %q", err.Error())
-	}
+	require.NoErrorf(t, err, "An unexpected Response.Body() error")
 
-	if resolver.spaceResolverCalls != 1 {
-		t.Errorf("ResolveSpace was called %d times instead of 1.",
-			resolver.spaceResolverCalls)
-	}
-	if resolver.indexResolverCalls != 1 {
-		t.Errorf("ResolveIndex was called %d times instead of 1.",
-			resolver.indexResolverCalls)
-	}
+	assert.Equalf(t, 1, resolver.spaceResolverCalls,
+		"ResolveSpace was called %d times instead of 1.",
+		resolver.spaceResolverCalls)
+	assert.Equalf(t, 1, resolver.indexResolverCalls,
+		"ResolveIndex was called %d times instead of 1.",
+		resolver.indexResolverCalls)
 }
 
 func TestResolverNotCalledWithNameSupport(t *testing.T) {
@@ -148,18 +144,14 @@ func TestResolverNotCalledWithNameSupport(t *testing.T) {
 	reqEnc := msgpack.NewEncoder(&reqBuf)
 
 	err := req.Body(&resolver, reqEnc)
-	if err != nil {
-		t.Errorf("An unexpected Response.Body() error: %q", err.Error())
-	}
+	require.NoErrorf(t, err, "An unexpected Response.Body() error")
 
-	if resolver.spaceResolverCalls != 0 {
-		t.Errorf("ResolveSpace was called %d times instead of 0.",
-			resolver.spaceResolverCalls)
-	}
-	if resolver.indexResolverCalls != 0 {
-		t.Errorf("ResolveIndex was called %d times instead of 0.",
-			resolver.indexResolverCalls)
-	}
+	assert.Equalf(t, 0, resolver.spaceResolverCalls,
+		"ResolveSpace was called %d times instead of 0.",
+		resolver.spaceResolverCalls)
+	assert.Equalf(t, 0, resolver.indexResolverCalls,
+		"ResolveIndex was called %d times instead of 0.",
+		resolver.indexResolverCalls)
 }
 
 func TestErrConcurrentSchemaUpdate(t *testing.T) {

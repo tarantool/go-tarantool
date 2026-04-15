@@ -87,13 +87,13 @@ func assertBodyCall(t testing.TB, requests []Request, errorMsg string) {
 
 		err := req.Body(&resolver, enc)
 		if err != nil && errorMsg != "" && err.Error() != errorMsg {
-			t.Errorf(errBegin+"error %q expected %q", err.Error(), errorMsg)
+			assert.Failf(t, errBegin+"error", "%q expected %q", err.Error(), errorMsg)
 		}
 		if err != nil && errorMsg == "" {
-			t.Errorf(errBegin+"error %q", err.Error())
+			assert.Failf(t, errBegin+"error", "%q", err.Error())
 		}
 		if err == nil && errorMsg != "" {
-			t.Errorf(errBegin+"result, expected error %q", errorMsg)
+			assert.Failf(t, errBegin+"result", "expected error %q", errorMsg)
 		}
 	}
 }
@@ -169,10 +169,9 @@ func TestRequestsTypes(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		if rtype := test.req.Type(); rtype != test.rtype {
-			t.Errorf("An invalid request type 0x%x, expected 0x%x",
-				rtype, test.rtype)
-		}
+		assert.Equalf(t, test.rtype, test.req.Type(),
+			"An invalid request type 0x%x, expected 0x%x",
+			test.req.Type(), test.rtype)
 	}
 }
 
@@ -205,9 +204,8 @@ func TestRequestsAsync(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		if async := test.req.Async(); async != test.async {
-			t.Errorf("An invalid async %t, expected %t", async, test.async)
-		}
+		assert.Equalf(t, test.async, test.req.Async(),
+			"An invalid async %t, expected %t", test.req.Async(), test.async)
 	}
 }
 
@@ -240,9 +238,8 @@ func TestRequestsCtx_default(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		if ctx := test.req.Ctx(); ctx != test.expected {
-			t.Errorf("An invalid ctx %t, expected %t", ctx, test.expected)
-		}
+		assert.Equalf(t, test.expected, test.req.Ctx(),
+			"An invalid ctx %t, expected %t", test.req.Ctx(), test.expected)
 	}
 }
 
@@ -276,9 +273,8 @@ func TestRequestsCtx_setter(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		if ctx := test.req.Ctx(); ctx != test.expected {
-			t.Errorf("An invalid ctx %t, expected %t", ctx, test.expected)
-		}
+		assert.Equalf(t, test.expected, test.req.Ctx(),
+			"An invalid ctx %t, expected %t", test.req.Ctx(), test.expected)
 	}
 }
 

@@ -455,9 +455,7 @@ func TestGracefulShutdownCloseConcurrent(t *testing.T) {
 			// Do not wait till Tarantool register out watcher,
 			// test everything is ok even on async.
 			conn, err := Connect(ctx, shtdnDialer, shtdnClntOpts)
-			if err != nil {
-				t.Errorf("Failed to connect: %s", err)
-			} else {
+			if assert.NoErrorf(t, err, "Failed to connect") {
 				defer func() { _ = conn.Close() }()
 			}
 
