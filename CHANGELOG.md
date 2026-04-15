@@ -31,10 +31,19 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 * Method String() for type decimal.Decimal (#322).
 * New `T` interface compatible with testing.T methods
   to make testing easier, `test_helpers` updated with it (#474).
+* New `MockDoer` interface for custom `Doer` testing with builder pattern
+  methods: `AddResponse`, `AddResponseRaw`, `AddResponseError`, `Requests`.
+* New `MockRequestNamed` type for verifying specific requests in tests.
 
 ### Changed
 
 * Required Go version is `1.24` now (#456).
+* `test_helpers.MockDoer` is now an interface instead of a struct. The
+  `Requests` field became a method `Requests()`. The `NewMockDoer()`
+  constructor now returns the interface and uses a builder pattern.
+  Old `NewMockDoer(t, ...interface{})` is removed. Use `NewMockDoer(t)`,
+  then chain `AddResponseRaw()`, `AddResponseError()`, `AddResponse()`
+  to configure responses.
 * `box.New` returns an error instead of panic (#448).
 * Now cases of `<-ctx.Done()` returns wrapped error provided by `ctx.Cause()`.
   Allows you compare it using `errors.Is/As` (#457).

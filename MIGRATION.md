@@ -363,3 +363,24 @@ The subpackage has been deleted. You could use `pool` instead.
 ### test_helpers package
 
 * Renamed `StrangerResponse` to `MockResponse`.
+* `MockDoer` is now an interface instead of a struct. Use `NewMockDoer(t)` to
+  create an instance, then chain `AddResponseRaw()`, `AddResponseError()`,
+  `AddResponse()` to configure responses. The `Requests` field is now a
+  method `Requests()` that returns recorded requests.
+
+  Before:
+  ```Go
+  mock := test_helpers.NewMockDoer(t,
+      test_helpers.NewMockResponse(t, []interface{}{"data"}),
+      errors.New("some error"),
+  )
+  requests := mock.Requests
+  ```
+
+  After:
+  ```Go
+  mock := test_helpers.NewMockDoer(t).
+      AddResponseRaw([]interface{}{"data"}).
+      AddResponseError(errors.New("some error"))
+  requests := mock.Requests()
+  ```

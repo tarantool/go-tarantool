@@ -10,7 +10,7 @@ import (
 )
 
 func TestBox_Session(t *testing.T) {
-	b := box.MustNew(th.Ptr(th.NewMockDoer(t)))
+	b := box.MustNew(th.NewMockDoer(t))
 	require.NotNil(t, b.Session())
 }
 
