@@ -40,6 +40,7 @@ faster than other packages according to public benchmarks.
   * [Example with encrypting traffic](#example-with-encrypting-traffic)
 * [Migration guide](#migration-guide)
 * [Contributing](#contributing)
+* [Related libraries](#related-libraries)
 * [Alternative connectors](#alternative-connectors)
 
 ## Installation
@@ -276,6 +277,74 @@ You can review the changes between major versions in the
 
 See [the contributing guide](CONTRIBUTING.md) for detailed instructions on how
 to get started with our project.
+
+## Related libraries
+
+The Tarantool team provides several complementary Go libraries that extend
+the functionality of go-tarantool:
+
+### IPROTO
+
+* [go-iproto](https://github.com/tarantool/go-iproto) — IPROTO protocol
+  constants generated from Tarantool source code. It provides request types,
+  response codes, keys, and feature flags defined in the Tarantool IPROTO
+  specification for building custom protocol implementations or low-level
+  debugging.
+
+* [go-openssl](https://github.com/tarantool/go-openssl) — OpenSSL bindings for
+  Go, forked from libp2p/openssl with fixes for Go 1.13+, Apple M1, static
+  build, and DANE support. It provides TLS functionality used by go-tlsdialer
+  for secure connections.
+
+* [go-tlsdialer](https://github.com/tarantool/go-tlsdialer) — TLS dialers for
+  secure connections to Tarantool Enterprise Edition. It serves as an
+  interlayer between go-tarantool and go-openssl, supporting SSL/TLS with
+  certificate verification for encrypted traffic.
+
+### Data Handling
+
+* [go-tupleconv](https://github.com/tarantool/go-tupleconv) — Tarantool tuples
+  converter for transforming data between Go types and Tarantool tuple formats.
+  It provides mappers built from configurable converters, supporting automatic
+  type conversion for nullable fields, decimals, and other Tarantool types.
+
+* [go-option](https://github.com/tarantool/go-option) — Optional types for Go
+  with MessagePack serialization support. It provides zero-allocation optional
+  values (Some/None semantics), useful for distinguishing between nil values
+  and missing fields when working with Tarantool tuples.
+
+### Cluster Configuration
+
+* [go-config](https://github.com/tarantool/go-config) — A library for handling
+  hierarchical configurations with inheritance, validation, and flexible
+  merging strategies. It supports multiple data sources (files, environment
+  variables, etcd, TCS) and resolves effective configuration for entities in
+  distributed systems.
+
+* [go-storage](https://github.com/tarantool/go-storage) — A uniform interface
+  for managing centralized configuration storages with support for multiple
+  backends (etcd, Tarantool Config Storage). It provides transactional
+  operations, conditional predicates, real-time watch, and data integrity
+  features.
+
+### Cluster Management
+
+* [go-vshard-router](https://github.com/tarantool/go-vshard-router) — A library
+  for sending requests to a sharded Tarantool cluster directly, without using
+  a Tarantool-side vshard router. It implements the vshard routing logic in Go,
+  improving performance by eliminating the intermediate proxy layer.
+
+* [go-discovery](https://github.com/tarantool/go-discovery) — Cluster discovery
+  helpers for Tarantool 3.0. It enables automatic detection and connection to
+  cluster instances through etcd-based configuration, providing connection
+  pooling and topology-aware request routing.
+
+### Logging
+
+* [go-tlog](https://github.com/tarantool/go-tlog) — A lightweight and
+  configurable structured logging library. It supports multiple output formats
+  (text, JSON), multiple destinations (stdout, stderr, files), log levels,
+  and automatic stacktraces for errors.
 
 ## Alternative connectors
 
