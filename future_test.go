@@ -192,9 +192,7 @@ func testFuturePoolRoundtripErr(data []byte) error {
 }
 
 func testFuturePoolRoundtrip(t *testing.T, data []byte) {
-	if err := testFuturePoolRoundtripErr(data); err != nil {
-		require.NoError(t, err)
-	}
+	require.NoError(t, testFuturePoolRoundtripErr(data))
 }
 
 func TestFuture_PoolAllocations(t *testing.T) {

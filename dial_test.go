@@ -761,7 +761,7 @@ func TestAuthDialer_Dial_NoSalt(t *testing.T) {
 	require.ErrorContains(t, err, "an invalid connection without salt")
 	if conn != nil {
 		_ = conn.Close()
-		t.Errorf("connection is not nil")
+		assert.Fail(t, "connection is not nil")
 	}
 }
 
@@ -930,7 +930,7 @@ func TestProtocolDialer_Dial_IdentifyFailed(t *testing.T) {
 	require.ErrorContains(t, err, "failed to identify")
 	if conn != nil {
 		_ = conn.Close()
-		t.Errorf("connection is not nil")
+		assert.Fail(t, "connection is not nil")
 	}
 }
 
@@ -955,7 +955,7 @@ func TestProtocolDialer_Dial_WrongInfo(t *testing.T) {
 	require.ErrorContains(t, err, "invalid server protocol")
 	if conn != nil {
 		_ = conn.Close()
-		t.Errorf("connection is not nil")
+		assert.Fail(t, "connection is not nil")
 	}
 }
 
@@ -1052,7 +1052,7 @@ func TestGreetingDialer_Dial_GreetingFailed(t *testing.T) {
 	require.ErrorContains(t, err, "failed to read greeting")
 	if conn != nil {
 		_ = conn.Close()
-		t.Errorf("connection is not nil")
+		assert.Fail(t, "connection is not nil")
 	}
 }
 
