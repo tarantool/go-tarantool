@@ -61,26 +61,21 @@ func comparePortMaps(expected map[string]bool, actual map[string]bool) error {
 	return nil
 }
 
-func CheckPoolStatuses(args interface{}) error {
-	checkArgs, ok := args.(CheckStatusesArgs)
-	if !ok {
-		return fmt.Errorf("incorrect args")
-	}
-
-	connected, _ := checkArgs.ConnPool.ConnectedNow(checkArgs.Mode)
-	if connected != checkArgs.ExpectedPoolStatus {
+func CheckPoolStatuses(args CheckStatusesArgs) error {
+	connected, _ := args.ConnPool.ConnectedNow(args.Mode)
+	if connected != args.ExpectedPoolStatus {
 		return fmt.Errorf(
 			"incorrect connection pool status: expected status %t actual status %t",
-			checkArgs.ExpectedPoolStatus, connected)
+			args.ExpectedPoolStatus, connected)
 	}
 
-	poolInfo := checkArgs.ConnPool.GetInfo()
-	for _, server := range checkArgs.Servers {
+	poolInfo := args.ConnPool.GetInfo()
+	for _, server := range args.Servers {
 		status := poolInfo[server].ConnectedNow
-		if checkArgs.ExpectedStatuses[server] != status {
+		if args.ExpectedStatuses[server] != status {
 			return fmt.Errorf(
 				"incorrect conn status: addr %s expected status %t actual status %t",
-				server, checkArgs.ExpectedStatuses[server], status)
+				server, args.ExpectedStatuses[server], status)
 		}
 	}
 
@@ -96,18 +91,13 @@ func CheckPoolStatuses(args interface{}) error {
 // ports or to all ports.
 // For PreferRW mode expected received ports equals to master ports
 // or to all ports.
-func ProcessListenOnInstance(args interface{}) error {
+func ProcessListenOnInstance(args ListenOnInstanceArgs) error {
 	actualPorts := map[string]bool{}
 
-	listenArgs, ok := args.(ListenOnInstanceArgs)
-	if !ok {
-		return fmt.Errorf("incorrect args")
-	}
-
-	for i := 0; i < listenArgs.ServersNumber; i++ {
+	for i := 0; i < args.ServersNumber; i++ {
 		req := tarantool.NewEvalRequest("return box.cfg.listen")
 		var data []string
-		err := listenArgs.ConnPool.Do(req, listenArgs.Mode).GetTyped(&data)
+		err := args.ConnPool.Do(req, args.Mode).GetTyped(&data)
 		if err != nil {
 			return fmt.Errorf("failed to get response: %w", err)
 		}
@@ -118,7 +108,7 @@ func ProcessListenOnInstance(args interface{}) error {
 		actualPorts[data[0]] = true
 	}
 
-	if err := comparePortMaps(listenArgs.ExpectedPorts, actualPorts); err != nil {
+	if err := comparePortMaps(args.ExpectedPorts, actualPorts); err != nil {
 		return err
 	}
 
