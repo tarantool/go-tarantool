@@ -5,7 +5,6 @@
 package tarantool_test
 
 import (
-	"fmt"
 	"sync"
 	"syscall"
 	"testing"
@@ -84,24 +83,16 @@ func testGracefulShutdown(t *testing.T, conn *Connection, inst *test_helpers.Tar
 	require.NoError(t, inst.Signal(syscall.SIGTERM))
 
 	// Check that we can't send new requests after shutdown starts.
-	// Retry helps to wait a bit until server starts to shutdown
+	// assert.Eventually helps to wait a bit until server starts to shutdown
 	// and send us the shutdown event.
-	shutdownWaitRetries := 5
-	shutdownWaitTimeout := 100 * time.Millisecond
+	const shutdownWaitRetries = 5
+	tick := 100 * time.Millisecond
+	timeout := time.Duration(shutdownWaitRetries) * tick
 
-	err = test_helpers.Retry(func(interface{}) error {
-		_, err = conn.Do(NewPingRequest()).Get()
-		if err == nil {
-			return fmt.Errorf("expected error for requests sent on shutdown")
-		}
-
-		if err.Error() != "server shutdown in progress (0x4005)" {
-			return err
-		}
-
-		return nil
-	}, nil, shutdownWaitRetries, shutdownWaitTimeout)
-	require.NoError(t, err)
+	require.Eventually(t, func() bool {
+		_, err := conn.Do(NewPingRequest()).Get()
+		return err != nil && err.Error() == "server shutdown in progress (0x4005)"
+	}, timeout, tick, "expected shutdown error 'server shutdown in progress (0x4005)'")
 
 	// Check that requests started before the shutdown finish successfully.
 	data, err := fut.Get()

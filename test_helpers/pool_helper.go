@@ -124,25 +124,6 @@ func ProcessListenOnInstance(args interface{}) error {
 	return nil
 }
 
-func Retry(f func(interface{}) error, args interface{}, count int, timeout time.Duration) error {
-	var err error
-
-	for i := 0; ; i++ {
-		err = f(args)
-		if err == nil {
-			return err
-		}
-
-		if i >= (count - 1) {
-			break
-		}
-
-		time.Sleep(timeout)
-	}
-
-	return err
-}
-
 func InsertOnInstance(ctx context.Context, dialer tarantool.Dialer, connOpts tarantool.Opts,
 	space interface{}, tuple interface{}) error {
 	conn, err := tarantool.Connect(ctx, dialer, connOpts)
