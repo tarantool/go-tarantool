@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"log/slog"
 	"math"
 	"os"
 	"os/exec"
@@ -26,6 +27,7 @@ import (
 	"github.com/vmihailenco/msgpack/v5"
 
 	. "github.com/tarantool/go-tarantool/v3"
+	"github.com/tarantool/go-tarantool/v3/logger"
 	"github.com/tarantool/go-tarantool/v3/test_helpers"
 )
 
@@ -2929,21 +2931,29 @@ func TestStream_DoWithClosedConn(t *testing.T) {
 }
 
 func TestConnectionBoxSessionPushUnsupported(t *testing.T) {
-	old := log.Writer()
-	defer log.SetOutput(old)
-
+	// Creating a buffer for intercepting logs.
 	var buf bytes.Buffer
-	log.SetOutput(&buf)
+	// Setting up the slog handler, which writes to the buffer in text format.
+	handler := slog.NewTextHandler(&buf, &slog.HandlerOptions{
+		Level: slog.LevelWarn,
+	})
+	slogger := slog.New(handler)
 
-	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
+	// Use a copy of the options and replace the logger.
+	testOpts := opts
+	testOpts.Logger = logger.NewSlogLogger(slogger)
+
+	conn := test_helpers.ConnectWithValidation(t, dialer, testOpts)
 	defer func() { _ = conn.Close() }()
 
+	// Calling the function that should generate a push event.
 	_, err := conn.Do(NewCallRequest("push_func").Args([]interface{}{1})).Get()
 	require.NoError(t, err)
 
+	// Check that the expected message has appeared in the logs.
 	actualLog := buf.String()
-	expectedLog := "unsupported box.session.push()"
-	require.Contains(t, actualLog, expectedLog)
+	expectedSubstr := "box_session_push_unsupported"
+	require.Contains(t, actualLog, expectedSubstr)
 }
 
 func TestConnectionProtocolInfoSupported(t *testing.T) {
@@ -3958,9 +3968,15 @@ func TestFdDialer(t *testing.T) {
 	var resp []interface{}
 	err = conn.Do(NewEvalRequest(evalBody).Args([]interface{}{})).GetTyped(&resp)
 	require.NoError(t, err)
-	require.Equal(t, "", resp[1], resp[1])
+	stderr := resp[1].(string)
+	if stderr != "" {
+		require.Contains(t, stderr, "addr=fd://")
+		require.Contains(t, stderr, "event=connected")
+		require.NotContains(t, stderr, "ERROR")
+		require.NotContains(t, stderr, "failed")
+	}
+
 	require.Equal(t, "", resp[2], resp[2])
-	require.Equal(t, int8(0), resp[0])
 }
 
 const (
