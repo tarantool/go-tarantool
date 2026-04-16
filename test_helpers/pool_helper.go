@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/tarantool/go-tarantool/v3"
+	"github.com/tarantool/go-tarantool/v3/box"
 	"github.com/tarantool/go-tarantool/v3/pool"
 )
 
@@ -180,19 +181,9 @@ func InsertOnInstances(
 		return fmt.Errorf("fail to set roles for cluster: %w", err)
 	}
 
-	errs := make([]error, len(dialers))
-	var wg sync.WaitGroup
-	wg.Add(len(dialers))
-	for i, dialer := range dialers {
-		// Pass loop variable(s) to avoid its capturing by reference (not needed since Go 1.22).
-		go func(i int, dialer tarantool.Dialer) {
-			defer wg.Done()
-			errs[i] = InsertOnInstance(ctx, dialer, connOpts, space, tuple)
-		}(i, dialer)
-	}
-	wg.Wait()
-
-	return errors.Join(errs...)
+	return ExecuteOnAll(ctx, dialers, func(_ context.Context, d tarantool.Dialer, _ int) error {
+		return InsertOnInstance(ctx, d, connOpts, space, tuple)
+	})
 }
 
 func SetInstanceRO(ctx context.Context, dialer tarantool.Dialer, connOpts tarantool.Opts,
@@ -210,52 +201,67 @@ func SetInstanceRO(ctx context.Context, dialer tarantool.Dialer, connOpts tarant
 		return err
 	}
 
-	checkRole := func(conn *tarantool.Connection, isReplica bool) string {
-		data, err := conn.Do(tarantool.NewCallRequest("box.info")).Get()
-
-		switch {
-		case err != nil:
-			return fmt.Sprintf("failed to get box.info: %s", err)
-		case len(data) < 1:
-			return "box.info is empty"
+	checkRole := func(conn *tarantool.Connection, isReplica bool) error {
+		boxInfo, err := box.MustNew(conn).Info()
+		if err != nil {
+			return fmt.Errorf("failed to get box.info: %s", err)
 		}
 
-		boxInfo, ok := data[0].(map[interface{}]interface{})
-		if !ok {
-			return "unexpected type in box.info response"
-		}
-
-		status, statusFound := boxInfo["status"]
-		readonly, readonlyFound := boxInfo["ro"]
-
 		switch {
-		case !statusFound:
-			return "box.info.status is missing"
-		case status != "running":
-			return fmt.Sprintf("box.info.status='%s' (waiting for 'running')", status)
-		case !readonlyFound:
-			return "box.info.ro is missing"
-		case readonly != isReplica:
-			return fmt.Sprintf("box.info.ro='%v' (waiting for '%v')", readonly, isReplica)
+		case boxInfo.Status != "running":
+			return fmt.Errorf("box.info.status='%s' (waiting for 'running')", boxInfo.Status)
+		case boxInfo.RO != isReplica:
+			return fmt.Errorf("box.info.ro='%v' (waiting for '%v')", boxInfo.RO, isReplica)
 		default:
-			return ""
+			return nil
 		}
 	}
 
-	problem := "not checked yet"
+	err = errors.New("not checked yet")
 
 	// Wait for the role to be applied.
-	for len(problem) != 0 {
+	for err != nil {
 		select {
 		case <-time.After(10 * time.Millisecond):
 		case <-ctx.Done():
-			return fmt.Errorf("%w: failed to apply role, the last problem: %s",
-				ctx.Err(), problem)
+			return fmt.Errorf("%w: failed to apply role, the last error: %s",
+				ctx.Err(), err)
 		}
 
-		problem = checkRole(conn, isReplica)
+		err = checkRole(conn, isReplica)
 	}
 
+	return nil
+}
+
+func ExecuteOnAll(ctx context.Context, dialers []tarantool.Dialer, fn func(context.Context, tarantool.Dialer, int) error) error {
+	var wg sync.WaitGroup
+	var errs []error
+	var mu sync.Mutex
+
+	wg.Add(len(dialers))
+	for i, dialer := range dialers {
+		go func(idx int, d tarantool.Dialer) {
+			defer wg.Done()
+			select {
+			case <-ctx.Done():
+				mu.Lock()
+				errs = append(errs, fmt.Errorf("instance %d: %w", idx, ctx.Err()))
+				mu.Unlock()
+			default:
+				if err := fn(ctx, d, idx); err != nil {
+					mu.Lock()
+					errs = append(errs, fmt.Errorf("instance %d: %w", idx, err))
+					mu.Unlock()
+				}
+			}
+		}(i, dialer)
+	}
+
+	wg.Wait()
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
 	return nil
 }
 
@@ -265,20 +271,9 @@ func SetClusterRO(ctx context.Context, dialers []tarantool.Dialer, connOpts tara
 		return fmt.Errorf("number of servers should be equal to number of roles")
 	}
 
-	// Apply roles in parallel.
-	errs := make([]error, len(dialers))
-	var wg sync.WaitGroup
-	wg.Add(len(dialers))
-	for i, dialer := range dialers {
-		// Pass loop variable(s) to avoid its capturing by reference (not needed since Go 1.22).
-		go func(i int, dialer tarantool.Dialer) {
-			defer wg.Done()
-			errs[i] = SetInstanceRO(ctx, dialer, connOpts, roles[i])
-		}(i, dialer)
-	}
-	wg.Wait()
-
-	return errors.Join(errs...)
+	return ExecuteOnAll(ctx, dialers, func(_ context.Context, d tarantool.Dialer, idx int) error {
+		return SetInstanceRO(ctx, d, connOpts, roles[idx])
+	})
 }
 
 func StartTarantoolInstances(instsOpts []StartOpts) ([]*TarantoolInstance, error) {
