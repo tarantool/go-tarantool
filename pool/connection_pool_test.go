@@ -95,8 +95,10 @@ var connOpts = tarantool.Opts{
 	Timeout: 5 * time.Second,
 }
 
-var defaultCountRetry = 5
-var defaultTimeoutRetry = 500 * time.Millisecond
+const defaultCountRetry = 5
+
+const tick = 500 * time.Millisecond
+const timeout = defaultCountRetry * tick
 
 var helpInstances []*test_helpers.TarantoolInstance
 
@@ -437,9 +439,10 @@ func TestReconnect(t *testing.T) {
 			server: false,
 		},
 	}
-
-	err = test_helpers.Retry(test_helpers.CheckPoolStatuses, args,
-		defaultCountRetry, defaultTimeoutRetry)
+	assert.Eventually(t, func() bool {
+		err = test_helpers.CheckPoolStatuses(args)
+		return err == nil
+	}, timeout, tick)
 	require.NoError(t, err)
 
 	err = test_helpers.RestartTarantool(helpInstances[0])
@@ -454,9 +457,10 @@ func TestReconnect(t *testing.T) {
 			server: true,
 		},
 	}
-
-	err = test_helpers.Retry(test_helpers.CheckPoolStatuses, args,
-		defaultCountRetry, defaultTimeoutRetry)
+	assert.Eventually(t, func() bool {
+		err = test_helpers.CheckPoolStatuses(args)
+		return err == nil
+	}, timeout, tick)
 	require.NoError(t, err)
 }
 
@@ -486,8 +490,10 @@ func TestDisconnect_withReconnect(t *testing.T) {
 			servers[serverId]: false,
 		},
 	}
-	err = test_helpers.Retry(test_helpers.CheckPoolStatuses,
-		args, defaultCountRetry, defaultTimeoutRetry)
+	assert.Eventually(t, func() bool {
+		err = test_helpers.CheckPoolStatuses(args)
+		return err == nil
+	}, timeout, tick)
 	require.NoError(t, err)
 
 	// Restart the server after success.
@@ -503,9 +509,10 @@ func TestDisconnect_withReconnect(t *testing.T) {
 			servers[serverId]: true,
 		},
 	}
-
-	err = test_helpers.Retry(test_helpers.CheckPoolStatuses,
-		args, defaultCountRetry, defaultTimeoutRetry)
+	assert.Eventually(t, func() bool {
+		err = test_helpers.CheckPoolStatuses(args)
+		return err == nil
+	}, timeout, tick)
 	require.NoError(t, err)
 }
 
@@ -534,9 +541,10 @@ func TestDisconnectAll(t *testing.T) {
 			server2: false,
 		},
 	}
-
-	err = test_helpers.Retry(test_helpers.CheckPoolStatuses, args,
-		defaultCountRetry, defaultTimeoutRetry)
+	assert.Eventually(t, func() bool {
+		err = test_helpers.CheckPoolStatuses(args)
+		return err == nil
+	}, timeout, tick)
 	require.NoError(t, err)
 
 	err = test_helpers.RestartTarantool(helpInstances[0])
@@ -555,9 +563,10 @@ func TestDisconnectAll(t *testing.T) {
 			server2: true,
 		},
 	}
-
-	err = test_helpers.Retry(test_helpers.CheckPoolStatuses, args,
-		defaultCountRetry, defaultTimeoutRetry)
+	assert.Eventually(t, func() bool {
+		err = test_helpers.CheckPoolStatuses(args)
+		return err == nil
+	}, timeout, tick)
 	require.NoError(t, err)
 }
 
@@ -592,8 +601,10 @@ func TestAdd(t *testing.T) {
 		},
 	}
 
-	err = test_helpers.Retry(test_helpers.CheckPoolStatuses, args,
-		defaultCountRetry, defaultTimeoutRetry)
+	assert.Eventually(t, func() bool {
+		err = test_helpers.CheckPoolStatuses(args)
+		return err == nil
+	}, timeout, tick)
 	require.NoError(t, err)
 }
 
@@ -639,8 +650,10 @@ func TestAdd_exist(t *testing.T) {
 		},
 	}
 
-	err = test_helpers.Retry(test_helpers.CheckPoolStatuses, args,
-		defaultCountRetry, defaultTimeoutRetry)
+	assert.Eventually(t, func() bool {
+		err = test_helpers.CheckPoolStatuses(args)
+		return err == nil
+	}, timeout, tick)
 	require.NoError(t, err)
 }
 
@@ -676,8 +689,10 @@ func TestAdd_unreachable(t *testing.T) {
 		},
 	}
 
-	err = test_helpers.Retry(test_helpers.CheckPoolStatuses, args,
-		defaultCountRetry, defaultTimeoutRetry)
+	assert.Eventually(t, func() bool {
+		err = test_helpers.CheckPoolStatuses(args)
+		return err == nil
+	}, timeout, tick)
 	require.NoError(t, err)
 }
 
@@ -781,8 +796,10 @@ func TestRemove(t *testing.T) {
 		},
 	}
 
-	err = test_helpers.Retry(test_helpers.CheckPoolStatuses, args,
-		defaultCountRetry, defaultTimeoutRetry)
+	assert.Eventually(t, func() bool {
+		err = test_helpers.CheckPoolStatuses(args)
+		return err == nil
+	}, timeout, tick)
 	require.NoError(t, err)
 }
 
@@ -810,8 +827,10 @@ func TestRemove_double(t *testing.T) {
 		},
 	}
 
-	err = test_helpers.Retry(test_helpers.CheckPoolStatuses, args,
-		defaultCountRetry, defaultTimeoutRetry)
+	assert.Eventually(t, func() bool {
+		err = test_helpers.CheckPoolStatuses(args)
+		return err == nil
+	}, timeout, tick)
 	require.NoError(t, err)
 }
 
@@ -838,8 +857,10 @@ func TestRemove_unknown(t *testing.T) {
 		},
 	}
 
-	err = test_helpers.Retry(test_helpers.CheckPoolStatuses, args,
-		defaultCountRetry, defaultTimeoutRetry)
+	assert.Eventually(t, func() bool {
+		err = test_helpers.CheckPoolStatuses(args)
+		return err == nil
+	}, timeout, tick)
 	require.NoError(t, err)
 }
 
@@ -887,8 +908,10 @@ func TestRemove_concurrent(t *testing.T) {
 		},
 	}
 
-	err = test_helpers.Retry(test_helpers.CheckPoolStatuses, args,
-		defaultCountRetry, defaultTimeoutRetry)
+	assert.Eventually(t, func() bool {
+		err = test_helpers.CheckPoolStatuses(args)
+		return err == nil
+	}, timeout, tick)
 	require.NoError(t, err)
 }
 
@@ -972,8 +995,10 @@ func TestClose(t *testing.T) {
 		},
 	}
 
-	err = test_helpers.Retry(test_helpers.CheckPoolStatuses, args,
-		defaultCountRetry, defaultTimeoutRetry)
+	assert.Eventually(t, func() bool {
+		err = test_helpers.CheckPoolStatuses(args)
+		return err == nil
+	}, timeout, tick)
 	require.NoError(t, err)
 }
 
@@ -1035,8 +1060,10 @@ func TestCloseGraceful(t *testing.T) {
 		},
 	}
 
-	err = test_helpers.Retry(test_helpers.CheckPoolStatuses, args,
-		defaultCountRetry, defaultTimeoutRetry)
+	assert.Eventually(t, func() bool {
+		err = test_helpers.CheckPoolStatuses(args)
+		return err == nil
+	}, timeout, tick)
 	require.NoError(t, err)
 }
 
@@ -1397,8 +1424,10 @@ func TestRequestOnClosed(t *testing.T) {
 			server2: false,
 		},
 	}
-	err = test_helpers.Retry(test_helpers.CheckPoolStatuses, args,
-		defaultCountRetry, defaultTimeoutRetry)
+	assert.Eventually(t, func() bool {
+		err = test_helpers.CheckPoolStatuses(args)
+		return err == nil
+	}, timeout, tick)
 	require.NoError(t, err)
 
 	_, err = connPool.Do(tarantool.NewPingRequest(), pool.ANY).Get()
@@ -1968,8 +1997,10 @@ func TestUpdateInstancesRoles(t *testing.T) {
 		Mode:          pool.ANY,
 	}
 
-	err = test_helpers.Retry(test_helpers.ProcessListenOnInstance, args,
-		defaultCountRetry, defaultTimeoutRetry)
+	assert.Eventually(t, func() bool {
+		err = test_helpers.ProcessListenOnInstance(args)
+		return err == nil
+	}, timeout, tick)
 	require.NoError(t, err)
 
 	// RW
@@ -1980,8 +2011,10 @@ func TestUpdateInstancesRoles(t *testing.T) {
 		Mode:          pool.RW,
 	}
 
-	err = test_helpers.Retry(test_helpers.ProcessListenOnInstance, args,
-		defaultCountRetry, defaultTimeoutRetry)
+	assert.Eventually(t, func() bool {
+		err = test_helpers.ProcessListenOnInstance(args)
+		return err == nil
+	}, timeout, tick)
 	require.NoError(t, err)
 
 	// RO
@@ -1992,8 +2025,10 @@ func TestUpdateInstancesRoles(t *testing.T) {
 		Mode:          pool.RO,
 	}
 
-	err = test_helpers.Retry(test_helpers.ProcessListenOnInstance, args,
-		defaultCountRetry, defaultTimeoutRetry)
+	assert.Eventually(t, func() bool {
+		err = test_helpers.ProcessListenOnInstance(args)
+		return err == nil
+	}, timeout, tick)
 	require.NoError(t, err)
 
 	// PreferRW
@@ -2004,8 +2039,10 @@ func TestUpdateInstancesRoles(t *testing.T) {
 		Mode:          pool.PreferRW,
 	}
 
-	err = test_helpers.Retry(test_helpers.ProcessListenOnInstance, args,
-		defaultCountRetry, defaultTimeoutRetry)
+	assert.Eventually(t, func() bool {
+		err = test_helpers.ProcessListenOnInstance(args)
+		return err == nil
+	}, timeout, tick)
 	require.NoError(t, err)
 
 	// PreferRO
@@ -2016,8 +2053,10 @@ func TestUpdateInstancesRoles(t *testing.T) {
 		Mode:          pool.PreferRO,
 	}
 
-	err = test_helpers.Retry(test_helpers.ProcessListenOnInstance, args,
-		defaultCountRetry, defaultTimeoutRetry)
+	assert.Eventually(t, func() bool {
+		err = test_helpers.ProcessListenOnInstance(args)
+		return err == nil
+	}, timeout, tick)
 	require.NoError(t, err)
 }
 

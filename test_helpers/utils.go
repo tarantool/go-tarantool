@@ -49,16 +49,15 @@ func DeleteRecordByKey(t T, conn tarantool.Connector,
 // Returns false in case of connection is not in the connected state
 // after specified retries count, true otherwise.
 func WaitUntilReconnected(conn *tarantool.Connection, retries uint, timeout time.Duration) bool {
-	err := Retry(func(arg interface{}) error {
-		conn := arg.(*tarantool.Connection)
-		connected := conn.ConnectedNow()
-		if !connected {
-			return fmt.Errorf("not connected")
+	for i := 0; i < int(retries); i++ {
+		if conn.ConnectedNow() {
+			return true
 		}
-		return nil
-	}, conn, int(retries), timeout)
-
-	return err == nil
+		if i < int(retries)-1 {
+			time.Sleep(timeout)
+		}
+	}
+	return conn.ConnectedNow()
 }
 
 func SkipIfSQLUnsupported(t T) {
