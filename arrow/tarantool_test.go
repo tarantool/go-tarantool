@@ -30,8 +30,9 @@ var opts = tarantool.Opts{
 	Timeout: 5 * time.Second,
 }
 
-// Invalid Arrow request results in CustomError with errcode = 4.
-const invalidArrowCode = 4
+// Invalid Arrow request results in CustomError with errcode = 4 or 5.
+const invalidArrowCode1 = 4
+const invalidArrowCode2 = 5
 
 // TestInsert uses Arrow sequence from Tarantool's test.
 // See: https://github.com/tarantool/tarantool/blob/d628b71bc537a75b69c253f45ec790462cf1a5cd/test/box-luatest/gh_10508_iproto_insert_arrow_test.lua#L56
@@ -42,11 +43,11 @@ func TestInsert_invalid(t *testing.T) {
 	}{
 		{
 			"",
-			[]iproto.Error{invalidArrowCode, iproto.ER_INVALID_MSGPACK},
+			[]iproto.Error{invalidArrowCode1, invalidArrowCode2, iproto.ER_INVALID_MSGPACK},
 		},
 		{
 			"00",
-			[]iproto.Error{invalidArrowCode, iproto.ER_INVALID_MSGPACK},
+			[]iproto.Error{invalidArrowCode1, invalidArrowCode2, iproto.ER_INVALID_MSGPACK},
 		},
 		{
 			"ffffffff70000000040000009effffff0400010004000000" +
