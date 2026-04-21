@@ -404,32 +404,6 @@ func TestGolden(t *testing.T) {
 				Tuple(precachedTuple),
 		},
 		{
-			Name:    "call16.msgpack",
-			Request: tarantool.NewCall16Request("function.name"),
-		},
-		{
-			Name: "call16-with-args.msgpack",
-			Request: tarantool.NewCall16Request("function.name").
-				Args(precachedTuple),
-		},
-		{
-			Name:    "call16-with-args-nil.msgpack",
-			Request: tarantool.NewCall16Request("function.name").Args(nil),
-		},
-		{
-			Name:    "call17.msgpack",
-			Request: tarantool.NewCall17Request("function.name"),
-		},
-		{
-			Name:    "call17-with-args-nil.msgpack",
-			Request: tarantool.NewCall17Request("function.name").Args(nil),
-		},
-		{
-			Name: "call17-with-args.msgpack",
-			Request: tarantool.NewCall17Request("function.name").
-				Args(precachedTuple),
-		},
-		{
 			Name:    "update.msgpack",
 			Request: tarantool.NewUpdateRequest("table_name"),
 		},

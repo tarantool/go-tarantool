@@ -592,7 +592,7 @@ func TestFutureMultipleGetGetTyped(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer func() { _ = conn.Close() }()
 
-	fut := conn.Do(NewCall17Request("simple_concat").Args([]interface{}{"1"}))
+	fut := conn.Do(NewCallRequest("simple_concat").Args([]interface{}{"1"}))
 
 	for i := 0; i < 30; i++ {
 		// [0, 10) fut.Get()
@@ -622,7 +622,7 @@ func TestFutureMultipleGetWithError(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer func() { _ = conn.Close() }()
 
-	fut := conn.Do(NewCall17Request("non_exist").Args([]interface{}{"1"}))
+	fut := conn.Do(NewCallRequest("non_exist").Args([]interface{}{"1"}))
 
 	for i := 0; i < 2; i++ {
 		_, err := fut.Get()
@@ -634,7 +634,7 @@ func TestFutureMultipleGetTypedWithError(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer func() { _ = conn.Close() }()
 
-	fut := conn.Do(NewCall17Request("simple_concat").Args([]interface{}{"1"}))
+	fut := conn.Do(NewCallRequest("simple_concat").Args([]interface{}{"1"}))
 
 	wrongTpl := struct {
 		Val int
@@ -834,19 +834,13 @@ func TestClient(t *testing.T) {
 	require.NoError(t, err, "Failed to SelectTyped")
 	assert.Empty(t, tpl2, "Result len of SelectTyped != 1")
 
-	// Call16
-	req = NewCall16Request("box.info").Args([]interface{}{"box.schema.SPACE_ID"})
+	// Call
+	req = NewCallRequest("box.info").Args([]interface{}{"box.schema.SPACE_ID"})
 	data, err = conn.Do(req).Get()
-	require.NoError(t, err, "Failed to Call16")
+	require.NoError(t, err, "Failed to Call")
 	assert.GreaterOrEqual(t, len(data), 1, "Response.Data is empty after Eval")
 
-	// Call16 vs Call17
-	req = NewCall16Request("simple_concat").Args([]interface{}{"1"})
-	data, err = conn.Do(req).Get()
-	require.NoError(t, err, "Failed to use Call16")
-	assert.Equal(t, "11", data[0].([]interface{})[0], "result is not {{1}}")
-
-	req = NewCall17Request("simple_concat").Args([]interface{}{"1"})
+	req = NewCallRequest("simple_concat").Args([]interface{}{"1"})
 	data, err = conn.Do(req).Get()
 	require.NoError(t, err, "Failed to use Call")
 	assert.Equal(t, "11", data[0], "result is not {{1}}")
@@ -1728,16 +1722,10 @@ func TestClientRequestObjects(t *testing.T) {
 	require.NoError(t, err, "Failed to Upsert (update)")
 	require.Empty(t, data, "Response Data len != 0")
 
-	// Call16 vs Call17
-	req = NewCall16Request("simple_concat").Args([]interface{}{"1"})
+	// Call
+	req = NewCallRequest("simple_concat").Args([]interface{}{"1"})
 	data, err = conn.Do(req).Get()
 	require.NoError(t, err, "Failed to use Call")
-	assert.Equal(t, "11", data[0].([]interface{})[0], "result is not {{1}}")
-
-	// Call17
-	req = NewCall17Request("simple_concat").Args([]interface{}{"1"})
-	data, err = conn.Do(req).Get()
-	require.NoError(t, err, "Failed to use Call17")
 	assert.Equal(t, "11", data[0], "result is not {{1}}")
 
 	// Eval

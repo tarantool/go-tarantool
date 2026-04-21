@@ -184,7 +184,7 @@ func connect(t testing.TB) *tarantool.Connection {
 			_msgpack struct{} `msgpack:",asArray"`
 			Result   bool
 		}{}
-		err = conn.Do(tarantool.NewCall17Request("is_ready")).GetTyped(&ret)
+		err = conn.Do(tarantool.NewCallRequest("is_ready")).GetTyped(&ret)
 		require.NoError(t, err, "Failed to check is_ready")
 
 		if ret.Result {

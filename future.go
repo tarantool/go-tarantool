@@ -163,7 +163,7 @@ func (fut *future) Get() ([]interface{}, error) {
 // GetTyped waits for Future and calls msgpack.Decoder.Decode(result) if no error happens.
 // It is could be much faster than Get() function.
 //
-// Note: Tarantool usually returns array of tuples (except for Eval and Call17 actions).
+// Note: Tarantool usually returns array of tuples (except for Eval and Call actions).
 func (fut *future) GetTyped(result interface{}) error {
 	fut.wait()
 	if fut.err != nil {

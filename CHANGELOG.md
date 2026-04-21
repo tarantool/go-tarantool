@@ -49,7 +49,12 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 * `Future` transform into `future` that implements interface `Future` and
   become private, `SetError` and `SetResponse` become private (#470).
 * `ConnectionPool.Close()` returns a single error value, combining multiple
-  errors using errors.Join() (#540)
+  errors using errors.Join() (#540).
+
+### Removed
+
+* Deprecated `NewCall16Request` and `NewCall17Request` constructors. Use
+  `NewCallRequest` instead.
 
 ### Fixed
 

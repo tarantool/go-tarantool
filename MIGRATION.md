@@ -36,6 +36,9 @@ TODO
 * `ConnectionPool.Close()` returns a single error value, combining multiple errors using errors.Join()
 * `Future.Release()` call could be used to free resources allocated for the
   `Future` object created by a `Connection` object.
+* Removed deprecated `NewCall16Request` and `NewCall17Request` constructors.
+  Use `NewCallRequest` instead. `NewCallRequest` uses `IPROTO_CALL`, which
+  has been the default since Tarantool 1.7.2.
 
 ## Migration from v1.x.x to v2.x.x
 
@@ -189,8 +192,8 @@ So we don't go this way. We use standard settings if it possible.
 
 Call requests uses `IPROTO_CALL` instead of `IPROTO_CALL_16`.
 
-So now `Call` = `Call17` and `NewCallRequest` = `NewCall17Request`. A result
-of the requests is an array instead of array of arrays.
+So now `NewCallRequest` uses `IPROTO_CALL`. A result of the request is an
+array instead of array of arrays.
 
 #### IPROTO constants
 
@@ -247,7 +250,7 @@ for an `ops` field. `*Operations` needs to be used instead.
 #### Connector interface
 
 * Operations `Ping`, `Select`, `Insert`, `Replace`, `Delete`, `Update`,
-  `Upsert`, `Call`, `Call16`, `Call17`, `Eval`, `Execute` of a `Connector`
+  `Upsert`, `Call`, `Eval`, `Execute` of a `Connector`
   return response data instead of an actual responses.
 * New interface `Doer` is added as a child-interface instead of a `Do` method.
 
@@ -326,7 +329,7 @@ The subpackage has been deleted. You could use `pool` instead.
 * `pool.GetPoolInfo` has been renamed to `pool.GetInfo`. Return type has been
   changed to `map[string]ConnectionInfo`.
 * Operations `Ping`, `Select`, `Insert`, `Replace`, `Delete`, `Update`, `Upsert`,
-  `Call`, `Call16`, `Call17`, `Eval`, `Execute` of a `Pooler` return
+  `Call`, `Eval`, `Execute` of a `Pooler` return
   response data instead of an actual responses.
 
 ### crud package
