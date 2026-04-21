@@ -162,10 +162,10 @@ func (d defaultLogger) Report(event ConnLogKind, conn *Connection, v ...interfac
 //
 // ATTENTION: result argument for *Typed methods should deserialize from
 // msgpack array, cause Tarantool always returns result as an array.
-// For all space related methods and Call16* (but not Call17*) methods Tarantool
-// always returns array of array (array of tuples for space related methods).
-// For Eval* and Call* Tarantool always returns array, but does not forces
-// array of arrays.
+// For all space related methods Tarantool always returns array of arrays
+// (array of tuples for space related methods).
+// For EvalRequest and CallRequest Tarantool always returns array, but does not
+// forces array of arrays.
 //
 // If connected to Tarantool 2.10 or newer, connection supports server graceful
 // shutdown. In this case, server will wait until all client requests will be

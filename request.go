@@ -1027,23 +1027,6 @@ func (req *CallRequest) Context(ctx context.Context) *CallRequest {
 	return req
 }
 
-// NewCall16Request returns a new empty Call16Request. It uses request code for
-// Tarantool 1.6.
-// Deprecated since Tarantool 1.7.2.
-func NewCall16Request(function string) *CallRequest {
-	req := NewCallRequest(function)
-	req.rtype = iproto.IPROTO_CALL_16
-	return req
-}
-
-// NewCall17Request returns a new empty CallRequest. It uses request code for
-// Tarantool >= 1.7.
-func NewCall17Request(function string) *CallRequest {
-	req := NewCallRequest(function)
-	req.rtype = iproto.IPROTO_CALL
-	return req
-}
-
 // EvalRequest helps you to create an eval request object for execution
 // by a Connection.
 type EvalRequest struct {

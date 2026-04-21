@@ -67,7 +67,7 @@ type baseRequest struct {
 }
 
 func newCall(method string) *tarantool.CallRequest {
-	return tarantool.NewCall17Request(method)
+	return tarantool.NewCallRequest(method)
 }
 
 // Type returns IPROTO type for CRUD request.
