@@ -98,7 +98,7 @@ type Instance struct {
 	Opts tarantool.Opts
 }
 
-// Opts provides additional options (configurable via ConnectWithOpts).
+// Opts provides additional options (configurable via NewWithOpts).
 type Opts struct {
 	// Timeout for timer to reopen connections that have been closed by some
 	// events and to relocate connection between subpools if ro/rw role has
@@ -189,9 +189,9 @@ func newEndpoint(name string, dialer tarantool.Dialer, opts tarantool.Opts) *end
 	}
 }
 
-// ConnectWithOpts creates pool for instances with specified instances and
+// NewWithOpts creates pool for instances with specified instances and
 // opts. Instances must have unique names.
-func ConnectWithOpts(ctx context.Context, instances []Instance,
+func NewWithOpts(ctx context.Context, instances []Instance,
 	opts Opts) (*Pool, error) {
 	unique := make(map[string]bool)
 	for _, instance := range instances {
@@ -268,13 +268,13 @@ func ConnectWithOpts(ctx context.Context, instances []Instance,
 	return p, nil
 }
 
-// Connect creates pool for instances with specified instances. Instances must
+// New creates pool for instances with specified instances. Instances must
 // have unique names.
-func Connect(ctx context.Context, instances []Instance) (*Pool, error) {
+func New(ctx context.Context, instances []Instance) (*Pool, error) {
 	opts := Opts{
 		CheckTimeout: 1 * time.Second,
 	}
-	return ConnectWithOpts(ctx, instances, opts)
+	return NewWithOpts(ctx, instances, opts)
 }
 
 // ConnectedNow gets connected status of pool.

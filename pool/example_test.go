@@ -30,7 +30,7 @@ func examplePool(roles []bool,
 	if err != nil {
 		return nil, fmt.Errorf("Pool is not established")
 	}
-	connPool, err := pool.Connect(ctx, instances)
+	connPool, err := pool.New(ctx, instances)
 	if err != nil || connPool == nil {
 		return nil, fmt.Errorf("Pool is not established")
 	}
@@ -62,7 +62,7 @@ func exampleFeaturesPool(roles []bool, connOpts tarantool.Opts,
 	if err != nil {
 		return nil, fmt.Errorf("Pool is not established")
 	}
-	connPool, err := pool.Connect(ctx, poolInstances)
+	connPool, err := pool.New(ctx, poolInstances)
 	if err != nil || connPool == nil {
 		return nil, fmt.Errorf("Pool is not established")
 	}
@@ -504,7 +504,7 @@ func ExampleConnect_invalidOpts() {
 		},
 	}
 
-	connPool, err := pool.ConnectWithOpts(ctx, instances, pool.Opts{
+	connPool, err := pool.NewWithOpts(ctx, instances, pool.Opts{
 		CheckTimeout: time.Second,
 	})
 	if err != nil {

@@ -181,7 +181,7 @@ func Example_connectionPool() {
 		CheckTimeout: 5 * time.Second,
 		Handler:      h,
 	}
-	connPool, err := pool.ConnectWithOpts(ctx, poolInstances, poolOpts)
+	connPool, err := pool.NewWithOpts(ctx, poolInstances, poolOpts)
 	if err != nil {
 		fmt.Printf("Unable to connect to the pool: %s", err)
 		return
