@@ -13,14 +13,14 @@ import (
 )
 
 type ListenOnInstanceArgs struct {
-	ConnPool      *pool.ConnectionPool
+	Pool          *pool.Pool
 	Mode          pool.Mode
 	ServersNumber int
 	ExpectedPorts map[string]bool
 }
 
 type CheckStatusesArgs struct {
-	ConnPool           *pool.ConnectionPool
+	Pool               *pool.Pool
 	Servers            []string
 	Mode               pool.Mode
 	ExpectedPoolStatus bool
@@ -62,14 +62,14 @@ func comparePortMaps(expected map[string]bool, actual map[string]bool) error {
 }
 
 func CheckPoolStatuses(args CheckStatusesArgs) error {
-	connected, _ := args.ConnPool.ConnectedNow(args.Mode)
+	connected, _ := args.Pool.ConnectedNow(args.Mode)
 	if connected != args.ExpectedPoolStatus {
 		return fmt.Errorf(
 			"incorrect connection pool status: expected status %t actual status %t",
 			args.ExpectedPoolStatus, connected)
 	}
 
-	poolInfo := args.ConnPool.GetInfo()
+	poolInfo := args.Pool.GetInfo()
 	for _, server := range args.Servers {
 		status := poolInfo[server].ConnectedNow
 		if args.ExpectedStatuses[server] != status {
@@ -97,7 +97,7 @@ func ProcessListenOnInstance(args ListenOnInstanceArgs) error {
 	for i := 0; i < args.ServersNumber; i++ {
 		req := tarantool.NewEvalRequest("return box.cfg.listen")
 		var data []string
-		err := args.ConnPool.Do(req, args.Mode).GetTyped(&data)
+		err := args.Pool.Do(req, args.Mode).GetTyped(&data)
 		if err != nil {
 			return fmt.Errorf("failed to get response: %w", err)
 		}

@@ -20,7 +20,7 @@ type Pooler interface {
 
 	ConnectedNow(mode Mode) (bool, error)
 	Close() error
-	// CloseGraceful closes connections in the ConnectionPool gracefully. It waits
+	// CloseGraceful closes connections in the Pool gracefully. It waits
 	// for all requests to complete.
 	CloseGraceful() error
 	ConfiguredTimeout(mode Mode) (time.Duration, error)

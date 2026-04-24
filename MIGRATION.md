@@ -68,6 +68,10 @@ TODO
   }
   connPool, err := pool.ConnectWithOpts(ctx, instances, poolOpts)
   ```
+* `pool.ConnectionPool` renamed to `pool.Pool`.
+* `pool.ConnectionHandler` renamed to `pool.Handler`.
+* `pool.ConnectionInfo` renamed to `pool.Info`, field `ConnRole` renamed to `Role`.
+* `pool.ConnectionInfo` renamed to `pool.Info`.
 * `Future.Release()` call could be used to free resources allocated for the
   `Future` object created by a `Connection` object.
 * Removed deprecated `NewCall16Request` and `NewCall17Request` constructors.

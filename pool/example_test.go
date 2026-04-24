@@ -23,23 +23,23 @@ type Tuple struct {
 var testRoles = []bool{true, true, false, true, true}
 
 func examplePool(roles []bool,
-	connOpts tarantool.Opts) (*pool.ConnectionPool, error) {
+	connOpts tarantool.Opts) (*pool.Pool, error) {
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
 	err := test_helpers.SetClusterRO(ctx, dialers, connOpts, roles)
 	if err != nil {
-		return nil, fmt.Errorf("ConnectionPool is not established")
+		return nil, fmt.Errorf("Pool is not established")
 	}
 	connPool, err := pool.Connect(ctx, instances)
 	if err != nil || connPool == nil {
-		return nil, fmt.Errorf("ConnectionPool is not established")
+		return nil, fmt.Errorf("Pool is not established")
 	}
 
 	return connPool, nil
 }
 
 func exampleFeaturesPool(roles []bool, connOpts tarantool.Opts,
-	requiredProtocol tarantool.ProtocolInfo) (*pool.ConnectionPool, error) {
+	requiredProtocol tarantool.ProtocolInfo) (*pool.Pool, error) {
 	poolInstances := []pool.Instance{}
 	poolDialers := []tarantool.Dialer{}
 	for _, server := range servers {
@@ -60,17 +60,17 @@ func exampleFeaturesPool(roles []bool, connOpts tarantool.Opts,
 	defer cancel()
 	err := test_helpers.SetClusterRO(ctx, poolDialers, connOpts, roles)
 	if err != nil {
-		return nil, fmt.Errorf("ConnectionPool is not established")
+		return nil, fmt.Errorf("Pool is not established")
 	}
 	connPool, err := pool.Connect(ctx, poolInstances)
 	if err != nil || connPool == nil {
-		return nil, fmt.Errorf("ConnectionPool is not established")
+		return nil, fmt.Errorf("Pool is not established")
 	}
 
 	return connPool, nil
 }
 
-func ExampleConnectionPool_Do() {
+func ExamplePool_Do() {
 	connPool, err := examplePool(testRoles, connOpts)
 	if err != nil {
 		fmt.Println(err)
@@ -98,7 +98,7 @@ func ExampleConnectionPool_Do() {
 	// Ping Error <nil>
 }
 
-func ExampleConnectionPool_NewPrepared() {
+func ExamplePool_NewPrepared() {
 	connPool, err := examplePool(testRoles, connOpts)
 	if err != nil {
 		fmt.Println(err)
@@ -123,7 +123,7 @@ func ExampleConnectionPool_NewPrepared() {
 	}
 }
 
-func ExampleConnectionPool_NewWatcher() {
+func ExamplePool_NewWatcher() {
 	const key = "foo"
 	const value = "bar"
 
@@ -437,9 +437,9 @@ func ExampleConnectorAdapter() {
 	// Ping Error <nil>
 }
 
-// ExampleConnectionPool_CloseGraceful_force demonstrates how to force close
+// ExamplePool_CloseGraceful_force demonstrates how to force close
 // a connection pool with graceful close in progress after a while.
-func ExampleConnectionPool_CloseGraceful_force() {
+func ExamplePool_CloseGraceful_force() {
 	connPool, err := examplePool(testRoles, connOpts)
 	if err != nil {
 		fmt.Println(err)
@@ -462,13 +462,13 @@ func ExampleConnectionPool_CloseGraceful_force() {
 			fmt.Println(err)
 			return
 		}
-		fmt.Println("ConnectionPool.CloseGraceful() done!")
+		fmt.Println("Pool.CloseGraceful() done!")
 	}()
 
 	select {
 	case <-done:
 	case <-time.After(3 * time.Second):
-		fmt.Println("Force ConnectionPool.Close()!")
+		fmt.Println("Force Pool.Close()!")
 		_ = connPool.Close()
 	}
 	<-done
@@ -476,8 +476,8 @@ func ExampleConnectionPool_CloseGraceful_force() {
 	fmt.Println("Result:")
 	fmt.Println(fut.Get())
 	// Output:
-	// Force ConnectionPool.Close()!
-	// ConnectionPool.CloseGraceful() done!
+	// Force Pool.Close()!
+	// Pool.CloseGraceful() done!
 	// Result:
 	// [] connection closed by client (0x4001)
 }

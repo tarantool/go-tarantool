@@ -75,6 +75,9 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
   `pool.ConnectionHandler` to track connection availability instead of
   `tarantool.Opts.Notify`. All validation errors are combined using
   `errors.Join` and can be checked with `errors.Is`.
+* Rename `pool.ConnectionPool` to `pool.Pool`, `pool.ConnectionHandler` to
+  `pool.Handler`, `pool.ConnectionInfo` to `pool.Info`, `pool.ConnectionInfo.ConnRole`
+  to `pool.Info.Role`.
 
 ### Removed
 

@@ -15,8 +15,8 @@ import (
 	"github.com/tarantool/go-tarantool/v3/test_helpers"
 )
 
-// QueueConnectionHandler handles new connections in a ConnectionPool.
-type QueueConnectionHandler struct {
+// QueueHandler handles new connections in a Pool.
+type QueueHandler struct {
 	name string
 	cfg  queue.Cfg
 
@@ -28,12 +28,12 @@ type QueueConnectionHandler struct {
 	masterCnt  int32
 }
 
-// QueueConnectionHandler implements the ConnectionHandler interface.
-var _ pool.ConnectionHandler = &QueueConnectionHandler{}
+// QueueHandler implements the Handler interface.
+var _ pool.Handler = &QueueHandler{}
 
-// NewQueueConnectionHandler creates a QueueConnectionHandler object.
-func NewQueueConnectionHandler(name string, cfg queue.Cfg) *QueueConnectionHandler {
-	return &QueueConnectionHandler{
+// NewQueueHandler creates a QueueHandler object.
+func NewQueueHandler(name string, cfg queue.Cfg) *QueueHandler {
+	return &QueueHandler{
 		name:    name,
 		cfg:     cfg,
 		updated: make(chan struct{}, 10),
@@ -45,7 +45,7 @@ func NewQueueConnectionHandler(name string, cfg queue.Cfg) *QueueConnectionHandl
 //
 // NOTE: the Queue supports only a master-replica cluster configuration. It
 // does not support a master-master configuration.
-func (h *QueueConnectionHandler) Discovered(name string, conn *tarantool.Connection,
+func (h *QueueHandler) Discovered(name string, conn *tarantool.Connection,
 	role pool.Role) error {
 	h.mutex.Lock()
 	defer h.mutex.Unlock()
@@ -114,7 +114,7 @@ func (h *QueueConnectionHandler) Discovered(name string, conn *tarantool.Connect
 }
 
 // Deactivated doesn't do anything useful for the example.
-func (h *QueueConnectionHandler) Deactivated(name string, conn *tarantool.Connection,
+func (h *QueueHandler) Deactivated(name string, conn *tarantool.Connection,
 	role pool.Role) error {
 	if role == pool.MasterRole {
 		atomic.AddInt32(&h.masterCnt, -1)
@@ -122,25 +122,25 @@ func (h *QueueConnectionHandler) Deactivated(name string, conn *tarantool.Connec
 	return nil
 }
 
-// Closes closes a QueueConnectionHandler object.
-func (h *QueueConnectionHandler) Close() {
+// Closes closes a QueueHandler object.
+func (h *QueueHandler) Close() {
 	close(h.updated)
 }
 
 // Example demonstrates how to use the queue package with the pool
-// package. First of all, you need to create a ConnectionHandler implementation
-// for the a ConnectionPool object to process new connections from
+// package. First of all, you need to create a Handler implementation
+// for the a Pool object to process new connections from
 // RW-instances.
 //
 // You need to register a shared session UUID at a first master connection.
 // It needs to be used to re-identify as the shared session on new
-// RW-instances. See QueueConnectionHandler.Discovered() implementation.
+// RW-instances. See QueueHandler.Discovered() implementation.
 //
 // After that, you need to create a ConnectorAdapter object with RW mode for
-// the ConnectionPool to send requests into RW-instances. This adapter can
+// the Pool to send requests into RW-instances. This adapter can
 // be used to create a ready-to-work queue object.
 func Example_connectionPool() {
-	// Create a ConnectionHandler object.
+	// Create a Handler object.
 	cfg := queue.Cfg{
 		Temporary:   false,
 		IfNotExists: true,
@@ -149,10 +149,10 @@ func Example_connectionPool() {
 			Ttl: 10 * time.Second,
 		},
 	}
-	h := NewQueueConnectionHandler("test_queue", cfg)
+	h := NewQueueHandler("test_queue", cfg)
 	defer h.Close()
 
-	// Create a ConnectionPool object.
+	// Create a Pool object.
 	poolServers := []string{"127.0.0.1:3014", "127.0.0.1:3015"}
 	poolDialers := []tarantool.Dialer{}
 	poolInstances := []pool.Instance{}
@@ -178,8 +178,8 @@ func Example_connectionPool() {
 	defer cancel()
 
 	poolOpts := pool.Opts{
-		CheckTimeout:      5 * time.Second,
-		ConnectionHandler: h,
+		CheckTimeout: 5 * time.Second,
+		Handler:      h,
 	}
 	connPool, err := pool.ConnectWithOpts(ctx, poolInstances, poolOpts)
 	if err != nil {
@@ -197,7 +197,7 @@ func Example_connectionPool() {
 		return
 	}
 
-	// Create a Queue object from the ConnectionPool object via
+	// Create a Queue object from the Pool object via
 	// a ConnectorAdapter.
 	rw := pool.NewConnectorAdapter(connPool, pool.RW)
 	q := queue.New(rw, "test_queue")
