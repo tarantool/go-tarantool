@@ -3028,7 +3028,7 @@ func TestDo_concurrent(t *testing.T) {
 	wg.Wait()
 }
 
-func TestDoInstance(t *testing.T) {
+func TestDoOn(t *testing.T) {
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
 
@@ -3040,13 +3040,13 @@ func TestDoInstance(t *testing.T) {
 
 	req := tarantool.NewEvalRequest("return box.cfg.listen")
 	for _, server := range servers {
-		data, err := connPool.DoInstance(req, server).Get()
+		data, err := connPool.DoOn(req, server).Get()
 		require.NoError(t, err)
 		assert.Equal(t, []interface{}{server}, data)
 	}
 }
 
-func TestDoInstance_not_found(t *testing.T) {
+func TestDoOn_not_found(t *testing.T) {
 	roles := []bool{true, true, false, true, false}
 
 	ctx, cancel := test_helpers.GetPoolConnectContext()
@@ -3061,12 +3061,12 @@ func TestDoInstance_not_found(t *testing.T) {
 
 	defer func() { _ = connPool.Close() }()
 
-	data, err := connPool.DoInstance(tarantool.NewPingRequest(), "not_exist").Get()
+	data, err := connPool.DoOn(tarantool.NewPingRequest(), "not_exist").Get()
 	assert.Nil(t, data)
 	require.ErrorIs(t, err, pool.ErrNoHealthyInstance)
 }
 
-func TestDoInstance_concurrent(t *testing.T) {
+func TestDoOn_concurrent(t *testing.T) {
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
 	connPool, err := pool.Connect(ctx, instances)
@@ -3086,11 +3086,11 @@ func TestDoInstance_concurrent(t *testing.T) {
 			defer wg.Done()
 
 			for _, server := range servers {
-				data, err := connPool.DoInstance(eval, server).Get()
+				data, err := connPool.DoOn(eval, server).Get()
 				assert.NoError(t, err)
 				assert.Equal(t, []interface{}{server}, data)
 			}
-			_, err := connPool.DoInstance(ping, "not_exist").Get()
+			_, err := connPool.DoOn(ping, "not_exist").Get()
 			assert.ErrorIs(t, err, pool.ErrNoHealthyInstance)
 		}()
 	}

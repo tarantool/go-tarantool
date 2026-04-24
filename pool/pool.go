@@ -593,8 +593,8 @@ func (p *Pool) Do(req tarantool.Request, userMode Mode) tarantool.Future {
 	return conn.Do(req)
 }
 
-// DoInstance sends the request into a target instance and returns a future.
-func (p *Pool) DoInstance(req tarantool.Request, name string) tarantool.Future {
+// DoOn sends the request into a target instance and returns a future.
+func (p *Pool) DoOn(req tarantool.Request, name string) tarantool.Future {
 	conn := p.anyPool.GetConnection(name)
 	if conn == nil {
 		return tarantool.NewFutureWithErr(nil, ErrNoHealthyInstance)

@@ -79,6 +79,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
   `pool.Handler`, `pool.ConnectionInfo` to `pool.Info`, `pool.ConnectionInfo.ConnRole`
   to `pool.Info.Role`.
 * Rename `pool.Pool.GetInfo()` to `pool.Pool.Info()`.
+* Rename `pool.Pool.DoInstance()` to `pool.Pool.DoOn()`.
 
 ### Removed
 
