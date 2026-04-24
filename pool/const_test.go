@@ -7,7 +7,7 @@ import (
 )
 
 func TestRole_String(t *testing.T) {
-	require.Equal(t, "unknown", UnknownRole.String())
-	require.Equal(t, "master", MasterRole.String())
-	require.Equal(t, "replica", ReplicaRole.String())
+	require.Equal(t, "unknown", RoleUnknown.String())
+	require.Equal(t, "master", RoleMaster.String())
+	require.Equal(t, "replica", RoleReplica.String())
 }

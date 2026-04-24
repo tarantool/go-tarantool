@@ -75,6 +75,10 @@ TODO
 * `pool.Pool.DoInstance()` renamed to `pool.Pool.DoOn()`.
 * `pool.Connect()` renamed to `pool.New()`, `pool.ConnectWithOpts()` renamed to
   `pool.NewWithOpts()`.
+* `pool` enum constants renamed to use prefix: `ANY` → `ModeAny`, `RW` →
+  `ModeRW`, `RO` → `ModeRO`, `PreferRW` → `ModePreferRW`, `PreferRO` →
+  `ModePreferRO`, `UnknownRole` → `RoleUnknown`, `MasterRole` → `RoleMaster`,
+  `ReplicaRole` → `RoleReplica`.
 * `Future.Release()` call could be used to free resources allocated for the
   `Future` object created by a `Connection` object.
 * Removed deprecated `NewCall16Request` and `NewCall17Request` constructors.

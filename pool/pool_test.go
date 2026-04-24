@@ -344,7 +344,7 @@ func TestConnSuccessfully(t *testing.T) {
 
 	args := test_helpers.CheckStatusesArgs{
 		Pool:               connPool,
-		Mode:               pool.ANY,
+		Mode:               pool.ModeAny,
 		Servers:            []string{healthyServ},
 		ExpectedPoolStatus: true,
 		ExpectedStatuses: map[string]bool{
@@ -373,7 +373,7 @@ func TestConn_no_execute_supported(t *testing.T) {
 
 	args := test_helpers.CheckStatusesArgs{
 		Pool:               connPool,
-		Mode:               pool.ANY,
+		Mode:               pool.ModeAny,
 		Servers:            []string{healthyServ},
 		ExpectedPoolStatus: true,
 		ExpectedStatuses: map[string]bool{
@@ -384,7 +384,7 @@ func TestConn_no_execute_supported(t *testing.T) {
 	err = test_helpers.CheckPoolStatuses(args)
 	require.NoError(t, err)
 
-	_, err = connPool.Do(tarantool.NewPingRequest(), pool.ANY).Get()
+	_, err = connPool.Do(tarantool.NewPingRequest(), pool.ModeAny).Get()
 	require.NoError(t, err)
 }
 
@@ -412,7 +412,7 @@ func TestConn_no_execute_unsupported(t *testing.T) {
 
 	args := test_helpers.CheckStatusesArgs{
 		Pool:               connPool,
-		Mode:               pool.ANY,
+		Mode:               pool.ModeAny,
 		Servers:            []string{healthyServ},
 		ExpectedPoolStatus: false,
 		ExpectedStatuses: map[string]bool{
@@ -423,7 +423,7 @@ func TestConn_no_execute_unsupported(t *testing.T) {
 	err = test_helpers.CheckPoolStatuses(args)
 	require.NoError(t, err)
 
-	_, err = connPool.Do(tarantool.NewPingRequest(), pool.ANY).Get()
+	_, err = connPool.Do(tarantool.NewPingRequest(), pool.ModeAny).Get()
 	require.Error(t, err)
 	require.Equal(t, "can't find healthy instance in pool", err.Error())
 }
@@ -469,9 +469,9 @@ func TestNew_unavailable(t *testing.T) {
 	require.NotNilf(t, connPool, "pool is nil after Connect")
 	require.Equal(t, map[string]pool.Info{
 		servers[0]: pool.Info{
-			ConnectedNow: false, Role: pool.UnknownRole, Instance: insts[0]},
+			ConnectedNow: false, Role: pool.RoleUnknown, Instance: insts[0]},
 		servers[1]: pool.Info{
-			ConnectedNow: false, Role: pool.UnknownRole, Instance: insts[1]},
+			ConnectedNow: false, Role: pool.RoleUnknown, Instance: insts[1]},
 	}, connPool.Info())
 }
 
@@ -514,9 +514,9 @@ func TestNew_server_hang(t *testing.T) {
 	require.NotNil(t, connPool, "pool is nil after Connect")
 	require.Equal(t, map[string]pool.Info{
 		servers[0]: pool.Info{
-			ConnectedNow: false, Role: pool.UnknownRole, Instance: insts[0]},
+			ConnectedNow: false, Role: pool.RoleUnknown, Instance: insts[0]},
 		servers[1]: pool.Info{
-			ConnectedNow: true, Role: pool.MasterRole, Instance: insts[1]},
+			ConnectedNow: true, Role: pool.RoleMaster, Instance: insts[1]},
 	}, connPool.Info())
 }
 
@@ -611,7 +611,7 @@ func TestConnSuccessfullyDuplicates(t *testing.T) {
 
 	args := test_helpers.CheckStatusesArgs{
 		Pool:               connPool,
-		Mode:               pool.ANY,
+		Mode:               pool.ModeAny,
 		Servers:            []string{"c0", "c1", "c2", "c3"},
 		ExpectedPoolStatus: true,
 		ExpectedStatuses: map[string]bool{
@@ -641,7 +641,7 @@ func TestReconnect(t *testing.T) {
 
 	args := test_helpers.CheckStatusesArgs{
 		Pool:               connPool,
-		Mode:               pool.ANY,
+		Mode:               pool.ModeAny,
 		Servers:            []string{server},
 		ExpectedPoolStatus: true,
 		ExpectedStatuses: map[string]bool{
@@ -659,7 +659,7 @@ func TestReconnect(t *testing.T) {
 
 	args = test_helpers.CheckStatusesArgs{
 		Pool:               connPool,
-		Mode:               pool.ANY,
+		Mode:               pool.ModeAny,
 		Servers:            []string{server},
 		ExpectedPoolStatus: true,
 		ExpectedStatuses: map[string]bool{
@@ -689,7 +689,7 @@ func TestDisconnect_withReconnect(t *testing.T) {
 	test_helpers.StopTarantoolWithCleanup(helpInstances[serverId])
 	args := test_helpers.CheckStatusesArgs{
 		Pool:               connPool,
-		Mode:               pool.ANY,
+		Mode:               pool.ModeAny,
 		Servers:            []string{servers[serverId]},
 		ExpectedPoolStatus: false,
 		ExpectedStatuses: map[string]bool{
@@ -708,7 +708,7 @@ func TestDisconnect_withReconnect(t *testing.T) {
 
 	args = test_helpers.CheckStatusesArgs{
 		Pool:               connPool,
-		Mode:               pool.ANY,
+		Mode:               pool.ModeAny,
 		Servers:            []string{servers[serverId]},
 		ExpectedPoolStatus: true,
 		ExpectedStatuses: map[string]bool{
@@ -739,7 +739,7 @@ func TestDisconnectAll(t *testing.T) {
 
 	args := test_helpers.CheckStatusesArgs{
 		Pool:               connPool,
-		Mode:               pool.ANY,
+		Mode:               pool.ModeAny,
 		Servers:            []string{server1, server2},
 		ExpectedPoolStatus: false,
 		ExpectedStatuses: map[string]bool{
@@ -761,7 +761,7 @@ func TestDisconnectAll(t *testing.T) {
 
 	args = test_helpers.CheckStatusesArgs{
 		Pool:               connPool,
-		Mode:               pool.ANY,
+		Mode:               pool.ModeAny,
 		Servers:            []string{server1, server2},
 		ExpectedPoolStatus: true,
 		ExpectedStatuses: map[string]bool{
@@ -795,7 +795,7 @@ func TestAdd(t *testing.T) {
 
 	args := test_helpers.CheckStatusesArgs{
 		Pool:               connPool,
-		Mode:               pool.ANY,
+		Mode:               pool.ModeAny,
 		Servers:            servers,
 		ExpectedPoolStatus: true,
 		ExpectedStatuses: map[string]bool{
@@ -920,7 +920,7 @@ func TestAdd_exist(t *testing.T) {
 
 	args := test_helpers.CheckStatusesArgs{
 		Pool:               connPool,
-		Mode:               pool.ANY,
+		Mode:               pool.ModeAny,
 		Servers:            servers,
 		ExpectedPoolStatus: true,
 		ExpectedStatuses: map[string]bool{
@@ -958,7 +958,7 @@ func TestAdd_unreachable(t *testing.T) {
 
 	args := test_helpers.CheckStatusesArgs{
 		Pool:               connPool,
-		Mode:               pool.ANY,
+		Mode:               pool.ModeAny,
 		Servers:            servers,
 		ExpectedPoolStatus: true,
 		ExpectedStatuses: map[string]bool{
@@ -1066,7 +1066,7 @@ func TestRemove(t *testing.T) {
 
 	args := test_helpers.CheckStatusesArgs{
 		Pool:               connPool,
-		Mode:               pool.ANY,
+		Mode:               pool.ModeAny,
 		Servers:            servers,
 		ExpectedPoolStatus: true,
 		ExpectedStatuses: map[string]bool{
@@ -1097,7 +1097,7 @@ func TestRemove_double(t *testing.T) {
 
 	args := test_helpers.CheckStatusesArgs{
 		Pool:               connPool,
-		Mode:               pool.ANY,
+		Mode:               pool.ModeAny,
 		Servers:            servers,
 		ExpectedPoolStatus: true,
 		ExpectedStatuses: map[string]bool{
@@ -1126,7 +1126,7 @@ func TestRemove_unknown(t *testing.T) {
 
 	args := test_helpers.CheckStatusesArgs{
 		Pool:               connPool,
-		Mode:               pool.ANY,
+		Mode:               pool.ModeAny,
 		Servers:            servers,
 		ExpectedPoolStatus: true,
 		ExpectedStatuses: map[string]bool{
@@ -1178,7 +1178,7 @@ func TestRemove_concurrent(t *testing.T) {
 
 	args := test_helpers.CheckStatusesArgs{
 		Pool:               connPool,
-		Mode:               pool.ANY,
+		Mode:               pool.ModeAny,
 		Servers:            servers,
 		ExpectedPoolStatus: true,
 		ExpectedStatuses: map[string]bool{
@@ -1248,7 +1248,7 @@ func TestClose(t *testing.T) {
 
 	args := test_helpers.CheckStatusesArgs{
 		Pool:               connPool,
-		Mode:               pool.ANY,
+		Mode:               pool.ModeAny,
 		Servers:            []string{server1, server2},
 		ExpectedPoolStatus: true,
 		ExpectedStatuses: map[string]bool{
@@ -1264,7 +1264,7 @@ func TestClose(t *testing.T) {
 
 	args = test_helpers.CheckStatusesArgs{
 		Pool:               connPool,
-		Mode:               pool.ANY,
+		Mode:               pool.ModeAny,
 		Servers:            []string{server1, server2},
 		ExpectedPoolStatus: false,
 		ExpectedStatuses: map[string]bool{
@@ -1292,7 +1292,7 @@ func TestCloseGraceful(t *testing.T) {
 
 	args := test_helpers.CheckStatusesArgs{
 		Pool:               connPool,
-		Mode:               pool.ANY,
+		Mode:               pool.ModeAny,
 		Servers:            []string{server1, server2},
 		ExpectedPoolStatus: true,
 		ExpectedStatuses: map[string]bool{
@@ -1312,7 +1312,7 @@ func TestCloseGraceful(t *testing.T) {
 
 	evalSleep := 3 // In seconds.
 	req := tarantool.NewEvalRequest(eval).Args([]interface{}{evalSleep})
-	fut := connPool.Do(req, pool.ANY)
+	fut := connPool.Do(req, pool.ModeAny)
 	go func() {
 		err := connPool.CloseGraceful()
 		assert.NoError(t, err)
@@ -1320,7 +1320,7 @@ func TestCloseGraceful(t *testing.T) {
 
 	// Check that a request rejected if graceful shutdown in progress.
 	time.Sleep((time.Duration(evalSleep) * time.Second) / 2)
-	_, err = connPool.Do(tarantool.NewPingRequest(), pool.ANY).Get()
+	_, err = connPool.Do(tarantool.NewPingRequest(), pool.ModeAny).Get()
 	require.ErrorContains(t, err, "can't find healthy instance in pool")
 
 	// Check that a previous request was successful.
@@ -1329,7 +1329,7 @@ func TestCloseGraceful(t *testing.T) {
 
 	args = test_helpers.CheckStatusesArgs{
 		Pool:               connPool,
-		Mode:               pool.ANY,
+		Mode:               pool.ModeAny,
 		Servers:            []string{server1, server2},
 		ExpectedPoolStatus: false,
 		ExpectedStatuses: map[string]bool{
@@ -1367,17 +1367,17 @@ func (h *testHandler) Discovered(name string, conn *tarantool.Connection,
 	// discovered >= 3 - update a connection after a role update
 	switch name {
 	case servers[0]:
-		if discovered < 3 && role != pool.MasterRole {
+		if discovered < 3 && role != pool.RoleMaster {
 			h.addErr(fmt.Errorf("unexpected init role %d for name %s", role, name))
 		}
-		if discovered >= 3 && role != pool.ReplicaRole {
+		if discovered >= 3 && role != pool.RoleReplica {
 			h.addErr(fmt.Errorf("unexpected updated role %d for name %s", role, name))
 		}
 	case servers[1]:
 		if discovered >= 3 {
 			h.addErr(fmt.Errorf("unexpected discovery for name %s", name))
 		}
-		if role != pool.ReplicaRole {
+		if role != pool.RoleReplica {
 			h.addErr(fmt.Errorf("unexpected role %d for name %s", role, name))
 		}
 	default:
@@ -1398,7 +1398,7 @@ func (h *testHandler) Deactivated(name string, conn *tarantool.Connection,
 
 	if deactivated == 1 && name == servers[0] {
 		// A first close is a role update.
-		if role != pool.MasterRole {
+		if role != pool.RoleMaster {
 			h.addErr(fmt.Errorf("unexpected removed role %d for name %s", role, name))
 		}
 		return nil
@@ -1406,7 +1406,7 @@ func (h *testHandler) Deactivated(name string, conn *tarantool.Connection,
 
 	if name == servers[0] || name == servers[1] {
 		// Close.
-		if role != pool.ReplicaRole {
+		if role != pool.RoleReplica {
 			h.addErr(fmt.Errorf("unexpected removed role %d for name %s", role, name))
 		}
 	} else {
@@ -1440,7 +1440,7 @@ func TestHandlerOpenUpdateClose(t *testing.T) {
 		Args([]interface{}{map[string]bool{
 			"read_only": true,
 		}}),
-		pool.RW).GetResponse()
+		pool.ModeRW).GetResponse()
 	require.NoErrorf(t, err, "failed to make ro")
 
 	for i := 0; i < 100; i++ {
@@ -1470,7 +1470,7 @@ func TestHandlerOpenUpdateClose(t *testing.T) {
 	}
 
 	assert.Empty(t, h.errs, "Unexpected errors")
-	connected, err := connPool.ConnectedNow(pool.ANY)
+	connected, err := connPool.ConnectedNow(pool.ModeAny)
 	require.NoErrorf(t, err, "failed to get connected state")
 	require.Falsef(t, connected, "connection pool still be connected")
 
@@ -1518,9 +1518,9 @@ func TestHandlerOpenError(t *testing.T) {
 	require.NotNil(t, connPool, "pool expected")
 	require.Equal(t, map[string]pool.Info{
 		servers[0]: pool.Info{
-			ConnectedNow: false, Role: pool.UnknownRole, Instance: insts[0]},
+			ConnectedNow: false, Role: pool.RoleUnknown, Instance: insts[0]},
 		servers[1]: pool.Info{
-			ConnectedNow: false, Role: pool.UnknownRole, Instance: insts[1]},
+			ConnectedNow: false, Role: pool.RoleUnknown, Instance: insts[1]},
 	}, connPool.Info())
 	_ = connPool.Close()
 
@@ -1572,7 +1572,7 @@ func TestHandlerUpdateError(t *testing.T) {
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 	defer func() { _ = connPool.Close() }()
 
-	connected, err := connPool.ConnectedNow(pool.ANY)
+	connected, err := connPool.ConnectedNow(pool.ModeAny)
 	require.NoErrorf(t, err, "failed to get ConnectedNow()")
 	require.Truef(t, connected, "should be connected")
 
@@ -1582,20 +1582,20 @@ func TestHandlerUpdateError(t *testing.T) {
 
 	for i := 0; i < 100; i++ {
 		// Wait for updates done.
-		connected, err = connPool.ConnectedNow(pool.ANY)
+		connected, err = connPool.ConnectedNow(pool.ModeAny)
 		if !connected || err != nil {
 			break
 		}
 		time.Sleep(poolOpts.CheckTimeout)
 	}
-	connected, err = connPool.ConnectedNow(pool.ANY)
+	connected, err = connPool.ConnectedNow(pool.ModeAny)
 
 	require.NoErrorf(t, err, "failed to get ConnectedNow()")
 	require.Falsef(t, connected, "should not be any active connection")
 
 	_ = connPool.Close()
 
-	connected, err = connPool.ConnectedNow(pool.ANY)
+	connected, err = connPool.ConnectedNow(pool.ModeAny)
 
 	require.NoErrorf(t, err, "failed to get ConnectedNow()")
 	require.Falsef(t, connected, "should be deactivated")
@@ -1647,7 +1647,7 @@ func TestHandlerDeactivated_on_remove(t *testing.T) {
 
 	args := test_helpers.CheckStatusesArgs{
 		Pool:               connPool,
-		Mode:               pool.ANY,
+		Mode:               pool.ModeAny,
 		Servers:            servers,
 		ExpectedPoolStatus: true,
 		ExpectedStatuses: map[string]bool{
@@ -1665,7 +1665,7 @@ func TestHandlerDeactivated_on_remove(t *testing.T) {
 
 	args = test_helpers.CheckStatusesArgs{
 		Pool:               connPool,
-		Mode:               pool.ANY,
+		Mode:               pool.ModeAny,
 		Servers:            servers,
 		ExpectedPoolStatus: false,
 	}
@@ -1694,7 +1694,7 @@ func TestRequestOnClosed(t *testing.T) {
 
 	args := test_helpers.CheckStatusesArgs{
 		Pool:               connPool,
-		Mode:               pool.ANY,
+		Mode:               pool.ModeAny,
 		Servers:            []string{server1, server2},
 		ExpectedPoolStatus: false,
 		ExpectedStatuses: map[string]bool{
@@ -1708,7 +1708,7 @@ func TestRequestOnClosed(t *testing.T) {
 	}, timeout, tick)
 	require.NoError(t, err)
 
-	_, err = connPool.Do(tarantool.NewPingRequest(), pool.ANY).Get()
+	_, err = connPool.Do(tarantool.NewPingRequest(), pool.ModeAny).Get()
 	require.Errorf(t, err, "err is nil after Do with PingRequest")
 
 	err = test_helpers.RestartTarantool(helpInstances[0])
@@ -1733,61 +1733,61 @@ func TestDoWithCallRequest(t *testing.T) {
 
 	defer func() { _ = connPool.Close() }()
 
-	// PreferRO
+	// ModePreferRO
 	data, err := connPool.Do(
 		tarantool.NewCallRequest("box.info").
 			Args([]interface{}{}),
-		pool.PreferRO).Get()
+		pool.ModePreferRO).Get()
 	require.NoErrorf(t, err, "failed to Do with CallRequest")
 	require.NotNilf(t, data, "response is nil after Do with CallRequest")
 	require.GreaterOrEqualf(t, len(data), 1, "response.Data is empty after Do with CallRequest")
 
 	val := data[0].(map[interface{}]interface{})["ro"]
 	ro, ok := val.(bool)
-	require.Truef(t, ok, "expected `true` with mode `PreferRO`")
-	require.Truef(t, ro, "expected `true` with mode `PreferRO`")
+	require.Truef(t, ok, "expected `true` with mode `ModePreferRO`")
+	require.Truef(t, ro, "expected `true` with mode `ModePreferRO`")
 
-	// PreferRW
+	// ModePreferRW
 	data, err = connPool.Do(
 		tarantool.NewCallRequest("box.info").
 			Args([]interface{}{}),
-		pool.PreferRW).Get()
+		pool.ModePreferRW).Get()
 	require.NoErrorf(t, err, "failed to Do with CallRequest")
 	require.NotNilf(t, data, "response is nil after Do with CallRequest")
 	require.GreaterOrEqualf(t, len(data), 1, "response.Data is empty after Do with CallRequest")
 
 	val = data[0].(map[interface{}]interface{})["ro"]
 	ro, ok = val.(bool)
-	require.Truef(t, ok, "expected `false` with mode `PreferRW`")
-	require.Falsef(t, ro, "expected `false` with mode `PreferRW`")
+	require.Truef(t, ok, "expected `false` with mode `ModePreferRW`")
+	require.Falsef(t, ro, "expected `false` with mode `ModePreferRW`")
 
-	// RO
+	// ModeRO
 	data, err = connPool.Do(
 		tarantool.NewCallRequest("box.info").
 			Args([]interface{}{}),
-		pool.RO).Get()
+		pool.ModeRO).Get()
 	require.NoErrorf(t, err, "failed to Do with CallRequest")
 	require.NotNilf(t, data, "response is nil after Do with CallRequest")
 	require.GreaterOrEqualf(t, len(data), 1, "response.Data is empty after Do with CallRequest")
 
 	val = data[0].(map[interface{}]interface{})["ro"]
 	ro, ok = val.(bool)
-	require.Truef(t, ok, "expected `true` with mode `RO`")
-	require.Truef(t, ro, "expected `true` with mode `RO`")
+	require.Truef(t, ok, "expected `true` with mode `ModeRO`")
+	require.Truef(t, ro, "expected `true` with mode `ModeRO`")
 
-	// RW
+	// ModeRW
 	data, err = connPool.Do(
 		tarantool.NewCallRequest("box.info").
 			Args([]interface{}{}),
-		pool.RW).Get()
+		pool.ModeRW).Get()
 	require.NoErrorf(t, err, "failed to Do with CallRequest")
 	require.NotNilf(t, data, "response is nil after Do with CallRequest")
 	require.GreaterOrEqualf(t, len(data), 1, "response.Data is empty after Do with CallRequest")
 
 	val = data[0].(map[interface{}]interface{})["ro"]
 	ro, ok = val.(bool)
-	require.Truef(t, ok, "expected `false` with mode `RW`")
-	require.Falsef(t, ro, "expected `false` with mode `RW`")
+	require.Truef(t, ok, "expected `false` with mode `ModeRW`")
+	require.Falsef(t, ro, "expected `false` with mode `ModeRW`")
 }
 
 func TestDoWithEvalRequest(t *testing.T) {
@@ -1805,57 +1805,57 @@ func TestDoWithEvalRequest(t *testing.T) {
 
 	defer func() { _ = connPool.Close() }()
 
-	// PreferRO
+	// ModePreferRO
 	data, err := connPool.Do(
 		tarantool.NewEvalRequest("return box.info().ro").
 			Args([]interface{}{}),
-		pool.PreferRO).Get()
+		pool.ModePreferRO).Get()
 	require.NoErrorf(t, err, "failed to Do with EvalRequest")
 	require.NotNilf(t, data, "response is nil after Do with EvalRequest")
 	require.GreaterOrEqualf(t, len(data), 1, "response.Data is empty after Do with EvalRequest")
 
 	val, ok := data[0].(bool)
-	require.Truef(t, ok, "expected `true` with mode `PreferRO`")
-	require.Truef(t, val, "expected `true` with mode `PreferRO`")
+	require.Truef(t, ok, "expected `true` with mode `ModePreferRO`")
+	require.Truef(t, val, "expected `true` with mode `ModePreferRO`")
 
-	// PreferRW
+	// ModePreferRW
 	data, err = connPool.Do(
 		tarantool.NewEvalRequest("return box.info().ro").
 			Args([]interface{}{}),
-		pool.PreferRW).Get()
+		pool.ModePreferRW).Get()
 	require.NoErrorf(t, err, "failed to Do with EvalRequest")
 	require.NotNilf(t, data, "response is nil after Do with EvalRequest")
 	require.GreaterOrEqualf(t, len(data), 1, "response.Data is empty after Do with EvalRequest")
 
 	val, ok = data[0].(bool)
-	require.Truef(t, ok, "expected `false` with mode `PreferRW`")
-	require.Falsef(t, val, "expected `false` with mode `PreferRW`")
+	require.Truef(t, ok, "expected `false` with mode `ModePreferRW`")
+	require.Falsef(t, val, "expected `false` with mode `ModePreferRW`")
 
-	// RO
+	// ModeRO
 	data, err = connPool.Do(
 		tarantool.NewEvalRequest("return box.info().ro").
 			Args([]interface{}{}),
-		pool.RO).Get()
+		pool.ModeRO).Get()
 	require.NoErrorf(t, err, "failed to Do with EvalRequest")
 	require.NotNilf(t, data, "response is nil after Do with EvalRequest")
 	require.GreaterOrEqualf(t, len(data), 1, "response.Data is empty after Do with EvalRequest")
 
 	val, ok = data[0].(bool)
-	require.Truef(t, ok, "expected `true` with mode `RO`")
-	require.Truef(t, val, "expected `true` with mode `RO`")
+	require.Truef(t, ok, "expected `true` with mode `ModeRO`")
+	require.Truef(t, val, "expected `true` with mode `ModeRO`")
 
-	// RW
+	// ModeRW
 	data, err = connPool.Do(
 		tarantool.NewEvalRequest("return box.info().ro").
 			Args([]interface{}{}),
-		pool.RW).Get()
+		pool.ModeRW).Get()
 	require.NoErrorf(t, err, "failed to Do with EvalRequest")
 	require.NotNilf(t, data, "response is nil after Do with EvalRequest")
 	require.GreaterOrEqualf(t, len(data), 1, "response.Data is empty after Do with EvalRequest")
 
 	val, ok = data[0].(bool)
-	require.Truef(t, ok, "expected `false` with mode `RW`")
-	require.Falsef(t, val, "expected `false` with mode `RW`")
+	require.Truef(t, ok, "expected `false` with mode `ModeRW`")
+	require.Falsef(t, val, "expected `false` with mode `ModeRW`")
 }
 
 type Member struct {
@@ -1901,7 +1901,7 @@ func TestDoWithExecuteRequest(t *testing.T) {
 	request := "SELECT NAME0, NAME1 FROM SQL_TEST WHERE NAME0 == 1;"
 	mem := []Member{}
 
-	fut := connPool.Do(tarantool.NewExecuteRequest(request).Args([]interface{}{}), pool.ANY)
+	fut := connPool.Do(tarantool.NewExecuteRequest(request).Args([]interface{}{}), pool.ModeAny)
 	data, err := fut.Get()
 	require.NoErrorf(t, err, "failed to Do with ExecuteRequest")
 	require.NotNilf(t, data, "response is nil after Execute")
@@ -1948,56 +1948,56 @@ func TestRoundRobinStrategy(t *testing.T) {
 
 	defer func() { _ = connPool.Close() }()
 
-	// ANY
+	// ModeAny
 	args := test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: allPorts,
 		Pool:          connPool,
-		Mode:          pool.ANY,
+		Mode:          pool.ModeAny,
 	}
 
 	err = test_helpers.ProcessListenOnInstance(args)
 	require.NoError(t, err)
 
-	// RW
+	// ModeRW
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: masterPorts,
 		Pool:          connPool,
-		Mode:          pool.RW,
+		Mode:          pool.ModeRW,
 	}
 
 	err = test_helpers.ProcessListenOnInstance(args)
 	require.NoError(t, err)
 
-	// RO
+	// ModeRO
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: replicaPorts,
 		Pool:          connPool,
-		Mode:          pool.RO,
+		Mode:          pool.ModeRO,
 	}
 
 	err = test_helpers.ProcessListenOnInstance(args)
 	require.NoError(t, err)
 
-	// PreferRW
+	// ModePreferRW
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: masterPorts,
 		Pool:          connPool,
-		Mode:          pool.PreferRW,
+		Mode:          pool.ModePreferRW,
 	}
 
 	err = test_helpers.ProcessListenOnInstance(args)
 	require.NoError(t, err)
 
-	// PreferRO
+	// ModePreferRO
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: replicaPorts,
 		Pool:          connPool,
-		Mode:          pool.PreferRO,
+		Mode:          pool.ModePreferRO,
 	}
 
 	err = test_helpers.ProcessListenOnInstance(args)
@@ -2028,53 +2028,53 @@ func TestRoundRobinStrategy_NoReplica(t *testing.T) {
 
 	defer func() { _ = connPool.Close() }()
 
-	// RO
+	// ModeRO
 	_, err = connPool.Do(
 		tarantool.NewEvalRequest("return box.cfg.listen").
 			Args([]interface{}{}),
-		pool.RO).Get()
+		pool.ModeRO).Get()
 	require.Errorf(t, err, "expected to fail after Do with EvalRequest, but error is nil")
 	require.Equal(t, "can't find ro instance in pool", err.Error())
 
-	// ANY
+	// ModeAny
 	args := test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: allPorts,
 		Pool:          connPool,
-		Mode:          pool.ANY,
+		Mode:          pool.ModeAny,
 	}
 
 	err = test_helpers.ProcessListenOnInstance(args)
 	require.NoError(t, err)
 
-	// RW
+	// ModeRW
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: allPorts,
 		Pool:          connPool,
-		Mode:          pool.RW,
+		Mode:          pool.ModeRW,
 	}
 
 	err = test_helpers.ProcessListenOnInstance(args)
 	require.NoError(t, err)
 
-	// PreferRW
+	// ModePreferRW
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: allPorts,
 		Pool:          connPool,
-		Mode:          pool.PreferRW,
+		Mode:          pool.ModePreferRW,
 	}
 
 	err = test_helpers.ProcessListenOnInstance(args)
 	require.NoError(t, err)
 
-	// PreferRO
+	// ModePreferRO
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: allPorts,
 		Pool:          connPool,
-		Mode:          pool.PreferRO,
+		Mode:          pool.ModePreferRO,
 	}
 
 	err = test_helpers.ProcessListenOnInstance(args)
@@ -2105,53 +2105,53 @@ func TestRoundRobinStrategy_NoMaster(t *testing.T) {
 
 	defer func() { _ = connPool.Close() }()
 
-	// RW
+	// ModeRW
 	_, err = connPool.Do(
 		tarantool.NewEvalRequest("return box.cfg.listen").
 			Args([]interface{}{}),
-		pool.RW).Get()
+		pool.ModeRW).Get()
 	require.Errorf(t, err, "expected to fail after Do with EvalRequest, but error is nil")
 	require.Equal(t, "can't find rw instance in pool", err.Error())
 
-	// ANY
+	// ModeAny
 	args := test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: allPorts,
 		Pool:          connPool,
-		Mode:          pool.ANY,
+		Mode:          pool.ModeAny,
 	}
 
 	err = test_helpers.ProcessListenOnInstance(args)
 	require.NoError(t, err)
 
-	// RO
+	// ModeRO
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: allPorts,
 		Pool:          connPool,
-		Mode:          pool.RO,
+		Mode:          pool.ModeRO,
 	}
 
 	err = test_helpers.ProcessListenOnInstance(args)
 	require.NoError(t, err)
 
-	// PreferRW
+	// ModePreferRW
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: allPorts,
 		Pool:          connPool,
-		Mode:          pool.PreferRW,
+		Mode:          pool.ModePreferRW,
 	}
 
 	err = test_helpers.ProcessListenOnInstance(args)
 	require.NoError(t, err)
 
-	// PreferRO
+	// ModePreferRO
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: allPorts,
 		Pool:          connPool,
-		Mode:          pool.PreferRO,
+		Mode:          pool.ModePreferRO,
 	}
 
 	err = test_helpers.ProcessListenOnInstance(args)
@@ -2194,56 +2194,56 @@ func TestUpdateInstancesRoles(t *testing.T) {
 
 	defer func() { _ = connPool.Close() }()
 
-	// ANY
+	// ModeAny
 	args := test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: allPorts,
 		Pool:          connPool,
-		Mode:          pool.ANY,
+		Mode:          pool.ModeAny,
 	}
 
 	err = test_helpers.ProcessListenOnInstance(args)
 	require.NoError(t, err)
 
-	// RW
+	// ModeRW
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: masterPorts,
 		Pool:          connPool,
-		Mode:          pool.RW,
+		Mode:          pool.ModeRW,
 	}
 
 	err = test_helpers.ProcessListenOnInstance(args)
 	require.NoError(t, err)
 
-	// RO
+	// ModeRO
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: replicaPorts,
 		Pool:          connPool,
-		Mode:          pool.RO,
+		Mode:          pool.ModeRO,
 	}
 
 	err = test_helpers.ProcessListenOnInstance(args)
 	require.NoError(t, err)
 
-	// PreferRW
+	// ModePreferRW
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: masterPorts,
 		Pool:          connPool,
-		Mode:          pool.PreferRW,
+		Mode:          pool.ModePreferRW,
 	}
 
 	err = test_helpers.ProcessListenOnInstance(args)
 	require.NoError(t, err)
 
-	// PreferRO
+	// ModePreferRO
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: replicaPorts,
 		Pool:          connPool,
-		Mode:          pool.PreferRO,
+		Mode:          pool.ModePreferRO,
 	}
 
 	err = test_helpers.ProcessListenOnInstance(args)
@@ -2267,12 +2267,12 @@ func TestUpdateInstancesRoles(t *testing.T) {
 	cancelSetRoles()
 	require.NoErrorf(t, err, "fail to set roles for cluster")
 
-	// ANY
+	// ModeAny
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: allPorts,
 		Pool:          connPool,
-		Mode:          pool.ANY,
+		Mode:          pool.ModeAny,
 	}
 
 	assert.Eventually(t, func() bool {
@@ -2281,12 +2281,12 @@ func TestUpdateInstancesRoles(t *testing.T) {
 	}, timeout, tick)
 	require.NoError(t, err)
 
-	// RW
+	// ModeRW
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: masterPorts,
 		Pool:          connPool,
-		Mode:          pool.RW,
+		Mode:          pool.ModeRW,
 	}
 
 	assert.Eventually(t, func() bool {
@@ -2295,12 +2295,12 @@ func TestUpdateInstancesRoles(t *testing.T) {
 	}, timeout, tick)
 	require.NoError(t, err)
 
-	// RO
+	// ModeRO
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: replicaPorts,
 		Pool:          connPool,
-		Mode:          pool.RO,
+		Mode:          pool.ModeRO,
 	}
 
 	assert.Eventually(t, func() bool {
@@ -2309,12 +2309,12 @@ func TestUpdateInstancesRoles(t *testing.T) {
 	}, timeout, tick)
 	require.NoError(t, err)
 
-	// PreferRW
+	// ModePreferRW
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: masterPorts,
 		Pool:          connPool,
-		Mode:          pool.PreferRW,
+		Mode:          pool.ModePreferRW,
 	}
 
 	assert.Eventually(t, func() bool {
@@ -2323,12 +2323,12 @@ func TestUpdateInstancesRoles(t *testing.T) {
 	}, timeout, tick)
 	require.NoError(t, err)
 
-	// PreferRO
+	// ModePreferRO
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: replicaPorts,
 		Pool:          connPool,
-		Mode:          pool.PreferRO,
+		Mode:          pool.ModePreferRO,
 	}
 
 	assert.Eventually(t, func() bool {
@@ -2353,10 +2353,10 @@ func TestDoWithInsertRequest(t *testing.T) {
 
 	defer func() { _ = connPool.Close() }()
 
-	// RW
+	// ModeRW
 	data, err := connPool.Do(tarantool.NewInsertRequest(spaceName).
 		Tuple([]interface{}{"rw_insert_key", "rw_insert_value"}),
-		pool.RW).Get()
+		pool.ModeRW).Get()
 	require.NoErrorf(t, err, "failed to Insert")
 	require.NotNilf(t, data, "response is nil after Insert")
 	require.Lenf(t, data, 1, "response Body len != 1 after Insert")
@@ -2374,7 +2374,7 @@ func TestDoWithInsertRequest(t *testing.T) {
 	require.Equalf(t, "rw_insert_value", value, "unexpected body of Insert (1)")
 
 	// Connect to servers[2] to check if tuple
-	// was inserted on RW instance
+	// was inserted on ModeRW instance
 	conn := test_helpers.ConnectWithValidation(t, makeDialer(servers[2]), connOpts)
 	defer func() { _ = conn.Close() }()
 
@@ -2399,9 +2399,9 @@ func TestDoWithInsertRequest(t *testing.T) {
 	require.Truef(t, ok, "unexpected body of Select (1)")
 	require.Equalf(t, "rw_insert_value", value, "unexpected body of Select (1)")
 
-	// PreferRW
+	// ModePreferRW
 	data, err = connPool.Do(tarantool.NewInsertRequest(spaceName).Tuple(
-		[]interface{}{"preferRW_insert_key", "preferRW_insert_value"}), pool.PreferRW).Get()
+		[]interface{}{"preferRW_insert_key", "preferRW_insert_value"}), pool.ModePreferRW).Get()
 	require.NoErrorf(t, err, "failed to Insert")
 	require.NotNilf(t, data, "response is nil after Insert")
 	require.Lenf(t, data, 1, "response Body len != 1 after Insert")
@@ -2456,7 +2456,7 @@ func TestDoWithDeleteRequest(t *testing.T) {
 	defer func() { _ = connPool.Close() }()
 
 	// Connect to servers[2] to check if tuple
-	// was inserted on RW instance
+	// was inserted on ModeRW instance
 	conn := test_helpers.ConnectWithValidation(t, makeDialer(servers[2]), connOpts)
 	defer func() { _ = conn.Close() }()
 
@@ -2481,7 +2481,7 @@ func TestDoWithDeleteRequest(t *testing.T) {
 		tarantool.NewDeleteRequest(spaceName).
 			Index(indexNo).
 			Key([]interface{}{"delete_key"}),
-		pool.RW).Get()
+		pool.ModeRW).Get()
 	require.NoErrorf(t, err, "failed to Do with DeleteRequest")
 	require.NotNilf(t, data, "response is nil after Do with DeleteRequest")
 	require.Lenf(t, data, 1, "response Body len != 1 after Do with DeleteRequest")
@@ -2524,14 +2524,14 @@ func TestDoWithUpsertRequest(t *testing.T) {
 	defer func() { _ = connPool.Close() }()
 
 	// Connect to servers[2] to check if tuple
-	// was inserted on RW instance
+	// was inserted on ModeRW instance
 	conn := test_helpers.ConnectWithValidation(t, makeDialer(servers[2]), connOpts)
 	defer func() { _ = conn.Close() }()
 
-	// RW
+	// ModeRW
 	data, err := connPool.Do(tarantool.NewUpsertRequest(spaceName).Tuple(
 		[]interface{}{"upsert_key", "upsert_value"}).Operations(
-		tarantool.NewOperations().Assign(1, "new_value")), pool.RW).Get()
+		tarantool.NewOperations().Assign(1, "new_value")), pool.ModeRW).Get()
 	require.NoErrorf(t, err, "failed to Upsert")
 	require.NotNilf(t, data, "response is nil after Upsert")
 
@@ -2556,10 +2556,10 @@ func TestDoWithUpsertRequest(t *testing.T) {
 	require.Truef(t, ok, "unexpected body of Select (1)")
 	require.Equalf(t, "upsert_value", value, "unexpected body of Select (1)")
 
-	// PreferRW
+	// ModePreferRW
 	data, err = connPool.Do(tarantool.NewUpsertRequest(
 		spaceName).Tuple([]interface{}{"upsert_key", "upsert_value"}).Operations(
-		tarantool.NewOperations().Assign(1, "new_value")), pool.PreferRW).Get()
+		tarantool.NewOperations().Assign(1, "new_value")), pool.ModePreferRW).Get()
 
 	require.NoErrorf(t, err, "failed to Upsert")
 	require.NotNilf(t, data, "response is nil after Upsert")
@@ -2597,7 +2597,7 @@ func TestDoWithUpdateRequest(t *testing.T) {
 	defer func() { _ = connPool.Close() }()
 
 	// Connect to servers[2] to check if tuple
-	// was inserted on RW instance
+	// was inserted on ModeRW instance
 	conn := test_helpers.ConnectWithValidation(t, makeDialer(servers[2]), connOpts)
 	defer func() { _ = conn.Close() }()
 
@@ -2619,12 +2619,12 @@ func TestDoWithUpdateRequest(t *testing.T) {
 	require.Truef(t, ok, "unexpected body of Insert (1)")
 	require.Equalf(t, "update_value", value, "unexpected body of Insert (1)")
 
-	// RW
+	// ModeRW
 	resp, err := connPool.Do(tarantool.NewUpdateRequest(spaceName).
 		Index(indexNo).
 		Key([]interface{}{"update_key"}).
 		Operations(tarantool.NewOperations().Assign(1, "new_value")),
-		pool.RW).Get()
+		pool.ModeRW).Get()
 	require.NoErrorf(t, err, "failed to Update")
 	require.NotNilf(t, resp, "response is nil after Update")
 
@@ -2649,12 +2649,12 @@ func TestDoWithUpdateRequest(t *testing.T) {
 	require.Truef(t, ok, "unexpected body of Select (1)")
 	require.Equalf(t, "new_value", value, "unexpected body of Select (1)")
 
-	// PreferRW
+	// ModePreferRW
 	resp, err = connPool.Do(tarantool.NewUpdateRequest(spaceName).
 		Index(indexNo).
 		Key([]interface{}{"update_key"}).
 		Operations(tarantool.NewOperations().Assign(1, "another_value")),
-		pool.PreferRW).Get()
+		pool.ModePreferRW).Get()
 
 	require.NoErrorf(t, err, "failed to Update")
 	require.NotNilf(t, resp, "response is nil after Update")
@@ -2692,7 +2692,7 @@ func TestDoWithReplaceRequest(t *testing.T) {
 	defer func() { _ = connPool.Close() }()
 
 	// Connect to servers[2] to check if tuple
-	// was inserted on RW instance
+	// was inserted on ModeRW instance
 	conn := test_helpers.ConnectWithValidation(t, makeDialer(servers[2]), connOpts)
 	defer func() { _ = conn.Close() }()
 
@@ -2714,10 +2714,10 @@ func TestDoWithReplaceRequest(t *testing.T) {
 	require.Truef(t, ok, "unexpected body of Insert (1)")
 	require.Equalf(t, "replace_value", value, "unexpected body of Insert (1)")
 
-	// RW
+	// ModeRW
 	resp, err := connPool.Do(tarantool.NewReplaceRequest(spaceNo).
 		Tuple([]interface{}{"new_key", "new_value"}),
-		pool.RW).Get()
+		pool.ModeRW).Get()
 	require.NoErrorf(t, err, "failed to Do with ReplaceRequest")
 	require.NotNilf(t, resp, "response is nil after Do with ReplaceRequest")
 
@@ -2742,10 +2742,10 @@ func TestDoWithReplaceRequest(t *testing.T) {
 	require.Truef(t, ok, "unexpected body of Select (1)")
 	require.Equalf(t, "new_value", value, "unexpected body of Select (1)")
 
-	// PreferRW
+	// ModePreferRW
 	resp, err = connPool.Do(tarantool.NewReplaceRequest(spaceNo).
 		Tuple([]interface{}{"new_key", "new_value"}),
-		pool.PreferRW).Get()
+		pool.ModePreferRW).Get()
 	require.NoErrorf(t, err, "failed to Do with ReplaceRequest")
 	require.NotNilf(t, resp, "response is nil after Do with ReplaceRequest")
 
@@ -2802,14 +2802,14 @@ func TestDoWithSelectRequest(t *testing.T) {
 	err = test_helpers.InsertOnInstances(ctx, makeDialers(allServers), connOpts, spaceNo, anyTpl)
 	require.NoError(t, err)
 
-	// ANY
+	// ModeAny
 	data, err := connPool.Do(tarantool.NewSelectRequest(spaceNo).
 		Index(indexNo).
 		Offset(0).
 		Limit(1).
 		Iterator(tarantool.IterEq).
 		Key(anyKey),
-		pool.ANY).Get()
+		pool.ModeAny).Get()
 	require.NoErrorf(t, err, "failed to Do with SelectRequest")
 	require.NotNilf(t, data, "response is nil after Do with SelectRequest")
 	require.Lenf(t, data, 1, "response Body len != 1 after Do with SelectRequest")
@@ -2826,14 +2826,14 @@ func TestDoWithSelectRequest(t *testing.T) {
 	require.Truef(t, ok, "unexpected body of Do with SelectRequest (1)")
 	require.Equalf(t, "any_select_value", value, "unexpected body of Do with SelectRequest (1)")
 
-	// PreferRO
+	// ModePreferRO
 	data, err = connPool.Do(tarantool.NewSelectRequest(spaceNo).
 		Index(indexNo).
 		Offset(0).
 		Limit(1).
 		Iterator(tarantool.IterEq).
 		Key(roKey),
-		pool.PreferRO).Get()
+		pool.ModePreferRO).Get()
 	require.NoErrorf(t, err, "failed to Do with SelectRequest")
 	require.NotNilf(t, data, "response is nil after Do with SelectRequest")
 	require.Lenf(t, data, 1, "response Body len != 1 after Do with SelectRequest")
@@ -2846,14 +2846,14 @@ func TestDoWithSelectRequest(t *testing.T) {
 	require.Truef(t, ok, "unexpected body of Do with SelectRequest (0)")
 	require.Equalf(t, "ro_select_key", key, "unexpected body of Do with SelectRequest (0)")
 
-	// PreferRW
+	// ModePreferRW
 	data, err = connPool.Do(tarantool.NewSelectRequest(spaceNo).
 		Index(indexNo).
 		Offset(0).
 		Limit(1).
 		Iterator(tarantool.IterEq).
 		Key(rwKey),
-		pool.PreferRW).Get()
+		pool.ModePreferRW).Get()
 	require.NoErrorf(t, err, "failed to Do with SelectRequest")
 	require.NotNilf(t, data, "response is nil after Do with SelectRequest")
 	require.Lenf(t, data, 1, "response Body len != 1 after Do with SelectRequest")
@@ -2870,14 +2870,14 @@ func TestDoWithSelectRequest(t *testing.T) {
 	require.Truef(t, ok, "unexpected body of Do with SelectRequest (1)")
 	require.Equalf(t, "rw_select_value", value, "unexpected body of Do with SelectRequest (1)")
 
-	// RO
+	// ModeRO
 	data, err = connPool.Do(tarantool.NewSelectRequest(spaceNo).
 		Index(indexNo).
 		Offset(0).
 		Limit(1).
 		Iterator(tarantool.IterEq).
 		Key(roKey),
-		pool.RO).Get()
+		pool.ModeRO).Get()
 	require.NoErrorf(t, err, "failed to Do with SelectRequest")
 	require.NotNilf(t, data, "response is nil after Do with SelectRequest")
 	require.Lenf(t, data, 1, "response Body len != 1 after Do with SelectRequest")
@@ -2894,14 +2894,14 @@ func TestDoWithSelectRequest(t *testing.T) {
 	require.Truef(t, ok, "unexpected body of Do with SelectRequest (1)")
 	require.Equalf(t, "ro_select_value", value, "unexpected body of Do with SelectRequest (1)")
 
-	// RW
+	// ModeRW
 	data, err = connPool.Do(tarantool.NewSelectRequest(spaceNo).
 		Index(indexNo).
 		Offset(0).
 		Limit(1).
 		Iterator(tarantool.IterEq).
 		Key(rwKey),
-		pool.RW).Get()
+		pool.ModeRW).Get()
 	require.NoErrorf(t, err, "failed to Do with SelectRequest")
 	require.NotNilf(t, data, "response is nil after Do with SelectRequest")
 	require.Lenf(t, data, 1, "response Body len != 1 after Do with SelectRequest")
@@ -2934,27 +2934,27 @@ func TestDoWithPingRequest(t *testing.T) {
 
 	defer func() { _ = connPool.Close() }()
 
-	// ANY
-	data, err := connPool.Do(tarantool.NewPingRequest(), pool.ANY).Get()
+	// ModeAny
+	data, err := connPool.Do(tarantool.NewPingRequest(), pool.ModeAny).Get()
 	require.NoErrorf(t, err, "failed to Do with Ping Request")
 	require.Nilf(t, data, "response data is not nil after Do with Ping Request")
 
-	// RW
-	data, err = connPool.Do(tarantool.NewPingRequest(), pool.RW).Get()
+	// ModeRW
+	data, err = connPool.Do(tarantool.NewPingRequest(), pool.ModeRW).Get()
 	require.NoErrorf(t, err, "failed to Do with Ping Request")
 	require.Nilf(t, data, "response data is not nil after Do with Ping Request")
 
-	// RO
-	_, err = connPool.Do(tarantool.NewPingRequest(), pool.RO).Get()
+	// ModeRO
+	_, err = connPool.Do(tarantool.NewPingRequest(), pool.ModeRO).Get()
 	require.NoErrorf(t, err, "failed to Do with Ping Request")
 
-	// PreferRW
-	data, err = connPool.Do(tarantool.NewPingRequest(), pool.PreferRW).Get()
+	// ModePreferRW
+	data, err = connPool.Do(tarantool.NewPingRequest(), pool.ModePreferRW).Get()
 	require.NoErrorf(t, err, "failed to Do with Ping Request")
 	require.Nilf(t, data, "response data is not nil after Do with Ping Request")
 
-	// PreferRO
-	data, err = connPool.Do(tarantool.NewPingRequest(), pool.PreferRO).Get()
+	// ModePreferRO
+	data, err = connPool.Do(tarantool.NewPingRequest(), pool.ModePreferRO).Get()
 	require.NoErrorf(t, err, "failed to Do with Ping Request")
 	require.Nilf(t, data, "response data is not nil after Do with Ping Request")
 }
@@ -2975,24 +2975,24 @@ func TestDo(t *testing.T) {
 	defer func() { _ = connPool.Close() }()
 
 	req := tarantool.NewPingRequest()
-	// ANY
-	_, err = connPool.Do(req, pool.ANY).Get()
+	// ModeAny
+	_, err = connPool.Do(req, pool.ModeAny).Get()
 	require.NoErrorf(t, err, "failed to Ping")
 
-	// RW
-	_, err = connPool.Do(req, pool.RW).Get()
+	// ModeRW
+	_, err = connPool.Do(req, pool.ModeRW).Get()
 	require.NoErrorf(t, err, "failed to Ping")
 
-	// RO
-	_, err = connPool.Do(req, pool.RO).Get()
+	// ModeRO
+	_, err = connPool.Do(req, pool.ModeRO).Get()
 	require.NoErrorf(t, err, "failed to Ping")
 
-	// PreferRW
-	_, err = connPool.Do(req, pool.PreferRW).Get()
+	// ModePreferRW
+	_, err = connPool.Do(req, pool.ModePreferRW).Get()
 	require.NoErrorf(t, err, "failed to Ping")
 
-	// PreferRO
-	_, err = connPool.Do(req, pool.PreferRO).Get()
+	// ModePreferRO
+	_, err = connPool.Do(req, pool.ModePreferRO).Get()
 	require.NoErrorf(t, err, "failed to Ping")
 }
 
@@ -3020,7 +3020,7 @@ func TestDo_concurrent(t *testing.T) {
 		go func() {
 			defer wg.Done()
 
-			_, err := connPool.Do(req, pool.ANY).Get()
+			_, err := connPool.Do(req, pool.ModeAny).Get()
 			assert.NoError(t, err)
 		}()
 	}
@@ -3116,13 +3116,13 @@ func TestNewPrepared(t *testing.T) {
 	defer func() { _ = connPool.Close() }()
 
 	stmt, err := connPool.NewPrepared(
-		"SELECT NAME0, NAME1 FROM SQL_TEST WHERE NAME0=:id AND NAME1=:name;", pool.RO)
+		"SELECT NAME0, NAME1 FROM SQL_TEST WHERE NAME0=:id AND NAME1=:name;", pool.ModeRO)
 	require.NoErrorf(t, err, "fail to prepare statement: %v", err)
 
 	executeReq := tarantool.NewExecutePreparedRequest(stmt)
 	unprepareReq := tarantool.NewUnprepareRequest(stmt)
 
-	resp, err := connPool.Do(executeReq.Args([]interface{}{1, "test"}), pool.ANY).GetResponse()
+	resp, err := connPool.Do(executeReq.Args([]interface{}{1, "test"}), pool.ModeAny).GetResponse()
 	require.NoError(t, err, "failed to execute prepared")
 	require.NotNil(t, resp, "nil response")
 	data, err := resp.Decode()
@@ -3138,14 +3138,14 @@ func TestNewPrepared(t *testing.T) {
 	assert.Equal(t, "NAME1", metaData[1].FieldName)
 
 	// the second argument for unprepare request is unused - it already belongs to some connection
-	_, err = connPool.Do(unprepareReq, pool.ANY).Get()
+	_, err = connPool.Do(unprepareReq, pool.ModeAny).Get()
 	require.NoError(t, err, "failed to unprepare prepared statement")
 
-	_, err = connPool.Do(unprepareReq, pool.ANY).Get()
+	_, err = connPool.Do(unprepareReq, pool.ModeAny).Get()
 	require.Error(t, err, "the statement must be already unprepared")
 	require.Contains(t, err.Error(), "Prepared statement with id")
 
-	_, err = connPool.Do(executeReq, pool.ANY).Get()
+	_, err = connPool.Do(executeReq, pool.ModeAny).Get()
 	require.Error(t, err, "the statement must be already unprepared")
 	require.Contains(t, err.Error(), "Prepared statement with id")
 }
@@ -3170,7 +3170,7 @@ func TestDoWithStrangerConn(t *testing.T) {
 
 	req := test_helpers.NewMockRequest()
 
-	_, err = connPool.Do(req, pool.ANY).Get()
+	_, err = connPool.Do(req, pool.ModeAny).Get()
 	require.Error(t, err, "nil error caught")
 	require.EqualError(t, err, expectedErr.Error(), "Unexpected error caught")
 }
@@ -3194,7 +3194,7 @@ func TestStream_Commit(t *testing.T) {
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 	defer func() { _ = connPool.Close() }()
 
-	stream, err := connPool.NewStream(pool.PreferRW)
+	stream, err := connPool.NewStream(pool.ModePreferRW)
 	require.NoErrorf(t, err, "failed to create stream")
 	require.NotNilf(t, connPool, "stream is nil after NewStream")
 
@@ -3210,7 +3210,7 @@ func TestStream_Commit(t *testing.T) {
 	require.NoErrorf(t, err, "failed to Insert")
 
 	// Connect to servers[2] to check if tuple
-	// was inserted outside of stream on RW instance
+	// was inserted outside of stream on ModeRW instance
 	// before transaction commit
 	conn := test_helpers.ConnectWithValidation(t, makeDialer(servers[2]), connOpts)
 	defer func() { _ = conn.Close() }()
@@ -3286,7 +3286,7 @@ func TestStream_Rollback(t *testing.T) {
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 	defer func() { _ = connPool.Close() }()
 
-	stream, err := connPool.NewStream(pool.PreferRW)
+	stream, err := connPool.NewStream(pool.ModePreferRW)
 	require.NoErrorf(t, err, "failed to create stream")
 	require.NotNilf(t, connPool, "stream is nil after NewStream")
 
@@ -3302,7 +3302,7 @@ func TestStream_Rollback(t *testing.T) {
 	require.NoErrorf(t, err, "failed to Insert")
 
 	// Connect to servers[2] to check if tuple
-	// was not inserted outside of stream on RW instance
+	// was not inserted outside of stream on ModeRW instance
 	conn := test_helpers.ConnectWithValidation(t, makeDialer(servers[2]), connOpts)
 	defer func() { _ = conn.Close() }()
 
@@ -3377,12 +3377,12 @@ func TestStream_TxnIsolationLevel(t *testing.T) {
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 	defer func() { _ = connPool.Close() }()
 
-	stream, err := connPool.NewStream(pool.PreferRW)
+	stream, err := connPool.NewStream(pool.ModePreferRW)
 	require.NoErrorf(t, err, "failed to create stream")
 	require.NotNilf(t, connPool, "stream is nil after NewStream")
 
 	// Connect to servers[2] to check if tuple
-	// was not inserted outside of stream on RW instance
+	// was not inserted outside of stream on ModeRW instance
 	conn := test_helpers.ConnectWithValidation(t, makeDialer(servers[2]), connOpts)
 	defer func() { _ = conn.Close() }()
 
@@ -3461,7 +3461,7 @@ func TestPool_NewWatcher_no_watchers(t *testing.T) {
 	ch := make(chan struct{})
 	_, _ = connPool.NewWatcher(key, func(event tarantool.WatchEvent) {
 		close(ch)
-	}, pool.ANY)
+	}, pool.ModeAny)
 
 	select {
 	case <-time.After(time.Second):
@@ -3490,19 +3490,19 @@ func TestPool_NewWatcher_modes(t *testing.T) {
 	defer func() { _ = connPool.Close() }()
 
 	modes := []pool.Mode{
-		pool.ANY,
-		pool.RW,
-		pool.RO,
-		pool.PreferRW,
-		pool.PreferRO,
+		pool.ModeAny,
+		pool.ModeRW,
+		pool.ModeRO,
+		pool.ModePreferRW,
+		pool.ModePreferRO,
 	}
 	for _, mode := range modes {
 		t.Run(fmt.Sprintf("%d", mode), func(t *testing.T) {
 			expectedServers := []string{}
 			for i, server := range servers {
-				if roles[i] && mode == pool.RW {
+				if roles[i] && mode == pool.ModeRW {
 					continue
-				} else if !roles[i] && mode == pool.RO {
+				} else if !roles[i] && mode == pool.ModeRO {
 					continue
 				}
 				expectedServers = append(expectedServers, server)
@@ -3550,7 +3550,7 @@ func TestPool_NewWatcher_update(t *testing.T) {
 	test_helpers.SkipIfWatchersUnsupported(t)
 
 	const key = "TestPool_NewWatcher_update"
-	const mode = pool.RW
+	const mode = pool.ModeRW
 	const initCnt = 2
 	roles := []bool{true, false, false, true, true}
 
@@ -3636,7 +3636,7 @@ func TestWatcher_Unregister(t *testing.T) {
 	test_helpers.SkipIfWatchersUnsupported(t)
 
 	const key = "TestWatcher_Unregister"
-	const mode = pool.RW
+	const mode = pool.ModeRW
 	const expectedCnt = 2
 	roles := []bool{true, false, false, true, true}
 
@@ -3712,7 +3712,7 @@ func TestPool_NewWatcher_concurrent(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(testConcurrency)
 
-	mode := pool.ANY
+	mode := pool.ModeAny
 	callback := func(event tarantool.WatchEvent) {}
 	for i := 0; i < testConcurrency; i++ {
 		go func() {
@@ -3746,7 +3746,7 @@ func TestWatcher_Unregister_concurrent(t *testing.T) {
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 	defer func() { _ = connPool.Close() }()
 
-	mode := pool.ANY
+	mode := pool.ModeAny
 	watcher, err := connPool.NewWatcher(key, func(event tarantool.WatchEvent) {
 	}, mode)
 	require.NoErrorf(t, err, "failed to create a watcher")

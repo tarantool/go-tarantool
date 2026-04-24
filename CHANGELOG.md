@@ -82,6 +82,10 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 * Rename `pool.Pool.DoInstance()` to `pool.Pool.DoOn()`.
 * Rename `pool.Connect()` to `pool.New()`, `pool.ConnectWithOpts()` to
   `pool.NewWithOpts()`.
+* Rename `pool` enum constants to use prefix: `ANY` → `ModeAny`, `RW` →
+  `ModeRW`, `RO` → `ModeRO`, `PreferRW` → `ModePreferRW`, `PreferRO` →
+  `ModePreferRO`, `UnknownRole` → `RoleUnknown`, `MasterRole` → `RoleMaster`,
+  `ReplicaRole` → `RoleReplica`.
 
 ### Removed
 

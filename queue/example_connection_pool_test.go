@@ -54,7 +54,7 @@ func (h *QueueHandler) Discovered(name string, conn *tarantool.Connection,
 		return h.err
 	}
 
-	master := role == pool.MasterRole
+	master := role == pool.RoleMaster
 
 	q := queue.New(conn, h.name)
 
@@ -116,7 +116,7 @@ func (h *QueueHandler) Discovered(name string, conn *tarantool.Connection,
 // Deactivated doesn't do anything useful for the example.
 func (h *QueueHandler) Deactivated(name string, conn *tarantool.Connection,
 	role pool.Role) error {
-	if role == pool.MasterRole {
+	if role == pool.RoleMaster {
 		atomic.AddInt32(&h.masterCnt, -1)
 	}
 	return nil
@@ -130,14 +130,14 @@ func (h *QueueHandler) Close() {
 // Example demonstrates how to use the queue package with the pool
 // package. First of all, you need to create a Handler implementation
 // for the a Pool object to process new connections from
-// RW-instances.
+// ModeRW-instances.
 //
 // You need to register a shared session UUID at a first master connection.
 // It needs to be used to re-identify as the shared session on new
-// RW-instances. See QueueHandler.Discovered() implementation.
+// ModeRW-instances. See QueueHandler.Discovered() implementation.
 //
-// After that, you need to create a ConnectorAdapter object with RW mode for
-// the Pool to send requests into RW-instances. This adapter can
+// After that, you need to create a ConnectorAdapter object with ModeRW mode for
+// the Pool to send requests into ModeRW-instances. This adapter can
 // be used to create a ready-to-work queue object.
 func Example_connectionPool() {
 	// Create a Handler object.
@@ -199,7 +199,7 @@ func Example_connectionPool() {
 
 	// Create a Queue object from the Pool object via
 	// a ConnectorAdapter.
-	rw := pool.NewConnectorAdapter(connPool, pool.RW)
+	rw := pool.NewConnectorAdapter(connPool, pool.ModeRW)
 	q := queue.New(rw, "test_queue")
 	fmt.Println("A Queue object is ready to work.")
 
@@ -236,7 +236,7 @@ func Example_connectionPool() {
 
 	for i := 0; i < 2 && atomic.LoadInt32(&h.masterCnt) != 1; i++ {
 		// The pool does not immediately detect role switching. It may happen
-		// that requests will be sent to RO instances. In that case q.Take()
+		// that requests will be sent to ModeRO instances. In that case q.Take()
 		// method will return a nil value.
 		//
 		// We need to make the example test output deterministic so we need to
