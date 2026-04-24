@@ -34,6 +34,8 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 * New `MockDoer` interface for custom `Doer` testing with builder pattern
   methods: `AddResponse`, `AddResponseRaw`, `AddResponseError`, `Requests`.
 * New `MockRequestNamed` type for verifying specific requests in tests.
+* New `test_helpers.ExecuteOnAll` function to execute operations on all
+  instances in parallel with context support.
 
 ### Changed
 
@@ -62,11 +64,16 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
   become private, `SetError` and `SetResponse` become private (#470).
 * `ConnectionPool.Close()` returns a single error value, combining multiple
   errors using errors.Join() (#540).
+* `test_helpers.CheckPoolStatuses` and `test_helpers.ProcessListenOnInstance`
+  now accept typed arguments (`CheckStatusesArgs` and `ListenOnInstanceArgs`
+  respectively) instead of `interface{}`.
 
 ### Removed
 
 * Deprecated `NewCall16Request` and `NewCall17Request` constructors. Use
   `NewCallRequest` instead.
+* `test_helpers.Retry` function. Use `assert.Eventually` from testify instead.
+  `test_helpers.WaitUntilReconnected` reimplemented without `Retry`.
 
 ### Fixed
 
