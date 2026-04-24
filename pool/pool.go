@@ -181,7 +181,7 @@ func newEndpoint(name string, dialer tarantool.Dialer, opts tarantool.Opts) *end
 		opts:     opts,
 		notify:   make(chan tarantool.ConnEvent, 100),
 		conn:     nil,
-		role:     UnknownRole,
+		role:     RoleUnknown,
 		shutdown: make(chan struct{}),
 		close:    make(chan struct{}),
 		closed:   make(chan struct{}),
@@ -286,15 +286,15 @@ func (p *Pool) ConnectedNow(mode Mode) (bool, error) {
 		return false, nil
 	}
 	switch mode {
-	case ANY:
+	case ModeAny:
 		return !p.anyPool.IsEmpty(), nil
-	case RW:
+	case ModeRW:
 		return !p.rwPool.IsEmpty(), nil
-	case RO:
+	case ModeRO:
 		return !p.roPool.IsEmpty(), nil
-	case PreferRW:
+	case ModePreferRW:
 		fallthrough
-	case PreferRO:
+	case ModePreferRO:
 		return !p.rwPool.IsEmpty() || !p.roPool.IsEmpty(), nil
 	default:
 		return false, ErrNoHealthyInstance
@@ -472,7 +472,7 @@ func (p *Pool) Info() map[string]Info {
 
 		connInfo := Info{
 			ConnectedNow: false,
-			Role:         UnknownRole,
+			Role:         RoleUnknown,
 			Instance: Instance{
 				Name:   name,
 				Dialer: end.dialer,
@@ -546,9 +546,9 @@ func (p *Pool) NewWatcher(key string,
 	watcher.container.add(watcher)
 
 	rr := p.anyPool
-	if mode == RW {
+	if mode == ModeRW {
 		rr = p.rwPool
-	} else if mode == RO {
+	} else if mode == ModeRO {
 		rr = p.roPool
 	}
 
@@ -623,50 +623,50 @@ func (p *Pool) getConnectionRole(conn *tarantool.Connection) (Role, error) {
 	}
 
 	if err != nil {
-		return UnknownRole, err
+		return RoleUnknown, err
 	}
 	if len(data) < 1 {
-		return UnknownRole, ErrIncorrectResponse
+		return RoleUnknown, ErrIncorrectResponse
 	}
 
 	respFields, ok := data[0].(map[interface{}]interface{})
 	if !ok {
-		return UnknownRole, ErrIncorrectResponse
+		return RoleUnknown, ErrIncorrectResponse
 	}
 
 	instanceStatus, ok := respFields["status"]
 	if !ok {
-		return UnknownRole, ErrIncorrectResponse
+		return RoleUnknown, ErrIncorrectResponse
 	}
 	if instanceStatus != "running" {
-		return UnknownRole, ErrIncorrectStatus
+		return RoleUnknown, ErrIncorrectStatus
 	}
 
 	replicaRole, ok := respFields[roFieldName]
 	if !ok {
-		return UnknownRole, ErrIncorrectResponse
+		return RoleUnknown, ErrIncorrectResponse
 	}
 
 	switch replicaRole {
 	case false:
-		return MasterRole, nil
+		return RoleMaster, nil
 	case true:
-		return ReplicaRole, nil
+		return RoleReplica, nil
 	}
 
-	return UnknownRole, nil
+	return RoleUnknown, nil
 }
 
 func (p *Pool) getConnectionFromPool(name string) (*tarantool.Connection, Role) {
 	if conn := p.rwPool.GetConnection(name); conn != nil {
-		return conn, MasterRole
+		return conn, RoleMaster
 	}
 
 	if conn := p.roPool.GetConnection(name); conn != nil {
-		return conn, ReplicaRole
+		return conn, RoleReplica
 	}
 
-	return p.anyPool.GetConnection(name), UnknownRole
+	return p.anyPool.GetConnection(name), RoleUnknown
 }
 
 func (p *Pool) deleteConnection(name string) {
@@ -696,10 +696,10 @@ func (p *Pool) addConnection(name string,
 		err := p.watcherContainer.foreach(func(watcher *poolWatcher) error {
 			var watch bool
 			switch watcher.mode {
-			case RW:
-				watch = role == MasterRole
-			case RO:
-				watch = role == ReplicaRole
+			case ModeRW:
+				watch = role == RoleMaster
+			case ModeRO:
+				watch = role == RoleReplica
 			default:
 				watch = true
 			}
@@ -723,9 +723,9 @@ func (p *Pool) addConnection(name string,
 	p.anyPool.AddConnection(name, conn)
 
 	switch role {
-	case MasterRole:
+	case RoleMaster:
 		p.rwPool.AddConnection(name, conn)
-	case ReplicaRole:
+	case RoleReplica:
 		p.roPool.AddConnection(name, conn)
 	}
 	return nil
@@ -804,7 +804,7 @@ func (p *Pool) updateConnection(e *endpoint) {
 			if !opened {
 				_ = e.conn.Close()
 				e.conn = nil
-				e.role = UnknownRole
+				e.role = RoleUnknown
 				return
 			}
 
@@ -815,7 +815,7 @@ func (p *Pool) updateConnection(e *endpoint) {
 				_ = e.conn.Close()
 				p.handlerDeactivated(e.name, e.conn, role)
 				e.conn = nil
-				e.role = UnknownRole
+				e.role = RoleUnknown
 				return
 			}
 
@@ -825,7 +825,7 @@ func (p *Pool) updateConnection(e *endpoint) {
 				_ = e.conn.Close()
 				p.handlerDeactivated(e.name, e.conn, role)
 				e.conn = nil
-				e.role = UnknownRole
+				e.role = RoleUnknown
 				return
 			}
 			e.role = role
@@ -839,14 +839,14 @@ func (p *Pool) updateConnection(e *endpoint) {
 		_ = e.conn.Close()
 		p.handlerDeactivated(e.name, e.conn, e.role)
 		e.conn = nil
-		e.role = UnknownRole
+		e.role = RoleUnknown
 		return
 	}
 }
 
 func (p *Pool) tryConnect(ctx context.Context, e *endpoint) error {
 	e.conn = nil
-	e.role = UnknownRole
+	e.role = RoleUnknown
 
 	connOpts := e.opts
 	connOpts.Notify = e.notify
@@ -915,7 +915,7 @@ func (p *Pool) reconnect(ctx context.Context, e *endpoint) {
 
 	p.handlerDeactivated(e.name, e.conn, e.role)
 	e.conn = nil
-	e.role = UnknownRole
+	e.role = RoleUnknown
 
 	if err := p.tryConnect(ctx, e); err != nil {
 		log.Printf("tarantool: reconnect to %s failed: %s\n", e.name, err)
@@ -997,7 +997,7 @@ func (p *Pool) controller(ctx context.Context, e *endpoint) {
 							p.poolsMutex.Unlock()
 							p.handlerDeactivated(e.name, e.conn, e.role)
 							e.conn = nil
-							e.role = UnknownRole
+							e.role = RoleUnknown
 						} else {
 							p.poolsMutex.Unlock()
 						}
@@ -1025,28 +1025,28 @@ func (p *Pool) controller(ctx context.Context, e *endpoint) {
 
 func (p *Pool) getNextConnection(mode Mode) (*tarantool.Connection, error) {
 	switch mode {
-	case ANY:
+	case ModeAny:
 		if next := p.anyPool.GetNextConnection(); next != nil {
 			return next, nil
 		}
-	case RW:
+	case ModeRW:
 		if next := p.rwPool.GetNextConnection(); next != nil {
 			return next, nil
 		}
 		return nil, ErrNoRwInstance
-	case RO:
+	case ModeRO:
 		if next := p.roPool.GetNextConnection(); next != nil {
 			return next, nil
 		}
 		return nil, ErrNoRoInstance
-	case PreferRW:
+	case ModePreferRW:
 		if next := p.rwPool.GetNextConnection(); next != nil {
 			return next, nil
 		}
 		if next := p.roPool.GetNextConnection(); next != nil {
 			return next, nil
 		}
-	case PreferRO:
+	case ModePreferRO:
 		if next := p.roPool.GetNextConnection(); next != nil {
 			return next, nil
 		}

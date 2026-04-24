@@ -78,11 +78,11 @@ func ExamplePool_Do() {
 	defer func() { _ = connPool.Close() }()
 
 	modes := []pool.Mode{
-		pool.ANY,
-		pool.RW,
-		pool.RO,
-		pool.PreferRW,
-		pool.PreferRO,
+		pool.ModeAny,
+		pool.ModeRW,
+		pool.ModeRO,
+		pool.ModePreferRW,
+		pool.ModePreferRO,
 	}
 	for _, m := range modes {
 		// It could be any request object.
@@ -105,7 +105,7 @@ func ExamplePool_NewPrepared() {
 	}
 	defer func() { _ = connPool.Close() }()
 
-	stmt, err := connPool.NewPrepared("SELECT 1", pool.ANY)
+	stmt, err := connPool.NewPrepared("SELECT 1", pool.ModeAny)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -113,11 +113,11 @@ func ExamplePool_NewPrepared() {
 	executeReq := tarantool.NewExecutePreparedRequest(stmt)
 	unprepareReq := tarantool.NewUnprepareRequest(stmt)
 
-	_, err = connPool.Do(executeReq, pool.ANY).Get()
+	_, err = connPool.Do(executeReq, pool.ModeAny).Get()
 	if err != nil {
 		fmt.Printf("Failed to execute prepared stmt")
 	}
-	_, err = connPool.Do(unprepareReq, pool.ANY).Get()
+	_, err = connPool.Do(unprepareReq, pool.ModeAny).Get()
 	if err != nil {
 		fmt.Printf("Failed to prepare")
 	}
@@ -138,7 +138,7 @@ func ExamplePool_NewWatcher() {
 		fmt.Printf("event key: %s\n", event.Key)
 		fmt.Printf("event value: %v\n", event.Value)
 	}
-	mode := pool.ANY
+	mode := pool.ModeAny
 	watcher, err := connPool.NewWatcher(key, callback, mode)
 	if err != nil {
 		fmt.Printf("Unexpected error: %s\n", err)
@@ -179,7 +179,7 @@ func ExampleCommitRequest() {
 	defer func() { _ = connPool.Close() }()
 
 	// example pool has only one rw instance
-	stream, err := connPool.NewStream(pool.RW)
+	stream, err := connPool.NewStream(pool.ModeRW)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -212,7 +212,7 @@ func ExampleCommitRequest() {
 		Limit(1).
 		Iterator(tarantool.IterEq).
 		Key([]interface{}{"example_commit_key"})
-	data, err = connPool.Do(selectReq, pool.RW).Get()
+	data, err = connPool.Do(selectReq, pool.ModeRW).Get()
 	if err != nil {
 		fmt.Printf("Failed to Select: %s", err.Error())
 		return
@@ -238,7 +238,7 @@ func ExampleCommitRequest() {
 
 	// Select outside of transaction
 	// example pool has only one rw instance
-	data, err = connPool.Do(selectReq, pool.RW).Get()
+	data, err = connPool.Do(selectReq, pool.ModeRW).Get()
 	if err != nil {
 		fmt.Printf("Failed to Select: %s", err.Error())
 		return
@@ -264,7 +264,7 @@ func ExampleRollbackRequest() {
 	}
 	defer func() { _ = connPool.Close() }()
 
-	stream, err := connPool.NewStream(pool.RW)
+	stream, err := connPool.NewStream(pool.ModeRW)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -297,7 +297,7 @@ func ExampleRollbackRequest() {
 		Limit(1).
 		Iterator(tarantool.IterEq).
 		Key([]interface{}{"example_rollback_key"})
-	data, err = connPool.Do(selectReq, pool.RW).Get()
+	data, err = connPool.Do(selectReq, pool.ModeRW).Get()
 	if err != nil {
 		fmt.Printf("Failed to Select: %s", err.Error())
 		return
@@ -323,7 +323,7 @@ func ExampleRollbackRequest() {
 
 	// Select outside of transaction
 	// example pool has only one rw instance
-	data, err = connPool.Do(selectReq, pool.RW).Get()
+	data, err = connPool.Do(selectReq, pool.ModeRW).Get()
 	if err != nil {
 		fmt.Printf("Failed to Select: %s", err.Error())
 		return
@@ -349,7 +349,7 @@ func ExampleBeginRequest_TxnIsolation() {
 	}
 	defer func() { _ = connPool.Close() }()
 
-	stream, err := connPool.NewStream(pool.RW)
+	stream, err := connPool.NewStream(pool.ModeRW)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -384,7 +384,7 @@ func ExampleBeginRequest_TxnIsolation() {
 		Limit(1).
 		Iterator(tarantool.IterEq).
 		Key([]interface{}{"isolation_level_key"})
-	data, err = connPool.Do(selectReq, pool.RW).Get()
+	data, err = connPool.Do(selectReq, pool.ModeRW).Get()
 	if err != nil {
 		fmt.Printf("Failed to Select: %s", err.Error())
 		return
@@ -410,7 +410,7 @@ func ExampleBeginRequest_TxnIsolation() {
 
 	// Select outside of transaction
 	// example pool has only one rw instance
-	data, err = connPool.Do(selectReq, pool.RW).Get()
+	data, err = connPool.Do(selectReq, pool.ModeRW).Get()
 	if err != nil {
 		fmt.Printf("Failed to Select: %s", err.Error())
 		return
@@ -425,10 +425,10 @@ func ExampleConnectorAdapter() {
 	}
 	defer func() { _ = connPool.Close() }()
 
-	adapter := pool.NewConnectorAdapter(connPool, pool.RW)
+	adapter := pool.NewConnectorAdapter(connPool, pool.ModeRW)
 	var connector tarantool.Connector = adapter
 
-	// Ping an RW instance to check connection.
+	// Ping an ModeRW instance to check connection.
 	data, err := connector.Do(tarantool.NewPingRequest()).Get()
 	fmt.Println("Ping Data", data)
 	fmt.Println("Ping Error", err)
@@ -451,7 +451,7 @@ func ExamplePool_CloseGraceful_force() {
 	fiber.sleep(time)
 `
 	req := tarantool.NewEvalRequest(eval).Args([]interface{}{10})
-	fut := connPool.Do(req, pool.ANY)
+	fut := connPool.Do(req, pool.ModeAny)
 
 	done := make(chan struct{})
 	go func() {

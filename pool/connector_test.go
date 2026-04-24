@@ -12,7 +12,7 @@ import (
 	. "github.com/tarantool/go-tarantool/v3/pool"
 )
 
-var testMode Mode = RW
+var testMode Mode = ModeRW
 
 type connectedNowMock struct {
 	Pooler

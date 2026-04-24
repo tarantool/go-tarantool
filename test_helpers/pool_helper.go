@@ -85,11 +85,11 @@ func CheckPoolStatuses(args CheckStatusesArgs) error {
 // ProcessListenOnInstance helper calls "return box.cfg.listen"
 // as many times as there are servers in the connection pool
 // with specified mode.
-// For RO mode expected received ports equals to replica ports.
-// For RW mode expected received ports equals to master ports.
-// For PreferRO mode expected received ports equals to replica
+// For ModeRO mode expected received ports equals to replica ports.
+// For ModeRW mode expected received ports equals to master ports.
+// For ModePreferRO mode expected received ports equals to replica
 // ports or to all ports.
-// For PreferRW mode expected received ports equals to master ports
+// For ModePreferRW mode expected received ports equals to master ports
 // or to all ports.
 func ProcessListenOnInstance(args ListenOnInstanceArgs) error {
 	actualPorts := map[string]bool{}

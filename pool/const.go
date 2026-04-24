@@ -11,31 +11,31 @@ package pool
 //	| eval    | no default  |
 //	| execute | no default  |
 //	| ping    | no default  |
-//	| insert  | RW          |
-//	| delete  | RW          |
-//	| replace | RW          |
-//	| update  | RW          |
-//	| upsert  | RW          |
-//	| select  | ANY         |
-//	| get     | ANY         |
+//	| insert  | ModeRW      |
+//	| delete  | ModeRW      |
+//	| replace | ModeRW      |
+//	| update  | ModeRW      |
+//	| upsert  | ModeRW      |
+//	| select  | ModeAny     |
+//	| get     | ModeAny     |
 type Mode uint32
 
 const (
-	ANY      Mode = iota // The request can be executed on any instance (master or replica).
-	RW                   // The request can only be executed on master.
-	RO                   // The request can only be executed on replica.
-	PreferRW             // If there is one, otherwise fallback to a writeable one (master).
-	PreferRO             // If there is one, otherwise fallback to a read only one (replica).
+	ModeAny      Mode = iota // The request can be executed on any instance (master or replica).
+	ModeRW                   // The request can only be executed on master.
+	ModeRO                   // The request can only be executed on replica.
+	ModePreferRW             // If there is one, otherwise fallback to a writeable one (master).
+	ModePreferRO             // If there is one, otherwise fallback to a read only one (replica).
 )
 
 // Role describes a role of an instance by its mode.
 type Role uint32
 
 const (
-	// UnknownRole - the connection pool was unable to detect the instance mode.
-	UnknownRole Role = iota // unknown
-	// MasterRole - the instance is in read-write mode.
-	MasterRole // master
-	// ReplicaRole - the instance is in read-only mode.
-	ReplicaRole // replica
+	// RoleUnknown - the connection pool was unable to detect the instance mode.
+	RoleUnknown Role = iota // unknown
+	// RoleMaster - the instance is in read-write mode.
+	RoleMaster // master
+	// RoleReplica - the instance is in read-only mode.
+	RoleReplica // replica
 )
