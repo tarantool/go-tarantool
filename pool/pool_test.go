@@ -448,7 +448,7 @@ func TestConnect_empty(t *testing.T) {
 
 			require.NoError(t, err, "failed to create a pool")
 			require.NotNilf(t, connPool, "pool is nil after Connect")
-			require.Emptyf(t, connPool.GetInfo(), "empty pool expected")
+			require.Emptyf(t, connPool.Info(), "empty pool expected")
 		})
 	}
 }
@@ -472,7 +472,7 @@ func TestConnect_unavailable(t *testing.T) {
 			ConnectedNow: false, Role: pool.UnknownRole, Instance: insts[0]},
 		servers[1]: pool.Info{
 			ConnectedNow: false, Role: pool.UnknownRole, Instance: insts[1]},
-	}, connPool.GetInfo())
+	}, connPool.Info())
 }
 
 func TestConnect_single_server_hang(t *testing.T) {
@@ -517,7 +517,7 @@ func TestConnect_server_hang(t *testing.T) {
 			ConnectedNow: false, Role: pool.UnknownRole, Instance: insts[0]},
 		servers[1]: pool.Info{
 			ConnectedNow: true, Role: pool.MasterRole, Instance: insts[1]},
-	}, connPool.GetInfo())
+	}, connPool.Info())
 }
 
 func TestConnErrorAfterCtxCancel(t *testing.T) {
@@ -1521,7 +1521,7 @@ func TestHandlerOpenError(t *testing.T) {
 			ConnectedNow: false, Role: pool.UnknownRole, Instance: insts[0]},
 		servers[1]: pool.Info{
 			ConnectedNow: false, Role: pool.UnknownRole, Instance: insts[1]},
-	}, connPool.GetInfo())
+	}, connPool.Info())
 	_ = connPool.Close()
 
 	// It could happen additional reconnect attempts in the background, but
@@ -3809,7 +3809,7 @@ func runTestMain(m *testing.M) int {
 	return m.Run()
 }
 
-func TestPool_GetInfo_equal_instance_info(t *testing.T) {
+func TestPool_Info_equal_instance_info(t *testing.T) {
 	var tCases [][]pool.Instance
 
 	tCases = append(tCases, makeInstances([]string{servers[0], servers[1]}, connOpts))
@@ -3827,7 +3827,7 @@ func TestPool_GetInfo_equal_instance_info(t *testing.T) {
 		require.NoErrorf(t, err, "failed to connect")
 		require.NotNilf(t, connPool, "conn is nil after Connect")
 
-		info := connPool.GetInfo()
+		info := connPool.Info()
 
 		var infoInstances []pool.Instance
 

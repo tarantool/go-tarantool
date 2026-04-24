@@ -454,8 +454,8 @@ func (p *Pool) CloseGraceful() error {
 	return p.waitClose()
 }
 
-// GetInfo gets information of connections (connected status, ro/rw role).
-func (p *Pool) GetInfo() map[string]Info {
+// Info gets information of connections (connected status, ro/rw role).
+func (p *Pool) Info() map[string]Info {
 	info := make(map[string]Info)
 
 	p.endsMutex.RLock()
