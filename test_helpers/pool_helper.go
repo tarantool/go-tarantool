@@ -69,7 +69,7 @@ func CheckPoolStatuses(args CheckStatusesArgs) error {
 			args.ExpectedPoolStatus, connected)
 	}
 
-	poolInfo := args.Pool.GetInfo()
+	poolInfo := args.Pool.Info()
 	for _, server := range args.Servers {
 		status := poolInfo[server].ConnectedNow
 		if args.ExpectedStatuses[server] != status {
