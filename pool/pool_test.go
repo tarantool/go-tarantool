@@ -343,7 +343,7 @@ func TestConnSuccessfully(t *testing.T) {
 	defer func() { _ = connPool.Close() }()
 
 	args := test_helpers.CheckStatusesArgs{
-		ConnPool:           connPool,
+		Pool:               connPool,
 		Mode:               pool.ANY,
 		Servers:            []string{healthyServ},
 		ExpectedPoolStatus: true,
@@ -372,7 +372,7 @@ func TestConn_no_execute_supported(t *testing.T) {
 	defer func() { _ = connPool.Close() }()
 
 	args := test_helpers.CheckStatusesArgs{
-		ConnPool:           connPool,
+		Pool:               connPool,
 		Mode:               pool.ANY,
 		Servers:            []string{healthyServ},
 		ExpectedPoolStatus: true,
@@ -411,7 +411,7 @@ func TestConn_no_execute_unsupported(t *testing.T) {
 			"'box.info' is denied for user '%s'", servers[0], userNoExec))
 
 	args := test_helpers.CheckStatusesArgs{
-		ConnPool:           connPool,
+		Pool:               connPool,
 		Mode:               pool.ANY,
 		Servers:            []string{healthyServ},
 		ExpectedPoolStatus: false,
@@ -467,11 +467,11 @@ func TestConnect_unavailable(t *testing.T) {
 
 	require.NoError(t, err, "failed to create a pool")
 	require.NotNilf(t, connPool, "pool is nil after Connect")
-	require.Equal(t, map[string]pool.ConnectionInfo{
-		servers[0]: pool.ConnectionInfo{
-			ConnectedNow: false, ConnRole: pool.UnknownRole, Instance: insts[0]},
-		servers[1]: pool.ConnectionInfo{
-			ConnectedNow: false, ConnRole: pool.UnknownRole, Instance: insts[1]},
+	require.Equal(t, map[string]pool.Info{
+		servers[0]: pool.Info{
+			ConnectedNow: false, Role: pool.UnknownRole, Instance: insts[0]},
+		servers[1]: pool.Info{
+			ConnectedNow: false, Role: pool.UnknownRole, Instance: insts[1]},
 	}, connPool.GetInfo())
 }
 
@@ -512,11 +512,11 @@ func TestConnect_server_hang(t *testing.T) {
 
 	require.NoError(t, err, "failed to create a pool")
 	require.NotNil(t, connPool, "pool is nil after Connect")
-	require.Equal(t, map[string]pool.ConnectionInfo{
-		servers[0]: pool.ConnectionInfo{
-			ConnectedNow: false, ConnRole: pool.UnknownRole, Instance: insts[0]},
-		servers[1]: pool.ConnectionInfo{
-			ConnectedNow: true, ConnRole: pool.MasterRole, Instance: insts[1]},
+	require.Equal(t, map[string]pool.Info{
+		servers[0]: pool.Info{
+			ConnectedNow: false, Role: pool.UnknownRole, Instance: insts[0]},
+		servers[1]: pool.Info{
+			ConnectedNow: true, Role: pool.MasterRole, Instance: insts[1]},
 	}, connPool.GetInfo())
 }
 
@@ -527,14 +527,14 @@ func TestConnErrorAfterCtxCancel(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	var connPool *pool.ConnectionPool
+	var connPool *pool.Pool
 	var err error
 
 	cancel()
 	connPool, err = pool.Connect(ctx, makeInstances(servers, longTimeoutOpts))
 
-	require.Nil(t, connPool, "ConnectionPool was created after cancel")
-	require.Error(t, err, "ConnectionPool was created after cancel")
+	require.Nil(t, connPool, "Pool was created after cancel")
+	require.Error(t, err, "Pool was created after cancel")
 	require.Contains(t, err.Error(), "context canceled",
 		"Unexpected error, expected to contain %s", "operation was canceled")
 }
@@ -610,7 +610,7 @@ func TestConnSuccessfullyDuplicates(t *testing.T) {
 	defer func() { _ = connPool.Close() }()
 
 	args := test_helpers.CheckStatusesArgs{
-		ConnPool:           connPool,
+		Pool:               connPool,
 		Mode:               pool.ANY,
 		Servers:            []string{"c0", "c1", "c2", "c3"},
 		ExpectedPoolStatus: true,
@@ -640,7 +640,7 @@ func TestReconnect(t *testing.T) {
 	test_helpers.StopTarantoolWithCleanup(helpInstances[0])
 
 	args := test_helpers.CheckStatusesArgs{
-		ConnPool:           connPool,
+		Pool:               connPool,
 		Mode:               pool.ANY,
 		Servers:            []string{server},
 		ExpectedPoolStatus: true,
@@ -658,7 +658,7 @@ func TestReconnect(t *testing.T) {
 	require.NoErrorf(t, err, "failed to restart tarantool")
 
 	args = test_helpers.CheckStatusesArgs{
-		ConnPool:           connPool,
+		Pool:               connPool,
 		Mode:               pool.ANY,
 		Servers:            []string{server},
 		ExpectedPoolStatus: true,
@@ -688,7 +688,7 @@ func TestDisconnect_withReconnect(t *testing.T) {
 	// Test.
 	test_helpers.StopTarantoolWithCleanup(helpInstances[serverId])
 	args := test_helpers.CheckStatusesArgs{
-		ConnPool:           connPool,
+		Pool:               connPool,
 		Mode:               pool.ANY,
 		Servers:            []string{servers[serverId]},
 		ExpectedPoolStatus: false,
@@ -707,7 +707,7 @@ func TestDisconnect_withReconnect(t *testing.T) {
 	require.NoErrorf(t, err, "failed to restart tarantool")
 
 	args = test_helpers.CheckStatusesArgs{
-		ConnPool:           connPool,
+		Pool:               connPool,
 		Mode:               pool.ANY,
 		Servers:            []string{servers[serverId]},
 		ExpectedPoolStatus: true,
@@ -738,7 +738,7 @@ func TestDisconnectAll(t *testing.T) {
 	test_helpers.StopTarantoolWithCleanup(helpInstances[1])
 
 	args := test_helpers.CheckStatusesArgs{
-		ConnPool:           connPool,
+		Pool:               connPool,
 		Mode:               pool.ANY,
 		Servers:            []string{server1, server2},
 		ExpectedPoolStatus: false,
@@ -760,7 +760,7 @@ func TestDisconnectAll(t *testing.T) {
 	require.NoErrorf(t, err, "failed to restart tarantool")
 
 	args = test_helpers.CheckStatusesArgs{
-		ConnPool:           connPool,
+		Pool:               connPool,
 		Mode:               pool.ANY,
 		Servers:            []string{server1, server2},
 		ExpectedPoolStatus: true,
@@ -794,7 +794,7 @@ func TestAdd(t *testing.T) {
 	}
 
 	args := test_helpers.CheckStatusesArgs{
-		ConnPool:           connPool,
+		Pool:               connPool,
 		Mode:               pool.ANY,
 		Servers:            servers,
 		ExpectedPoolStatus: true,
@@ -919,7 +919,7 @@ func TestAdd_exist(t *testing.T) {
 	require.Equal(t, pool.ErrExists, err)
 
 	args := test_helpers.CheckStatusesArgs{
-		ConnPool:           connPool,
+		Pool:               connPool,
 		Mode:               pool.ANY,
 		Servers:            servers,
 		ExpectedPoolStatus: true,
@@ -957,7 +957,7 @@ func TestAdd_unreachable(t *testing.T) {
 	require.NoError(t, err)
 
 	args := test_helpers.CheckStatusesArgs{
-		ConnPool:           connPool,
+		Pool:               connPool,
 		Mode:               pool.ANY,
 		Servers:            servers,
 		ExpectedPoolStatus: true,
@@ -1065,7 +1065,7 @@ func TestRemove(t *testing.T) {
 	}
 
 	args := test_helpers.CheckStatusesArgs{
-		ConnPool:           connPool,
+		Pool:               connPool,
 		Mode:               pool.ANY,
 		Servers:            servers,
 		ExpectedPoolStatus: true,
@@ -1096,7 +1096,7 @@ func TestRemove_double(t *testing.T) {
 	require.ErrorContains(t, err, "endpoint not exist")
 
 	args := test_helpers.CheckStatusesArgs{
-		ConnPool:           connPool,
+		Pool:               connPool,
 		Mode:               pool.ANY,
 		Servers:            servers,
 		ExpectedPoolStatus: true,
@@ -1125,7 +1125,7 @@ func TestRemove_unknown(t *testing.T) {
 	require.ErrorContains(t, err, "endpoint not exist")
 
 	args := test_helpers.CheckStatusesArgs{
-		ConnPool:           connPool,
+		Pool:               connPool,
 		Mode:               pool.ANY,
 		Servers:            servers,
 		ExpectedPoolStatus: true,
@@ -1177,7 +1177,7 @@ func TestRemove_concurrent(t *testing.T) {
 	assert.Equal(t, uint32(concurrency-1), errs)
 
 	args := test_helpers.CheckStatusesArgs{
-		ConnPool:           connPool,
+		Pool:               connPool,
 		Mode:               pool.ANY,
 		Servers:            servers,
 		ExpectedPoolStatus: true,
@@ -1247,7 +1247,7 @@ func TestClose(t *testing.T) {
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
 	args := test_helpers.CheckStatusesArgs{
-		ConnPool:           connPool,
+		Pool:               connPool,
 		Mode:               pool.ANY,
 		Servers:            []string{server1, server2},
 		ExpectedPoolStatus: true,
@@ -1263,7 +1263,7 @@ func TestClose(t *testing.T) {
 	_ = connPool.Close()
 
 	args = test_helpers.CheckStatusesArgs{
-		ConnPool:           connPool,
+		Pool:               connPool,
 		Mode:               pool.ANY,
 		Servers:            []string{server1, server2},
 		ExpectedPoolStatus: false,
@@ -1291,7 +1291,7 @@ func TestCloseGraceful(t *testing.T) {
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
 	args := test_helpers.CheckStatusesArgs{
-		ConnPool:           connPool,
+		Pool:               connPool,
 		Mode:               pool.ANY,
 		Servers:            []string{server1, server2},
 		ExpectedPoolStatus: true,
@@ -1328,7 +1328,7 @@ func TestCloseGraceful(t *testing.T) {
 	require.NoErrorf(t, err, "sleep request no error")
 
 	args = test_helpers.CheckStatusesArgs{
-		ConnPool:           connPool,
+		Pool:               connPool,
 		Mode:               pool.ANY,
 		Servers:            []string{server1, server2},
 		ExpectedPoolStatus: false,
@@ -1416,7 +1416,7 @@ func (h *testHandler) Deactivated(name string, conn *tarantool.Connection,
 	return nil
 }
 
-func TestConnectionHandlerOpenUpdateClose(t *testing.T) {
+func TestHandlerOpenUpdateClose(t *testing.T) {
 	poolServers := []string{servers[0], servers[1]}
 	poolInstances := makeInstances(poolServers, connOpts)
 	roles := []bool{false, true}
@@ -1429,8 +1429,8 @@ func TestConnectionHandlerOpenUpdateClose(t *testing.T) {
 
 	h := &testHandler{}
 	poolOpts := pool.Opts{
-		CheckTimeout:      100 * time.Millisecond,
-		ConnectionHandler: h,
+		CheckTimeout: 100 * time.Millisecond,
+		Handler:      h,
 	}
 	connPool, err := pool.ConnectWithOpts(ctx, poolInstances, poolOpts)
 	require.NoErrorf(t, err, "failed to connect")
@@ -1498,13 +1498,13 @@ func (h *testAddErrorHandler) Deactivated(name string, conn *tarantool.Connectio
 	return nil
 }
 
-func TestConnectionHandlerOpenError(t *testing.T) {
+func TestHandlerOpenError(t *testing.T) {
 	poolServers := []string{servers[0], servers[1]}
 
 	h := &testAddErrorHandler{}
 	poolOpts := pool.Opts{
-		CheckTimeout:      100 * time.Microsecond,
-		ConnectionHandler: h,
+		CheckTimeout: 100 * time.Microsecond,
+		Handler:      h,
 	}
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
@@ -1516,11 +1516,11 @@ func TestConnectionHandlerOpenError(t *testing.T) {
 	}
 	require.NoError(t, err, "failed to connect")
 	require.NotNil(t, connPool, "pool expected")
-	require.Equal(t, map[string]pool.ConnectionInfo{
-		servers[0]: pool.ConnectionInfo{
-			ConnectedNow: false, ConnRole: pool.UnknownRole, Instance: insts[0]},
-		servers[1]: pool.ConnectionInfo{
-			ConnectedNow: false, ConnRole: pool.UnknownRole, Instance: insts[1]},
+	require.Equal(t, map[string]pool.Info{
+		servers[0]: pool.Info{
+			ConnectedNow: false, Role: pool.UnknownRole, Instance: insts[0]},
+		servers[1]: pool.Info{
+			ConnectedNow: false, Role: pool.UnknownRole, Instance: insts[1]},
 	}, connPool.GetInfo())
 	_ = connPool.Close()
 
@@ -1551,7 +1551,7 @@ func (h *testUpdateErrorHandler) Deactivated(name string, conn *tarantool.Connec
 	return nil
 }
 
-func TestConnectionHandlerUpdateError(t *testing.T) {
+func TestHandlerUpdateError(t *testing.T) {
 	poolServers := []string{servers[0], servers[1]}
 	poolInstances := makeInstances(poolServers, connOpts)
 	roles := []bool{false, false}
@@ -1564,8 +1564,8 @@ func TestConnectionHandlerUpdateError(t *testing.T) {
 
 	h := &testUpdateErrorHandler{}
 	poolOpts := pool.Opts{
-		CheckTimeout:      100 * time.Microsecond,
-		ConnectionHandler: h,
+		CheckTimeout: 100 * time.Microsecond,
+		Handler:      h,
 	}
 	connPool, err := pool.ConnectWithOpts(ctx, poolInstances, poolOpts)
 	require.NoErrorf(t, err, "failed to connect")
@@ -1624,7 +1624,7 @@ func (h *testDeactivatedErrorHandler) Deactivated(name string, conn *tarantool.C
 	return nil
 }
 
-func TestConnectionHandlerDeactivated_on_remove(t *testing.T) {
+func TestHandlerDeactivated_on_remove(t *testing.T) {
 	poolServers := []string{servers[0], servers[1]}
 	poolInstances := makeInstances(poolServers, connOpts)
 	roles := []bool{false, false}
@@ -1637,8 +1637,8 @@ func TestConnectionHandlerDeactivated_on_remove(t *testing.T) {
 
 	h := &testDeactivatedErrorHandler{}
 	poolOpts := pool.Opts{
-		CheckTimeout:      100 * time.Millisecond,
-		ConnectionHandler: h,
+		CheckTimeout: 100 * time.Millisecond,
+		Handler:      h,
 	}
 	connPool, err := pool.ConnectWithOpts(ctx, poolInstances, poolOpts)
 	require.NoErrorf(t, err, "failed to connect")
@@ -1646,7 +1646,7 @@ func TestConnectionHandlerDeactivated_on_remove(t *testing.T) {
 	defer func() { _ = connPool.Close() }()
 
 	args := test_helpers.CheckStatusesArgs{
-		ConnPool:           connPool,
+		Pool:               connPool,
 		Mode:               pool.ANY,
 		Servers:            servers,
 		ExpectedPoolStatus: true,
@@ -1664,7 +1664,7 @@ func TestConnectionHandlerDeactivated_on_remove(t *testing.T) {
 	}
 
 	args = test_helpers.CheckStatusesArgs{
-		ConnPool:           connPool,
+		Pool:               connPool,
 		Mode:               pool.ANY,
 		Servers:            servers,
 		ExpectedPoolStatus: false,
@@ -1693,7 +1693,7 @@ func TestRequestOnClosed(t *testing.T) {
 	test_helpers.StopTarantoolWithCleanup(helpInstances[1])
 
 	args := test_helpers.CheckStatusesArgs{
-		ConnPool:           connPool,
+		Pool:               connPool,
 		Mode:               pool.ANY,
 		Servers:            []string{server1, server2},
 		ExpectedPoolStatus: false,
@@ -1952,7 +1952,7 @@ func TestRoundRobinStrategy(t *testing.T) {
 	args := test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: allPorts,
-		ConnPool:      connPool,
+		Pool:          connPool,
 		Mode:          pool.ANY,
 	}
 
@@ -1963,7 +1963,7 @@ func TestRoundRobinStrategy(t *testing.T) {
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: masterPorts,
-		ConnPool:      connPool,
+		Pool:          connPool,
 		Mode:          pool.RW,
 	}
 
@@ -1974,7 +1974,7 @@ func TestRoundRobinStrategy(t *testing.T) {
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: replicaPorts,
-		ConnPool:      connPool,
+		Pool:          connPool,
 		Mode:          pool.RO,
 	}
 
@@ -1985,7 +1985,7 @@ func TestRoundRobinStrategy(t *testing.T) {
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: masterPorts,
-		ConnPool:      connPool,
+		Pool:          connPool,
 		Mode:          pool.PreferRW,
 	}
 
@@ -1996,7 +1996,7 @@ func TestRoundRobinStrategy(t *testing.T) {
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: replicaPorts,
-		ConnPool:      connPool,
+		Pool:          connPool,
 		Mode:          pool.PreferRO,
 	}
 
@@ -2040,7 +2040,7 @@ func TestRoundRobinStrategy_NoReplica(t *testing.T) {
 	args := test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: allPorts,
-		ConnPool:      connPool,
+		Pool:          connPool,
 		Mode:          pool.ANY,
 	}
 
@@ -2051,7 +2051,7 @@ func TestRoundRobinStrategy_NoReplica(t *testing.T) {
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: allPorts,
-		ConnPool:      connPool,
+		Pool:          connPool,
 		Mode:          pool.RW,
 	}
 
@@ -2062,7 +2062,7 @@ func TestRoundRobinStrategy_NoReplica(t *testing.T) {
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: allPorts,
-		ConnPool:      connPool,
+		Pool:          connPool,
 		Mode:          pool.PreferRW,
 	}
 
@@ -2073,7 +2073,7 @@ func TestRoundRobinStrategy_NoReplica(t *testing.T) {
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: allPorts,
-		ConnPool:      connPool,
+		Pool:          connPool,
 		Mode:          pool.PreferRO,
 	}
 
@@ -2117,7 +2117,7 @@ func TestRoundRobinStrategy_NoMaster(t *testing.T) {
 	args := test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: allPorts,
-		ConnPool:      connPool,
+		Pool:          connPool,
 		Mode:          pool.ANY,
 	}
 
@@ -2128,7 +2128,7 @@ func TestRoundRobinStrategy_NoMaster(t *testing.T) {
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: allPorts,
-		ConnPool:      connPool,
+		Pool:          connPool,
 		Mode:          pool.RO,
 	}
 
@@ -2139,7 +2139,7 @@ func TestRoundRobinStrategy_NoMaster(t *testing.T) {
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: allPorts,
-		ConnPool:      connPool,
+		Pool:          connPool,
 		Mode:          pool.PreferRW,
 	}
 
@@ -2150,7 +2150,7 @@ func TestRoundRobinStrategy_NoMaster(t *testing.T) {
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: allPorts,
-		ConnPool:      connPool,
+		Pool:          connPool,
 		Mode:          pool.PreferRO,
 	}
 
@@ -2198,7 +2198,7 @@ func TestUpdateInstancesRoles(t *testing.T) {
 	args := test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: allPorts,
-		ConnPool:      connPool,
+		Pool:          connPool,
 		Mode:          pool.ANY,
 	}
 
@@ -2209,7 +2209,7 @@ func TestUpdateInstancesRoles(t *testing.T) {
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: masterPorts,
-		ConnPool:      connPool,
+		Pool:          connPool,
 		Mode:          pool.RW,
 	}
 
@@ -2220,7 +2220,7 @@ func TestUpdateInstancesRoles(t *testing.T) {
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: replicaPorts,
-		ConnPool:      connPool,
+		Pool:          connPool,
 		Mode:          pool.RO,
 	}
 
@@ -2231,7 +2231,7 @@ func TestUpdateInstancesRoles(t *testing.T) {
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: masterPorts,
-		ConnPool:      connPool,
+		Pool:          connPool,
 		Mode:          pool.PreferRW,
 	}
 
@@ -2242,7 +2242,7 @@ func TestUpdateInstancesRoles(t *testing.T) {
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: replicaPorts,
-		ConnPool:      connPool,
+		Pool:          connPool,
 		Mode:          pool.PreferRO,
 	}
 
@@ -2271,7 +2271,7 @@ func TestUpdateInstancesRoles(t *testing.T) {
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: allPorts,
-		ConnPool:      connPool,
+		Pool:          connPool,
 		Mode:          pool.ANY,
 	}
 
@@ -2285,7 +2285,7 @@ func TestUpdateInstancesRoles(t *testing.T) {
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: masterPorts,
-		ConnPool:      connPool,
+		Pool:          connPool,
 		Mode:          pool.RW,
 	}
 
@@ -2299,7 +2299,7 @@ func TestUpdateInstancesRoles(t *testing.T) {
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: replicaPorts,
-		ConnPool:      connPool,
+		Pool:          connPool,
 		Mode:          pool.RO,
 	}
 
@@ -2313,7 +2313,7 @@ func TestUpdateInstancesRoles(t *testing.T) {
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: masterPorts,
-		ConnPool:      connPool,
+		Pool:          connPool,
 		Mode:          pool.PreferRW,
 	}
 
@@ -2327,7 +2327,7 @@ func TestUpdateInstancesRoles(t *testing.T) {
 	args = test_helpers.ListenOnInstanceArgs{
 		ServersNumber: serversNumber,
 		ExpectedPorts: replicaPorts,
-		ConnPool:      connPool,
+		Pool:          connPool,
 		Mode:          pool.PreferRO,
 	}
 
@@ -3446,10 +3446,10 @@ func TestStream_TxnIsolationLevel(t *testing.T) {
 	}
 }
 
-func TestConnectionPool_NewWatcher_no_watchers(t *testing.T) {
+func TestPool_NewWatcher_no_watchers(t *testing.T) {
 	test_helpers.SkipIfWatchersSupported(t)
 
-	const key = "TestConnectionPool_NewWatcher_no_watchers"
+	const key = "TestPool_NewWatcher_no_watchers"
 
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
@@ -3471,10 +3471,10 @@ func TestConnectionPool_NewWatcher_no_watchers(t *testing.T) {
 	}
 }
 
-func TestConnectionPool_NewWatcher_modes(t *testing.T) {
+func TestPool_NewWatcher_modes(t *testing.T) {
 	test_helpers.SkipIfWatchersUnsupported(t)
 
-	const key = "TestConnectionPool_NewWatcher_modes"
+	const key = "TestPool_NewWatcher_modes"
 
 	roles := []bool{true, false, false, true, true}
 
@@ -3546,10 +3546,10 @@ func TestConnectionPool_NewWatcher_modes(t *testing.T) {
 	}
 }
 
-func TestConnectionPool_NewWatcher_update(t *testing.T) {
+func TestPool_NewWatcher_update(t *testing.T) {
 	test_helpers.SkipIfWatchersUnsupported(t)
 
-	const key = "TestConnectionPool_NewWatcher_update"
+	const key = "TestPool_NewWatcher_update"
 	const mode = pool.RW
 	const initCnt = 2
 	roles := []bool{true, false, false, true, true}
@@ -3690,11 +3690,11 @@ func TestWatcher_Unregister(t *testing.T) {
 	}
 }
 
-func TestConnectionPool_NewWatcher_concurrent(t *testing.T) {
+func TestPool_NewWatcher_concurrent(t *testing.T) {
 	test_helpers.SkipIfWatchersUnsupported(t)
 
 	const testConcurrency = 1000
-	const key = "TestConnectionPool_NewWatcher_concurrent"
+	const key = "TestPool_NewWatcher_concurrent"
 
 	roles := []bool{true, false, false, true, true}
 
@@ -3809,7 +3809,7 @@ func runTestMain(m *testing.M) int {
 	return m.Run()
 }
 
-func TestConnectionPool_GetInfo_equal_instance_info(t *testing.T) {
+func TestPool_GetInfo_equal_instance_info(t *testing.T) {
 	var tCases [][]pool.Instance
 
 	tCases = append(tCases, makeInstances([]string{servers[0], servers[1]}, connOpts))
