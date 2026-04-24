@@ -224,7 +224,8 @@ func SetInstanceRO(ctx context.Context, dialer tarantool.Dialer, connOpts tarant
 	return nil
 }
 
-func ExecuteOnAll(ctx context.Context, dialers []tarantool.Dialer, fn func(context.Context, tarantool.Dialer, int) error) error {
+func ExecuteOnAll(ctx context.Context, dialers []tarantool.Dialer,
+	fn func(context.Context, tarantool.Dialer, int) error) error {
 	var wg sync.WaitGroup
 	var errs []error
 	var mu sync.Mutex
