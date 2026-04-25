@@ -67,6 +67,14 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 * `test_helpers.CheckPoolStatuses` and `test_helpers.ProcessListenOnInstance`
   now accept typed arguments (`CheckStatusesArgs` and `ListenOnInstanceArgs`
   respectively) instead of `interface{}`.
+* `ConnectionPool.ConnectWithOpts()`, `ConnectionPool.Connect()` and
+  `ConnectionPool.Add()` now return an error if `tarantool.Opts.Reconnect`,
+  `tarantool.Opts.MaxReconnects` or `tarantool.Opts.Notify` options are set
+  for an instance connection. These options conflict with the pool's own
+  reconnection logic and produce misleading events. Use
+  `pool.ConnectionHandler` to track connection availability instead of
+  `tarantool.Opts.Notify`. All validation errors are combined using
+  `errors.Join` and can be checked with `errors.Is`.
 
 ### Removed
 

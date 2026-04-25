@@ -1,6 +1,7 @@
 package pool_test
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -479,4 +480,48 @@ func ExampleConnectionPool_CloseGraceful_force() {
 	// ConnectionPool.CloseGraceful() done!
 	// Result:
 	// [] connection closed by client (0x4001)
+}
+
+func ExampleConnect_invalidOpts() {
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+
+	// tarantool.Opts.Reconnect, MaxReconnects and Notify must not be used
+	// with ConnectionPool. The pool manages reconnection itself and
+	// individual connection events are misleading in a pool context.
+	opts := tarantool.Opts{
+		Timeout:       5 * time.Second,
+		Reconnect:     time.Second,
+		MaxReconnects: 3,
+	}
+	instances := []pool.Instance{
+		{
+			Name: "instance",
+			Dialer: tarantool.NetDialer{
+				Address: "127.0.0.1:3301",
+			},
+			Opts: opts,
+		},
+	}
+
+	connPool, err := pool.ConnectWithOpts(ctx, instances, pool.Opts{
+		CheckTimeout: time.Second,
+	})
+	if err != nil {
+		if errors.Is(err, pool.ErrOptsReconnect) {
+			fmt.Println("Reconnect is not allowed")
+		}
+		if errors.Is(err, pool.ErrOptsMaxReconnects) {
+			fmt.Println("MaxReconnects is not allowed")
+		}
+		if errors.Is(err, pool.ErrOptsNotify) {
+			fmt.Println("Notify is not allowed")
+		}
+	}
+	if connPool != nil {
+		_ = connPool.Close()
+	}
+	// Output:
+	// Reconnect is not allowed
+	// MaxReconnects is not allowed
 }

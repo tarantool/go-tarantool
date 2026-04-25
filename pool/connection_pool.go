@@ -36,6 +36,27 @@ var (
 	ErrUnknownRequest    = errors.New("the passed connected request doesn't belong to " +
 		"the current connection pool")
 	ErrContextCanceled = errors.New("operation was canceled")
+	// ErrOptsReconnect is returned if tarantool.Opts.Reconnect is set for an
+	// instance connection. It must not be used with ConnectionPool: the pool
+	// itself manages reconnection via pool.Opts.CheckTimeout, so an internal
+	// reconnect creates a conflict with the pool's own reconnection logic.
+	ErrOptsReconnect = errors.New(
+		"tarantool.Opts.Reconnect must not be used with ConnectionPool")
+	// ErrOptsMaxReconnects is returned if tarantool.Opts.MaxReconnects is set
+	// for an instance connection. It must not be used with ConnectionPool: the
+	// pool itself manages connection lifetime, so an internal reconnect limit
+	// permanently closes a Connection while the pool will create a new one
+	// anyway.
+	ErrOptsMaxReconnects = errors.New(
+		"tarantool.Opts.MaxReconnects must not be used with ConnectionPool")
+	// ErrOptsNotify is returned if tarantool.Opts.Notify is set for an instance
+	// connection. It must not be used with ConnectionPool: events from an
+	// individual connection are misleading in a pool context (e.g., Disconnected
+	// does not mean the endpoint is unavailable, since the pool may have already
+	// reconnected); use pool.ConnectionHandler to track endpoint availability
+	// instead.
+	ErrOptsNotify = errors.New(
+		"tarantool.Opts.Notify must not be used with ConnectionPool")
 )
 
 // ConnectionHandler provides callbacks for components interested in handling
@@ -69,7 +90,11 @@ type Instance struct {
 	Name string
 	// Dialer will be used to create a connection to the instance.
 	Dialer tarantool.Dialer
-	// Opts configures a connection to the instance.
+	// Opts configures a connection to the instance. tarantool.Opts.Reconnect,
+	// tarantool.Opts.MaxReconnects and tarantool.Opts.Notify must not be set:
+	// the pool manages reconnection and connection lifetime itself, and
+	// individual connection events are misleading in a pool context. Use
+	// pool.ConnectionHandler to track endpoint availability.
 	Opts tarantool.Opts
 }
 
@@ -135,6 +160,20 @@ type endpoint struct {
 	closeErr error
 }
 
+func validateInstanceOpts(opts tarantool.Opts) []error {
+	var errs []error
+	if opts.Reconnect != 0 {
+		errs = append(errs, ErrOptsReconnect)
+	}
+	if opts.MaxReconnects != 0 {
+		errs = append(errs, ErrOptsMaxReconnects)
+	}
+	if opts.Notify != nil {
+		errs = append(errs, ErrOptsNotify)
+	}
+	return errs
+}
+
 func newEndpoint(name string, dialer tarantool.Dialer, opts tarantool.Opts) *endpoint {
 	return &endpoint{
 		name:     name,
@@ -164,6 +203,14 @@ func ConnectWithOpts(ctx context.Context, instances []Instance,
 
 	if opts.CheckTimeout <= 0 {
 		return nil, ErrWrongCheckTimeout
+	}
+
+	var validationErrs []error
+	for _, instance := range instances {
+		validationErrs = append(validationErrs, validateInstanceOpts(instance.Opts)...)
+	}
+	if err := errors.Join(validationErrs...); err != nil {
+		return nil, err
 	}
 
 	size := len(instances)
@@ -223,10 +270,6 @@ func ConnectWithOpts(ctx context.Context, instances []Instance,
 
 // Connect creates pool for instances with specified instances. Instances must
 // have unique names.
-//
-// It is useless to set up tarantool.Opts.Reconnect value for a connection.
-// The connection pool has its own reconnection logic. See
-// Opts.CheckTimeout description.
 func Connect(ctx context.Context, instances []Instance) (*ConnectionPool, error) {
 	opts := Opts{
 		CheckTimeout: 1 * time.Second,
@@ -275,6 +318,10 @@ func (p *ConnectionPool) ConfiguredTimeout(mode Mode) (time.Duration, error) {
 // if the context has been cancelled or on concurrent Close()/CloseGraceful()
 // call.
 func (p *ConnectionPool) Add(ctx context.Context, instance Instance) error {
+	if err := errors.Join(validateInstanceOpts(instance.Opts)...); err != nil {
+		return err
+	}
+
 	e := newEndpoint(instance.Name, instance.Dialer, instance.Opts)
 
 	p.endsMutex.Lock()
@@ -717,8 +764,7 @@ func (p *ConnectionPool) fillPools(ctx context.Context, instances []Instance) <-
 	// It is called before controller() goroutines, so we don't expect
 	// concurrency issues here.
 	for _, instance := range instances {
-		end := newEndpoint(instance.Name, instance.Dialer, instance.Opts)
-		p.ends[instance.Name] = end
+		p.ends[instance.Name] = newEndpoint(instance.Name, instance.Dialer, instance.Opts)
 	}
 
 	for _, instance := range instances {
