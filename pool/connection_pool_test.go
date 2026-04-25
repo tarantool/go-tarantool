@@ -107,8 +107,84 @@ func TestConnect_error_duplicate(t *testing.T) {
 	connPool, err := pool.Connect(ctx, makeInstances([]string{"foo", "foo"}, connOpts))
 	cancel()
 
-	require.Nilf(t, connPool, "conn is not nil with incorrect param")
+	assert.Nil(t, connPool)
 	require.EqualError(t, err, "duplicate instance name: \"foo\"")
+}
+
+func TestConnect_error_reconnect(t *testing.T) {
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+
+	opts := connOpts
+	opts.Reconnect = time.Second
+
+	connPool, err := pool.Connect(ctx, makeInstances([]string{"any"}, opts))
+
+	assert.Nil(t, connPool)
+	require.ErrorIs(t, err, pool.ErrOptsReconnect)
+}
+
+func TestConnect_error_max_reconnects(t *testing.T) {
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+
+	opts := connOpts
+	opts.MaxReconnects = 3
+
+	connPool, err := pool.Connect(ctx, makeInstances([]string{"any"}, opts))
+
+	assert.Nil(t, connPool)
+	require.ErrorIs(t, err, pool.ErrOptsMaxReconnects)
+}
+
+func TestConnect_error_notify(t *testing.T) {
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+
+	opts := connOpts
+	opts.Notify = make(chan tarantool.ConnEvent)
+
+	connPool, err := pool.Connect(ctx, makeInstances([]string{"any"}, opts))
+
+	assert.Nil(t, connPool)
+	require.ErrorIs(t, err, pool.ErrOptsNotify)
+}
+
+func TestConnect_error_multiple_opts(t *testing.T) {
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+
+	opts := connOpts
+	opts.Reconnect = time.Second
+	opts.MaxReconnects = 3
+	opts.Notify = make(chan tarantool.ConnEvent)
+
+	connPool, err := pool.Connect(ctx, makeInstances([]string{"any"}, opts))
+
+	assert.Nil(t, connPool)
+	require.ErrorIs(t, err, pool.ErrOptsReconnect)
+	require.ErrorIs(t, err, pool.ErrOptsMaxReconnects)
+	require.ErrorIs(t, err, pool.ErrOptsNotify)
+}
+
+func TestConnect_error_multiple_instances(t *testing.T) {
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+
+	badOpts1 := connOpts
+	badOpts1.Reconnect = time.Second
+	badOpts2 := connOpts
+	badOpts2.MaxReconnects = 3
+	instances := []pool.Instance{
+		makeInstance("bad1", badOpts1),
+		makeInstance("bad2", badOpts2),
+	}
+
+	connPool, err := pool.Connect(ctx, instances)
+
+	assert.Nil(t, connPool)
+	require.ErrorIs(t, err, pool.ErrOptsReconnect)
+	require.ErrorIs(t, err, pool.ErrOptsMaxReconnects)
 }
 
 func TestConnectWithOpts_error_no_timeout(t *testing.T) {
@@ -116,8 +192,143 @@ func TestConnectWithOpts_error_no_timeout(t *testing.T) {
 	connPool, err := pool.ConnectWithOpts(ctx, makeInstances([]string{"any"}, connOpts),
 		pool.Opts{})
 	cancel()
-	require.Nilf(t, connPool, "conn is not nil with incorrect param")
+	assert.Nil(t, connPool)
 	require.ErrorIs(t, err, pool.ErrWrongCheckTimeout)
+}
+
+func TestConnectWithOpts_error_reconnect(t *testing.T) {
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+
+	opts := connOpts
+	opts.Reconnect = time.Second
+
+	connPool, err := pool.ConnectWithOpts(ctx, makeInstances([]string{"any"}, opts),
+		pool.Opts{CheckTimeout: time.Second})
+
+	assert.Nil(t, connPool)
+	require.ErrorIs(t, err, pool.ErrOptsReconnect)
+}
+
+func TestConnectWithOpts_error_max_reconnects(t *testing.T) {
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+
+	opts := connOpts
+	opts.MaxReconnects = 3
+
+	connPool, err := pool.ConnectWithOpts(ctx, makeInstances([]string{"any"}, opts),
+		pool.Opts{CheckTimeout: time.Second})
+
+	assert.Nil(t, connPool)
+	require.ErrorIs(t, err, pool.ErrOptsMaxReconnects)
+}
+
+func TestConnectWithOpts_error_notify(t *testing.T) {
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+
+	opts := connOpts
+	opts.Notify = make(chan tarantool.ConnEvent)
+
+	connPool, err := pool.ConnectWithOpts(ctx, makeInstances([]string{"any"}, opts),
+		pool.Opts{CheckTimeout: time.Second})
+
+	assert.Nil(t, connPool)
+	require.ErrorIs(t, err, pool.ErrOptsNotify)
+}
+
+func TestConnectWithOpts_error_reconnect_partial(t *testing.T) {
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+
+	badOpts := connOpts
+	badOpts.Reconnect = time.Second
+	instances := []pool.Instance{
+		makeInstance(servers[0], connOpts),
+		makeInstance("bad", badOpts),
+	}
+
+	connPool, err := pool.ConnectWithOpts(ctx, instances,
+		pool.Opts{CheckTimeout: time.Second})
+
+	assert.Nil(t, connPool)
+	require.ErrorIs(t, err, pool.ErrOptsReconnect)
+}
+
+func TestConnectWithOpts_error_max_reconnects_partial(t *testing.T) {
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+
+	badOpts := connOpts
+	badOpts.MaxReconnects = 3
+	instances := []pool.Instance{
+		makeInstance(servers[0], connOpts),
+		makeInstance("bad", badOpts),
+	}
+
+	connPool, err := pool.ConnectWithOpts(ctx, instances,
+		pool.Opts{CheckTimeout: time.Second})
+
+	assert.Nil(t, connPool)
+	require.ErrorIs(t, err, pool.ErrOptsMaxReconnects)
+}
+
+func TestConnectWithOpts_error_notify_partial(t *testing.T) {
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+
+	badOpts := connOpts
+	badOpts.Notify = make(chan tarantool.ConnEvent)
+	instances := []pool.Instance{
+		makeInstance(servers[0], connOpts),
+		makeInstance("bad", badOpts),
+	}
+
+	connPool, err := pool.ConnectWithOpts(ctx, instances,
+		pool.Opts{CheckTimeout: time.Second})
+
+	assert.Nil(t, connPool)
+	require.ErrorIs(t, err, pool.ErrOptsNotify)
+}
+
+func TestConnectWithOpts_error_multiple_opts(t *testing.T) {
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+
+	opts := connOpts
+	opts.Reconnect = time.Second
+	opts.MaxReconnects = 3
+	opts.Notify = make(chan tarantool.ConnEvent)
+
+	connPool, err := pool.ConnectWithOpts(ctx, makeInstances([]string{"any"}, opts),
+		pool.Opts{CheckTimeout: time.Second})
+
+	assert.Nil(t, connPool)
+	require.ErrorIs(t, err, pool.ErrOptsReconnect)
+	require.ErrorIs(t, err, pool.ErrOptsMaxReconnects)
+	require.ErrorIs(t, err, pool.ErrOptsNotify)
+}
+
+func TestConnectWithOpts_error_multiple_instances(t *testing.T) {
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+
+	badOpts1 := connOpts
+	badOpts1.Reconnect = time.Second
+	badOpts2 := connOpts
+	badOpts2.MaxReconnects = 3
+	instances := []pool.Instance{
+		makeInstance("bad1", badOpts1),
+		makeInstance("bad2", badOpts2),
+	}
+
+	connPool, err := pool.ConnectWithOpts(ctx, instances,
+		pool.Opts{CheckTimeout: time.Second})
+
+	assert.Nil(t, connPool)
+	require.ErrorIs(t, err, pool.ErrOptsReconnect)
+	require.ErrorIs(t, err, pool.ErrOptsMaxReconnects)
 }
 
 func TestConnSuccessfully(t *testing.T) {
@@ -310,10 +521,8 @@ func TestConnect_server_hang(t *testing.T) {
 }
 
 func TestConnErrorAfterCtxCancel(t *testing.T) {
-	var connLongReconnectOpts = tarantool.Opts{
-		Timeout:       5 * time.Second,
-		Reconnect:     time.Second,
-		MaxReconnects: 100,
+	var longTimeoutOpts = tarantool.Opts{
+		Timeout: 5 * time.Second,
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -322,7 +531,7 @@ func TestConnErrorAfterCtxCancel(t *testing.T) {
 	var err error
 
 	cancel()
-	connPool, err = pool.Connect(ctx, makeInstances(servers, connLongReconnectOpts))
+	connPool, err = pool.Connect(ctx, makeInstances(servers, longTimeoutOpts))
 
 	require.Nil(t, connPool, "ConnectionPool was created after cancel")
 	require.Error(t, err, "ConnectionPool was created after cancel")
@@ -468,12 +677,9 @@ func TestDisconnect_withReconnect(t *testing.T) {
 	serverId := 0
 	server := servers[serverId]
 
-	opts := connOpts
-	opts.Reconnect = 10 * time.Second
-
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.Connect(ctx, makeInstances([]string{server}, opts))
+	connPool, err := pool.Connect(ctx, makeInstances([]string{server}, connOpts))
 	require.NoErrorf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
@@ -622,6 +828,78 @@ func TestAdd_canceled_ctx(t *testing.T) {
 
 	err = connPool.Add(ctx, makeInstance(servers[0], connOpts))
 	require.Error(t, err)
+}
+
+func TestAdd_reconnect_error(t *testing.T) {
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx, []pool.Instance{})
+	require.NoError(t, err, "failed to connect")
+	require.NotNil(t, connPool, "conn is nil after Connect")
+
+	defer func() { _ = connPool.Close() }()
+
+	opts := connOpts
+	opts.Reconnect = time.Second
+
+	err = connPool.Add(ctx, makeInstance(servers[0], opts))
+
+	require.ErrorIs(t, err, pool.ErrOptsReconnect)
+}
+
+func TestAdd_max_reconnects_error(t *testing.T) {
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx, []pool.Instance{})
+	require.NoError(t, err, "failed to connect")
+	require.NotNil(t, connPool, "conn is nil after Connect")
+
+	defer func() { _ = connPool.Close() }()
+
+	opts := connOpts
+	opts.MaxReconnects = 3
+
+	err = connPool.Add(ctx, makeInstance(servers[0], opts))
+
+	require.ErrorIs(t, err, pool.ErrOptsMaxReconnects)
+}
+
+func TestAdd_notify_error(t *testing.T) {
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx, []pool.Instance{})
+	require.NoError(t, err, "failed to connect")
+	require.NotNil(t, connPool, "conn is nil after Connect")
+
+	defer func() { _ = connPool.Close() }()
+
+	opts := connOpts
+	opts.Notify = make(chan tarantool.ConnEvent)
+
+	err = connPool.Add(ctx, makeInstance(servers[0], opts))
+
+	require.ErrorIs(t, err, pool.ErrOptsNotify)
+}
+
+func TestAdd_error_multiple_opts(t *testing.T) {
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.Connect(ctx, []pool.Instance{})
+	require.NoError(t, err, "failed to connect")
+	require.NotNil(t, connPool, "conn is nil after Connect")
+
+	defer func() { _ = connPool.Close() }()
+
+	opts := connOpts
+	opts.Reconnect = time.Second
+	opts.MaxReconnects = 3
+	opts.Notify = make(chan tarantool.ConnEvent)
+
+	err = connPool.Add(ctx, makeInstance(servers[0], opts))
+
+	require.ErrorIs(t, err, pool.ErrOptsReconnect)
+	require.ErrorIs(t, err, pool.ErrOptsMaxReconnects)
+	require.ErrorIs(t, err, pool.ErrOptsNotify)
 }
 
 func TestAdd_exist(t *testing.T) {

@@ -34,6 +34,40 @@ TODO
 * Future.done replaced with Future.cond (sync.Cond) + Future.finished bool.
 * `Future` is an interface now.
 * `ConnectionPool.Close()` returns a single error value, combining multiple errors using errors.Join()
+* `ConnectionPool.ConnectWithOpts()`, `ConnectionPool.Connect()` and
+  `ConnectionPool.Add()` now return an error if `tarantool.Opts.Reconnect`,
+  `tarantool.Opts.MaxReconnects` or `tarantool.Opts.Notify` options are set
+  for an instance connection. These options create conflicts with the pool's
+  own reconnection logic: the pool reconnects via `pool.Opts.CheckTimeout`,
+  so an internal `Reconnect` creates a race with the pool; `MaxReconnects`
+  permanently closes a Connection while the pool would create a new one;
+  `Notify` events from an individual connection are misleading in a pool
+  context (e.g., `Disconnected` does not mean the endpoint is unavailable).
+  Use `pool.ConnectionHandler` to track endpoint availability.
+  All validation errors are combined using `errors.Join` and can be
+  checked with `errors.Is`.
+
+  Before:
+  ```Go
+  opts := tarantool.Opts{
+      Reconnect:     time.Second,
+      MaxReconnects: 3,
+      Notify:        make(chan tarantool.ConnEvent),
+  }
+  connPool, err := pool.ConnectWithOpts(ctx, instances, poolOpts)
+  ```
+
+  After:
+  ```Go
+  opts := tarantool.Opts{
+      // Reconnect, MaxReconnects, Notify must not be set.
+  }
+  poolOpts := pool.Opts{
+      CheckTimeout:      time.Second,
+      ConnectionHandler: myHandler, // Implement pool.ConnectionHandler.
+  }
+  connPool, err := pool.ConnectWithOpts(ctx, instances, poolOpts)
+  ```
 * `Future.Release()` call could be used to free resources allocated for the
   `Future` object created by a `Connection` object.
 * Removed deprecated `NewCall16Request` and `NewCall17Request` constructors.
