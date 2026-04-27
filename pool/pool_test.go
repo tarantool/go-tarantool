@@ -1580,18 +1580,11 @@ func TestHandlerUpdateError(t *testing.T) {
 	err = test_helpers.SetClusterRO(ctx, makeDialers(poolServers), connOpts, roles)
 	require.NoErrorf(t, err, "failed to make ro")
 
-	for i := 0; i < 100; i++ {
-		// Wait for updates done.
+	require.Eventuallyf(t, func() bool {
 		connected, err = connPool.ConnectedNow(pool.ModeAny)
-		if !connected || err != nil {
-			break
-		}
-		time.Sleep(poolOpts.CheckTimeout)
-	}
-	connected, err = connPool.ConnectedNow(pool.ModeAny)
-
+		return err == nil && !connected
+	}, timeout, poolOpts.CheckTimeout, "should not be any active connection")
 	require.NoErrorf(t, err, "failed to get ConnectedNow()")
-	require.Falsef(t, connected, "should not be any active connection")
 
 	_ = connPool.Close()
 
