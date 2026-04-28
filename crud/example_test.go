@@ -43,7 +43,7 @@ func exampleConnect() *tarantool.Connection {
 func ExampleResult_rowsInterface() {
 	conn := exampleConnect()
 	req := crud.MakeReplaceRequest(exampleSpace).
-		Tuple([]interface{}{uint(2010), nil, "bla"})
+		Tuple([]any{uint(2010), nil, "bla"})
 
 	ret := crud.Result{}
 	if err := conn.Do(req).GetTyped(&ret); err != nil {
@@ -64,7 +64,7 @@ func ExampleResult_rowsInterface() {
 func ExampleResult_rowsCustomType() {
 	conn := exampleConnect()
 	req := crud.MakeReplaceRequest(exampleSpace).
-		Tuple([]interface{}{uint(2010), nil, "bla"})
+		Tuple([]any{uint(2010), nil, "bla"})
 
 	type Tuple struct {
 		_msgpack struct{} `msgpack:",asArray"` //nolint:unused
@@ -72,7 +72,7 @@ func ExampleResult_rowsCustomType() {
 		BucketId uint64
 		Name     string
 	}
-	ret := crud.MakeResult(reflect.TypeOf(Tuple{}))
+	ret := crud.MakeResult(reflect.TypeFor[Tuple]())
 
 	if err := conn.Do(req).GetTyped(&ret); err != nil {
 		fmt.Printf("Failed to execute request: %s", err)
@@ -107,7 +107,7 @@ func ExampleTuples_customType() {
 		},
 	})
 
-	ret := crud.MakeResult(reflect.TypeOf(Tuple{}))
+	ret := crud.MakeResult(reflect.TypeFor[Tuple]())
 	if err := conn.Do(req).GetTyped(&ret); err != nil {
 		fmt.Printf("Failed to execute request: %s", err)
 		return
@@ -148,7 +148,7 @@ func ExampleObjects_customType() {
 		},
 	})
 
-	ret := crud.MakeResult(reflect.TypeOf(Tuple{}))
+	ret := crud.MakeResult(reflect.TypeFor[Tuple]())
 	if err := conn.Do(req).GetTyped(&ret); err != nil {
 		fmt.Printf("Failed to execute request: %s", err)
 		return
@@ -238,7 +238,7 @@ func ExampleResult_operationDataCustomType() {
 		Name     string `msgpack:"name,omitempty"`
 	}
 
-	ret := crud.MakeResult(reflect.TypeOf(Tuple{}))
+	ret := crud.MakeResult(reflect.TypeFor[Tuple]())
 	if err := conn.Do(req).GetTyped(&ret); err != nil {
 		crudErrs := err.(crud.ErrorMany)
 		fmt.Println("Erroneous data:")
@@ -262,8 +262,8 @@ func ExampleResult_many() {
 	conn := exampleConnect()
 	req := crud.MakeReplaceManyRequest(exampleSpace).
 		Tuples([]crud.Tuple{
-			[]interface{}{uint(2010), nil, "bla"},
-			[]interface{}{uint(2011), nil, "bla"},
+			[]any{uint(2010), nil, "bla"},
+			[]any{uint(2011), nil, "bla"},
 		})
 
 	ret := crud.Result{}
@@ -286,8 +286,8 @@ func ExampleResult_noreturn() {
 	conn := exampleConnect()
 	req := crud.MakeReplaceManyRequest(exampleSpace).
 		Tuples([]crud.Tuple{
-			[]interface{}{uint(2010), nil, "bla"},
-			[]interface{}{uint(2011), nil, "bla"},
+			[]any{uint(2010), nil, "bla"},
+			[]any{uint(2011), nil, "bla"},
 		}).
 		Opts(crud.ReplaceManyOpts{
 			Noreturn: option.SomeBool(true),
@@ -311,7 +311,7 @@ func ExampleResult_noreturn() {
 func ExampleResult_error() {
 	conn := exampleConnect()
 	req := crud.MakeReplaceRequest("not_exist").
-		Tuple([]interface{}{uint(2010), nil, "bla"})
+		Tuple([]any{uint(2010), nil, "bla"})
 
 	ret := crud.Result{}
 	if err := conn.Do(req).GetTyped(&ret); err != nil {
@@ -330,15 +330,15 @@ func ExampleResult_error() {
 func ExampleResult_errorMany() {
 	conn := exampleConnect()
 	initReq := crud.MakeReplaceRequest("not_exist").
-		Tuple([]interface{}{uint(2010), nil, "bla"})
+		Tuple([]any{uint(2010), nil, "bla"})
 	if _, err := conn.Do(initReq).Get(); err != nil {
 		fmt.Printf("Failed to initialize the example: %s\n", err)
 	}
 
 	req := crud.MakeInsertManyRequest(exampleSpace).
 		Tuples([]crud.Tuple{
-			[]interface{}{uint(2010), nil, "bla"},
-			[]interface{}{uint(2010), nil, "bla"},
+			[]any{uint(2010), nil, "bla"},
+			[]any{uint(2010), nil, "bla"},
 		})
 	ret := crud.Result{}
 	if err := conn.Do(req).GetTyped(&ret); err != nil {
@@ -361,17 +361,17 @@ func ExampleSelectRequest_pagination() {
 		fromTuple = 5
 		allTuples = 10
 	)
-	var tuple interface{}
-	for i := 0; i < allTuples; i++ {
+	var tuple any
+	for i := range allTuples {
 		req := crud.MakeReplaceRequest(exampleSpace).
-			Tuple([]interface{}{uint(3000 + i), nil, "bla"})
+			Tuple([]any{uint(3000 + i), nil, "bla"})
 		ret := crud.Result{}
 		if err := conn.Do(req).GetTyped(&ret); err != nil {
 			fmt.Printf("Failed to initialize the example: %s\n", err)
 			return
 		}
 		if i == fromTuple {
-			tuple = ret.Rows.([]interface{})[0]
+			tuple = ret.Rows.([]any)[0]
 		}
 	}
 

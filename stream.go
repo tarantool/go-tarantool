@@ -40,6 +40,7 @@ type Stream struct {
 // Begin request can not be processed out of stream.
 type BeginRequest struct {
 	baseRequest
+
 	txnIsolation TxnIsolationLevel
 	timeout      time.Duration
 	isSync       bool

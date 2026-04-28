@@ -77,7 +77,7 @@ func decodeUUID(d *msgpack.Decoder, v reflect.Value) error {
 }
 
 func init() {
-	msgpack.Register(reflect.TypeOf((*uuid.UUID)(nil)).Elem(), encodeUUID, decodeUUID)
+	msgpack.Register(reflect.TypeFor[uuid.UUID](), encodeUUID, decodeUUID)
 	msgpack.RegisterExtEncoder(uuid_extID, uuid.UUID{},
 		func(e *msgpack.Encoder, v reflect.Value) ([]byte, error) {
 			uuid := v.Interface().(uuid.UUID)

@@ -61,12 +61,12 @@ func TestErrorMarshalingEnabledSetting(t *testing.T) {
 	// Disable receiving box.error as MP_EXT 3.
 	data, err := conn.Do(NewErrorMarshalingEnabledSetRequest(false)).Get()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{[]interface{}{"error_marshaling_enabled", false}}, data)
+	require.Equal(t, []any{[]any{"error_marshaling_enabled", false}}, data)
 
 	// Fetch current setting value.
 	data, err = conn.Do(NewErrorMarshalingEnabledGetRequest()).Get()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{[]interface{}{"error_marshaling_enabled", false}}, data)
+	require.Equal(t, []any{[]any{"error_marshaling_enabled", false}}, data)
 
 	// Get a box.Error value.
 	eval := tarantool.NewEvalRequest("return box.error.new(box.error.UNKNOWN)")
@@ -77,12 +77,12 @@ func TestErrorMarshalingEnabledSetting(t *testing.T) {
 	// Enable receiving box.error as MP_EXT 3.
 	data, err = conn.Do(NewErrorMarshalingEnabledSetRequest(true)).Get()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{[]interface{}{"error_marshaling_enabled", true}}, data)
+	require.Equal(t, []any{[]any{"error_marshaling_enabled", true}}, data)
 
 	// Fetch current setting value.
 	data, err = conn.Do(NewErrorMarshalingEnabledGetRequest()).Get()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{[]interface{}{"error_marshaling_enabled", true}}, data)
+	require.Equal(t, []any{[]any{"error_marshaling_enabled", true}}, data)
 
 	// Get a box.Error value.
 	data, err = conn.Do(eval).Get()
@@ -103,12 +103,12 @@ func TestSQLDefaultEngineSetting(t *testing.T) {
 	// Set default SQL "CREATE TABLE" engine to "vinyl".
 	data, err := conn.Do(NewSQLDefaultEngineSetRequest("vinyl")).Get()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{[]interface{}{"sql_default_engine", "vinyl"}}, data)
+	require.Equal(t, []any{[]any{"sql_default_engine", "vinyl"}}, data)
 
 	// Fetch current setting value.
 	data, err = conn.Do(NewSQLDefaultEngineGetRequest()).Get()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{[]interface{}{"sql_default_engine", "vinyl"}}, data)
+	require.Equal(t, []any{[]any{"sql_default_engine", "vinyl"}}, data)
 
 	// Create a space with "CREATE TABLE".
 	exec := tarantool.NewExecuteRequest("CREATE TABLE T1_VINYL(a INT PRIMARY KEY, b INT, c INT);")
@@ -130,12 +130,12 @@ func TestSQLDefaultEngineSetting(t *testing.T) {
 	// Set default SQL "CREATE TABLE" engine to "memtx".
 	data, err = conn.Do(NewSQLDefaultEngineSetRequest("memtx")).Get()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{[]interface{}{"sql_default_engine", "memtx"}}, data)
+	require.Equal(t, []any{[]any{"sql_default_engine", "memtx"}}, data)
 
 	// Fetch current setting value.
 	data, err = conn.Do(NewSQLDefaultEngineGetRequest()).Get()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{[]interface{}{"sql_default_engine", "memtx"}}, data)
+	require.Equal(t, []any{[]any{"sql_default_engine", "memtx"}}, data)
 
 	// Create a space with "CREATE TABLE".
 	exec = tarantool.NewExecuteRequest("CREATE TABLE T2_MEMTX(a INT PRIMARY KEY, b INT, c INT);")
@@ -203,12 +203,12 @@ func TestSQLDeferForeignKeysSetting(t *testing.T) {
 	// Disable foreign key constraint checks before commit.
 	data, err := conn.Do(NewSQLDeferForeignKeysSetRequest(false)).Get()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{[]interface{}{"sql_defer_foreign_keys", false}}, data)
+	require.Equal(t, []any{[]any{"sql_defer_foreign_keys", false}}, data)
 
 	// Fetch current setting value.
 	data, err = conn.Do(NewSQLDeferForeignKeysGetRequest()).Get()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{[]interface{}{"sql_defer_foreign_keys", false}}, data)
+	require.Equal(t, []any{[]any{"sql_defer_foreign_keys", false}}, data)
 
 	// Evaluate a scenario when foreign key not exists
 	// on INSERT, but exists on commit.
@@ -218,12 +218,12 @@ func TestSQLDeferForeignKeysSetting(t *testing.T) {
 
 	data, err = conn.Do(NewSQLDeferForeignKeysSetRequest(true)).Get()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{[]interface{}{"sql_defer_foreign_keys", true}}, data)
+	require.Equal(t, []any{[]any{"sql_defer_foreign_keys", true}}, data)
 
 	// Fetch current setting value.
 	data, err = conn.Do(NewSQLDeferForeignKeysGetRequest()).Get()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{[]interface{}{"sql_defer_foreign_keys", true}}, data)
+	require.Equal(t, []any{[]any{"sql_defer_foreign_keys", true}}, data)
 
 	// Evaluate a scenario when foreign key not exists
 	// on INSERT, but exists on commit.
@@ -266,12 +266,12 @@ func TestSQLFullColumnNamesSetting(t *testing.T) {
 	// Disable displaying full column names in metadata.
 	data, err := conn.Do(NewSQLFullColumnNamesSetRequest(false)).Get()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{[]interface{}{"sql_full_column_names", false}}, data)
+	require.Equal(t, []any{[]any{"sql_full_column_names", false}}, data)
 
 	// Fetch current setting value.
 	data, err = conn.Do(NewSQLFullColumnNamesGetRequest()).Get()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{[]interface{}{"sql_full_column_names", false}}, data)
+	require.Equal(t, []any{[]any{"sql_full_column_names", false}}, data)
 
 	// Get a data with short column names in metadata.
 	exec = tarantool.NewExecuteRequest("SELECT X FROM FKNAME WHERE ID = 1;")
@@ -287,12 +287,12 @@ func TestSQLFullColumnNamesSetting(t *testing.T) {
 	// Enable displaying full column names in metadata.
 	data, err = conn.Do(NewSQLFullColumnNamesSetRequest(true)).Get()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{[]interface{}{"sql_full_column_names", true}}, data)
+	require.Equal(t, []any{[]any{"sql_full_column_names", true}}, data)
 
 	// Fetch current setting value.
 	data, err = conn.Do(NewSQLFullColumnNamesGetRequest()).Get()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{[]interface{}{"sql_full_column_names", true}}, data)
+	require.Equal(t, []any{[]any{"sql_full_column_names", true}}, data)
 
 	// Get a data with full column names in metadata.
 	exec = tarantool.NewExecuteRequest("SELECT X FROM FKNAME WHERE ID = 1;")
@@ -340,12 +340,12 @@ func TestSQLFullMetadataSetting(t *testing.T) {
 	// Disable displaying additional fields in metadata.
 	data, err := conn.Do(NewSQLFullMetadataSetRequest(false)).Get()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{[]interface{}{"sql_full_metadata", false}}, data)
+	require.Equal(t, []any{[]any{"sql_full_metadata", false}}, data)
 
 	// Fetch current setting value.
 	data, err = conn.Do(NewSQLFullMetadataGetRequest()).Get()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{[]interface{}{"sql_full_metadata", false}}, data)
+	require.Equal(t, []any{[]any{"sql_full_metadata", false}}, data)
 
 	// Get a data without additional fields in metadata.
 	exec = tarantool.NewExecuteRequest("SELECT x FROM fmt WHERE id = 1;")
@@ -361,12 +361,12 @@ func TestSQLFullMetadataSetting(t *testing.T) {
 	// Enable displaying full column names in metadata.
 	data, err = conn.Do(NewSQLFullMetadataSetRequest(true)).Get()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{[]interface{}{"sql_full_metadata", true}}, data)
+	require.Equal(t, []any{[]any{"sql_full_metadata", true}}, data)
 
 	// Fetch current setting value.
 	data, err = conn.Do(NewSQLFullMetadataGetRequest()).Get()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{[]interface{}{"sql_full_metadata", true}}, data)
+	require.Equal(t, []any{[]any{"sql_full_metadata", true}}, data)
 
 	// Get a data with additional fields in metadata.
 	exec = tarantool.NewExecuteRequest("SELECT x FROM fmt WHERE id = 1;")
@@ -391,22 +391,22 @@ func TestSQLParserDebugSetting(t *testing.T) {
 	// Disable parser debug mode.
 	data, err := conn.Do(NewSQLParserDebugSetRequest(false)).Get()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{[]interface{}{"sql_parser_debug", false}}, data)
+	require.Equal(t, []any{[]any{"sql_parser_debug", false}}, data)
 
 	// Fetch current setting value.
 	data, err = conn.Do(NewSQLParserDebugGetRequest()).Get()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{[]interface{}{"sql_parser_debug", false}}, data)
+	require.Equal(t, []any{[]any{"sql_parser_debug", false}}, data)
 
 	// Enable parser debug mode.
 	data, err = conn.Do(NewSQLParserDebugSetRequest(true)).Get()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{[]interface{}{"sql_parser_debug", true}}, data)
+	require.Equal(t, []any{[]any{"sql_parser_debug", true}}, data)
 
 	// Fetch current setting value.
 	data, err = conn.Do(NewSQLParserDebugGetRequest()).Get()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{[]interface{}{"sql_parser_debug", true}}, data)
+	require.Equal(t, []any{[]any{"sql_parser_debug", true}}, data)
 
 	// To test real effect we need a Tarantool instance built with
 	// `-DCMAKE_BUILD_TYPE=Debug`.
@@ -461,12 +461,12 @@ func TestSQLRecursiveTriggersSetting(t *testing.T) {
 	// Enable SQL recursive triggers.
 	data, err := conn.Do(NewSQLRecursiveTriggersSetRequest(true)).Get()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{[]interface{}{"sql_recursive_triggers", true}}, data)
+	require.Equal(t, []any{[]any{"sql_recursive_triggers", true}}, data)
 
 	// Fetch current setting value.
 	data, err = conn.Do(NewSQLRecursiveTriggersGetRequest()).Get()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{[]interface{}{"sql_recursive_triggers", true}}, data)
+	require.Equal(t, []any{[]any{"sql_recursive_triggers", true}}, data)
 
 	// Trigger the recursion.
 	exec = tarantool.NewExecuteRequest("UPDATE rec SET a=a+1, b=b+1;")
@@ -478,12 +478,12 @@ func TestSQLRecursiveTriggersSetting(t *testing.T) {
 	// Disable SQL recursive triggers.
 	data, err = conn.Do(NewSQLRecursiveTriggersSetRequest(false)).Get()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{[]interface{}{"sql_recursive_triggers", false}}, data)
+	require.Equal(t, []any{[]any{"sql_recursive_triggers", false}}, data)
 
 	// Fetch current setting value.
 	data, err = conn.Do(NewSQLRecursiveTriggersGetRequest()).Get()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{[]interface{}{"sql_recursive_triggers", false}}, data)
+	require.Equal(t, []any{[]any{"sql_recursive_triggers", false}}, data)
 
 	// Trigger the recursion.
 	exec = tarantool.NewExecuteRequest("UPDATE rec SET a=a+1, b=b+1;")
@@ -541,13 +541,13 @@ func TestSQLReverseUnorderedSelectsSetting(t *testing.T) {
 	// Disable reverse order in unordered selects.
 	data, err := conn.Do(NewSQLReverseUnorderedSelectsSetRequest(false)).Get()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{[]interface{}{"sql_reverse_unordered_selects", false}},
+	require.Equal(t, []any{[]any{"sql_reverse_unordered_selects", false}},
 		data)
 
 	// Fetch current setting value.
 	data, err = conn.Do(NewSQLReverseUnorderedSelectsGetRequest()).Get()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{[]interface{}{"sql_reverse_unordered_selects", false}},
+	require.Equal(t, []any{[]any{"sql_reverse_unordered_selects", false}},
 		data)
 
 	// Select multiple records.
@@ -560,26 +560,26 @@ func TestSQLReverseUnorderedSelectsSetting(t *testing.T) {
 
 	data, err = conn.Do(tarantool.NewExecuteRequest(query)).Get()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{"1"}, data[0])
-	require.Equal(t, []interface{}{"2"}, data[1])
+	require.Equal(t, []any{"1"}, data[0])
+	require.Equal(t, []any{"2"}, data[1])
 
 	// Enable reverse order in unordered selects.
 	data, err = conn.Do(NewSQLReverseUnorderedSelectsSetRequest(true)).Get()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{[]interface{}{"sql_reverse_unordered_selects", true}},
+	require.Equal(t, []any{[]any{"sql_reverse_unordered_selects", true}},
 		data)
 
 	// Fetch current setting value.
 	data, err = conn.Do(NewSQLReverseUnorderedSelectsGetRequest()).Get()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{[]interface{}{"sql_reverse_unordered_selects", true}},
+	require.Equal(t, []any{[]any{"sql_reverse_unordered_selects", true}},
 		data)
 
 	// Select multiple records.
 	data, err = conn.Do(tarantool.NewExecuteRequest(query)).Get()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{"2"}, data[0])
-	require.Equal(t, []interface{}{"1"}, data[1])
+	require.Equal(t, []any{"2"}, data[0])
+	require.Equal(t, []any{"1"}, data[1])
 }
 
 func TestSQLSelectDebugSetting(t *testing.T) {
@@ -593,22 +593,22 @@ func TestSQLSelectDebugSetting(t *testing.T) {
 	// Disable select debug mode.
 	data, err := conn.Do(NewSQLSelectDebugSetRequest(false)).Get()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{[]interface{}{"sql_select_debug", false}}, data)
+	require.Equal(t, []any{[]any{"sql_select_debug", false}}, data)
 
 	// Fetch current setting value.
 	data, err = conn.Do(NewSQLSelectDebugGetRequest()).Get()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{[]interface{}{"sql_select_debug", false}}, data)
+	require.Equal(t, []any{[]any{"sql_select_debug", false}}, data)
 
 	// Enable select debug mode.
 	data, err = conn.Do(NewSQLSelectDebugSetRequest(true)).Get()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{[]interface{}{"sql_select_debug", true}}, data)
+	require.Equal(t, []any{[]any{"sql_select_debug", true}}, data)
 
 	// Fetch current setting value.
 	data, err = conn.Do(NewSQLSelectDebugGetRequest()).Get()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{[]interface{}{"sql_select_debug", true}}, data)
+	require.Equal(t, []any{[]any{"sql_select_debug", true}}, data)
 
 	// To test real effect we need a Tarantool instance built with
 	// `-DCMAKE_BUILD_TYPE=Debug`.
@@ -625,22 +625,22 @@ func TestSQLVDBEDebugSetting(t *testing.T) {
 	// Disable VDBE debug mode.
 	data, err := conn.Do(NewSQLVDBEDebugSetRequest(false)).Get()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{[]interface{}{"sql_vdbe_debug", false}}, data)
+	require.Equal(t, []any{[]any{"sql_vdbe_debug", false}}, data)
 
 	// Fetch current setting value.
 	data, err = conn.Do(NewSQLVDBEDebugGetRequest()).Get()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{[]interface{}{"sql_vdbe_debug", false}}, data)
+	require.Equal(t, []any{[]any{"sql_vdbe_debug", false}}, data)
 
 	// Enable VDBE debug mode.
 	data, err = conn.Do(NewSQLVDBEDebugSetRequest(true)).Get()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{[]interface{}{"sql_vdbe_debug", true}}, data)
+	require.Equal(t, []any{[]any{"sql_vdbe_debug", true}}, data)
 
 	// Fetch current setting value.
 	data, err = conn.Do(NewSQLVDBEDebugGetRequest()).Get()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{[]interface{}{"sql_vdbe_debug", true}}, data)
+	require.Equal(t, []any{[]any{"sql_vdbe_debug", true}}, data)
 
 	// To test real effect we need a Tarantool instance built with
 	// `-DCMAKE_BUILD_TYPE=Debug`.
@@ -657,19 +657,19 @@ func TestSessionSettings(t *testing.T) {
 	// Set some settings values.
 	data, err := conn.Do(NewSQLDefaultEngineSetRequest("memtx")).Get()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{[]interface{}{"sql_default_engine", "memtx"}}, data)
+	require.Equal(t, []any{[]any{"sql_default_engine", "memtx"}}, data)
 
 	data, err = conn.Do(NewSQLFullColumnNamesSetRequest(true)).Get()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{[]interface{}{"sql_full_column_names", true}}, data)
+	require.Equal(t, []any{[]any{"sql_full_column_names", true}}, data)
 
 	// Fetch current settings values.
 	data, err = conn.Do(NewSessionSettingsGetRequest()).Get()
 	require.NoError(t, err)
 	require.Subset(t, data,
-		[]interface{}{
-			[]interface{}{"sql_default_engine", "memtx"},
-			[]interface{}{"sql_full_column_names", true},
+		[]any{
+			[]any{"sql_default_engine", "memtx"},
+			[]any{"sql_full_column_names", true},
 		})
 }
 

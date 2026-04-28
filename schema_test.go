@@ -44,7 +44,7 @@ func TestGetSchema_ok(t *testing.T) {
 	}
 
 	mockDoer := test_helpers.NewMockDoer(t).
-		AddResponseRaw([][]interface{}{
+		AddResponseRaw([][]any{
 			{
 				uint32(1),
 				"skip",
@@ -60,7 +60,7 @@ func TestGetSchema_ok(t *testing.T) {
 				0,
 			},
 		}).
-		AddResponseRaw([][]interface{}{
+		AddResponseRaw([][]any{
 			{
 				uint32(2),
 				uint32(1),
@@ -99,7 +99,7 @@ func TestGetSchema_spaces_select_error(t *testing.T) {
 func TestGetSchema_index_select_error(t *testing.T) {
 	mockDoer := test_helpers.NewMockDoer(t).
 		AddResponseRaw(
-			[][]interface{}{
+			[][]any{
 				{
 					uint32(1),
 					"skip",

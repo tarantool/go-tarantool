@@ -43,9 +43,9 @@ type Queue interface {
 	// ReleaseAll forcibly returns all taken tasks to a ready state.
 	ReleaseAll() error
 	// Put creates new task in a tube.
-	Put(data interface{}) (*Task, error)
+	Put(data any) (*Task, error)
 	// PutWithOpts creates new task with options different from tube's defaults.
-	PutWithOpts(data interface{}, cfg Opts) (*Task, error)
+	PutWithOpts(data any, cfg Opts) (*Task, error)
 	// Take takes 'ready' task from a tube and marks it as 'in progress'.
 	// Note: if connection has a request Timeout, then 0.9 * connection.Timeout is
 	// used as a timeout.
@@ -64,13 +64,13 @@ type Queue interface {
 	// Note: if connection has a request Timeout, then 0.9 * connection.Timeout is
 	// used as a timeout.
 	// Data will be unpacked to result.
-	TakeTyped(result interface{}) (*Task, error)
+	TakeTyped(result any) (*Task, error)
 	// TakeTypedTimeout takes 'ready' task from a tube and marks it as "in progress",
 	// or it is timeouted after "timeout" period.
 	// Note: if connection has a request Timeout, and conn.Timeout * 0.9 < timeout
 	// then timeout = conn.Timeout*0.9.
 	// Data will be unpacked to result.
-	TakeTypedTimeout(timeout time.Duration, result interface{}) (*Task, error)
+	TakeTypedTimeout(timeout time.Duration, result any) (*Task, error)
 	// Peek returns task by its id.
 	Peek(taskId uint64) (*Task, error)
 	// Kick reverts effect of Task.Bury() for count tasks.
@@ -80,7 +80,7 @@ type Queue interface {
 	// State returns a current queue state.
 	State() (State, error)
 	// Statistic returns some statistic about queue.
-	Statistic() (interface{}, error)
+	Statistic() (any, error)
 }
 
 type queue struct {
@@ -108,13 +108,14 @@ type cmd struct {
 }
 
 type Cfg struct {
+	Opts
+
 	Temporary   bool // If true, the contents do not persist on disk.
 	IfNotExists bool // If true, no error will be returned if the tube already exists.
 	Kind        queueType
-	Opts
 }
 
-func (cfg Cfg) toMap() map[string]interface{} {
+func (cfg Cfg) toMap() map[string]any {
 	res := cfg.Opts.toMap()
 	res["temporary"] = cfg.Temporary
 	res["if_not_exists"] = cfg.IfNotExists
@@ -141,8 +142,8 @@ type CfgOpts struct {
 	Ttr time.Duration
 }
 
-func (opts CfgOpts) toMap() map[string]interface{} {
-	ret := make(map[string]interface{})
+func (opts CfgOpts) toMap() map[string]any {
+	ret := make(map[string]any)
 	ret["in_replicaset"] = opts.InReplicaset
 	if opts.Ttr != 0 {
 		ret["ttr"] = opts.Ttr.Seconds()
@@ -158,8 +159,8 @@ type Opts struct {
 	Utube string
 }
 
-func (opts Opts) toMap() map[string]interface{} {
-	ret := make(map[string]interface{})
+func (opts Opts) toMap() map[string]any {
+	ret := make(map[string]any)
 
 	if opts.Ttl.Seconds() != 0 {
 		ret["ttl"] = opts.Ttl.Seconds()
@@ -198,14 +199,14 @@ func New(conn tarantool.Connector, name string) Queue {
 func (q *queue) Create(cfg Cfg) error {
 	cmd := "local name, type, cfg = ... ; queue.create_tube(name, type, cfg)"
 	_, err := q.conn.Do(tarantool.NewEvalRequest(cmd).
-		Args([]interface{}{q.name, cfg.getType(), cfg.toMap()}),
+		Args([]any{q.name, cfg.getType(), cfg.toMap()}),
 	).Get()
 	return err
 }
 
 // Set queue settings.
 func (q *queue) Cfg(opts CfgOpts) error {
-	req := tarantool.NewCallRequest(q.cmds.cfg).Args([]interface{}{opts.toMap()})
+	req := tarantool.NewCallRequest(q.cmds.cfg).Args([]any{opts.toMap()})
 	_, err := q.conn.Do(req).Get()
 	return err
 }
@@ -232,14 +233,14 @@ func (q *queue) Exists() (bool, error) {
 func (q *queue) Identify(u *uuid.UUID) (uuid.UUID, error) {
 	// Unfortunately we can't use go-tarantool/uuid here:
 	// https://github.com/tarantool/queue/issues/182
-	var args []interface{}
+	var args []any
 	if u == nil {
-		args = []interface{}{}
+		args = []any{}
 	} else {
 		if bytes, err := u.MarshalBinary(); err != nil {
 			return uuid.UUID{}, err
 		} else {
-			args = []interface{}{string(bytes)}
+			args = []any{string(bytes)}
 		}
 	}
 
@@ -256,16 +257,16 @@ func (q *queue) Identify(u *uuid.UUID) (uuid.UUID, error) {
 }
 
 // Put data to queue. Returns task.
-func (q *queue) Put(data interface{}) (*Task, error) {
+func (q *queue) Put(data any) (*Task, error) {
 	return q.put(data)
 }
 
 // Put data with options (ttl/ttr/pri/delay) to queue. Returns task.
-func (q *queue) PutWithOpts(data interface{}, cfg Opts) (*Task, error) {
+func (q *queue) PutWithOpts(data any, cfg Opts) (*Task, error) {
 	return q.put(data, cfg.toMap())
 }
 
-func (q *queue) put(params ...interface{}) (*Task, error) {
+func (q *queue) put(params ...any) (*Task, error) {
 	qd := queueData{
 		result: params[0],
 		q:      q,
@@ -279,7 +280,7 @@ func (q *queue) put(params ...interface{}) (*Task, error) {
 
 // The take request searches for a task in the queue.
 func (q *queue) Take() (*Task, error) {
-	var params interface{}
+	var params any
 	timeout := q.conn.ConfiguredTimeout()
 	if timeout > 0 {
 		params = (timeout * 9 / 10).Seconds()
@@ -298,8 +299,8 @@ func (q *queue) TakeTimeout(timeout time.Duration) (*Task, error) {
 }
 
 // The take request searches for a task in the queue.
-func (q *queue) TakeTyped(result interface{}) (*Task, error) {
-	var params interface{}
+func (q *queue) TakeTyped(result any) (*Task, error) {
+	var params any
 	timeout := q.conn.ConfiguredTimeout()
 	if timeout > 0 {
 		params = (timeout * 9 / 10).Seconds()
@@ -309,7 +310,7 @@ func (q *queue) TakeTyped(result interface{}) (*Task, error) {
 
 // The take request searches for a task in the queue. Waits until a task
 // becomes ready or the timeout expires.
-func (q *queue) TakeTypedTimeout(timeout time.Duration, result interface{}) (*Task, error) {
+func (q *queue) TakeTypedTimeout(timeout time.Duration, result any) (*Task, error) {
 	t := q.conn.ConfiguredTimeout() * 9 / 10
 	if t > 0 && timeout > t {
 		timeout = t
@@ -317,12 +318,12 @@ func (q *queue) TakeTypedTimeout(timeout time.Duration, result interface{}) (*Ta
 	return q.take(timeout.Seconds(), result)
 }
 
-func (q *queue) take(params interface{}, result ...interface{}) (*Task, error) {
+func (q *queue) take(params any, result ...any) (*Task, error) {
 	qd := queueData{q: q}
 	if len(result) > 0 {
 		qd.result = result[0]
 	}
-	req := tarantool.NewCallRequest(q.cmds.take).Args([]interface{}{params})
+	req := tarantool.NewCallRequest(q.cmds.take).Args([]any{params})
 	if err := q.conn.Do(req).GetTyped(&qd); err != nil {
 		return nil, err
 	}
@@ -344,7 +345,7 @@ func (q *queue) ReleaseAll() error {
 // Look at a task without changing its state.
 func (q *queue) Peek(taskId uint64) (*Task, error) {
 	qd := queueData{q: q}
-	req := tarantool.NewCallRequest(q.cmds.peek).Args([]interface{}{taskId})
+	req := tarantool.NewCallRequest(q.cmds.peek).Args([]any{taskId})
 	if err := q.conn.Do(req).GetTyped(&qd); err != nil {
 		return nil, err
 	}
@@ -370,7 +371,7 @@ func (q *queue) _bury(taskId uint64) (string, error) {
 func (q *queue) _release(taskId uint64, cfg Opts) (string, error) {
 	return q.produce(q.cmds.release, taskId, cfg.toMap())
 }
-func (q *queue) produce(cmd string, params ...interface{}) (string, error) {
+func (q *queue) produce(cmd string, params ...any) (string, error) {
 	qd := queueData{q: q}
 	req := tarantool.NewCallRequest(cmd).Args(params)
 	if err := q.conn.Do(req).GetTyped(&qd); err != nil || qd.task == nil {
@@ -398,7 +399,7 @@ func (r *kickResult) DecodeMsgpack(d *msgpack.Decoder) (err error) {
 // Reverse the effect of a bury request on one or more tasks.
 func (q *queue) Kick(count uint64) (uint64, error) {
 	var r kickResult
-	req := tarantool.NewCallRequest(q.cmds.kick).Args([]interface{}{count})
+	req := tarantool.NewCallRequest(q.cmds.kick).Args([]any{count})
 	err := q.conn.Do(req).GetTyped(&r)
 	return r.id, err
 }
@@ -427,8 +428,8 @@ func (q *queue) State() (State, error) {
 
 // Return the number of tasks in a queue broken down by task_state, and the
 // number of requests broken down by the type of request.
-func (q *queue) Statistic() (interface{}, error) {
-	req := tarantool.NewCallRequest(q.cmds.statistics).Args([]interface{}{q.name})
+func (q *queue) Statistic() (any, error) {
+	req := tarantool.NewCallRequest(q.cmds.statistics).Args([]any{q.name})
 	data, err := q.conn.Do(req).Get()
 	if err != nil {
 		return nil, err
@@ -464,7 +465,7 @@ func makeCmd(q *queue) {
 type queueData struct {
 	q      *queue
 	task   *Task
-	result interface{}
+	result any
 }
 
 func (qd *queueData) DecodeMsgpack(d *msgpack.Decoder) error {

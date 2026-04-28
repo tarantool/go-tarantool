@@ -16,16 +16,16 @@ type Response interface {
 	// Release free responses data.
 	Release()
 	// Decode decodes a response.
-	Decode() ([]interface{}, error)
+	Decode() ([]any, error)
 	// DecodeTyped decodes a response into a given container res.
-	DecodeTyped(res interface{}) error
+	DecodeTyped(res any) error
 }
 
 type baseResponse struct {
 	// header is a response header.
 	header Header
 	// data contains deserialized data for untyped requests.
-	data []interface{}
+	data []any
 	buf  smallBuf
 	// Was the Decode() func called for this response.
 	decoded bool
@@ -68,6 +68,7 @@ func DecodeBaseResponse(header Header, body io.Reader) (Response, error) {
 // You need to cast to SelectResponse a response from SelectRequest.
 type SelectResponse struct {
 	baseResponse
+
 	// pos contains a position descriptor of last selected tuple.
 	pos []byte
 }
@@ -81,7 +82,7 @@ type SelectResponse struct {
 type PrepareResponse ExecuteResponse
 
 var preparesPool = sync.Pool{
-	New: func() interface{} {
+	New: func() any {
 		return &PrepareResponse{}
 	},
 }
@@ -92,6 +93,7 @@ var preparesPool = sync.Pool{
 // You need to cast to ExecuteResponse a response from ExecuteRequest.
 type ExecuteResponse struct {
 	baseResponse
+
 	metaData []ColumnMetaData
 	sqlInfo  SQLInfo
 }
@@ -121,7 +123,7 @@ func (meta *ColumnMetaData) DecodeMsgpack(d *msgpack.Decoder) error {
 	}
 	for i := 0; i < l; i++ {
 		var mk uint64
-		var mv interface{}
+		var mv any
 		if mk, err = d.DecodeUint64(); err != nil {
 			return fmt.Errorf("failed to decode meta data")
 		}
@@ -246,7 +248,7 @@ func (info *decodeInfo) parseData(resp *baseResponse) error {
 			StatementID: PreparedID(info.stmtID),
 			ParamCount:  info.bindCount,
 		}
-		resp.data = []interface{}{stmt}
+		resp.data = []any{stmt}
 		return nil
 	}
 
@@ -259,25 +261,25 @@ func (info *decodeInfo) parseData(resp *baseResponse) error {
 		if info.serverProtocolInfo.Features == nil {
 			return fmt.Errorf("no features provided in Id response")
 		}
-		resp.data = []interface{}{info.serverProtocolInfo}
+		resp.data = []any{info.serverProtocolInfo}
 		return nil
 	}
 	return nil
 }
 
-func decodeCommonField(d *msgpack.Decoder, cd int, data *[]interface{},
+func decodeCommonField(d *msgpack.Decoder, cd int, data *[]any,
 	info *decodeInfo) (bool, error) {
 	var feature iproto.Feature
 	var err error
 
 	switch iproto.Key(cd) {
 	case iproto.IPROTO_DATA:
-		var res interface{}
+		var res any
 		var ok bool
 		if res, err = d.DecodeInterface(); err != nil {
 			return false, err
 		}
-		if *data, ok = res.([]interface{}); !ok {
+		if *data, ok = res.([]any); !ok {
 			return false, fmt.Errorf("result is not array: %v", res)
 		}
 	case iproto.IPROTO_ERROR:
@@ -334,7 +336,7 @@ func decodeCommonField(d *msgpack.Decoder, cd int, data *[]interface{},
 	return true, nil
 }
 
-func (resp *baseResponse) Decode() ([]interface{}, error) {
+func (resp *baseResponse) Decode() ([]any, error) {
 	if resp.decoded {
 		return resp.data, resp.err
 	}
@@ -389,7 +391,7 @@ func (resp *baseResponse) Decode() ([]interface{}, error) {
 	return resp.data, resp.err
 }
 
-func (resp *SelectResponse) Decode() ([]interface{}, error) {
+func (resp *SelectResponse) Decode() ([]any, error) {
 	if resp.decoded {
 		return resp.data, resp.err
 	}
@@ -452,7 +454,7 @@ func (resp *SelectResponse) Decode() ([]interface{}, error) {
 	return resp.data, resp.err
 }
 
-func (resp *ExecuteResponse) Decode() ([]interface{}, error) {
+func (resp *ExecuteResponse) Decode() ([]any, error) {
 	if resp.decoded {
 		return resp.data, resp.err
 	}
@@ -520,7 +522,7 @@ func (resp *ExecuteResponse) Decode() ([]interface{}, error) {
 	return resp.data, resp.err
 }
 
-func decodeTypedCommonField(d *msgpack.Decoder, res interface{}, cd int,
+func decodeTypedCommonField(d *msgpack.Decoder, res any, cd int,
 	info *decodeInfo) (bool, error) {
 	var err error
 
@@ -543,7 +545,7 @@ func decodeTypedCommonField(d *msgpack.Decoder, res interface{}, cd int,
 	return true, nil
 }
 
-func (resp *baseResponse) DecodeTyped(res interface{}) error {
+func (resp *baseResponse) DecodeTyped(res any) error {
 	resp.decodedTyped = true
 
 	var err error
@@ -584,7 +586,7 @@ func (resp *baseResponse) DecodeTyped(res interface{}) error {
 	return err
 }
 
-func (resp *SelectResponse) DecodeTyped(res interface{}) error {
+func (resp *SelectResponse) DecodeTyped(res any) error {
 	resp.decodedTyped = true
 
 	var err error
@@ -632,7 +634,7 @@ func (resp *SelectResponse) DecodeTyped(res interface{}) error {
 	return err
 }
 
-func (resp *ExecuteResponse) DecodeTyped(res interface{}) error {
+func (resp *ExecuteResponse) DecodeTyped(res any) error {
 	resp.decodedTyped = true
 
 	var err error

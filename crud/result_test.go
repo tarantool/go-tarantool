@@ -12,13 +12,13 @@ import (
 )
 
 func TestResult_DecodeMsgpack(t *testing.T) {
-	sampleCrudResponse := []interface{}{
-		map[string]interface{}{
-			"rows": []interface{}{"1", "2", "3"},
+	sampleCrudResponse := []any{
+		map[string]any{
+			"rows": []any{"1", "2", "3"},
 		},
 		nil,
 	}
-	responses := []interface{}{sampleCrudResponse, sampleCrudResponse}
+	responses := []any{sampleCrudResponse, sampleCrudResponse}
 
 	b := bytes.NewBuffer([]byte{})
 	enc := msgpack.NewEncoder(b)
@@ -29,6 +29,6 @@ func TestResult_DecodeMsgpack(t *testing.T) {
 	decoder := msgpack.NewDecoder(b)
 	err = decoder.DecodeValue(reflect.ValueOf(&results))
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{"1", "2", "3"}, results[0].Rows)
-	require.Equal(t, []interface{}{"1", "2", "3"}, results[1].Rows)
+	require.Equal(t, []any{"1", "2", "3"}, results[0].Rows)
+	require.Equal(t, []any{"1", "2", "3"}, results[1].Rows)
 }

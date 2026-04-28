@@ -5,19 +5,19 @@ import (
 )
 
 // UnflattenRows can be used to convert received tuples to objects.
-func UnflattenRows(tuples []interface{}, format []interface{}) ([]MapObject, error) {
+func UnflattenRows(tuples []any, format []any) ([]MapObject, error) {
 	var (
 		ok        bool
 		fieldName string
-		fieldInfo map[interface{}]interface{}
+		fieldInfo map[any]any
 	)
 
 	objects := []MapObject{}
 
 	for _, tuple := range tuples {
-		object := make(map[string]interface{})
-		for fieldIdx, field := range tuple.([]interface{}) {
-			if fieldInfo, ok = format[fieldIdx].(map[interface{}]interface{}); !ok {
+		object := make(map[string]any)
+		for fieldIdx, field := range tuple.([]any) {
+			if fieldInfo, ok = format[fieldIdx].(map[any]any); !ok {
 				return nil, fmt.Errorf("unexpected space format: %q", format)
 			}
 

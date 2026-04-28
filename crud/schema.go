@@ -33,7 +33,7 @@ func (opts SchemaOpts) EncodeMsgpack(enc *msgpack.Encoder) error {
 
 	names := [optsCnt]string{timeoutOptName, vshardRouterOptName,
 		cachedOptName}
-	values := [optsCnt]interface{}{}
+	values := [optsCnt]any{}
 	exists := [optsCnt]bool{}
 	values[0], exists[0] = opts.Timeout.Get()
 	values[1], exists[1] = opts.VshardRouter.Get()
@@ -46,6 +46,7 @@ func (opts SchemaOpts) EncodeMsgpack(enc *msgpack.Encoder) error {
 // for execution by a Connection.
 type SchemaRequest struct {
 	baseRequest
+
 	space option.String
 	opts  SchemaOpts
 }
@@ -74,9 +75,9 @@ func (req SchemaRequest) Opts(opts SchemaOpts) SchemaRequest {
 // Body fills an encoder with the call request body.
 func (req SchemaRequest) Body(res tarantool.SchemaResolver, enc *msgpack.Encoder) error {
 	if value, ok := req.space.Get(); ok {
-		req.impl = req.impl.Args([]interface{}{value, req.opts})
+		req.impl = req.impl.Args([]any{value, req.opts})
 	} else {
-		req.impl = req.impl.Args([]interface{}{nil, req.opts})
+		req.impl = req.impl.Args([]any{nil, req.opts})
 	}
 
 	return req.impl.Body(res, enc)
@@ -119,7 +120,7 @@ func (schema *Schema) DecodeMsgpack(d *msgpack.Decoder) error {
 		}
 		*schema = make(map[string]SpaceSchema, l)
 
-		for i := 0; i < l; i++ {
+		for range l {
 			key, err := d.DecodeString()
 			if err != nil {
 				return err

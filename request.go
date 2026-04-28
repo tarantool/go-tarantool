@@ -19,7 +19,7 @@ type spaceEncoder struct {
 	IsId bool
 }
 
-func newSpaceEncoder(res SchemaResolver, spaceInfo interface{}) (spaceEncoder, error) {
+func newSpaceEncoder(res SchemaResolver, spaceInfo any) (spaceEncoder, error) {
 	if res.NamesUseSupported() {
 		if spaceName, ok := spaceInfo.(string); ok {
 			return spaceEncoder{
@@ -56,7 +56,7 @@ type indexEncoder struct {
 	IsId bool
 }
 
-func newIndexEncoder(res SchemaResolver, indexInfo interface{},
+func newIndexEncoder(res SchemaResolver, indexInfo any,
 	spaceNo uint32) (indexEncoder, error) {
 	if res.NamesUseSupported() {
 		if indexName, ok := indexInfo.(string); ok {
@@ -88,7 +88,7 @@ func (e indexEncoder) Encode(enc *msgpack.Encoder) error {
 }
 
 func fillSearch(enc *msgpack.Encoder, spaceEnc spaceEncoder, indexEnc indexEncoder,
-	key interface{}) error {
+	key any) error {
 	if err := spaceEnc.Encode(enc); err != nil {
 		return err
 	}
@@ -106,7 +106,7 @@ func fillSearch(enc *msgpack.Encoder, spaceEnc spaceEncoder, indexEnc indexEncod
 // KeyValueBind is a type for encoding named SQL parameters.
 type KeyValueBind struct {
 	Key   string
-	Value interface{}
+	Value any
 }
 
 //
@@ -117,9 +117,9 @@ type KeyValueBind struct {
 // to avoid extra allocations in heap by calling strings.ToLower().
 var lowerCaseNames sync.Map
 
-func encodeSQLBind(enc *msgpack.Encoder, from interface{}) error {
+func encodeSQLBind(enc *msgpack.Encoder, from any) error {
 	// internal function for encoding single map in msgpack
-	encodeKeyInterface := func(key string, val interface{}) error {
+	encodeKeyInterface := func(key string, val any) error {
 		if err := enc.EncodeMapLen(1); err != nil {
 			return err
 		}
@@ -145,7 +145,7 @@ func encodeSQLBind(enc *msgpack.Encoder, from interface{}) error {
 		return nil
 	}
 
-	encodeNamedFromMap := func(mp map[string]interface{}) error {
+	encodeNamedFromMap := func(mp map[string]any) error {
 		if err := enc.EncodeArrayLen(len(mp)); err != nil {
 			return err
 		}
@@ -187,8 +187,8 @@ func encodeSQLBind(enc *msgpack.Encoder, from interface{}) error {
 		return nil
 	}
 
-	encodeSlice := func(from interface{}) error {
-		castedSlice, ok := from.([]interface{})
+	encodeSlice := func(from any) error {
+		castedSlice, ok := from.([]any)
 		if !ok {
 			castedKVSlice := from.([]KeyValueBind)
 			t := len(castedKVSlice)
@@ -206,7 +206,7 @@ func encodeSQLBind(enc *msgpack.Encoder, from interface{}) error {
 		if err := enc.EncodeArrayLen(len(castedSlice)); err != nil {
 			return err
 		}
-		for i := 0; i < len(castedSlice); i++ {
+		for i := range castedSlice {
 			if kvb, ok := castedSlice[i].(KeyValueBind); ok {
 				k := kvb.Key
 				v := kvb.Value
@@ -225,7 +225,7 @@ func encodeSQLBind(enc *msgpack.Encoder, from interface{}) error {
 	val := reflect.ValueOf(from)
 	switch val.Kind() {
 	case reflect.Map:
-		mp, ok := from.(map[string]interface{})
+		mp, ok := from.(map[string]any)
 		if !ok {
 			return errors.New("failed to encode map: wrong format")
 		}
@@ -295,14 +295,15 @@ func (req *baseRequest) Response(header Header, body io.Reader) (Response, error
 
 type spaceRequest struct {
 	baseRequest
-	space interface{}
+
+	space any
 }
 
-func (req *spaceRequest) setSpace(space interface{}) {
+func (req *spaceRequest) setSpace(space any) {
 	req.space = space
 }
 
-func EncodeSpace(res SchemaResolver, enc *msgpack.Encoder, space interface{}) error {
+func EncodeSpace(res SchemaResolver, enc *msgpack.Encoder, space any) error {
 	spaceEnc, err := newSpaceEncoder(res, space)
 	if err != nil {
 		return err
@@ -315,10 +316,11 @@ func EncodeSpace(res SchemaResolver, enc *msgpack.Encoder, space interface{}) er
 
 type spaceIndexRequest struct {
 	spaceRequest
-	index interface{}
+
+	index any
 }
 
-func (req *spaceIndexRequest) setIndex(index interface{}) {
+func (req *spaceIndexRequest) setIndex(index any) {
 	req.index = index
 }
 
@@ -437,23 +439,25 @@ func (req *PingRequest) Context(ctx context.Context) *PingRequest {
 
 // SelectRequest allows you to create a select request object for execution
 // by a Connection.
+
 type SelectRequest struct {
 	spaceIndexRequest
+
 	isIteratorSet, fetchPos bool
 	offset, limit           uint32
 	iterator                Iter
-	key, after              interface{}
+	key, after              any
 }
 
 // NewSelectRequest returns a new empty SelectRequest.
-func NewSelectRequest(space interface{}) *SelectRequest {
+func NewSelectRequest(space any) *SelectRequest {
 	req := new(SelectRequest)
 	req.rtype = iproto.IPROTO_SELECT
 	req.setSpace(space)
 	req.isIteratorSet = false
 	req.fetchPos = false
 	req.iterator = IterAll
-	req.key = []interface{}{}
+	req.key = []any{}
 	req.after = nil
 	req.limit = 0xFFFFFFFF
 	return req
@@ -461,7 +465,7 @@ func NewSelectRequest(space interface{}) *SelectRequest {
 
 // Index sets the index for the select request.
 // Note: default value is 0.
-func (req *SelectRequest) Index(index interface{}) *SelectRequest {
+func (req *SelectRequest) Index(index any) *SelectRequest {
 	req.setIndex(index)
 	return req
 }
@@ -490,7 +494,7 @@ func (req *SelectRequest) Iterator(iterator Iter) *SelectRequest {
 
 // Key set the key for the select request.
 // Note: default value is empty.
-func (req *SelectRequest) Key(key interface{}) *SelectRequest {
+func (req *SelectRequest) Key(key any) *SelectRequest {
 	req.key = key
 	if !req.isIteratorSet {
 		req.iterator = IterEq
@@ -519,7 +523,7 @@ func (req *SelectRequest) FetchPos(fetch bool) *SelectRequest {
 // Requires Tarantool >= 2.11.
 //
 // Since 1.11.0.
-func (req *SelectRequest) After(after interface{}) *SelectRequest {
+func (req *SelectRequest) After(after any) *SelectRequest {
 	req.after = after
 	return req
 }
@@ -621,7 +625,7 @@ func (req *SelectRequest) Context(ctx context.Context) *SelectRequest {
 }
 
 var selectsPool *sync.Pool = &sync.Pool{
-	New: func() interface{} {
+	New: func() any {
 		return &SelectResponse{}
 	},
 }
@@ -640,24 +644,27 @@ func (req *SelectRequest) Response(header Header, body io.Reader) (Response, err
 }
 
 // InsertRequest helps you to create an insert request object for execution
+
 // by a Connection.
+
 type InsertRequest struct {
 	spaceRequest
-	tuple interface{}
+
+	tuple any
 }
 
 // NewInsertRequest returns a new empty InsertRequest.
-func NewInsertRequest(space interface{}) *InsertRequest {
+func NewInsertRequest(space any) *InsertRequest {
 	req := new(InsertRequest)
 	req.rtype = iproto.IPROTO_INSERT
 	req.setSpace(space)
-	req.tuple = []interface{}{}
+	req.tuple = []any{}
 	return req
 }
 
 // Tuple sets the tuple for insertion the insert request.
 // Note: default value is nil.
-func (req *InsertRequest) Tuple(tuple interface{}) *InsertRequest {
+func (req *InsertRequest) Tuple(tuple any) *InsertRequest {
 	req.tuple = tuple
 	return req
 }
@@ -699,21 +706,22 @@ func (req *InsertRequest) Context(ctx context.Context) *InsertRequest {
 // by a Connection.
 type ReplaceRequest struct {
 	spaceRequest
-	tuple interface{}
+
+	tuple any
 }
 
 // NewReplaceRequest returns a new empty ReplaceRequest.
-func NewReplaceRequest(space interface{}) *ReplaceRequest {
+func NewReplaceRequest(space any) *ReplaceRequest {
 	req := new(ReplaceRequest)
 	req.rtype = iproto.IPROTO_REPLACE
 	req.setSpace(space)
-	req.tuple = []interface{}{}
+	req.tuple = []any{}
 	return req
 }
 
 // Tuple sets the tuple for replace by the replace request.
 // Note: default value is nil.
-func (req *ReplaceRequest) Tuple(tuple interface{}) *ReplaceRequest {
+func (req *ReplaceRequest) Tuple(tuple any) *ReplaceRequest {
 	req.tuple = tuple
 	return req
 }
@@ -755,28 +763,29 @@ func (req *ReplaceRequest) Context(ctx context.Context) *ReplaceRequest {
 // by a Connection.
 type DeleteRequest struct {
 	spaceIndexRequest
-	key interface{}
+
+	key any
 }
 
 // NewDeleteRequest returns a new empty DeleteRequest.
-func NewDeleteRequest(space interface{}) *DeleteRequest {
+func NewDeleteRequest(space any) *DeleteRequest {
 	req := new(DeleteRequest)
 	req.rtype = iproto.IPROTO_DELETE
 	req.setSpace(space)
-	req.key = []interface{}{}
+	req.key = []any{}
 	return req
 }
 
 // Index sets the index for the delete request.
 // Note: default value is 0.
-func (req *DeleteRequest) Index(index interface{}) *DeleteRequest {
+func (req *DeleteRequest) Index(index any) *DeleteRequest {
 	req.setIndex(index)
 	return req
 }
 
 // Key sets the key of tuple for the delete request.
 // Note: default value is empty.
-func (req *DeleteRequest) Key(key interface{}) *DeleteRequest {
+func (req *DeleteRequest) Key(key any) *DeleteRequest {
 	req.key = key
 	return req
 }
@@ -815,29 +824,30 @@ func (req *DeleteRequest) Context(ctx context.Context) *DeleteRequest {
 // by a Connection.
 type UpdateRequest struct {
 	spaceIndexRequest
-	key interface{}
+
+	key any
 	ops *Operations
 }
 
 // NewUpdateRequest returns a new empty UpdateRequest.
-func NewUpdateRequest(space interface{}) *UpdateRequest {
+func NewUpdateRequest(space any) *UpdateRequest {
 	req := new(UpdateRequest)
 	req.rtype = iproto.IPROTO_UPDATE
 	req.setSpace(space)
-	req.key = []interface{}{}
+	req.key = []any{}
 	return req
 }
 
 // Index sets the index for the update request.
 // Note: default value is 0.
-func (req *UpdateRequest) Index(index interface{}) *UpdateRequest {
+func (req *UpdateRequest) Index(index any) *UpdateRequest {
 	req.setIndex(index)
 	return req
 }
 
 // Key sets the key of tuple for the update request.
 // Note: default value is empty.
-func (req *UpdateRequest) Key(key interface{}) *UpdateRequest {
+func (req *UpdateRequest) Key(key any) *UpdateRequest {
 	req.key = key
 	return req
 }
@@ -895,22 +905,23 @@ func (req *UpdateRequest) Context(ctx context.Context) *UpdateRequest {
 // by a Connection.
 type UpsertRequest struct {
 	spaceRequest
-	tuple interface{}
+
+	tuple any
 	ops   *Operations
 }
 
 // NewUpsertRequest returns a new empty UpsertRequest.
-func NewUpsertRequest(space interface{}) *UpsertRequest {
+func NewUpsertRequest(space any) *UpsertRequest {
 	req := new(UpsertRequest)
 	req.rtype = iproto.IPROTO_UPSERT
 	req.setSpace(space)
-	req.tuple = []interface{}{}
+	req.tuple = []any{}
 	return req
 }
 
 // Tuple sets the tuple for insertion or update by the upsert request.
 // Note: default value is empty.
-func (req *UpsertRequest) Tuple(tuple interface{}) *UpsertRequest {
+func (req *UpsertRequest) Tuple(tuple any) *UpsertRequest {
 	req.tuple = tuple
 	return req
 }
@@ -971,8 +982,9 @@ func (req *UpsertRequest) Context(ctx context.Context) *UpsertRequest {
 // by a Connection.
 type CallRequest struct {
 	baseRequest
+
 	function string
-	args     interface{}
+	args     any
 }
 
 // NewCallRequest returns a new empty CallRequest. It uses request code for
@@ -986,7 +998,7 @@ func NewCallRequest(function string) *CallRequest {
 
 // Args sets the args for the call request.
 // Note: default value is empty.
-func (req *CallRequest) Args(args interface{}) *CallRequest {
+func (req *CallRequest) Args(args any) *CallRequest {
 	req.args = args
 	return req
 }
@@ -1031,8 +1043,9 @@ func (req *CallRequest) Context(ctx context.Context) *CallRequest {
 // by a Connection.
 type EvalRequest struct {
 	baseRequest
+
 	expr string
-	args interface{}
+	args any
 }
 
 // NewEvalRequest returns a new empty EvalRequest.
@@ -1040,13 +1053,13 @@ func NewEvalRequest(expr string) *EvalRequest {
 	req := new(EvalRequest)
 	req.rtype = iproto.IPROTO_EVAL
 	req.expr = expr
-	req.args = []interface{}{}
+	req.args = []any{}
 	return req
 }
 
 // Args sets the args for the eval request.
 // Note: default value is empty.
-func (req *EvalRequest) Args(args interface{}) *EvalRequest {
+func (req *EvalRequest) Args(args any) *EvalRequest {
 	req.args = args
 	return req
 }
@@ -1091,8 +1104,9 @@ func (req *EvalRequest) Context(ctx context.Context) *EvalRequest {
 // by a Connection.
 type ExecuteRequest struct {
 	baseRequest
+
 	expr string
-	args interface{}
+	args any
 }
 
 // NewExecuteRequest returns a new empty ExecuteRequest.
@@ -1100,13 +1114,13 @@ func NewExecuteRequest(expr string) *ExecuteRequest {
 	req := new(ExecuteRequest)
 	req.rtype = iproto.IPROTO_EXECUTE
 	req.expr = expr
-	req.args = []interface{}{}
+	req.args = []any{}
 	return req
 }
 
 // Args sets the args for the execute request.
 // Note: default value is empty.
-func (req *ExecuteRequest) Args(args interface{}) *ExecuteRequest {
+func (req *ExecuteRequest) Args(args any) *ExecuteRequest {
 	req.args = args
 	return req
 }
@@ -1144,7 +1158,7 @@ func (req *ExecuteRequest) Context(ctx context.Context) *ExecuteRequest {
 }
 
 var executesPool = sync.Pool{
-	New: func() interface{} {
+	New: func() any {
 		return &ExecuteResponse{}
 	},
 }
@@ -1166,6 +1180,7 @@ func (req *ExecuteRequest) Response(header Header, body io.Reader) (Response, er
 // specified notification key without subscribing to changes.
 type WatchOnceRequest struct {
 	baseRequest
+
 	key string
 }
 

@@ -18,6 +18,7 @@ type LenOpts = BaseOpts
 // for execution by a Connection.
 type LenRequest struct {
 	spaceRequest
+
 	opts LenOpts
 }
 

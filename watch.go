@@ -19,14 +19,14 @@ type BroadcastRequest struct {
 func NewBroadcastRequest(key string) *BroadcastRequest {
 	req := new(BroadcastRequest)
 	req.key = key
-	req.call = NewCallRequest("box.broadcast").Args([]interface{}{key})
+	req.call = NewCallRequest("box.broadcast").Args([]any{key})
 	return req
 }
 
 // Value sets the value for the broadcast request.
 // Note: default value is nil.
-func (req *BroadcastRequest) Value(value interface{}) *BroadcastRequest {
-	req.call = req.call.Args([]interface{}{req.key, value})
+func (req *BroadcastRequest) Value(value any) *BroadcastRequest {
+	req.call = req.call.Args([]any{req.key, value})
 	return req
 }
 
@@ -66,6 +66,7 @@ func (req *BroadcastRequest) Response(header Header, body io.Reader) (Response, 
 // watchRequest to acknowledge the notification.
 type watchRequest struct {
 	baseRequest
+
 	key string
 	ctx context.Context
 }
@@ -102,6 +103,7 @@ func (req *watchRequest) Context(ctx context.Context) *watchRequest {
 // key.
 type unwatchRequest struct {
 	baseRequest
+
 	key string
 	ctx context.Context
 }
@@ -138,7 +140,7 @@ func (req *unwatchRequest) Context(ctx context.Context) *unwatchRequest {
 type WatchEvent struct {
 	Conn  *Connection // A source connection.
 	Key   string      // A key.
-	Value interface{} // A value.
+	Value any         // A value.
 }
 
 // Watcher is a subscription to broadcast events.

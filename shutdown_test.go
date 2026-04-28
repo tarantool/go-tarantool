@@ -1,5 +1,4 @@
 //go:build linux || (darwin && !cgo)
-// +build linux darwin,!cgo
 
 // Use OS build flags since signals are system-dependent.
 package tarantool_test
@@ -47,13 +46,15 @@ var evalBody = `
 `
 
 func testGracefulShutdown(t *testing.T, conn *Connection, inst *test_helpers.TarantoolInstance) {
+	t.Helper()
+
 	var err error
 
 	// Set a big timeout so it would be easy to differ
 	// if server went down on timeout or after all connections were terminated.
 	serverShutdownTimeout := 60 // in seconds
 	_, err = conn.Do(NewCallRequest("box.ctl.set_on_shutdown_timeout").
-		Args([]interface{}{serverShutdownTimeout}),
+		Args([]any{serverShutdownTimeout}),
 	).Get()
 	require.NoError(t, err)
 
@@ -74,7 +75,7 @@ func testGracefulShutdown(t *testing.T, conn *Connection, inst *test_helpers.Tar
 	defer helperW.Unregister()
 	<-helperCh
 
-	req := NewEvalRequest(evalBody).Args([]interface{}{evalSleep, evalMsg})
+	req := NewEvalRequest(evalBody).Args([]any{evalSleep, evalMsg})
 
 	fut := conn.Do(req)
 
@@ -97,7 +98,7 @@ func testGracefulShutdown(t *testing.T, conn *Connection, inst *test_helpers.Tar
 	// Check that requests started before the shutdown finish successfully.
 	data, err := fut.Get()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{evalMsg}, data)
+	require.Equal(t, []any{evalMsg}, data)
 
 	// Wait until server go down.
 	// Server will go down only when it process all requests from our connection
@@ -155,7 +156,7 @@ func TestCloseGraceful(t *testing.T) {
 		shtdnClntOpts.Timeout,
 		"test request won't be failed by timeout")
 
-	req := NewEvalRequest(evalBody).Args([]interface{}{evalSleep, evalMsg})
+	req := NewEvalRequest(evalBody).Args([]any{evalSleep, evalMsg})
 	fut := conn.Do(req)
 
 	go func() {
@@ -227,7 +228,7 @@ func TestNoGracefulShutdown(t *testing.T) {
 		shtdnClntOpts.Timeout,
 		"test request won't be failed by timeout")
 
-	req := NewEvalRequest(evalBody).Args([]interface{}{evalSleep, evalMsg})
+	req := NewEvalRequest(evalBody).Args([]any{evalSleep, evalMsg})
 
 	fut := conn.Do(req)
 
@@ -278,7 +279,7 @@ func TestGracefulShutdownRespectsClose(t *testing.T) {
 	// if server went down on timeout or after all connections were terminated.
 	serverShutdownTimeout := 60 // in seconds
 	_, err = conn.Do(NewCallRequest("box.ctl.set_on_shutdown_timeout").
-		Args([]interface{}{serverShutdownTimeout}),
+		Args([]any{serverShutdownTimeout}),
 	).Get()
 	require.NoError(t, err)
 
@@ -289,7 +290,7 @@ func TestGracefulShutdownRespectsClose(t *testing.T) {
 		shtdnClntOpts.Timeout,
 		"test request won't be failed by timeout")
 
-	req := NewEvalRequest(evalBody).Args([]interface{}{evalSleep, evalMsg})
+	req := NewEvalRequest(evalBody).Args([]any{evalSleep, evalMsg})
 
 	fut := conn.Do(req)
 
@@ -354,7 +355,7 @@ func TestGracefulShutdownNotRacesWithRequestReconnect(t *testing.T) {
 	// Set a small timeout so server will shutdown before requesst finishes.
 	serverShutdownTimeout := 1 // in seconds
 	_, err = conn.Do(NewCallRequest("box.ctl.set_on_shutdown_timeout").
-		Args([]interface{}{serverShutdownTimeout}),
+		Args([]any{serverShutdownTimeout}),
 	).Get()
 	require.NoError(t, err)
 
@@ -369,7 +370,7 @@ func TestGracefulShutdownNotRacesWithRequestReconnect(t *testing.T) {
 		shtdnClntOpts.Timeout,
 		"test request will be failed by timeout")
 
-	req := NewEvalRequest(evalBody).Args([]interface{}{evalSleep, evalMsg})
+	req := NewEvalRequest(evalBody).Args([]any{evalSleep, evalMsg})
 
 	evalStart := time.Now()
 	fut := conn.Do(req)
@@ -423,7 +424,7 @@ func TestGracefulShutdownCloseConcurrent(t *testing.T) {
 	// if server went down on timeout or after all connections were terminated.
 	serverShutdownTimeout := 60 // in seconds
 	_, err = conn.Do(NewCallRequest("box.ctl.set_on_shutdown_timeout").
-		Args([]interface{}{serverShutdownTimeout}),
+		Args([]any{serverShutdownTimeout}),
 	).Get()
 	require.NoError(t, err)
 	_ = conn.Close()
@@ -436,7 +437,7 @@ func TestGracefulShutdownCloseConcurrent(t *testing.T) {
 	srvStop.Add(1)
 
 	// Create many connections.
-	for i := 0; i < testConcurrency; i++ {
+	for range testConcurrency {
 		go func() {
 			defer caseWg.Done()
 
@@ -498,7 +499,7 @@ func TestGracefulShutdownConcurrent(t *testing.T) {
 	// if server went down on timeout or after all connections were terminated.
 	serverShutdownTimeout := 60 // in seconds
 	_, err = conn.Do(NewCallRequest("box.ctl.set_on_shutdown_timeout").
-		Args([]interface{}{serverShutdownTimeout}),
+		Args([]any{serverShutdownTimeout}),
 	).Get()
 	require.NoError(t, err)
 	_ = conn.Close()
@@ -512,7 +513,7 @@ func TestGracefulShutdownConcurrent(t *testing.T) {
 
 	// Create many connections.
 	var ret error
-	for i := 0; i < testConcurrency; i++ {
+	for range testConcurrency {
 		go func() {
 			defer caseWg.Done()
 
@@ -529,7 +530,7 @@ func TestGracefulShutdownConcurrent(t *testing.T) {
 			<-helperCh
 
 			evalSleep := 1 // in seconds
-			req := NewEvalRequest(evalBody).Args([]interface{}{evalSleep, evalMsg})
+			req := NewEvalRequest(evalBody).Args([]any{evalSleep, evalMsg})
 			fut := conn.Do(req)
 
 			// Wait till all connections had started sleeping.

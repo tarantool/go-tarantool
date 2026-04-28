@@ -17,7 +17,7 @@ type MockDoer interface {
 	// AddResponseRaw adds a response with an empty header and the given
 	// data, which is encoded with msgpack, and returns the MockDoer for
 	// chaining.
-	AddResponseRaw(data interface{}) MockDoer
+	AddResponseRaw(data any) MockDoer
 	// AddResponseError adds an error response and returns the MockDoer for
 	// chaining.
 	AddResponseError(err error) MockDoer
@@ -60,7 +60,7 @@ func (m *mockDoer) AddResponse(header tarantool.Header, data io.Reader) MockDoer
 	return m
 }
 
-func (m *mockDoer) AddResponseRaw(data interface{}) MockDoer {
+func (m *mockDoer) AddResponseRaw(data any) MockDoer {
 	m.responses = append(m.responses, doerResponse{resp: NewMockResponse(m.t, data)})
 	return m
 }

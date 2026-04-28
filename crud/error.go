@@ -23,7 +23,7 @@ type Error struct {
 	// Str is the text of reason with error class.
 	Str string
 	// OperationData is the object/tuple with which an error occurred.
-	OperationData interface{}
+	OperationData any
 	// operationDataType contains the type of OperationData.
 	operationDataType reflect.Type
 }
@@ -39,7 +39,7 @@ func (e *Error) DecodeMsgpack(d *msgpack.Decoder) error {
 	if err != nil {
 		return err
 	}
-	for i := 0; i < l; i++ {
+	for range l {
 		key, err := d.DecodeString()
 		if err != nil {
 			return err
@@ -116,7 +116,7 @@ func (e *ErrorMany) DecodeMsgpack(d *msgpack.Decoder) error {
 	}
 
 	var errs []Error
-	for i := 0; i < l; i++ {
+	for range l {
 		crudErr := newError(e.operationDataType)
 		if err := d.Decode(&crudErr); err != nil {
 			return err

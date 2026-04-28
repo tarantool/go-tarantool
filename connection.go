@@ -12,6 +12,7 @@ import (
 	"math"
 	"net"
 	"runtime"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -76,19 +77,19 @@ type ConnEvent struct {
 // A raw watch event.
 type connWatchEvent struct {
 	key   string
-	value interface{}
+	value any
 }
 
 var epoch = time.Now()
 
 // Logger is logger type expected to be passed in options.
 type Logger interface {
-	Report(event ConnLogKind, conn *Connection, v ...interface{})
+	Report(event ConnLogKind, conn *Connection, v ...any)
 }
 
 type defaultLogger struct{}
 
-func (d defaultLogger) Report(event ConnLogKind, conn *Connection, v ...interface{}) {
+func (d defaultLogger) Report(event ConnLogKind, conn *Connection, v ...any) {
 	switch event {
 	case LogReconnectFailed:
 		reconnects := v[0].(uint)
@@ -123,7 +124,7 @@ func (d defaultLogger) Report(event ConnLogKind, conn *Connection, v ...interfac
 		header := v[0].(Header)
 		log.Printf("tarantool: unsupported box.session.push() for request %d", header.RequestId)
 	default:
-		args := append([]interface{}{"tarantool: unexpected event ", event, conn}, v...)
+		args := append([]any{"tarantool: unexpected event ", event, conn}, v...)
 		log.Print(args...)
 	}
 }
@@ -200,7 +201,7 @@ type Connection struct {
 	dec     *msgpack.Decoder
 	lenbuf  [packetLengthBytes]byte
 
-	lastStreamId uint64
+	lastStreamId atomic.Uint64
 
 	serverProtocolInfo ProtocolInfo
 	// watchMap is a map of key -> chan watchState.
@@ -209,7 +210,7 @@ type Connection struct {
 	// shutdownWatcher is the "box.shutdown" event watcher.
 	shutdownWatcher Watcher
 	// requestCnt is a counter of active requests.
-	requestCnt int64
+	requestCnt atomic.Int64
 
 	// alloc is an allocator for response buffers.
 	alloc Allocator
@@ -327,7 +328,7 @@ type Opts struct {
 	Notify chan<- ConnEvent
 	// Handle is user specified value, that could be retrivied with
 	// Handle() method.
-	Handle interface{}
+	Handle any
 	// Logger is user specified logger used for error messages.
 	Logger Logger
 	// Allocator is used to allocate and deallocate response buffers.
@@ -453,7 +454,7 @@ func (conn *Connection) Addr() net.Addr {
 }
 
 // Handle returns a user-specified handle from Opts.
-func (conn *Connection) Handle() interface{} {
+func (conn *Connection) Handle() any {
 	return conn.opts.Handle
 }
 
@@ -491,7 +492,7 @@ func (conn *Connection) dial(ctx context.Context) error {
 	}
 
 	// Watchers.
-	conn.watchMap.Range(func(key, value interface{}) bool {
+	conn.watchMap.Range(func(key, value any) bool {
 		st := value.(chan watchState)
 		state := <-st
 		if state.unready != nil {
@@ -539,7 +540,7 @@ func (conn *Connection) dial(ctx context.Context) error {
 }
 
 func pack(h *smallWBuf, enc *msgpack.Encoder, reqid uint32,
-	req Request, streamId uint64, res SchemaResolver) (err error) {
+	req Request, streamId uint64, res SchemaResolver) error {
 	const uint32Code = 0xce
 	const uint64Code = 0xcf
 	const streamBytesLenUint64 = 10
@@ -573,12 +574,12 @@ func pack(h *smallWBuf, enc *msgpack.Encoder, reqid uint32,
 		byte(reqid >> 8), byte(reqid),
 	}, streamBytes[:streamBytesLen]...)
 
-	if _, err = h.Write(hBytes); err != nil {
-		return
+	if _, err := h.Write(hBytes); err != nil {
+		return err
 	}
 
-	if err = req.Body(res, enc); err != nil {
-		return
+	if err := req.Body(res, enc); err != nil {
+		return err
 	}
 
 	l := uint32(h.Len() - 5 - hl)
@@ -587,7 +588,7 @@ func pack(h *smallWBuf, enc *msgpack.Encoder, reqid uint32,
 	h.b[hl+3] = byte(l >> 8)
 	h.b[hl+4] = byte(l)
 
-	return
+	return nil
 }
 
 func (conn *Connection) connect(ctx context.Context) error {
@@ -604,7 +605,7 @@ func (conn *Connection) connect(ctx context.Context) error {
 	return err
 }
 
-func (conn *Connection) closeConnection(neterr error, forever bool) (err error) {
+func (conn *Connection) closeConnection(neterr error, forever bool) error {
 	conn.lockShards()
 	defer conn.unlockShards()
 	if forever {
@@ -624,6 +625,7 @@ func (conn *Connection) closeConnection(neterr error, forever bool) (err error) 
 		conn.cond.Broadcast()
 		conn.notify(Disconnected)
 	}
+	var err error
 	if conn.c != nil {
 		err = conn.c.Close()
 		conn.c = nil
@@ -640,7 +642,7 @@ func (conn *Connection) closeConnection(neterr error, forever bool) (err error) 
 			}
 		}
 	}
-	return
+	return err
 }
 
 func (conn *Connection) getDialTimeout() time.Duration {
@@ -962,9 +964,9 @@ func (conn *Connection) eventer(events <-chan connWatchEvent) {
 	}
 }
 
-func (conn *Connection) newFuture(req Request) (fut *future) {
+func (conn *Connection) newFuture(req Request) *future {
 	ctx := req.Ctx()
-	fut = newFuture(req)
+	fut := newFuture(req)
 	if conn.rlimit != nil && conn.opts.RLimitAction == RLimitDrop {
 		select {
 		case conn.rlimit <- struct{}{}:
@@ -974,7 +976,7 @@ func (conn *Connection) newFuture(req Request) (fut *future) {
 				"Request is rate limited on client",
 			}
 			fut.finish()
-			return
+			return fut
 		}
 	}
 	fut.requestId = conn.nextRequestId(ctx != nil)
@@ -989,7 +991,7 @@ func (conn *Connection) newFuture(req Request) (fut *future) {
 		}
 		fut.finish()
 		shard.rmut.Unlock()
-		return
+		return fut
 	case connDisconnected:
 		fut.err = ClientError{
 			ErrConnectionNotReady,
@@ -997,7 +999,7 @@ func (conn *Connection) newFuture(req Request) (fut *future) {
 		}
 		fut.finish()
 		shard.rmut.Unlock()
-		return
+		return fut
 	case connShutdown:
 		fut.err = ClientError{
 			ErrConnectionShutdown,
@@ -1005,7 +1007,7 @@ func (conn *Connection) newFuture(req Request) (fut *future) {
 		}
 		fut.finish()
 		shard.rmut.Unlock()
-		return
+		return fut
 	}
 	pos := (fut.requestId / conn.opts.Concurrency) & (requestsMap - 1)
 	if ctx != nil {
@@ -1014,7 +1016,7 @@ func (conn *Connection) newFuture(req Request) (fut *future) {
 			fut.setError(fmt.Errorf("context is done (request ID %d): %w",
 				fut.requestId, context.Cause(ctx)))
 			shard.rmut.Unlock()
-			return
+			return fut
 		default:
 		}
 		shard.requestsWithCtx[pos].addFuture(fut)
@@ -1039,7 +1041,7 @@ func (conn *Connection) newFuture(req Request) (fut *future) {
 			}
 		}
 	}
-	return
+	return fut
 }
 
 // This method removes a future from the internal queue if the context
@@ -1060,11 +1062,11 @@ func (conn *Connection) contextWatchdog(fut *future, ctx context.Context) {
 }
 
 func (conn *Connection) incrementRequestCnt() {
-	atomic.AddInt64(&conn.requestCnt, int64(1))
+	conn.requestCnt.Add(1)
 }
 
 func (conn *Connection) decrementRequestCnt() {
-	if atomic.AddInt64(&conn.requestCnt, int64(-1)) == 0 {
+	if conn.requestCnt.Add(-1) == 0 {
 		conn.cond.Broadcast()
 	}
 }
@@ -1325,7 +1327,7 @@ func (conn *Connection) NewPrepared(expr string) (*Prepared, error) {
 //
 // Since 1.7.0.
 func (conn *Connection) NewStream() (*Stream, error) {
-	next := atomic.AddUint64(&conn.lastStreamId, 1)
+	next := conn.lastStreamId.Add(1)
 	return &Stream{
 		Id:   next,
 		Conn: conn,
@@ -1336,7 +1338,7 @@ func (conn *Connection) NewStream() (*Stream, error) {
 // https://drive.google.com/file/d/1nPdvhB0PutEJzdCq5ms6UI58dp50fcAN/view
 type watchState struct {
 	// value is a current value.
-	value interface{}
+	value any
 	// version is a current version of the value.
 	version uint
 	// ack true if the acknowledge is already sent.
@@ -1431,12 +1433,7 @@ func subscribeWatchChannel(conn *Connection, key string) (chan watchState, error
 }
 
 func isFeatureInSlice(expected iproto.Feature, actualSlice []iproto.Feature) bool {
-	for _, actual := range actualSlice {
-		if expected == actual {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(actualSlice, expected)
 }
 
 // NewWatcher creates a new Watcher object for the connection.
@@ -1618,7 +1615,7 @@ func (conn *Connection) shutdown(forever bool) error {
 		if (atomic.LoadUint32(&conn.state) != connShutdown) || (c != conn.c) {
 			return nil
 		}
-		if atomic.LoadInt64(&conn.requestCnt) == 0 {
+		if conn.requestCnt.Load() == 0 {
 			break
 		}
 		// Use cond var on conn.mutex since request execution may

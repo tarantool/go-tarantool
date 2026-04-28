@@ -15,6 +15,7 @@ type InsertManyOpts = OperationManyOpts
 // `crud.insert_many` for execution by a Connection.
 type InsertManyRequest struct {
 	spaceRequest
+
 	tuples Tuples
 	opts   InsertManyOpts
 }
@@ -73,6 +74,7 @@ type InsertObjectManyOpts = OperationObjectManyOpts
 // `crud.insert_object_many` for execution by a Connection.
 type InsertObjectManyRequest struct {
 	spaceRequest
+
 	objects Objects
 	opts    InsertObjectManyOpts
 }

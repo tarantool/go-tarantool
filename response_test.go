@@ -12,7 +12,7 @@ import (
 	"github.com/tarantool/go-tarantool/v3"
 )
 
-func encodeResponseData(t *testing.T, data interface{}) io.Reader {
+func encodeResponseData(t *testing.T, data any) io.Reader {
 	t.Helper()
 
 	buf := bytes.NewBuffer([]byte{})
@@ -20,7 +20,7 @@ func encodeResponseData(t *testing.T, data interface{}) io.Reader {
 
 	require.NoError(t, enc.EncodeMapLen(1))
 	require.NoError(t, enc.EncodeUint8(uint8(iproto.IPROTO_DATA)))
-	require.NoError(t, enc.Encode([]interface{}{data}))
+	require.NoError(t, enc.Encode([]any{data}))
 
 	return buf
 }
@@ -29,7 +29,7 @@ func TestDecodeBaseResponse(t *testing.T) {
 	tests := []struct {
 		name   string
 		header tarantool.Header
-		body   interface{}
+		body   any
 	}{
 		{
 			"test1",
@@ -50,7 +50,7 @@ func TestDecodeBaseResponse(t *testing.T) {
 
 			got, err := res.Decode()
 			require.NoError(t, err)
-			require.Equal(t, []interface{}{tt.body}, got)
+			require.Equal(t, []any{tt.body}, got)
 		})
 	}
 }
@@ -65,13 +65,13 @@ func TestBaseResponseRelease(t *testing.T) {
 	data, err := resp.Decode()
 	require.NoError(t, err)
 	require.Equal(t, resp.Header(), header)
-	require.Equal(t, []interface{}{buf}, data)
+	require.Equal(t, []any{buf}, data)
 
 	resp.Release()
 
 	data, err = resp.Decode()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}(nil), data)
+	require.Equal(t, []any(nil), data)
 }
 
 func TestSelectResponseRelease(t *testing.T) {
@@ -85,7 +85,7 @@ func TestSelectResponseRelease(t *testing.T) {
 	data, err := resp.Decode()
 	require.NoError(t, err)
 	require.Equal(t, resp.Header(), header)
-	require.Equal(t, []interface{}{buf}, data)
+	require.Equal(t, []any{buf}, data)
 
 	resp.Release()
 
@@ -104,7 +104,7 @@ func TestSelectResponseReleaseReuse(t *testing.T) {
 
 	data1, err := resp1.Decode()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{buf1}, data1)
+	require.Equal(t, []any{buf1}, data1)
 
 	resp1.Release()
 
@@ -115,9 +115,9 @@ func TestSelectResponseReleaseReuse(t *testing.T) {
 
 	data2, err := resp2.Decode()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{buf2}, data2)
+	require.Equal(t, []any{buf2}, data2)
 	require.Equal(t, header2, resp2.Header())
-	require.Equal(t, []interface{}{buf2}, data2)
+	require.Equal(t, []any{buf2}, data2)
 }
 
 func TestSelectResponseReleaseMultipleObjects(t *testing.T) {
@@ -135,11 +135,11 @@ func TestSelectResponseReleaseMultipleObjects(t *testing.T) {
 
 	data1, err := resp1.Decode()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{buf1}, data1)
+	require.Equal(t, []any{buf1}, data1)
 
 	data2, err := resp2.Decode()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{buf2}, data2)
+	require.Equal(t, []any{buf2}, data2)
 
 	resp1.Release()
 	resp2.Release()
@@ -151,7 +151,7 @@ func TestSelectResponseReleaseMultipleObjects(t *testing.T) {
 
 	data3, err := resp3.Decode()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{buf3}, data3)
+	require.Equal(t, []any{buf3}, data3)
 	require.Equal(t, header3, resp3.Header())
 }
 
@@ -182,7 +182,7 @@ func TestExecuteResponseReleaseReuse(t *testing.T) {
 
 	data1, err := resp1.Decode()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{buf1}, data1)
+	require.Equal(t, []any{buf1}, data1)
 
 	resp1.Release()
 
@@ -193,9 +193,9 @@ func TestExecuteResponseReleaseReuse(t *testing.T) {
 
 	data2, err := resp2.Decode()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{buf2}, data2)
+	require.Equal(t, []any{buf2}, data2)
 	require.Equal(t, header2, resp2.Header())
-	require.Equal(t, []interface{}{buf2}, data2)
+	require.Equal(t, []any{buf2}, data2)
 }
 
 func TestPrepareResponseRelease(t *testing.T) {
@@ -225,7 +225,7 @@ func TestPrepareResponseReleaseReuse(t *testing.T) {
 
 	data1, err := resp1.Decode()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{buf1}, data1)
+	require.Equal(t, []any{buf1}, data1)
 
 	resp1.Release()
 
@@ -236,7 +236,7 @@ func TestPrepareResponseReleaseReuse(t *testing.T) {
 
 	data2, err := resp2.Decode()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{buf2}, data2)
+	require.Equal(t, []any{buf2}, data2)
 	require.Equal(t, header2, resp2.Header())
-	require.Equal(t, []interface{}{buf2}, data2)
+	require.Equal(t, []any{buf2}, data2)
 }

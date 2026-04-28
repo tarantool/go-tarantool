@@ -193,7 +193,7 @@ func TestPoolAllocator_MultipleGetPut(t *testing.T) {
 	p, err := NewPoolAllocator([]int{8, 12})
 	require.NoError(t, err)
 
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		buf := p.Get(100)
 		require.NotNil(t, buf)
 		assert.GreaterOrEqual(t, cap(*buf), 100)
@@ -207,9 +207,9 @@ func TestPoolAllocator_Concurrent(t *testing.T) {
 
 	done := make(chan bool)
 
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		go func() {
-			for j := 0; j < 100; j++ {
+			for range 100 {
 				buf := p.Get(256)
 				if buf != nil {
 					p.Put(buf)
@@ -219,7 +219,7 @@ func TestPoolAllocator_Concurrent(t *testing.T) {
 		}()
 	}
 
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		<-done
 	}
 }
@@ -282,7 +282,7 @@ func TestPoolAllocator_ConcurrentMultipleSizes(t *testing.T) {
 		wg.Add(1)
 		go func(s int) {
 			defer wg.Done()
-			for i := 0; i < 50; i++ {
+			for range 50 {
 				buf := p.Get(s)
 				if buf != nil {
 					p.Put(buf)

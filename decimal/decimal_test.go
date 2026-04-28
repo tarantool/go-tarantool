@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"reflect"
+	"slices"
 	"testing"
 	"time"
 
@@ -264,6 +265,8 @@ func TestEncodeMinNumber(t *testing.T) {
 }
 
 func benchmarkMPEncodeDecode(b *testing.B, src decimal.Decimal) {
+	b.Helper()
+
 	b.ResetTimer()
 
 	var v TupleDecimal
@@ -330,10 +333,12 @@ func BenchmarkMPDecodeDecimal(b *testing.B) {
 	}
 }
 
-func tupleValueIsDecimal(t *testing.T, tuples []interface{}, number decimal.Decimal) {
+func tupleValueIsDecimal(t *testing.T, tuples []any, number decimal.Decimal) {
+	t.Helper()
+
 	require.Len(t, tuples, 1, "Response Data len != 1")
 
-	tpl, ok := tuples[0].([]interface{})
+	tpl, ok := tuples[0].([]any)
 	require.True(t, ok, "Unexpected return value body")
 	require.Len(t, tpl, 1, "Unexpected return value body (tuple len)")
 	val, ok := tpl[0].(Decimal)
@@ -415,7 +420,7 @@ func TestMPDecode(t *testing.T) {
 		t.Run(testcase.numString, func(t *testing.T) {
 			mpBuf, err := hex.DecodeString(testcase.mpBuf)
 			require.NoError(t, err, "hex.DecodeString() failed")
-			var v interface{}
+			var v any
 			err = msgpack.Unmarshal(mpBuf, &v)
 			require.NoError(t, err, "Unmsgpack.Marshalling failed")
 			decActual, ok := v.(Decimal)
@@ -464,7 +469,7 @@ func TestSelect(t *testing.T) {
 	number, err := decimal.NewFromString("-12.34")
 	require.NoError(t, err, "Failed to prepare test decimal")
 
-	ins := NewInsertRequest(space).Tuple([]interface{}{MakeDecimal(number)})
+	ins := NewInsertRequest(space).Tuple([]any{MakeDecimal(number)})
 	data, err := conn.Do(ins).Get()
 	require.NoError(t, err, "Decimal insert failed")
 	tupleValueIsDecimal(t, data, number)
@@ -476,12 +481,12 @@ func TestSelect(t *testing.T) {
 		Offset(offset).
 		Limit(limit).
 		Iterator(IterEq).
-		Key([]interface{}{MakeDecimal(number)})
+		Key([]any{MakeDecimal(number)})
 	data, err = conn.Do(sel).Get()
 	require.NoError(t, err, "Decimal select failed")
 	tupleValueIsDecimal(t, data, number)
 
-	del := NewDeleteRequest(space).Index(index).Key([]interface{}{MakeDecimal(number)})
+	del := NewDeleteRequest(space).Index(index).Key([]any{MakeDecimal(number)})
 	data, err = conn.Do(del).Get()
 	require.NoError(t, err, "Decimal delete failed")
 	tupleValueIsDecimal(t, data, number)
@@ -503,24 +508,26 @@ func TestUnmarshal_from_decimal_new(t *testing.T) {
 			require.NoError(t, err, "Failed to prepare test decimal")
 
 			call := NewEvalRequest("return require('decimal').new(...)").
-				Args([]interface{}{str})
+				Args([]any{str})
 			data, err := conn.Do(call).Get()
 			require.NoError(t, err, "Decimal create failed")
-			tupleValueIsDecimal(t, []interface{}{data}, number)
+			tupleValueIsDecimal(t, []any{data}, number)
 		})
 	}
 }
 
 func assertInsert(t *testing.T, conn *Connection, numString string) {
+	t.Helper()
+
 	number, err := decimal.NewFromString(numString)
 	require.NoError(t, err, "Failed to prepare test decimal")
 
-	ins := NewInsertRequest(space).Tuple([]interface{}{MakeDecimal(number)})
+	ins := NewInsertRequest(space).Tuple([]any{MakeDecimal(number)})
 	data, err := conn.Do(ins).Get()
 	require.NoError(t, err, "Decimal insert failed")
 	tupleValueIsDecimal(t, data, number)
 
-	del := NewDeleteRequest(space).Index(index).Key([]interface{}{MakeDecimal(number)})
+	del := NewDeleteRequest(space).Index(index).Key([]any{MakeDecimal(number)})
 	data, err = conn.Do(del).Get()
 	require.NoError(t, err, "Decimal delete failed")
 	tupleValueIsDecimal(t, data, number)
@@ -550,7 +557,7 @@ func TestReplace(t *testing.T) {
 	number, err := decimal.NewFromString("-12.34")
 	require.NoError(t, err, "Failed to prepare test decimal")
 
-	rep := NewReplaceRequest(space).Tuple([]interface{}{MakeDecimal(number)})
+	rep := NewReplaceRequest(space).Tuple([]any{MakeDecimal(number)})
 	dataRep, errRep := conn.Do(rep).Get()
 	require.NoError(t, errRep, "Decimal replace failed")
 	tupleValueIsDecimal(t, dataRep, number)
@@ -559,7 +566,7 @@ func TestReplace(t *testing.T) {
 		Index(index).
 		Limit(1).
 		Iterator(IterEq).
-		Key([]interface{}{MakeDecimal(number)})
+		Key([]any{MakeDecimal(number)})
 	dataSel, errSel := conn.Do(sel).Get()
 	require.NoError(t, errSel, "Decimal select failed")
 	tupleValueIsDecimal(t, dataSel, number)
@@ -716,11 +723,11 @@ func TestTarantoolBCDCompatibility(t *testing.T) {
 func TestRealTarantoolUsage(t *testing.T) {
 	operations := []struct {
 		name string
-		data map[string]interface{}
+		data map[string]any
 	}{
 		{
 			name: "insert operation",
-			data: map[string]interface{}{
+			data: map[string]any{
 				"id":      1,
 				"amount":  MustMakeDecimal("123.45"),
 				"balance": MustMakeDecimal("-500.00"),
@@ -728,7 +735,7 @@ func TestRealTarantoolUsage(t *testing.T) {
 		},
 		{
 			name: "update operation",
-			data: map[string]interface{}{
+			data: map[string]any{
 				"id":       2,
 				"price":    MustMakeDecimal("99.99"),
 				"quantity": MustMakeDecimal("1000.000"),
@@ -750,13 +757,7 @@ func TestRealTarantoolUsage(t *testing.T) {
 						".", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "-",
 					}
 					firstChar := string(str[0])
-					valid := false
-					for _, c := range validFirstChars {
-						if firstChar == c {
-							valid = true
-							break
-						}
-					}
+					valid := slices.Contains(validFirstChars, firstChar)
 					if !valid {
 						t.Errorf("%s: string %q starts with invalid character %q",
 							key, str, firstChar)

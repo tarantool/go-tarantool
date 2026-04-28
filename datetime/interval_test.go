@@ -115,7 +115,7 @@ func TestIntervalTarantoolEncoding(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(fmt.Sprintf("%v", tc), func(t *testing.T) {
 			req := tarantool.NewCallRequest("call_interval_testdata").
-				Args([]interface{}{tc})
+				Args([]any{tc})
 			data, err := conn.Do(req).Get()
 			require.NoError(t, err, "Unexpected error")
 

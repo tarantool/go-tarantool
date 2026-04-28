@@ -15,6 +15,7 @@ type ReplaceManyOpts = OperationManyOpts
 // `crud.replace_many` for execution by a Connection.
 type ReplaceManyRequest struct {
 	spaceRequest
+
 	tuples Tuples
 	opts   ReplaceManyOpts
 }
@@ -73,6 +74,7 @@ type ReplaceObjectManyOpts = OperationObjectManyOpts
 // `crud.replace_object_many` for execution by a Connection.
 type ReplaceObjectManyRequest struct {
 	spaceRequest
+
 	objects Objects
 	opts    ReplaceObjectManyOpts
 }

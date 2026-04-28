@@ -105,7 +105,7 @@ func BenchmarkSync_naive(b *testing.B) {
 
 	_, err = conn.Do(
 		NewReplaceRequest(spaceNo).
-			Tuple([]interface{}{uint(1111), "hello", "world"}),
+			Tuple([]any{uint(1111), "hello", "world"}),
 	).Get()
 	if err != nil {
 		b.Fatalf("failed to initialize database: %s", err)
@@ -117,7 +117,7 @@ func BenchmarkSync_naive(b *testing.B) {
 		req := NewSelectRequest(spaceNo).
 			Index(indexNo).
 			Iterator(IterEq).
-			Key([]interface{}{uint(1111)})
+			Key([]any{uint(1111)})
 		data, err := conn.Do(req).Get()
 		if err != nil {
 			b.Errorf("request error: %s", err)
@@ -138,7 +138,7 @@ func BenchmarkSync_naive_with_single_request(b *testing.B) {
 
 	_, err = conn.Do(
 		NewReplaceRequest(spaceNo).
-			Tuple([]interface{}{uint(1111), "hello", "world"}),
+			Tuple([]any{uint(1111), "hello", "world"}),
 	).Get()
 	if err != nil {
 		b.Fatalf("failed to initialize database: %s", err)
@@ -201,7 +201,7 @@ func BenchmarkSync_naive_with_custom_type_without_Release(b *testing.B) {
 
 	_, err := conn.Do(
 		NewReplaceRequest(spaceNo).
-			Tuple([]interface{}{uint(1111), "hello", "world"}),
+			Tuple([]any{uint(1111), "hello", "world"}),
 	).Get()
 	if err != nil {
 		b.Fatalf("failed to initialize database: %s", err)
@@ -241,7 +241,7 @@ func BenchmarkSync_naive_with_custom_type_with_Release(b *testing.B) {
 
 	_, err = conn.Do(
 		NewReplaceRequest(spaceNo).
-			Tuple([]interface{}{uint(1111), "hello", "world"}),
+			Tuple([]any{uint(1111), "hello", "world"}),
 	).Get()
 	if err != nil {
 		b.Fatalf("failed to initialize database: %s", err)
@@ -278,7 +278,7 @@ func BenchmarkSync_execute_with_Release(b *testing.B) {
 	var mem []Member
 
 	req := NewExecuteRequest(selectTypedQuery).Args(
-		[]interface{}{1},
+		[]any{1},
 	)
 
 	b.ResetTimer()
@@ -304,7 +304,7 @@ func BenchmarkSync_multithread(b *testing.B) {
 
 	_, err = conn.Do(
 		NewReplaceRequest(spaceNo).
-			Tuple([]interface{}{uint(1111), "hello", "world"}),
+			Tuple([]any{uint(1111), "hello", "world"}),
 	).Get()
 	if err != nil {
 		b.Fatalf("failed to initialize database: %s", err)
@@ -341,7 +341,7 @@ func BenchmarkAsync_multithread_parallelism(b *testing.B) {
 
 	_, err = conn.Do(
 		NewReplaceRequest(spaceNo).
-			Tuple([]interface{}{uint(1111), "hello", "world"}),
+			Tuple([]any{uint(1111), "hello", "world"}),
 	).Get()
 	if err != nil {
 		b.Fatalf("failed to initialize database: %s", err)
@@ -403,7 +403,7 @@ func TestBenchmarkAsync(t *testing.T) {
 
 	_, err = conns[0].Do(
 		NewReplaceRequest(spaceNo).
-			Tuple([]interface{}{uint(1111), "hello", "world"}),
+			Tuple([]any{uint(1111), "hello", "world"}),
 	).Get()
 	require.NoError(t, err, "failed to initialize database")
 
@@ -592,9 +592,9 @@ func TestFutureMultipleGetGetTyped(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer func() { _ = conn.Close() }()
 
-	fut := conn.Do(NewCallRequest("simple_concat").Args([]interface{}{"1"}))
+	fut := conn.Do(NewCallRequest("simple_concat").Args([]any{"1"}))
 
-	for i := 0; i < 30; i++ {
+	for i := range 30 {
 		// [0, 10) fut.Get()
 		// [10, 20) fut.GetTyped()
 		// [20, 30) Mix
@@ -622,9 +622,9 @@ func TestFutureMultipleGetWithError(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer func() { _ = conn.Close() }()
 
-	fut := conn.Do(NewCallRequest("non_exist").Args([]interface{}{"1"}))
+	fut := conn.Do(NewCallRequest("non_exist").Args([]any{"1"}))
 
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		_, err := fut.Get()
 		require.Error(t, err, "An error expected")
 	}
@@ -634,7 +634,7 @@ func TestFutureMultipleGetTypedWithError(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer func() { _ = conn.Close() }()
 
-	fut := conn.Do(NewCallRequest("simple_concat").Args([]interface{}{"1"}))
+	fut := conn.Do(NewCallRequest("simple_concat").Args([]any{"1"}))
 
 	wrongTpl := struct {
 		Val int
@@ -666,11 +666,11 @@ func TestClient(t *testing.T) {
 	require.Nil(t, data, "Response data is not nil after Ping")
 
 	// Insert
-	req = NewInsertRequest(spaceNo).Tuple([]interface{}{uint(1), "hello", "world"})
+	req = NewInsertRequest(spaceNo).Tuple([]any{uint(1), "hello", "world"})
 	data, err = conn.Do(req).Get()
 	require.NoError(t, err, "Failed to Insert")
 	assert.Len(t, data, 1, "Response Body len != 1")
-	if tpl, ok := data[0].([]interface{}); !ok {
+	if tpl, ok := data[0].([]any); !ok {
 		assert.Fail(t, "Unexpected body of Insert")
 	} else {
 		assert.Len(t, tpl, 3, "Unexpected body of Insert (tuple len)")
@@ -686,32 +686,32 @@ func TestClient(t *testing.T) {
 	assert.Empty(t, data, "Response Body len != 0")
 
 	// Delete
-	req = NewDeleteRequest(spaceNo).Index(indexNo).Key([]interface{}{uint(1)})
+	req = NewDeleteRequest(spaceNo).Index(indexNo).Key([]any{uint(1)})
 	data, err = conn.Do(req).Get()
 	require.NoError(t, err, "Failed to Delete")
 	assert.Len(t, data, 1, "Response Body len != 1")
-	if tpl, ok := data[0].([]interface{}); !ok {
+	if tpl, ok := data[0].([]any); !ok {
 		assert.Fail(t, "Unexpected body of Delete")
 	} else {
 		assert.Len(t, tpl, 3, "Unexpected body of Delete (tuple len)")
 		assert.EqualValues(t, 1, tpl[0], "Unexpected body of Delete (0)")
 		assert.Equal(t, "hello", tpl[1], "Unexpected body of Delete (1)")
 	}
-	req = NewDeleteRequest(spaceNo).Index(indexNo).Key([]interface{}{uint(101)})
+	req = NewDeleteRequest(spaceNo).Index(indexNo).Key([]any{uint(101)})
 	data, err = conn.Do(req).Get()
 	require.NoError(t, err, "Failed to Delete")
 	assert.Empty(t, data, "Response Data len != 0")
 
 	// Replace
-	req = NewReplaceRequest(spaceNo).Tuple([]interface{}{uint(2), "hello", "world"})
+	req = NewReplaceRequest(spaceNo).Tuple([]any{uint(2), "hello", "world"})
 	data, err = conn.Do(req).Get()
 	require.NoError(t, err, "Failed to Replace")
 	require.NotNil(t, data, "Response is nil after Replace")
-	req = NewReplaceRequest(spaceNo).Tuple([]interface{}{uint(2), "hi", "planet"})
+	req = NewReplaceRequest(spaceNo).Tuple([]any{uint(2), "hi", "planet"})
 	data, err = conn.Do(req).Get()
 	require.NoError(t, err, "Failed to Replace (duplicate)")
 	assert.Len(t, data, 1, "Response Data len != 1")
-	if tpl, ok := data[0].([]interface{}); !ok {
+	if tpl, ok := data[0].([]any); !ok {
 		assert.Fail(t, "Unexpected body of Replace")
 	} else {
 		assert.Len(t, tpl, 3, "Unexpected body of Replace (tuple len)")
@@ -722,12 +722,12 @@ func TestClient(t *testing.T) {
 	// Update
 	req = NewUpdateRequest(spaceNo).
 		Index(indexNo).
-		Key([]interface{}{uint(2)}).
+		Key([]any{uint(2)}).
 		Operations(NewOperations().Assign(1, "bye").Delete(2, 1))
 	data, err = conn.Do(req).Get()
 	require.NoError(t, err, "Failed to Update")
 	assert.Len(t, data, 1, "Response Data len != 1")
-	if tpl, ok := data[0].([]interface{}); !ok {
+	if tpl, ok := data[0].([]any); !ok {
 		assert.Fail(t, "Unexpected body of Update")
 	} else {
 		assert.Len(t, tpl, 2, "Unexpected body of Update (tuple len)")
@@ -737,13 +737,13 @@ func TestClient(t *testing.T) {
 
 	// Upsert
 	req = NewUpsertRequest(spaceNo).
-		Tuple([]interface{}{uint(3), 1}).
+		Tuple([]any{uint(3), 1}).
 		Operations(NewOperations().Add(1, 1))
 	data, err = conn.Do(req).Get()
 	require.NoError(t, err, "Failed to Upsert (insert)")
 	require.NotNil(t, data, "Response is nil after Upsert (insert)")
 	req = NewUpsertRequest(spaceNo).
-		Tuple([]interface{}{uint(3), 1}).
+		Tuple([]any{uint(3), 1}).
 		Operations(NewOperations().Add(1, 1))
 	data, err = conn.Do(req).Get()
 	require.NoError(t, err, "Failed to Upsert (update)")
@@ -752,7 +752,7 @@ func TestClient(t *testing.T) {
 	// Select
 	for i := 10; i < 20; i++ {
 		req = NewReplaceRequest(spaceNo).
-			Tuple([]interface{}{uint(i), fmt.Sprintf("val %d", i), "bla"})
+			Tuple([]any{uint(i), fmt.Sprintf("val %d", i), "bla"})
 		data, err = conn.Do(req).Get()
 		require.NoError(t, err, "Failed to Replace")
 		assert.NotNil(t, data, "Response is nil after Replace")
@@ -762,11 +762,11 @@ func TestClient(t *testing.T) {
 		Offset(0).
 		Limit(1).
 		Iterator(IterEq).
-		Key([]interface{}{uint(10)})
+		Key([]any{uint(10)})
 	data, err = conn.Do(req).Get()
 	require.NoError(t, err, "Failed to Select")
 	require.Len(t, data, 1, "Response Data len != 1")
-	if tpl, ok := data[0].([]interface{}); !ok {
+	if tpl, ok := data[0].([]any); !ok {
 		assert.Fail(t, "Unexpected body of Select")
 	} else {
 		assert.EqualValues(t, 10, tpl[0], "Unexpected body of Select (0)")
@@ -779,7 +779,7 @@ func TestClient(t *testing.T) {
 		Offset(0).
 		Limit(1).
 		Iterator(IterEq).
-		Key([]interface{}{uint(30)})
+		Key([]any{uint(30)})
 	data, err = conn.Do(req).Get()
 	require.NoError(t, err, "Failed to Select")
 	assert.Empty(t, data, "Response Data len != 0")
@@ -791,7 +791,7 @@ func TestClient(t *testing.T) {
 		Offset(0).
 		Limit(1).
 		Iterator(IterEq).
-		Key([]interface{}{uint(10)})
+		Key([]any{uint(10)})
 	err = conn.Do(req).GetTyped(&tpl)
 	require.NoError(t, err, "Failed to SelectTyped")
 	assert.Len(t, tpl, 1, "Result len of SelectTyped != 1")
@@ -804,7 +804,7 @@ func TestClient(t *testing.T) {
 		Offset(0).
 		Limit(1).
 		Iterator(IterEq).
-		Key([]interface{}{uint(10)})
+		Key([]any{uint(10)})
 	err = conn.Do(req).GetTyped(&tpl1)
 	require.NoError(t, err, "Failed to SelectTyped")
 	assert.Len(t, tpl1, 1, "Result len of SelectTyped != 1")
@@ -817,7 +817,7 @@ func TestClient(t *testing.T) {
 		Offset(0).
 		Limit(1).
 		Iterator(IterEq).
-		Key([]interface{}{uint(30)})
+		Key([]any{uint(30)})
 	err = conn.Do(req).GetTyped(&singleTpl2)
 	require.NoError(t, err, "Failed to GetTyped")
 	assert.Equal(t, uint(0), singleTpl2.Id, "Bad value loaded from GetTyped")
@@ -829,24 +829,24 @@ func TestClient(t *testing.T) {
 		Offset(0).
 		Limit(1).
 		Iterator(IterEq).
-		Key([]interface{}{uint(30)})
+		Key([]any{uint(30)})
 	err = conn.Do(req).GetTyped(&tpl2)
 	require.NoError(t, err, "Failed to SelectTyped")
 	assert.Empty(t, tpl2, "Result len of SelectTyped != 1")
 
 	// Call
-	req = NewCallRequest("box.info").Args([]interface{}{"box.schema.SPACE_ID"})
+	req = NewCallRequest("box.info").Args([]any{"box.schema.SPACE_ID"})
 	data, err = conn.Do(req).Get()
 	require.NoError(t, err, "Failed to Call")
 	assert.GreaterOrEqual(t, len(data), 1, "Response.Data is empty after Eval")
 
-	req = NewCallRequest("simple_concat").Args([]interface{}{"1"})
+	req = NewCallRequest("simple_concat").Args([]any{"1"})
 	data, err = conn.Do(req).Get()
 	require.NoError(t, err, "Failed to use Call")
 	assert.Equal(t, "11", data[0], "result is not {{1}}")
 
 	// Eval
-	req = NewEvalRequest("return 5 + 6").Args([]interface{}{})
+	req = NewEvalRequest("return 5 + 6").Args([]any{})
 	data, err = conn.Do(req).Get()
 	require.NoError(t, err, "Failed to Eval")
 	assert.GreaterOrEqual(t, len(data), 1, "Response.Data is empty after Eval")
@@ -881,9 +881,9 @@ func TestSQL(t *testing.T) {
 
 	type testCase struct {
 		Query    string
-		Args     interface{}
+		Args     any
 		sqlInfo  SQLInfo
-		data     []interface{}
+		data     []any
 		metaData []ColumnMetaData
 	}
 
@@ -897,58 +897,58 @@ func TestSQL(t *testing.T) {
 	testCases := []testCase{
 		{
 			createTableQuery,
-			[]interface{}{},
+			[]any{},
 			SQLInfo{AffectedCount: 1},
-			[]interface{}{},
+			[]any{},
 			nil,
 		},
 		{
 			insertQuery,
-			[]interface{}{"1", "test"},
+			[]any{"1", "test"},
 			SQLInfo{AffectedCount: 1},
-			[]interface{}{},
+			[]any{},
 			nil,
 		},
 		{
 			selectNamedQuery,
-			map[string]interface{}{
+			map[string]any{
 				"ID":   "1",
 				"NAME": "test",
 			},
 			SQLInfo{AffectedCount: 0},
-			[]interface{}{[]interface{}{"1", "test"}},
+			[]any{[]any{"1", "test"}},
 			[]ColumnMetaData{
 				{FieldType: "string", FieldName: "ID"},
 				{FieldType: "string", FieldName: "NAME"}},
 		},
 		{
 			selectPosQuery,
-			[]interface{}{"1", "test"},
+			[]any{"1", "test"},
 			SQLInfo{AffectedCount: 0},
-			[]interface{}{[]interface{}{"1", "test"}},
+			[]any{[]any{"1", "test"}},
 			[]ColumnMetaData{
 				{FieldType: "string", FieldName: "ID"},
 				{FieldType: "string", FieldName: "NAME"}},
 		},
 		{
 			updateQuery,
-			[]interface{}{"test_test", "1"},
+			[]any{"test_test", "1"},
 			SQLInfo{AffectedCount: 1},
-			[]interface{}{},
+			[]any{},
 			nil,
 		},
 		{
 			enableFullMetaDataQuery,
-			[]interface{}{},
+			[]any{},
 			SQLInfo{AffectedCount: 1},
-			[]interface{}{},
+			[]any{},
 			nil,
 		},
 		{
 			selectSpanDifQuery,
-			[]interface{}{"test_test"},
+			[]any{"test_test"},
 			SQLInfo{AffectedCount: 0},
-			[]interface{}{[]interface{}{"11", "test_test", "1"}},
+			[]any{[]any{"11", "test_test", "1"}},
 			[]ColumnMetaData{
 				{
 					FieldType:            "string",
@@ -977,37 +977,37 @@ func TestSQL(t *testing.T) {
 		},
 		{
 			alterTableQuery,
-			[]interface{}{},
+			[]any{},
 			SQLInfo{AffectedCount: 0},
-			[]interface{}{},
+			[]any{},
 			nil,
 		},
 		{
 			insertIncrQuery,
-			[]interface{}{"2", "test_2"},
+			[]any{"2", "test_2"},
 			SQLInfo{AffectedCount: 1, InfoAutoincrementIds: []uint64{1}},
-			[]interface{}{},
+			[]any{},
 			nil,
 		},
 		{
 			deleteQuery,
-			[]interface{}{"test_2"},
+			[]any{"test_2"},
 			SQLInfo{AffectedCount: 1},
-			[]interface{}{},
+			[]any{},
 			nil,
 		},
 		{
 			dropQuery,
-			[]interface{}{},
+			[]any{},
 			SQLInfo{AffectedCount: 1},
-			[]interface{}{},
+			[]any{},
 			nil,
 		},
 		{
 			disableFullMetaDataQuery,
-			[]interface{}{},
+			[]any{},
 			SQLInfo{AffectedCount: 1},
-			[]interface{}{},
+			[]any{},
 			nil,
 		},
 	}
@@ -1049,7 +1049,7 @@ func TestSQLTyped(t *testing.T) {
 
 	mem := []Member{}
 	fut := conn.Do(NewExecuteRequest(selectTypedQuery).
-		Args([]interface{}{1}),
+		Args([]any{1}),
 	)
 	err := fut.GetTyped(&mem)
 	require.NoError(t, err, "Error while GetTyped")
@@ -1083,7 +1083,7 @@ func TestSQLBindings(t *testing.T) {
 
 	// test all types of supported bindings
 	// prepare named sql bind
-	sqlBind := map[string]interface{}{
+	sqlBind := map[string]any{
 		"id":   1,
 		"name": "test",
 	}
@@ -1098,12 +1098,12 @@ func TestSQLBindings(t *testing.T) {
 		{"name", "test"},
 	}
 
-	sqlBind4 := []interface{}{
+	sqlBind4 := []any{
 		KeyValueBind{Key: "id", Value: 1},
 		KeyValueBind{Key: "name", Value: "test"},
 	}
 
-	namedSQLBinds := []interface{}{
+	namedSQLBinds := []any{
 		sqlBind,
 		sqlBind2,
 		sqlBind3,
@@ -1111,12 +1111,12 @@ func TestSQLBindings(t *testing.T) {
 	}
 
 	// positioned sql bind
-	sqlBind5 := []interface{}{
+	sqlBind5 := []any{
 		1, "test",
 	}
 
 	// mixed sql bind
-	sqlBind6 := []interface{}{
+	sqlBind6 := []any{
 		KeyValueBind{Key: "name0", Value: 1},
 		"test",
 	}
@@ -1128,7 +1128,7 @@ func TestSQLBindings(t *testing.T) {
 		require.NotNil(t, resp, "Response is nil after Execute")
 		data, err := resp.Decode()
 		require.NoError(t, err, "Failed to Decode")
-		assert.NotEqual(t, []interface{}{1, testData[1]}, data[0],
+		assert.NotEqual(t, []any{1, testData[1]}, data[0],
 			"Select with named arguments failed")
 		exResp, ok := resp.(*ExecuteResponse)
 		assert.True(t, ok, "Got wrong response type")
@@ -1146,7 +1146,7 @@ func TestSQLBindings(t *testing.T) {
 	require.NotNil(t, resp, "Response is nil after Execute")
 	data, err := resp.Decode()
 	require.NoError(t, err, "Failed to Decode")
-	assert.NotEqual(t, []interface{}{1, testData[1]}, data[0],
+	assert.NotEqual(t, []any{1, testData[1]}, data[0],
 		"Select with positioned arguments failed")
 	exResp, ok := resp.(*ExecuteResponse)
 	assert.True(t, ok, "Got wrong response type")
@@ -1163,7 +1163,7 @@ func TestSQLBindings(t *testing.T) {
 	require.NotNil(t, resp, "Response is nil after Execute")
 	data, err = resp.Decode()
 	require.NoError(t, err, "Failed to Decode")
-	assert.NotEqual(t, []interface{}{1, testData[1]}, data[0], "Select with mixed arguments failed")
+	assert.NotEqual(t, []any{1, testData[1]}, data[0], "Select with mixed arguments failed")
 	exResp, ok = resp.(*ExecuteResponse)
 	assert.True(t, ok, "Got wrong response type")
 	metaData, err = exResp.MetaData()
@@ -1272,11 +1272,11 @@ func TestNewPrepared(t *testing.T) {
 	executeReq := NewExecutePreparedRequest(stmt)
 	unprepareReq := NewUnprepareRequest(stmt)
 
-	resp, err := conn.Do(executeReq.Args([]interface{}{1, "test"})).GetResponse()
+	resp, err := conn.Do(executeReq.Args([]any{1, "test"})).GetResponse()
 	require.NoError(t, err, "failed to execute prepared")
 	data, err := resp.Decode()
 	require.NoError(t, err, "Failed to Decode")
-	assert.NotEqual(t, []interface{}{1, "test"}, data[0], "Select with named arguments failed")
+	assert.NotEqual(t, []any{1, "test"}, data[0], "Select with named arguments failed")
 	prepResp, ok := resp.(*ExecuteResponse)
 	assert.True(t, ok, "Got wrong response type")
 	metaData, err := prepResp.MetaData()
@@ -1317,7 +1317,7 @@ func TestExecutePrepareResponseRelease(t *testing.T) {
 
 	req := NewExecutePreparedRequest(stmt)
 
-	resp, err := conn.Do(req.Args([]interface{}{1, "test"})).GetResponse()
+	resp, err := conn.Do(req.Args([]any{1, "test"})).GetResponse()
 	require.NoError(t, err, "failed to execute prepared")
 
 	resp.Release()
@@ -1365,7 +1365,7 @@ func TestConnection_SetSchema_Changes(t *testing.T) {
 	defer func() { _ = conn.Close() }()
 
 	req := NewInsertRequest(spaceName)
-	req.Tuple([]interface{}{uint(1010), "Tarantool"})
+	req.Tuple([]any{uint(1010), "Tarantool"})
 	_, err := conn.Do(req).Get()
 	require.NoError(t, err, "Failed to Insert")
 
@@ -1378,10 +1378,10 @@ func TestConnection_SetSchema_Changes(t *testing.T) {
 	s.Spaces[spaceName] = Space{}
 
 	reqS := NewSelectRequest(spaceName)
-	reqS.Key([]interface{}{uint(1010)})
+	reqS.Key([]any{uint(1010)})
 	data, err := conn.Do(reqS).Get()
 	require.NoError(t, err, "failed to Select")
-	assert.Equal(t, "Tarantool", data[0].([]interface{})[1], "wrong Select body")
+	assert.Equal(t, "Tarantool", data[0].([]any)[1], "wrong Select body")
 }
 
 func TestSchema(t *testing.T) {
@@ -1509,9 +1509,9 @@ func TestNewPreparedFromResponse(t *testing.T) {
 		{"ErrNilResponsePassed", nil, ErrNilResponsePassed},
 		{"ErrNilResponseData", test_helpers.NewMockResponse(t, nil),
 			ErrNilResponseData},
-		{"ErrWrongDataFormat", test_helpers.NewMockResponse(t, []interface{}{}),
+		{"ErrWrongDataFormat", test_helpers.NewMockResponse(t, []any{}),
 			ErrWrongDataFormat},
-		{"ErrWrongDataFormat", test_helpers.NewMockResponse(t, []interface{}{"test"}),
+		{"ErrWrongDataFormat", test_helpers.NewMockResponse(t, []any{"test"}),
 			ErrWrongDataFormat},
 	}
 	for _, testCase := range testCases {
@@ -1528,24 +1528,24 @@ func TestClientNamed(t *testing.T) {
 
 	var (
 		req  Request
-		data []interface{}
+		data []any
 		err  error
 	)
 
 	// Insert
-	req = NewInsertRequest(spaceName).Tuple([]interface{}{uint(1001), "hello2", "world2"})
+	req = NewInsertRequest(spaceName).Tuple([]any{uint(1001), "hello2", "world2"})
 	data, err = conn.Do(req).Get()
 	require.NoError(t, err, "Failed to Insert")
 	require.NotNil(t, data, "Response is nil after Insert")
 
 	// Delete
-	req = NewDeleteRequest(spaceName).Index(indexName).Key([]interface{}{uint(1001)})
+	req = NewDeleteRequest(spaceName).Index(indexName).Key([]any{uint(1001)})
 	data, err = conn.Do(req).Get()
 	require.NoError(t, err, "Failed to Delete")
 	require.NotNil(t, data, "Response is nil after Delete")
 
 	// Replace
-	req = NewReplaceRequest(spaceName).Tuple([]interface{}{uint(1002), "hello", "world"})
+	req = NewReplaceRequest(spaceName).Tuple([]any{uint(1002), "hello", "world"})
 	data, err = conn.Do(req).Get()
 	require.NoError(t, err, "Failed to Replace")
 	require.NotNil(t, data, "Response is nil after Replace")
@@ -1553,7 +1553,7 @@ func TestClientNamed(t *testing.T) {
 	// Update
 	req = NewUpdateRequest(spaceName).
 		Index(indexName).
-		Key([]interface{}{uint(1002)}).
+		Key([]any{uint(1002)}).
 		Operations(NewOperations().Assign(1, "buy").Delete(2, 1))
 	data, err = conn.Do(req).Get()
 	require.NoError(t, err, "Failed to Update")
@@ -1561,14 +1561,14 @@ func TestClientNamed(t *testing.T) {
 
 	// Upsert
 	req = NewUpsertRequest(spaceName).
-		Tuple([]interface{}{uint(1003), 1}).
+		Tuple([]any{uint(1003), 1}).
 		Operations(NewOperations().Add(1, 1))
 	data, err = conn.Do(req).Get()
 	require.NoError(t, err, "Failed to Upsert (insert)")
 	require.NotNil(t, data, "Response is nil after Upsert (insert)")
 
 	req = NewUpsertRequest(spaceName).
-		Tuple([]interface{}{uint(1003), 1}).
+		Tuple([]any{uint(1003), 1}).
 		Operations(NewOperations().Add(1, 1))
 	data, err = conn.Do(req).Get()
 	require.NoError(t, err, "Failed to Upsert (update)")
@@ -1577,7 +1577,7 @@ func TestClientNamed(t *testing.T) {
 	// Select
 	for i := 1010; i < 1020; i++ {
 		req = NewReplaceRequest(spaceName).
-			Tuple([]interface{}{uint(i), fmt.Sprintf("val %d", i), "bla"})
+			Tuple([]any{uint(i), fmt.Sprintf("val %d", i), "bla"})
 		data, err = conn.Do(req).Get()
 		require.NoError(t, err, "Failed to Replace")
 		require.NotNil(t, data, "Response is nil after Replace")
@@ -1587,7 +1587,7 @@ func TestClientNamed(t *testing.T) {
 		Offset(0).
 		Limit(1).
 		Iterator(IterEq).
-		Key([]interface{}{uint(1010)})
+		Key([]any{uint(1010)})
 	data, err = conn.Do(req).Get()
 	require.NoError(t, err, "Failed to Select")
 	require.NotNil(t, data, "Response is nil after Select")
@@ -1599,7 +1599,7 @@ func TestClientNamed(t *testing.T) {
 		Offset(0).
 		Limit(1).
 		Iterator(IterEq).
-		Key([]interface{}{uint(1010)})
+		Key([]any{uint(1010)})
 	err = conn.Do(req).GetTyped(&tpl)
 	require.NoError(t, err, "Failed to SelectTyped")
 	assert.Len(t, tpl, 1, "Result len of SelectTyped != 1")
@@ -1622,17 +1622,17 @@ func TestClientRequestObjects(t *testing.T) {
 
 	// The code prepares data.
 	for i := 1010; i < 1020; i++ {
-		conn.Do(NewDeleteRequest(spaceName).Index(nil).Key([]interface{}{uint(i)}))
+		conn.Do(NewDeleteRequest(spaceName).Index(nil).Key([]any{uint(i)}))
 	}
 
 	// Insert
 	for i := 1010; i < 1020; i++ {
 		req = NewInsertRequest(spaceName).
-			Tuple([]interface{}{uint(i), fmt.Sprintf("val %d", i), "bla"})
+			Tuple([]any{uint(i), fmt.Sprintf("val %d", i), "bla"})
 		data, err = conn.Do(req).Get()
 		require.NoError(t, err, "Failed to Insert")
 		require.Len(t, data, 1, "Response Body len != 1")
-		if tpl, ok := data[0].([]interface{}); !ok {
+		if tpl, ok := data[0].([]any); !ok {
 			assert.Fail(t, "Unexpected body of Insert")
 		} else {
 			assert.Len(t, tpl, 3, "Unexpected body of Insert (tuple len)")
@@ -1645,11 +1645,11 @@ func TestClientRequestObjects(t *testing.T) {
 	// Replace
 	for i := 1015; i < 1020; i++ {
 		req = NewReplaceRequest(spaceName).
-			Tuple([]interface{}{uint(i), fmt.Sprintf("val %d", i), "blar"})
+			Tuple([]any{uint(i), fmt.Sprintf("val %d", i), "blar"})
 		data, err = conn.Do(req).Get()
 		require.NoError(t, err, "Failed to Decode")
 		require.Len(t, data, 1, "Response Body len != 1")
-		if tpl, ok := data[0].([]interface{}); !ok {
+		if tpl, ok := data[0].([]any); !ok {
 			assert.Fail(t, "Unexpected body of Replace")
 		} else {
 			assert.Len(t, tpl, 3, "Unexpected body of Replace (tuple len)")
@@ -1661,12 +1661,12 @@ func TestClientRequestObjects(t *testing.T) {
 
 	// Delete
 	req = NewDeleteRequest(spaceName).
-		Key([]interface{}{uint(1016)})
+		Key([]any{uint(1016)})
 	data, err = conn.Do(req).Get()
 	require.NoError(t, err, "Failed to Delete")
 	require.NotNil(t, data, "Response data is nil after Delete")
 	require.Len(t, data, 1, "Response Body len != 1")
-	if tpl, ok := data[0].([]interface{}); !ok {
+	if tpl, ok := data[0].([]any); !ok {
 		assert.Fail(t, "Unexpected body of Delete")
 	} else {
 		assert.Len(t, tpl, 3, "Unexpected body of Delete (tuple len)")
@@ -1678,12 +1678,12 @@ func TestClientRequestObjects(t *testing.T) {
 	// Update without operations.
 	req = NewUpdateRequest(spaceName).
 		Index(indexName).
-		Key([]interface{}{uint(1010)})
+		Key([]any{uint(1010)})
 	data, err = conn.Do(req).Get()
 	require.NoError(t, err, "Failed to Update")
 	require.NotNil(t, data, "Response data is nil after Update")
 	require.Len(t, data, 1, "Response Data len != 1")
-	if tpl, ok := data[0].([]interface{}); !ok {
+	if tpl, ok := data[0].([]any); !ok {
 		assert.Fail(t, "Unexpected body of Update")
 	} else {
 		assert.EqualValues(t, 1010, tpl[0], "Unexpected body of Update (0)")
@@ -1694,12 +1694,12 @@ func TestClientRequestObjects(t *testing.T) {
 	// Update.
 	req = NewUpdateRequest(spaceName).
 		Index(indexName).
-		Key([]interface{}{uint(1010)}).
+		Key([]any{uint(1010)}).
 		Operations(NewOperations().Assign(1, "bye").Insert(2, 1))
 	data, err = conn.Do(req).Get()
 	require.NoError(t, err, "Failed to Update")
 	require.Len(t, data, 1, "Response Data len != 1")
-	if tpl, ok := data[0].([]interface{}); !ok {
+	if tpl, ok := data[0].([]any); !ok {
 		assert.Fail(t, "Unexpected body of Select")
 	} else {
 		assert.EqualValues(t, 1010, tpl[0], "Unexpected body of Update (0)")
@@ -1709,21 +1709,21 @@ func TestClientRequestObjects(t *testing.T) {
 
 	// Upsert without operations.
 	req = NewUpsertRequest(spaceNo).
-		Tuple([]interface{}{uint(1010), "hi", "hi"})
+		Tuple([]any{uint(1010), "hi", "hi"})
 	data, err = conn.Do(req).Get()
 	require.NoError(t, err, "Failed to Upsert (update)")
 	require.Empty(t, data, "Response Data len != 0")
 
 	// Upsert.
 	req = NewUpsertRequest(spaceNo).
-		Tuple([]interface{}{uint(1010), "hi", "hi"}).
+		Tuple([]any{uint(1010), "hi", "hi"}).
 		Operations(NewOperations().Assign(2, "bye"))
 	data, err = conn.Do(req).Get()
 	require.NoError(t, err, "Failed to Upsert (update)")
 	require.Empty(t, data, "Response Data len != 0")
 
 	// Call
-	req = NewCallRequest("simple_concat").Args([]interface{}{"1"})
+	req = NewCallRequest("simple_concat").Args([]any{"1"})
 	data, err = conn.Do(req).Get()
 	require.NoError(t, err, "Failed to use Call")
 	assert.Equal(t, "11", data[0], "result is not {{1}}")
@@ -1774,7 +1774,7 @@ func testConnectionDoSelectRequestPrepare(t *testing.T, conn Connector) {
 
 	for i := 1010; i < 1020; i++ {
 		req := NewReplaceRequest(spaceName).Tuple(
-			[]interface{}{uint(i), fmt.Sprintf("val %d", i), "bla"})
+			[]any{uint(i), fmt.Sprintf("val %d", i), "bla"})
 		_, err := conn.Do(req).Get()
 		require.NoError(t, err, "Unable to prepare tuples")
 	}
@@ -1797,9 +1797,9 @@ func testConnectionDoSelectRequestCheck(t *testing.T,
 	data, err := resp.Decode()
 	require.NoError(t, err, "Failed to Decode")
 	require.Len(t, data, dataLen, "Response Data len")
-	for i := 0; i < dataLen; i++ {
+	for i := range dataLen {
 		key := firstKey + uint64(i)
-		if tpl, ok := data[i].([]interface{}); !ok {
+		if tpl, ok := data[i].([]any); !ok {
 			assert.Fail(t, "Unexpected body of Select")
 		} else {
 			assert.EqualValues(t, key, tpl[0], "Unexpected body of Select (0)")
@@ -1820,7 +1820,7 @@ func TestConnectionDoSelectRequest(t *testing.T) {
 		Index(indexNo).
 		Limit(10).
 		Iterator(IterGe).
-		Key([]interface{}{uint(1010)})
+		Key([]any{uint(1010)})
 	resp, err := conn.Do(req).GetResponse()
 
 	selResp, ok := resp.(*SelectResponse)
@@ -1867,7 +1867,7 @@ func TestConnectionDoSelectRequest_fetch_pos(t *testing.T) {
 		Limit(2).
 		Iterator(IterGe).
 		FetchPos(true).
-		Key([]interface{}{uint(1010)})
+		Key([]any{uint(1010)})
 	resp, err := conn.Do(req).GetResponse()
 
 	selResp, ok := resp.(*SelectResponse)
@@ -1889,8 +1889,8 @@ func TestConnectDoSelectRequest_after_tuple(t *testing.T) {
 		Limit(2).
 		Iterator(IterGe).
 		FetchPos(true).
-		Key([]interface{}{uint(1010)}).
-		After([]interface{}{uint(1012)})
+		Key([]any{uint(1010)}).
+		After([]any{uint(1012)})
 	resp, err := conn.Do(req).GetResponse()
 
 	selResp, ok := resp.(*SelectResponse)
@@ -1912,7 +1912,7 @@ func TestConnectionDoSelectRequest_pagination_pos(t *testing.T) {
 		Limit(2).
 		Iterator(IterGe).
 		FetchPos(true).
-		Key([]interface{}{uint(1010)})
+		Key([]any{uint(1010)})
 	resp, err := conn.Do(req).GetResponse()
 
 	selResp, ok := resp.(*SelectResponse)
@@ -1936,7 +1936,7 @@ func TestCallRequest(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer func() { _ = conn.Close() }()
 
-	req := NewCallRequest("simple_concat").Args([]interface{}{"1"})
+	req := NewCallRequest("simple_concat").Args([]any{"1"})
 	data, err := conn.Do(req).Get()
 	require.NoError(t, err, "Failed to use Call")
 	assert.Equal(t, "11", data[0], "result is not {{1}}")
@@ -2079,7 +2079,7 @@ func TestComplexStructs(t *testing.T) {
 		Index(indexNo).
 		Limit(1).
 		Iterator(IterEq).
-		Key([]interface{}{777}),
+		Key([]any{777}),
 	).GetTyped(&tuples)
 	require.NoError(t, err, "Failed to selectTyped")
 
@@ -2138,10 +2138,10 @@ func TestStream_Commit(t *testing.T) {
 
 	// Insert in stream
 	req = NewInsertRequest(spaceName).
-		Tuple([]interface{}{uint(1001), "hello2", "world2"})
+		Tuple([]any{uint(1001), "hello2", "world2"})
 	_, err = stream.Do(req).Get()
 	require.NoError(t, err, "Failed to Insert")
-	defer test_helpers.DeleteRecordByKey(t, conn, spaceNo, indexNo, []interface{}{uint(1001)})
+	defer test_helpers.DeleteRecordByKey(t, conn, spaceNo, indexNo, []any{uint(1001)})
 
 	// Select not related to the transaction
 	// while transaction is not committed
@@ -2150,7 +2150,7 @@ func TestStream_Commit(t *testing.T) {
 		Index(indexNo).
 		Limit(1).
 		Iterator(IterEq).
-		Key([]interface{}{uint(1001)})
+		Key([]any{uint(1001)})
 	data, err := conn.Do(selectReq).Get()
 	require.NoError(t, err, "Failed to Select")
 	require.Empty(t, data, "Response Data len != 0")
@@ -2159,7 +2159,7 @@ func TestStream_Commit(t *testing.T) {
 	data, err = stream.Do(selectReq).Get()
 	require.NoError(t, err, "Failed to Select")
 	require.Len(t, data, 1, "Response Data len != 1")
-	if tpl, ok := data[0].([]interface{}); !ok {
+	if tpl, ok := data[0].([]any); !ok {
 		require.Fail(t, "Unexpected body of Select")
 	} else {
 		require.EqualValues(t, 1001, tpl[0], "Unexpected body of Select (0)")
@@ -2176,7 +2176,7 @@ func TestStream_Commit(t *testing.T) {
 	data, err = conn.Do(selectReq).Get()
 	require.NoError(t, err, "Failed to Select")
 	require.Len(t, data, 1, "Response Data len != 1")
-	if tpl, ok := data[0].([]interface{}); !ok {
+	if tpl, ok := data[0].([]any); !ok {
 		require.Fail(t, "Unexpected body of Select")
 	} else {
 		require.EqualValues(t, 1001, tpl[0], "Unexpected body of Select (0)")
@@ -2204,10 +2204,10 @@ func TestStream_Rollback(t *testing.T) {
 
 	// Insert in stream
 	req = NewInsertRequest(spaceName).
-		Tuple([]interface{}{uint(1001), "hello2", "world2"})
+		Tuple([]any{uint(1001), "hello2", "world2"})
 	_, err = stream.Do(req).Get()
 	require.NoErrorf(t, err, "Failed to Insert")
-	defer test_helpers.DeleteRecordByKey(t, conn, spaceNo, indexNo, []interface{}{uint(1001)})
+	defer test_helpers.DeleteRecordByKey(t, conn, spaceNo, indexNo, []any{uint(1001)})
 
 	// Select not related to the transaction
 	// while transaction is not committed
@@ -2216,7 +2216,7 @@ func TestStream_Rollback(t *testing.T) {
 		Index(indexNo).
 		Limit(1).
 		Iterator(IterEq).
-		Key([]interface{}{uint(1001)})
+		Key([]any{uint(1001)})
 	data, err := conn.Do(selectReq).Get()
 	require.NoErrorf(t, err, "Failed to Select")
 	require.Emptyf(t, data, "Response Data len != 0")
@@ -2226,7 +2226,7 @@ func TestStream_Rollback(t *testing.T) {
 	require.NoErrorf(t, err, "Failed to Select")
 	require.Lenf(t, data, 1, "Response Data len != 1")
 
-	tpl, ok := data[0].([]interface{})
+	tpl, ok := data[0].([]any)
 	require.Truef(t, ok, "Unexpected body of Select")
 
 	id, err := test_helpers.ConvertUint64(tpl[0])
@@ -2284,7 +2284,7 @@ func TestStream_TxnIsolationLevel(t *testing.T) {
 
 		// Insert in stream
 		req = NewInsertRequest(spaceName).
-			Tuple([]interface{}{uint(1001), "hello2", "world2"})
+			Tuple([]any{uint(1001), "hello2", "world2"})
 		_, err = stream.Do(req).Get()
 		require.NoErrorf(t, err, "failed to Insert")
 
@@ -2295,7 +2295,7 @@ func TestStream_TxnIsolationLevel(t *testing.T) {
 			Index(indexNo).
 			Limit(1).
 			Iterator(IterEq).
-			Key([]interface{}{uint(1001)})
+			Key([]any{uint(1001)})
 		data, err := conn.Do(selectReq).Get()
 		require.NoErrorf(t, err, "failed to Select")
 		require.Emptyf(t, data, "response Data len != 0")
@@ -2305,7 +2305,7 @@ func TestStream_TxnIsolationLevel(t *testing.T) {
 		require.NoErrorf(t, err, "failed to Select")
 		require.Lenf(t, data, 1, "response Body len != 1 after Select")
 
-		tpl, ok := data[0].([]interface{})
+		tpl, ok := data[0].([]any)
 		require.Truef(t, ok, "unexpected body of Select")
 		require.Lenf(t, tpl, 3, "unexpected body of Select")
 
@@ -2336,7 +2336,7 @@ func TestStream_TxnIsolationLevel(t *testing.T) {
 		require.NoErrorf(t, err, "failed to Select")
 		require.Emptyf(t, data, "response Data len != 0")
 
-		test_helpers.DeleteRecordByKey(t, conn, spaceNo, indexNo, []interface{}{uint(1001)})
+		test_helpers.DeleteRecordByKey(t, conn, spaceNo, indexNo, []any{uint(1001)})
 	}
 }
 
@@ -2380,7 +2380,7 @@ func TestConnectionBoxSessionPushUnsupported(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer func() { _ = conn.Close() }()
 
-	_, err := conn.Do(NewCallRequest("push_func").Args([]interface{}{1})).Get()
+	_, err := conn.Do(NewCallRequest("push_func").Args([]any{1})).Get()
 	require.NoError(t, err)
 
 	actualLog := buf.String()
@@ -2631,7 +2631,7 @@ func TestErrorExtendedInfoBasic(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer func() { _ = conn.Close() }()
 
-	_, err := conn.Do(NewEvalRequest("not a Lua code").Args([]interface{}{})).Get()
+	_, err := conn.Do(NewEvalRequest("not a Lua code").Args([]any{})).Get()
 	require.Errorf(t, err, "expected error on invalid Lua code")
 
 	ttErr, ok := err.(Error)
@@ -2659,7 +2659,7 @@ func TestErrorExtendedInfoStack(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer func() { _ = conn.Close() }()
 
-	_, err := conn.Do(NewEvalRequest("error(chained_error)").Args([]interface{}{})).Get()
+	_, err := conn.Do(NewEvalRequest("error(chained_error)").Args([]any{})).Get()
 	require.Errorf(t, err, "expected error on explicit error raise")
 
 	ttErr, ok := err.(Error)
@@ -2695,7 +2695,7 @@ func TestErrorExtendedInfoFields(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer func() { _ = conn.Close() }()
 
-	_, err := conn.Do(NewEvalRequest("error(access_denied_error)").Args([]interface{}{})).Get()
+	_, err := conn.Do(NewEvalRequest("error(access_denied_error)").Args([]any{})).Get()
 	require.Errorf(t, err, "expected error on forbidden action")
 
 	ttErr, ok := err.(Error)
@@ -2708,7 +2708,7 @@ func TestErrorExtendedInfoFields(t *testing.T) {
 		Msg:   "Execute access to function 'forbidden_function' is denied for user 'no_grants'",
 		Errno: uint64(0),
 		Code:  uint64(42),
-		Fields: map[string]interface{}{
+		Fields: map[string]any{
 			"object_type": "function",
 			"object_name": "forbidden_function",
 			"access_type": "Execute",
@@ -2886,7 +2886,7 @@ func TestBroadcastRequest(t *testing.T) {
 
 	data, err := conn.Do(NewBroadcastRequest(key).Value(value)).Get()
 	require.NoErrorf(t, err, "Got broadcast error")
-	assert.Equal(t, []interface{}{}, data, "Got unexpected broadcast response data")
+	assert.Equal(t, []any{}, data, "Got unexpected broadcast response data")
 
 	events := make(chan WatchEvent)
 	defer close(events)
@@ -2925,7 +2925,7 @@ func TestBroadcastRequest_multi(t *testing.T) {
 	defer watcher.Unregister()
 
 	<-events // Skip an initial event.
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		val := fmt.Sprintf("%d", i)
 		_, err := conn.Do(NewBroadcastRequest(key).Value(val)).Get()
 		require.NoErrorf(t, err, "Failed to send a broadcast request")
@@ -3031,7 +3031,7 @@ func TestConnection_NewWatcher_concurrent(t *testing.T) {
 	wg.Add(testConcurrency)
 
 	errors := make(chan error, testConcurrency)
-	for i := 0; i < testConcurrency; i++ {
+	for i := range testConcurrency {
 		go func(i int) {
 			defer wg.Done()
 
@@ -3075,7 +3075,7 @@ func TestWatcher_Unregister_concurrent(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(testConcurrency)
 
-	for i := 0; i < testConcurrency; i++ {
+	for range testConcurrency {
 		go func() {
 			defer wg.Done()
 			watcher.Unregister()
@@ -3141,7 +3141,7 @@ func TestConnect_schema_update(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		fut := conn.Do(NewCallRequest("create_spaces"))
 
 		switch conn, err := Connect(ctx, dialer, opts); {
@@ -3330,8 +3330,8 @@ func TestFdDialer(t *testing.T) {
 		return status_code, stderr, stdout
 	`, sidecarExe)
 
-	var resp []interface{}
-	err = conn.Do(NewEvalRequest(evalBody).Args([]interface{}{})).GetTyped(&resp)
+	var resp []any
+	err = conn.Do(NewEvalRequest(evalBody).Args([]any{})).GetTyped(&resp)
 	require.NoError(t, err)
 	require.Empty(t, resp[1], resp[1])
 	require.Empty(t, resp[2], resp[2])
@@ -3355,7 +3355,7 @@ func TestDoBeginRequest_IsSync(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = stream.Do(
-		NewReplaceRequest("test").Tuple([]interface{}{1, "foo"}),
+		NewReplaceRequest("test").Tuple([]any{1, "foo"}),
 	).Get()
 	require.NoError(t, err)
 
@@ -3377,7 +3377,7 @@ func TestDoCommitRequest_IsSync(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = stream.Do(
-		NewReplaceRequest("test").Tuple([]interface{}{1, "foo"}),
+		NewReplaceRequest("test").Tuple([]any{1, "foo"}),
 	).Get()
 	require.NoError(t, err)
 
@@ -3399,7 +3399,7 @@ func TestDoCommitRequest_NoSync(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = stream.Do(
-		NewReplaceRequest("test").Tuple([]interface{}{1, "foo"}),
+		NewReplaceRequest("test").Tuple([]any{1, "foo"}),
 	).Get()
 	require.NoError(t, err)
 
@@ -3501,7 +3501,7 @@ func TestConnectionUsesAllocatorForAllocs(t *testing.T) {
 
 	_, err := conn.Do(
 		tarantool.NewReplaceRequest(spaceNo).
-			Tuple([]interface{}{uint(1111), "hello", "world"}),
+			Tuple([]any{uint(1111), "hello", "world"}),
 	).Get()
 	require.NoError(t, err)
 
@@ -3509,7 +3509,7 @@ func TestConnectionUsesAllocatorForAllocs(t *testing.T) {
 		tarantool.NewSelectRequest(spaceNo).
 			Index(indexNo).
 			Iterator(tarantool.IterEq).
-			Key([]interface{}{uint(1111)}),
+			Key([]any{uint(1111)}),
 	).Get()
 	require.NoError(t, err)
 
@@ -3529,7 +3529,7 @@ func TestConnectionReleasesAllocatedSlices(t *testing.T) {
 
 	fut := conn.Do(
 		tarantool.NewReplaceRequest(spaceNo).
-			Tuple([]interface{}{uint(1111), "test", "data"}),
+			Tuple([]any{uint(1111), "test", "data"}),
 	)
 	_, err := fut.Get()
 	require.NoError(t, err)
@@ -3554,7 +3554,7 @@ func TestConnectionNoReleaseWithoutReleaseCall(t *testing.T) {
 
 	fut := conn.Do(
 		tarantool.NewReplaceRequest(spaceNo).
-			Tuple([]interface{}{uint(1111), "test", "data"}),
+			Tuple([]any{uint(1111), "test", "data"}),
 	)
 	_, err := fut.Get()
 	require.NoError(t, err)
@@ -3626,7 +3626,7 @@ func TestConnectionNilAllocatorNeverCallsPut(t *testing.T) {
 
 	_, err := conn.Do(
 		tarantool.NewReplaceRequest(spaceNo).
-			Tuple([]interface{}{uint(1111), "hello", "world"}),
+			Tuple([]any{uint(1111), "hello", "world"}),
 	).Get()
 	require.NoError(t, err)
 
@@ -3634,7 +3634,7 @@ func TestConnectionNilAllocatorNeverCallsPut(t *testing.T) {
 		tarantool.NewSelectRequest(spaceNo).
 			Index(indexNo).
 			Iterator(tarantool.IterEq).
-			Key([]interface{}{uint(1111)}),
+			Key([]any{uint(1111)}),
 	).Get()
 	require.NoError(t, err)
 

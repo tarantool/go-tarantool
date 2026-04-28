@@ -3,6 +3,7 @@ package tarantool
 import (
 	"errors"
 	"fmt"
+	"maps"
 
 	"github.com/vmihailenco/msgpack/v5"
 	"github.com/vmihailenco/msgpack/v5/msgpcode"
@@ -46,10 +47,10 @@ func msgpackIsString(code byte) bool {
 type SchemaResolver interface {
 	// ResolveSpace returns resolved space number or an error
 	// if it cannot be resolved.
-	ResolveSpace(s interface{}) (spaceNo uint32, err error)
+	ResolveSpace(s any) (spaceNo uint32, err error)
 	// ResolveIndex returns resolved index number or an error
 	// if it cannot be resolved.
-	ResolveIndex(i interface{}, spaceNo uint32) (indexNo uint32, err error)
+	ResolveIndex(i any, spaceNo uint32) (indexNo uint32, err error)
 	// NamesUseSupported shows if usage of space and index names, instead of
 	// IDs, is supported. It must return true if
 	// iproto.IPROTO_FEATURE_SPACE_AND_INDEX_NAMES is supported.
@@ -98,13 +99,9 @@ type Space struct {
 func (space *Space) copy() Space {
 	spaceCopy := *space
 	spaceCopy.Fields = make(map[string]Field, len(space.Fields))
-	for name, field := range space.Fields {
-		spaceCopy.Fields[name] = field
-	}
+	maps.Copy(spaceCopy.Fields, space.Fields)
 	spaceCopy.FieldsById = make(map[uint32]Field, len(space.FieldsById))
-	for id, field := range space.FieldsById {
-		spaceCopy.FieldsById[id] = field
-	}
+	maps.Copy(spaceCopy.FieldsById, space.FieldsById)
 	spaceCopy.Indexes = make(map[string]Index, len(space.Indexes))
 	for name, index := range space.Indexes {
 		spaceCopy.Indexes[name] = index.copy()
@@ -153,7 +150,7 @@ func (space *Space) DecodeMsgpack(d *msgpack.Decoder) error {
 			if err != nil {
 				return err
 			}
-			for i := 0; i < mapLen; i++ {
+			for range mapLen {
 				key, err := d.DecodeString()
 				if err != nil {
 					return err
@@ -181,7 +178,7 @@ func (space *Space) DecodeMsgpack(d *msgpack.Decoder) error {
 		if err != nil {
 			return err
 		}
-		for i := 0; i < fieldCount; i++ {
+		for i := range fieldCount {
 			field := Field{}
 			if err := field.DecodeMsgpack(d); err != nil {
 				return err
@@ -209,7 +206,7 @@ func (field *Field) DecodeMsgpack(d *msgpack.Decoder) error {
 	if err != nil {
 		return err
 	}
-	for i := 0; i < l; i++ {
+	for range l {
 		key, err := d.DecodeString()
 		if err != nil {
 			return err
@@ -280,11 +277,11 @@ func (index *Index) DecodeMsgpack(d *msgpack.Decoder) error {
 	if msgpackIsUint(code) {
 		optsUint64, err := d.DecodeUint64()
 		if err != nil {
-			return nil
+			return err
 		}
 		index.Unique = optsUint64 > 0
 	} else {
-		var optsMap map[string]interface{}
+		var optsMap map[string]any
 		if err := d.Decode(&optsMap); err != nil {
 			return fmt.Errorf("unexpected schema format (index flags): %w", err)
 		}
@@ -341,7 +338,7 @@ func (indexField *IndexField) DecodeMsgpack(d *msgpack.Decoder) error {
 		if err != nil {
 			return err
 		}
-		for i := 0; i < mapLen; i++ {
+		for range mapLen {
 			key, err := d.DecodeString()
 			if err != nil {
 				return err
@@ -436,7 +433,7 @@ func GetSchema(doer Doer) (Schema, error) {
 
 // resolveSpaceNumber tries to resolve a space number.
 // Note: at this point, s can be a number, or an object of Space type.
-func resolveSpaceNumber(s interface{}) (uint32, error) {
+func resolveSpaceNumber(s any) (uint32, error) {
 	var spaceNo uint32
 
 	switch s := s.(type) {
@@ -473,7 +470,7 @@ func resolveSpaceNumber(s interface{}) (uint32, error) {
 
 // resolveIndexNumber tries to resolve an index number.
 // Note: at this point, i can be a number, or an object of Index type.
-func resolveIndexNumber(i interface{}) (uint32, error) {
+func resolveIndexNumber(i any) (uint32, error) {
 	var indexNo uint32
 
 	switch i := i.(type) {
@@ -515,7 +512,7 @@ type loadedSchemaResolver struct {
 	SpaceAndIndexNamesSupported bool
 }
 
-func (r *loadedSchemaResolver) ResolveSpace(s interface{}) (uint32, error) {
+func (r *loadedSchemaResolver) ResolveSpace(s any) (uint32, error) {
 	if str, ok := s.(string); ok {
 		space, ok := r.Schema.Spaces[str]
 		if !ok {
@@ -526,7 +523,7 @@ func (r *loadedSchemaResolver) ResolveSpace(s interface{}) (uint32, error) {
 	return resolveSpaceNumber(s)
 }
 
-func (r *loadedSchemaResolver) ResolveIndex(i interface{}, spaceNo uint32) (uint32, error) {
+func (r *loadedSchemaResolver) ResolveIndex(i any, spaceNo uint32) (uint32, error) {
 	if i == nil {
 		return 0, nil
 	}
@@ -555,7 +552,7 @@ type noSchemaResolver struct {
 	SpaceAndIndexNamesSupported bool
 }
 
-func (*noSchemaResolver) ResolveSpace(s interface{}) (uint32, error) {
+func (*noSchemaResolver) ResolveSpace(s any) (uint32, error) {
 	if _, ok := s.(string); ok {
 		return 0, fmt.Errorf("unable to use an index name " +
 			"because schema is not loaded")
@@ -563,7 +560,7 @@ func (*noSchemaResolver) ResolveSpace(s interface{}) (uint32, error) {
 	return resolveSpaceNumber(s)
 }
 
-func (*noSchemaResolver) ResolveIndex(i interface{}, spaceNo uint32) (uint32, error) {
+func (*noSchemaResolver) ResolveIndex(i any, spaceNo uint32) (uint32, error) {
 	if _, ok := i.(string); ok {
 		return 0, fmt.Errorf("unable to use an index name " +
 			"because schema is not loaded")

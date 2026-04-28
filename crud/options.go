@@ -42,7 +42,7 @@ func (opts BaseOpts) EncodeMsgpack(enc *msgpack.Encoder) error {
 	const optsCnt = 2
 
 	names := [optsCnt]string{timeoutOptName, vshardRouterOptName}
-	values := [optsCnt]interface{}{}
+	values := [optsCnt]any{}
 	exists := [optsCnt]bool{}
 	values[0], exists[0] = opts.Timeout.Get()
 	values[1], exists[1] = opts.VshardRouter.Get()
@@ -80,7 +80,7 @@ func (opts SimpleOperationOpts) EncodeMsgpack(enc *msgpack.Encoder) error {
 	names := [optsCnt]string{timeoutOptName, vshardRouterOptName,
 		fieldsOptName, bucketIdOptName, fetchLatestMetadataOptName,
 		noreturnOptName}
-	values := [optsCnt]interface{}{}
+	values := [optsCnt]any{}
 	exists := [optsCnt]bool{}
 	values[0], exists[0] = opts.Timeout.Get()
 	values[1], exists[1] = opts.VshardRouter.Get()
@@ -125,7 +125,7 @@ func (opts SimpleOperationObjectOpts) EncodeMsgpack(enc *msgpack.Encoder) error 
 	names := [optsCnt]string{timeoutOptName, vshardRouterOptName,
 		fieldsOptName, bucketIdOptName, skipNullabilityCheckOnFlattenOptName,
 		fetchLatestMetadataOptName, noreturnOptName}
-	values := [optsCnt]interface{}{}
+	values := [optsCnt]any{}
 	exists := [optsCnt]bool{}
 	values[0], exists[0] = opts.Timeout.Get()
 	values[1], exists[1] = opts.VshardRouter.Get()
@@ -173,7 +173,7 @@ func (opts OperationManyOpts) EncodeMsgpack(enc *msgpack.Encoder) error {
 	names := [optsCnt]string{timeoutOptName, vshardRouterOptName,
 		fieldsOptName, stopOnErrorOptName, rollbackOnErrorOptName,
 		fetchLatestMetadataOptName, noreturnOptName}
-	values := [optsCnt]interface{}{}
+	values := [optsCnt]any{}
 	exists := [optsCnt]bool{}
 	values[0], exists[0] = opts.Timeout.Get()
 	values[1], exists[1] = opts.VshardRouter.Get()
@@ -225,7 +225,7 @@ func (opts OperationObjectManyOpts) EncodeMsgpack(enc *msgpack.Encoder) error {
 		fieldsOptName, stopOnErrorOptName, rollbackOnErrorOptName,
 		skipNullabilityCheckOnFlattenOptName, fetchLatestMetadataOptName,
 		noreturnOptName}
-	values := [optsCnt]interface{}{}
+	values := [optsCnt]any{}
 	exists := [optsCnt]bool{}
 	values[0], exists[0] = opts.Timeout.Get()
 	values[1], exists[1] = opts.VshardRouter.Get()
@@ -262,7 +262,7 @@ func (opts BorderOpts) EncodeMsgpack(enc *msgpack.Encoder) error {
 
 	names := [optsCnt]string{timeoutOptName, vshardRouterOptName, fieldsOptName,
 		fetchLatestMetadataOptName}
-	values := [optsCnt]interface{}{}
+	values := [optsCnt]any{}
 	exists := [optsCnt]bool{}
 	values[0], exists[0] = opts.Timeout.Get()
 	values[1], exists[1] = opts.VshardRouter.Get()
@@ -273,7 +273,7 @@ func (opts BorderOpts) EncodeMsgpack(enc *msgpack.Encoder) error {
 }
 
 func encodeOptions(enc *msgpack.Encoder,
-	names []string, values []interface{}, exists []bool) error {
+	names []string, values []any, exists []bool) error {
 	mapLen := 0
 
 	for _, exist := range exists {

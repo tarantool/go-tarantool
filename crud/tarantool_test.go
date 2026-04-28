@@ -162,30 +162,32 @@ var conditions = []crud.Condition{
 	},
 }
 
-var key = []interface{}{uint(1019)}
+var key = []any{uint(1019)}
 
 var tuples = generateTuples()
 var objects = generateObjects()
 
-var tuple = []interface{}{uint(1019), nil, "bla"}
+var tuple = []any{uint(1019), nil, "bla"}
 var object = crud.MapObject{
 	"id":   uint(1019),
 	"name": "bla",
 }
 
-func connect(t testing.TB) *tarantool.Connection {
-	for i := 0; i < 10; i++ {
+func connect(tb testing.TB) *tarantool.Connection {
+	tb.Helper()
+
+	for range 10 {
 		ctx, cancel := test_helpers.GetConnectContext()
 		conn, err := tarantool.Connect(ctx, dialer, opts)
 		cancel()
-		require.NoError(t, err, "Failed to connect")
+		require.NoError(tb, err, "Failed to connect")
 
 		ret := struct {
 			_msgpack struct{} `msgpack:",asArray"`
 			Result   bool
 		}{}
 		err = conn.Do(tarantool.NewCallRequest("is_ready")).GetTyped(&ret)
-		require.NoError(t, err, "Failed to check is_ready")
+		require.NoError(tb, err, "Failed to check is_ready")
 
 		if ret.Result {
 			return conn
@@ -194,7 +196,7 @@ func connect(t testing.TB) *tarantool.Connection {
 		time.Sleep(time.Second)
 	}
 
-	require.Fail(t, "Failed to wait for a ready state connect.")
+	require.Fail(tb, "Failed to wait for a ready state connect.")
 	return nil
 }
 
@@ -288,7 +290,7 @@ var testProcessDataCases = []struct {
 
 var testResultWithErrCases = []struct {
 	name string
-	resp interface{}
+	resp any
 	req  tarantool.Request
 }{
 	{
@@ -425,7 +427,7 @@ var testGenerateDataCases = []struct {
 func generateTuples() []crud.Tuple {
 	tpls := []crud.Tuple{}
 	for i := 1010; i < 1020; i++ {
-		tpls = append(tpls, []interface{}{uint(i), nil, "bla"})
+		tpls = append(tpls, []any{uint(i), nil, "bla"})
 	}
 
 	return tpls
@@ -469,8 +471,8 @@ func generateObjectsOperationsData(objs []crud.Object,
 	return objectsOperationsData
 }
 
-func getCrudError(req tarantool.Request, crudError interface{}) (interface{}, error) {
-	var err []interface{}
+func getCrudError(req tarantool.Request, crudError any) (any, error) {
+	var err []any
 	var ok bool
 
 	rtype := req.Type()
@@ -479,7 +481,7 @@ func getCrudError(req tarantool.Request, crudError interface{}) (interface{}, er
 			return crudError, nil
 		}
 
-		if err, ok = crudError.([]interface{}); !ok {
+		if err, ok = crudError.([]any); !ok {
 			return nil, fmt.Errorf("Incorrect CRUD error format")
 		}
 
@@ -500,7 +502,7 @@ func testCrudRequestPrepareData(t *testing.T, conn tarantool.Connector) {
 
 	for i := 1010; i < 1020; i++ {
 		req := tarantool.NewReplaceRequest(spaceName).Tuple(
-			[]interface{}{uint(i), nil, "bla"})
+			[]any{uint(i), nil, "bla"})
 		_, err := conn.Do(req).Get()
 		require.NoError(t, err, "Unable to prepare tuples")
 	}
@@ -508,18 +510,20 @@ func testCrudRequestPrepareData(t *testing.T, conn tarantool.Connector) {
 
 func testSelectGeneratedData(t *testing.T, conn tarantool.Connector,
 	expectedTuplesCount int) {
+	t.Helper()
+
 	req := tarantool.NewSelectRequest(spaceNo).
 		Index(indexNo).
 		Limit(20).
 		Iterator(tarantool.IterGe).
-		Key([]interface{}{uint(1010)})
+		Key([]any{uint(1010)})
 	data, err := conn.Do(req).Get()
 	require.NoError(t, err, "Failed to Select")
 	require.Len(t, data, expectedTuplesCount, "Response Data len mismatch")
 }
 
 func testCrudRequestCheck(t *testing.T, req tarantool.Request,
-	data []interface{}, err error, expectedLen int) {
+	data []any, err error, expectedLen int) {
 	t.Helper()
 
 	require.NoError(t, err, "Failed to Do CRUD request")
@@ -542,7 +546,7 @@ func TestCrudGenerateData(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			for i := 1010; i < 1020; i++ {
 				req := tarantool.NewDeleteRequest(spaceName).
-					Key([]interface{}{uint(i)})
+					Key([]any{uint(i)})
 				_, err := conn.Do(req).Get()
 				require.NoError(t, err)
 			}
@@ -555,7 +559,7 @@ func TestCrudGenerateData(t *testing.T) {
 
 			for i := 1010; i < 1020; i++ {
 				req := tarantool.NewDeleteRequest(spaceName).
-					Key([]interface{}{uint(i)})
+					Key([]any{uint(i)})
 				_, err := conn.Do(req).Get()
 				require.NoError(t, err)
 			}
@@ -575,7 +579,7 @@ func TestCrudProcessData(t *testing.T) {
 				err, testCase.expectedRespLen)
 			for i := 1010; i < 1020; i++ {
 				req := tarantool.NewDeleteRequest(spaceName).
-					Key([]interface{}{uint(i)})
+					Key([]any{uint(i)})
 				_, err := conn.Do(req).Get()
 				require.NoError(t, err)
 			}
@@ -659,18 +663,18 @@ func TestCrudUpsertObjectSplice(t *testing.T) {
 }
 
 func TestUnflattenRows_IncorrectParams(t *testing.T) {
-	invalidMetadata := []interface{}{
-		map[interface{}]interface{}{
+	invalidMetadata := []any{
+		map[any]any{
 			"name": true,
 			"type": "number",
 		},
-		map[interface{}]interface{}{
+		map[any]any{
 			"name": "name",
 			"type": "string",
 		},
 	}
 
-	tpls := []interface{}{
+	tpls := []any{
 		tuple,
 	}
 
@@ -687,9 +691,9 @@ func TestUnflattenRows(t *testing.T) {
 		err        error
 		expectedId uint64
 		actualId   uint64
-		res        map[interface{}]interface{}
-		metadata   []interface{}
-		tpls       []interface{}
+		res        map[any]any
+		metadata   []any
+		tpls       []any
 	)
 
 	conn := connect(t)
@@ -702,17 +706,17 @@ func TestUnflattenRows(t *testing.T) {
 	data, err := conn.Do(req).Get()
 	testCrudRequestCheck(t, req, data, err, 2)
 
-	res, ok = data[0].(map[interface{}]interface{})
+	res, ok = data[0].(map[any]any)
 	require.True(t, ok, "Unexpected CRUD result")
 
 	rawMetadata, ok := res["metadata"]
 	require.True(t, ok, "Failed to get CRUD metadata")
-	metadata, ok = rawMetadata.([]interface{})
+	metadata, ok = rawMetadata.([]any)
 	require.True(t, ok, "Unexpected CRUD metadata")
 
 	rawTuples, ok := res["rows"]
 	require.True(t, ok, "Failed to get CRUD rows")
-	tpls, ok = rawTuples.([]interface{})
+	tpls, ok = rawTuples.([]any)
 	require.True(t, ok, "Unexpected CRUD rows")
 
 	// Format `replace` result with UnflattenRows.
@@ -763,7 +767,7 @@ func TestBoolResult(t *testing.T) {
 
 	for i := 1010; i < 1020; i++ {
 		req := tarantool.NewDeleteRequest(spaceName).
-			Key([]interface{}{uint(i)})
+			Key([]any{uint(i)})
 		_, err := conn.Do(req).Get()
 		require.NoError(t, err)
 	}
@@ -784,7 +788,7 @@ func TestNumberResult(t *testing.T) {
 
 	for i := 1010; i < 1020; i++ {
 		req := tarantool.NewDeleteRequest(spaceName).
-			Key([]interface{}{uint(i)})
+			Key([]any{uint(i)})
 		_, err = conn.Do(req).Get()
 		require.NoError(t, err)
 	}
@@ -822,13 +826,13 @@ func TestBaseResult(t *testing.T) {
 
 	require.ElementsMatch(t, resp.Metadata, expectedMetadata)
 
-	rows, ok := resp.Rows.([]interface{})
+	rows, ok := resp.Rows.([]any)
 	require.True(t, ok, "Unexpected rows type")
 	require.Len(t, rows, 10, "Unexpected rows count")
 
 	for i := 1010; i < 1020; i++ {
 		req := tarantool.NewDeleteRequest(spaceName).
-			Key([]interface{}{uint(i)})
+			Key([]any{uint(i)})
 		_, err = conn.Do(req).Get()
 		require.NoError(t, err)
 	}
@@ -866,13 +870,13 @@ func TestManyResult(t *testing.T) {
 
 	require.ElementsMatch(t, resp.Metadata, expectedMetadata)
 
-	rows, ok := resp.Rows.([]interface{})
+	rows, ok := resp.Rows.([]any)
 	require.True(t, ok, "Unexpected rows type")
 	require.Len(t, rows, 10, "Unexpected rows count")
 
 	for i := 1010; i < 1020; i++ {
 		req := tarantool.NewDeleteRequest(spaceName).
-			Key([]interface{}{uint(i)})
+			Key([]any{uint(i)})
 		_, err := conn.Do(req).Get()
 		require.NoError(t, err)
 	}
@@ -902,7 +906,7 @@ func TestGetAdditionalOpts(t *testing.T) {
 
 	req := crud.MakeGetRequest(spaceName).Key(key).Opts(crud.GetOpts{
 		Timeout:       option.SomeFloat64(1.1),
-		Fields:        option.SomeAny([]interface{}{"name"}),
+		Fields:        option.SomeAny([]any{"name"}),
 		Mode:          option.SomeString("read"),
 		PreferReplica: option.SomeBool(true),
 		Balance:       option.SomeBool(true),
@@ -1074,7 +1078,7 @@ func TestFetchLatestMetadataOption(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			for i := 1010; i < 1020; i++ {
 				req := tarantool.NewDeleteRequest(spaceName).
-					Key([]interface{}{uint(i)})
+					Key([]any{uint(i)})
 				_, err := conn.Do(req).Get()
 				require.NoError(t, err)
 			}
@@ -1087,7 +1091,7 @@ func TestFetchLatestMetadataOption(t *testing.T) {
 
 			for i := 1010; i < 1020; i++ {
 				req := tarantool.NewDeleteRequest(spaceName).
-					Key([]interface{}{uint(i)})
+					Key([]any{uint(i)})
 				_, err = conn.Do(req).Get()
 				require.NoError(t, err)
 			}
@@ -1224,7 +1228,7 @@ func TestNoreturnOption(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			for i := 1010; i < 1020; i++ {
 				req := tarantool.NewDeleteRequest(spaceName).
-					Key([]interface{}{uint(i)})
+					Key([]any{uint(i)})
 				_, err := conn.Do(req).Get()
 				require.NoError(t, err)
 			}
@@ -1239,7 +1243,7 @@ func TestNoreturnOption(t *testing.T) {
 
 			for i := 1010; i < 1020; i++ {
 				req := tarantool.NewDeleteRequest(spaceName).
-					Key([]interface{}{uint(i)})
+					Key([]any{uint(i)})
 				_, err = conn.Do(req).Get()
 				require.NoError(t, err)
 			}
@@ -1255,7 +1259,7 @@ func TestNoreturnOptionTyped(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			for i := 1010; i < 1020; i++ {
 				req := tarantool.NewDeleteRequest(spaceName).
-					Key([]interface{}{uint(i)})
+					Key([]any{uint(i)})
 				_, err := conn.Do(req).Get()
 				require.NoError(t, err)
 			}
@@ -1269,7 +1273,7 @@ func TestNoreturnOptionTyped(t *testing.T) {
 
 			for i := 1010; i < 1020; i++ {
 				req := tarantool.NewDeleteRequest(spaceName).
-					Key([]interface{}{uint(i)})
+					Key([]any{uint(i)})
 				_, err = conn.Do(req).Get()
 				require.NoError(t, err)
 			}
@@ -1278,6 +1282,8 @@ func TestNoreturnOptionTyped(t *testing.T) {
 }
 
 func getTestSchema(t *testing.T) crud.Schema {
+	t.Helper()
+
 	schema := crud.Schema{
 		"test": crud.SpaceSchema{
 			Format: []crud.FieldFormat{

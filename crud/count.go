@@ -50,7 +50,7 @@ func (opts CountOpts) EncodeMsgpack(enc *msgpack.Encoder) error {
 		modeOptName, preferReplicaOptName, balanceOptName,
 		yieldEveryOptName, bucketIdOptName, forceMapCallOptName,
 		fullscanOptName}
-	values := [optsCnt]interface{}{}
+	values := [optsCnt]any{}
 	exists := [optsCnt]bool{}
 	values[0], exists[0] = opts.Timeout.Get()
 	values[1], exists[1] = opts.VshardRouter.Get()
@@ -69,6 +69,7 @@ func (opts CountOpts) EncodeMsgpack(enc *msgpack.Encoder) error {
 // for execution by a Connection.
 type CountRequest struct {
 	spaceRequest
+
 	conditions []Condition
 	opts       CountOpts
 }

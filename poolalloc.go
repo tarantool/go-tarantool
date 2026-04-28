@@ -50,7 +50,7 @@ func NewPoolAllocator(exponents []int) (*PoolAllocator, error) {
 		p.size[i] = 1 << s
 		p.help[s] = i
 		p.pool[i] = &sync.Pool{
-			New: func() interface{} {
+			New: func() any {
 				buf := make([]byte, p.size[i])
 				return &buf
 			},

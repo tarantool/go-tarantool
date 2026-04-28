@@ -29,7 +29,7 @@ type SessionSuRequest struct {
 // NewSessionSuRequest creates a new SessionSuRequest for switching session to a specified username.
 // It returns an error if any execute functions are provided, as they are not supported now.
 func NewSessionSuRequest(username string) (SessionSuRequest, error) {
-	args := []interface{}{username} // Create args slice with the username.
+	args := []any{username} // Create args slice with the username.
 
 	// Create a new call request for the box.session.su method with the given args.
 	callReq := tarantool.NewCallRequest("box.session.su").Args(args)

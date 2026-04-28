@@ -15,7 +15,7 @@ func TestOperation_EncodeMsgpack(t *testing.T) {
 	testCases := []struct {
 		name string
 		op   crud.Operation
-		ref  []interface{}
+		ref  []any
 	}{
 		{
 			"Add",
@@ -24,7 +24,7 @@ func TestOperation_EncodeMsgpack(t *testing.T) {
 				Field:    1,
 				Value:    2,
 			},
-			[]interface{}{"+", 1, 2},
+			[]any{"+", 1, 2},
 		},
 		{
 			"Sub",
@@ -33,7 +33,7 @@ func TestOperation_EncodeMsgpack(t *testing.T) {
 				Field:    1,
 				Value:    2,
 			},
-			[]interface{}{"-", 1, 2},
+			[]any{"-", 1, 2},
 		},
 		{
 			"And",
@@ -42,7 +42,7 @@ func TestOperation_EncodeMsgpack(t *testing.T) {
 				Field:    1,
 				Value:    2,
 			},
-			[]interface{}{"&", 1, 2},
+			[]any{"&", 1, 2},
 		},
 		{
 			"Or",
@@ -51,7 +51,7 @@ func TestOperation_EncodeMsgpack(t *testing.T) {
 				Field:    1,
 				Value:    2,
 			},
-			[]interface{}{"|", 1, 2},
+			[]any{"|", 1, 2},
 		},
 		{
 			"Xor",
@@ -60,7 +60,7 @@ func TestOperation_EncodeMsgpack(t *testing.T) {
 				Field:    1,
 				Value:    2,
 			},
-			[]interface{}{"^", 1, 2},
+			[]any{"^", 1, 2},
 		},
 		{
 			"Splice",
@@ -71,7 +71,7 @@ func TestOperation_EncodeMsgpack(t *testing.T) {
 				Len:      3,
 				Replace:  "a",
 			},
-			[]interface{}{":", 1, 2, 3, "a"},
+			[]any{":", 1, 2, 3, "a"},
 		},
 		{
 			"Insert",
@@ -80,7 +80,7 @@ func TestOperation_EncodeMsgpack(t *testing.T) {
 				Field:    1,
 				Value:    2,
 			},
-			[]interface{}{"!", 1, 2},
+			[]any{"!", 1, 2},
 		},
 		{
 			"Delete",
@@ -89,7 +89,7 @@ func TestOperation_EncodeMsgpack(t *testing.T) {
 				Field:    1,
 				Value:    2,
 			},
-			[]interface{}{"#", 1, 2},
+			[]any{"#", 1, 2},
 		},
 		{
 			"Assign",
@@ -98,7 +98,7 @@ func TestOperation_EncodeMsgpack(t *testing.T) {
 				Field:    1,
 				Value:    2,
 			},
-			[]interface{}{"=", 1, 2},
+			[]any{"=", 1, 2},
 		},
 	}
 

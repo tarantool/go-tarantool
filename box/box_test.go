@@ -44,8 +44,8 @@ func TestMocked_BoxNew(t *testing.T) {
 func TestMocked_BoxInfo(t *testing.T) {
 	t.Parallel()
 
-	data := []interface{}{
-		map[string]interface{}{
+	data := []any{
+		map[string]any{
 			"version":     "1.0.0",
 			"id":          nil,
 			"ro":          false,
@@ -70,9 +70,9 @@ func TestMocked_BoxInfo(t *testing.T) {
 func TestMocked_BoxSchemaUserInfo(t *testing.T) {
 	t.Parallel()
 
-	data := []interface{}{
-		[]interface{}{
-			[]interface{}{"read,write,execute", "universe", ""},
+	data := []any{
+		[]any{
+			[]any{"read,write,execute", "universe", ""},
 		},
 	}
 	mock := test_helpers.NewMockDoer(t).
@@ -99,7 +99,7 @@ func TestMocked_BoxSessionSu(t *testing.T) {
 	t.Parallel()
 
 	mock := test_helpers.NewMockDoer(t).
-		AddResponseRaw([]interface{}{}).
+		AddResponseRaw([]any{}).
 		AddResponseError(errors.New("user not found or supplied credentials are invalid"))
 	b := box.MustNew(mock)
 

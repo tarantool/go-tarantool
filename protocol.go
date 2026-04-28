@@ -67,6 +67,7 @@ var clientProtocolInfo ProtocolInfo = ProtocolInfo{
 // version and protocol features.
 type IdRequest struct {
 	baseRequest
+
 	protocolInfo ProtocolInfo
 }
 

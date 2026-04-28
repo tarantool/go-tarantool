@@ -44,7 +44,7 @@ func (opts GetOpts) EncodeMsgpack(enc *msgpack.Encoder) error {
 	names := [optsCnt]string{timeoutOptName, vshardRouterOptName,
 		fieldsOptName, bucketIdOptName, modeOptName,
 		preferReplicaOptName, balanceOptName, fetchLatestMetadataOptName}
-	values := [optsCnt]interface{}{}
+	values := [optsCnt]any{}
 	exists := [optsCnt]bool{}
 	values[0], exists[0] = opts.Timeout.Get()
 	values[1], exists[1] = opts.VshardRouter.Get()
@@ -62,6 +62,7 @@ func (opts GetOpts) EncodeMsgpack(enc *msgpack.Encoder) error {
 // for execution by a Connection.
 type GetRequest struct {
 	spaceRequest
+
 	key  Tuple
 	opts GetOpts
 }
@@ -99,7 +100,7 @@ func (req GetRequest) Opts(opts GetOpts) GetRequest {
 // Body fills an encoder with the call request body.
 func (req GetRequest) Body(res tarantool.SchemaResolver, enc *msgpack.Encoder) error {
 	if req.key == nil {
-		req.key = []interface{}{}
+		req.key = []any{}
 	}
 	args := getArgs{Space: req.space, Key: req.key, Opts: req.opts}
 	req.impl = req.impl.Args(args)

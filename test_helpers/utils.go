@@ -30,7 +30,7 @@ func ConnectWithValidation(t T,
 }
 
 func DeleteRecordByKey(t T, conn tarantool.Connector,
-	space interface{}, index interface{}, key []interface{}) {
+	space any, index any, key []any) {
 	t.Helper()
 
 	req := tarantool.NewDeleteRequest(space).

@@ -24,5 +24,5 @@ type Condition struct {
 	_msgpack struct{} `msgpack:",asArray"` //nolint:unused
 	Operator Operator
 	Field    string // Field name or index name.
-	Value    interface{}
+	Value    any
 }

@@ -196,7 +196,7 @@ func ExampleCommitRequest() {
 
 	// Insert in stream
 	req = tarantool.NewInsertRequest(spaceName).
-		Tuple([]interface{}{"example_commit_key", "example_commit_value"})
+		Tuple([]any{"example_commit_key", "example_commit_value"})
 	data, err = stream.Do(req).Get()
 	if err != nil {
 		fmt.Printf("Failed to Insert: %s", err.Error())
@@ -211,7 +211,7 @@ func ExampleCommitRequest() {
 		Index(indexNo).
 		Limit(1).
 		Iterator(tarantool.IterEq).
-		Key([]interface{}{"example_commit_key"})
+		Key([]any{"example_commit_key"})
 	data, err = connPool.Do(selectReq, pool.ModeRW).Get()
 	if err != nil {
 		fmt.Printf("Failed to Select: %s", err.Error())
@@ -281,7 +281,7 @@ func ExampleRollbackRequest() {
 
 	// Insert in stream
 	req = tarantool.NewInsertRequest(spaceName).
-		Tuple([]interface{}{"example_rollback_key", "example_rollback_value"})
+		Tuple([]any{"example_rollback_key", "example_rollback_value"})
 	data, err = stream.Do(req).Get()
 	if err != nil {
 		fmt.Printf("Failed to Insert: %s", err.Error())
@@ -296,7 +296,7 @@ func ExampleRollbackRequest() {
 		Index(indexNo).
 		Limit(1).
 		Iterator(tarantool.IterEq).
-		Key([]interface{}{"example_rollback_key"})
+		Key([]any{"example_rollback_key"})
 	data, err = connPool.Do(selectReq, pool.ModeRW).Get()
 	if err != nil {
 		fmt.Printf("Failed to Select: %s", err.Error())
@@ -368,7 +368,7 @@ func ExampleBeginRequest_TxnIsolation() {
 
 	// Insert in stream
 	req = tarantool.NewInsertRequest(spaceName).
-		Tuple([]interface{}{"isolation_level_key", "isolation_level_value"})
+		Tuple([]any{"isolation_level_key", "isolation_level_value"})
 	data, err = stream.Do(req).Get()
 	if err != nil {
 		fmt.Printf("Failed to Insert: %s", err.Error())
@@ -383,7 +383,7 @@ func ExampleBeginRequest_TxnIsolation() {
 		Index(indexNo).
 		Limit(1).
 		Iterator(tarantool.IterEq).
-		Key([]interface{}{"isolation_level_key"})
+		Key([]any{"isolation_level_key"})
 	data, err = connPool.Do(selectReq, pool.ModeRW).Get()
 	if err != nil {
 		fmt.Printf("Failed to Select: %s", err.Error())
@@ -450,7 +450,7 @@ func ExamplePool_CloseGraceful_force() {
 	local time = ...
 	fiber.sleep(time)
 `
-	req := tarantool.NewEvalRequest(eval).Args([]interface{}{10})
+	req := tarantool.NewEvalRequest(eval).Args([]any{10})
 	fut := connPool.Do(req, pool.ModeAny)
 
 	done := make(chan struct{})

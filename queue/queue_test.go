@@ -367,7 +367,7 @@ func TestFifoQueue_Delete(t *testing.T) {
 	var putData = "put_data"
 	var tasks = [2]*queue.Task{}
 
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		tasks[i], err = q.Put(putData)
 		require.NoError(t, err, "Failed put to queue")
 		require.NotNil(t, tasks[i], "Task is nil after put")
@@ -385,7 +385,7 @@ func TestFifoQueue_Delete(t *testing.T) {
 	require.NoError(t, err, "Failed delete task")
 
 	// Take.
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		tasks[i], err = q.TakeTimeout(2 * time.Second)
 		require.NoError(t, err, "Failed take from queue")
 		assert.Nil(t, tasks[i], "Task is not nil after take")
@@ -705,7 +705,7 @@ func runTestMain(m *testing.M) int {
 
 	defer test_helpers.StopTarantoolInstances(instances)
 
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		// We need to skip bootstrap errors and to make sure that cluster is
 		// configured.
 		roles := []bool{false, true}

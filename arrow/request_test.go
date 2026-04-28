@@ -44,7 +44,7 @@ func TestResponseDecode(t *testing.T) {
 
 	require.NoError(t, enc.EncodeMapLen(1))
 	require.NoError(t, enc.EncodeUint8(uint8(iproto.IPROTO_DATA)))
-	require.NoError(t, enc.Encode([]interface{}{'v', '2'}))
+	require.NoError(t, enc.Encode([]any{'v', '2'}))
 
 	request := arrow.NewInsertRequest(validSpace, arrow.Arrow{})
 	resp, err := request.Response(header, bytes.NewBuffer(buf.Bytes()))
@@ -53,7 +53,7 @@ func TestResponseDecode(t *testing.T) {
 
 	decodedInterface, err := resp.Decode()
 	require.NoError(t, err)
-	require.Equal(t, []interface{}{'v', '2'}, decodedInterface)
+	require.Equal(t, []any{'v', '2'}, decodedInterface)
 }
 
 func TestResponseDecodeTyped(t *testing.T) {
@@ -77,10 +77,10 @@ func TestResponseDecodeTyped(t *testing.T) {
 }
 
 type stubSchemeResolver struct {
-	space interface{}
+	space any
 }
 
-func (r stubSchemeResolver) ResolveSpace(s interface{}) (uint32, error) {
+func (r stubSchemeResolver) ResolveSpace(s any) (uint32, error) {
 	if id, ok := r.space.(uint32); ok {
 		return id, nil
 	}
@@ -90,7 +90,7 @@ func (r stubSchemeResolver) ResolveSpace(s interface{}) (uint32, error) {
 	return 0, fmt.Errorf("stub error message: %v", r.space)
 }
 
-func (stubSchemeResolver) ResolveIndex(i interface{}, spaceNo uint32) (uint32, error) {
+func (stubSchemeResolver) ResolveIndex(i any, spaceNo uint32) (uint32, error) {
 	return 0, nil
 }
 

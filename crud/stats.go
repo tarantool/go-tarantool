@@ -13,6 +13,7 @@ import (
 // for execution by a Connection.
 type StatsRequest struct {
 	baseRequest
+
 	space option.String
 }
 
@@ -33,9 +34,9 @@ func (req StatsRequest) Space(space string) StatsRequest {
 // Body fills an encoder with the call request body.
 func (req StatsRequest) Body(res tarantool.SchemaResolver, enc *msgpack.Encoder) error {
 	if value, ok := req.space.Get(); ok {
-		req.impl = req.impl.Args([]interface{}{value})
+		req.impl = req.impl.Args([]any{value})
 	} else {
-		req.impl = req.impl.Args([]interface{}{})
+		req.impl = req.impl.Args([]any{})
 	}
 
 	return req.impl.Body(res, enc)

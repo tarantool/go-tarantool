@@ -350,7 +350,7 @@ func TestDatetimeTarantoolInterval(t *testing.T) {
 			t.Run(fmt.Sprintf("%s_to_%s", dti.ToTime(), dtj.ToTime()),
 				func(t *testing.T) {
 					req := NewCallRequest("call_datetime_interval").
-						Args([]interface{}{dti, dtj})
+						Args([]any{dti, dtj})
 					data, err := conn.Do(req).Get()
 					require.NoError(t, err, "Unable to call call_datetime_interval")
 					ival := dti.Interval(dtj)
@@ -361,11 +361,11 @@ func TestDatetimeTarantoolInterval(t *testing.T) {
 	}
 }
 
-func assertDatetimeIsEqual(t *testing.T, tuples []interface{}, tm time.Time) {
+func assertDatetimeIsEqual(t *testing.T, tuples []any, tm time.Time) {
 	t.Helper()
 
 	dtIndex := 0
-	tpl, ok := tuples[dtIndex].([]interface{})
+	tpl, ok := tuples[dtIndex].([]any)
 	require.True(t, ok, "Unexpected return value body")
 	require.Len(t, tpl, 2, "Unexpected return value body")
 	val, ok := tpl[dtIndex].(Datetime)
@@ -455,12 +455,12 @@ func TestCustomTimezone(t *testing.T) {
 	dt, err := MakeDatetime(tm)
 	require.NoError(t, err, "Unable to create datetime")
 
-	req := NewReplaceRequest(spaceTuple1).Tuple([]interface{}{dt, "payload"})
+	req := NewReplaceRequest(spaceTuple1).Tuple([]any{dt, "payload"})
 	data, err := conn.Do(req).Get()
 	require.NoError(t, err, "Datetime replace failed")
 	assertDatetimeIsEqual(t, data, tm)
 
-	tpl := data[0].([]interface{})
+	tpl := data[0].([]any)
 	respDt, ok := tpl[0].(Datetime)
 	require.True(t, ok, "Datetime doesn't match")
 	zone := respDt.ToTime().Location().String()
@@ -468,7 +468,7 @@ func TestCustomTimezone(t *testing.T) {
 	require.Equal(t, customZone, zone, "Expected zone")
 	require.Equal(t, zoneOffset, offset, "Expected offset")
 
-	delReq := NewDeleteRequest(spaceTuple1).Key([]interface{}{dt})
+	delReq := NewDeleteRequest(spaceTuple1).Key([]any{dt})
 	_, err = conn.Do(delReq).Get()
 	require.NoError(t, err, "Datetime delete failed")
 }
@@ -480,7 +480,7 @@ func tupleInsertSelectDelete(t *testing.T, conn *Connection, tm time.Time) {
 	require.NoError(t, err, "Unable to create Datetime from %s", tm)
 
 	// Insert tuple with datetime.
-	ins := NewInsertRequest(spaceTuple1).Tuple([]interface{}{dt, "payload"})
+	ins := NewInsertRequest(spaceTuple1).Tuple([]any{dt, "payload"})
 	_, err = conn.Do(ins).Get()
 	require.NoError(t, err, "Datetime insert failed")
 
@@ -492,13 +492,13 @@ func tupleInsertSelectDelete(t *testing.T, conn *Connection, tm time.Time) {
 		Offset(offset).
 		Limit(limit).
 		Iterator(IterEq).
-		Key([]interface{}{dt})
+		Key([]any{dt})
 	data, err := conn.Do(sel).Get()
 	require.NoError(t, err, "Datetime select failed")
 	assertDatetimeIsEqual(t, data, tm)
 
 	// Delete tuple with datetime.
-	del := NewDeleteRequest(spaceTuple1).Index(index).Key([]interface{}{dt})
+	del := NewDeleteRequest(spaceTuple1).Index(index).Key([]any{dt})
 	data, err = conn.Do(del).Get()
 	require.NoError(t, err, "Datetime delete failed")
 	assertDatetimeIsEqual(t, data, tm)
@@ -628,7 +628,7 @@ func TestDatetimeReplace(t *testing.T) {
 	dt, err := MakeDatetime(tm)
 	require.NoError(t, err, "Unable to create Datetime from %s", tm)
 
-	rep := NewReplaceRequest(spaceTuple1).Tuple([]interface{}{dt, "payload"})
+	rep := NewReplaceRequest(spaceTuple1).Tuple([]any{dt, "payload"})
 	data, err := conn.Do(rep).Get()
 	require.NoError(t, err, "Datetime replace failed")
 	assertDatetimeIsEqual(t, data, tm)
@@ -637,13 +637,13 @@ func TestDatetimeReplace(t *testing.T) {
 		Index(index).
 		Limit(1).
 		Iterator(IterEq).
-		Key([]interface{}{dt})
+		Key([]any{dt})
 	data, err = conn.Do(sel).Get()
 	require.NoError(t, err, "Datetime select failed")
 	assertDatetimeIsEqual(t, data, tm)
 
 	// Delete tuple with datetime.
-	del := NewDeleteRequest(spaceTuple1).Index(index).Key([]interface{}{dt})
+	del := NewDeleteRequest(spaceTuple1).Index(index).Key([]any{dt})
 	_, err = conn.Do(del).Get()
 	require.NoError(t, err, "Datetime delete failed")
 }
@@ -797,11 +797,11 @@ func TestCustomEncodeDecodeTuple1(t *testing.T) {
 	require.NoError(t, err, "Failed to replace")
 	require.Len(t, data, 1, "Response Body len")
 
-	tpl, ok := data[0].([]interface{})
+	tpl, ok := data[0].([]any)
 	require.True(t, ok, "Unexpected body of Replace")
 
 	// Delete the tuple.
-	del := NewDeleteRequest(spaceTuple2).Index(index).Key([]interface{}{cid})
+	del := NewDeleteRequest(spaceTuple2).Index(index).Key([]any{cid})
 	_, err = conn.Do(del).Get()
 	require.NoError(t, err, "Datetime delete failed")
 
@@ -813,11 +813,11 @@ func TestCustomEncodeDecodeTuple1(t *testing.T) {
 	require.True(t, ok, "Unexpected body of Replace (orig)")
 	assert.Equal(t, orig, origVal, "Unexpected body of Replace (orig)")
 
-	events, ok := tpl[2].([]interface{})
+	events, ok := tpl[2].([]any)
 	require.True(t, ok, "Unable to convert 2 field to []interface{}")
 
 	for i, tv := range []time.Time{tm1, tm2} {
-		dt, ok := events[i].([]interface{})[1].(Datetime)
+		dt, ok := events[i].([]any)[1].(Datetime)
 		require.True(t, ok, "Event datetime type")
 		assert.True(t, dt.ToTime().Equal(tv), "%v != %v", dt.ToTime(), tv)
 	}
@@ -831,7 +831,7 @@ func TestCustomDecodeFunction(t *testing.T) {
 
 	// Call function 'call_datetime_testdata' returning a custom tuples.
 	var tuple [][]Tuple2
-	call := NewCallRequest("call_datetime_testdata").Args([]interface{}{1})
+	call := NewCallRequest("call_datetime_testdata").Args([]any{1})
 	err := conn.Do(call).GetTyped(&tuple)
 	require.NoError(t, err, "Failed to CallTyped")
 
@@ -865,7 +865,7 @@ func TestCustomEncodeDecodeTuple5(t *testing.T) {
 	dt, err := MakeDatetime(tm)
 	require.NoError(t, err, "Unable to create Datetime from %s", tm)
 
-	ins := NewInsertRequest(spaceTuple1).Tuple([]interface{}{dt})
+	ins := NewInsertRequest(spaceTuple1).Tuple([]any{dt})
 	_, err = conn.Do(ins).Get()
 	require.NoError(t, err, "Datetime insert failed")
 
@@ -873,17 +873,17 @@ func TestCustomEncodeDecodeTuple5(t *testing.T) {
 		Index(index).
 		Limit(1).
 		Iterator(IterEq).
-		Key([]interface{}{dt})
+		Key([]any{dt})
 	data, errSel := conn.Do(sel).Get()
 	require.NoError(t, errSel, "Failed to Select")
-	tpl, ok := data[0].([]interface{})
+	tpl, ok := data[0].([]any)
 	require.True(t, ok, "Unexpected body of Select")
 	val, ok := tpl[0].(Datetime)
 	require.True(t, ok, "Unexpected body of Select")
 	require.True(t, val.ToTime().Equal(tm), "Unexpected body of Select")
 
 	// Teardown: delete a value.
-	del := NewDeleteRequest(spaceTuple1).Index(index).Key([]interface{}{dt})
+	del := NewDeleteRequest(spaceTuple1).Index(index).Key([]any{dt})
 	_, err = conn.Do(del).Get()
 	require.NoError(t, err, "Datetime delete failed")
 }

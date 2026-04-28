@@ -6,7 +6,7 @@ import (
 	"github.com/vmihailenco/msgpack/v5"
 )
 
-func untypedMapDecoder(dec *msgpack.Decoder) (interface{}, error) {
+func untypedMapDecoder(dec *msgpack.Decoder) (any, error) {
 	return dec.DecodeUntypedMap()
 }
 

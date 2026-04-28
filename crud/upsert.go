@@ -15,6 +15,7 @@ type UpsertOpts = SimpleOperationOpts
 // for execution by a Connection.
 type UpsertRequest struct {
 	spaceRequest
+
 	tuple      Tuple
 	operations []Operation
 	opts       UpsertOpts
@@ -62,7 +63,7 @@ func (req UpsertRequest) Opts(opts UpsertOpts) UpsertRequest {
 // Body fills an encoder with the call request body.
 func (req UpsertRequest) Body(res tarantool.SchemaResolver, enc *msgpack.Encoder) error {
 	if req.tuple == nil {
-		req.tuple = []interface{}{}
+		req.tuple = []any{}
 	}
 	args := upsertArgs{Space: req.space, Tuple: req.tuple,
 		Operations: req.operations, Opts: req.opts}
@@ -84,6 +85,7 @@ type UpsertObjectOpts = SimpleOperationOpts
 // `crud.upsert_object` for execution by a Connection.
 type UpsertObjectRequest struct {
 	spaceRequest
+
 	object     Object
 	operations []Operation
 	opts       UpsertObjectOpts

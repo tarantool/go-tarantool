@@ -15,6 +15,7 @@ type ReplaceOpts = SimpleOperationOpts
 // for execution by a Connection.
 type ReplaceRequest struct {
 	spaceRequest
+
 	tuple Tuple
 	opts  ReplaceOpts
 }
@@ -52,7 +53,7 @@ func (req ReplaceRequest) Opts(opts ReplaceOpts) ReplaceRequest {
 // Body fills an encoder with the call request body.
 func (req ReplaceRequest) Body(res tarantool.SchemaResolver, enc *msgpack.Encoder) error {
 	if req.tuple == nil {
-		req.tuple = []interface{}{}
+		req.tuple = []any{}
 	}
 	args := replaceArgs{Space: req.space, Tuple: req.tuple, Opts: req.opts}
 	req.impl = req.impl.Args(args)
@@ -73,6 +74,7 @@ type ReplaceObjectOpts = SimpleOperationObjectOpts
 // `crud.replace_object` for execution by a Connection.
 type ReplaceObjectRequest struct {
 	spaceRequest
+
 	object Object
 	opts   ReplaceObjectOpts
 }

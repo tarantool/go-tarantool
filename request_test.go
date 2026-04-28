@@ -41,7 +41,7 @@ type ValidSchemeResolver struct {
 	indexResolverCalls int
 }
 
-func (r *ValidSchemeResolver) ResolveSpace(s interface{}) (uint32, error) {
+func (r *ValidSchemeResolver) ResolveSpace(s any) (uint32, error) {
 	r.spaceResolverCalls++
 
 	var spaceNo uint32
@@ -56,7 +56,7 @@ func (r *ValidSchemeResolver) ResolveSpace(s interface{}) (uint32, error) {
 	return spaceNo, nil
 }
 
-func (r *ValidSchemeResolver) ResolveIndex(i interface{}, spaceNo uint32) (uint32, error) {
+func (r *ValidSchemeResolver) ResolveIndex(i any, spaceNo uint32) (uint32, error) {
 	r.indexResolverCalls++
 
 	var indexNo uint32
@@ -77,8 +77,8 @@ func (r *ValidSchemeResolver) NamesUseSupported() bool {
 
 var resolver ValidSchemeResolver
 
-func assertBodyCall(t testing.TB, requests []Request, errorMsg string) {
-	t.Helper()
+func assertBodyCall(tb testing.TB, requests []Request, errorMsg string) {
+	tb.Helper()
 
 	const errBegin = "An unexpected Request.Body() "
 	for _, req := range requests {
@@ -87,13 +87,13 @@ func assertBodyCall(t testing.TB, requests []Request, errorMsg string) {
 
 		err := req.Body(&resolver, enc)
 		if err != nil && errorMsg != "" && err.Error() != errorMsg {
-			assert.Failf(t, errBegin+"error", "%q expected %q", err.Error(), errorMsg)
+			assert.Failf(tb, errBegin+"error", "%q expected %q", err.Error(), errorMsg)
 		}
 		if err != nil && errorMsg == "" {
-			assert.Failf(t, errBegin+"error", "%q", err.Error())
+			assert.Failf(tb, errBegin+"error", "%q", err.Error())
 		}
 		if err == nil && errorMsg != "" {
-			assert.Failf(t, errBegin+"result", "expected error %q", errorMsg)
+			assert.Failf(tb, errBegin+"result", "expected error %q", errorMsg)
 		}
 	}
 }
@@ -307,7 +307,7 @@ func TestResponseDecode(t *testing.T) {
 
 		require.NoError(t, enc.EncodeMapLen(1))
 		require.NoError(t, enc.EncodeUint8(uint8(iproto.IPROTO_DATA)))
-		require.NoError(t, enc.Encode([]interface{}{'v', '2'}))
+		require.NoError(t, enc.Encode([]any{'v', '2'}))
 
 		resp, err := test.req.Response(header, bytes.NewBuffer(buf.Bytes()))
 		require.NoError(t, err)
@@ -317,7 +317,7 @@ func TestResponseDecode(t *testing.T) {
 
 		decodedInterface, err := resp.Decode()
 		require.NoError(t, err)
-		assert.Equal(t, []interface{}{'v', '2'}, decodedInterface)
+		assert.Equal(t, []any{'v', '2'}, decodedInterface)
 	}
 }
 
@@ -374,10 +374,10 @@ func TestResponseDecodeTyped(t *testing.T) {
 }
 
 type stubSchemeResolver struct {
-	space interface{}
+	space any
 }
 
-func (r stubSchemeResolver) ResolveSpace(s interface{}) (uint32, error) {
+func (r stubSchemeResolver) ResolveSpace(s any) (uint32, error) {
 	if id, ok := r.space.(uint32); ok {
 		return id, nil
 	}
@@ -387,7 +387,7 @@ func (r stubSchemeResolver) ResolveSpace(s interface{}) (uint32, error) {
 	return 0, fmt.Errorf("stub error message: %v", r.space)
 }
 
-func (stubSchemeResolver) ResolveIndex(i interface{}, spaceNo uint32) (uint32, error) {
+func (stubSchemeResolver) ResolveIndex(i any, spaceNo uint32) (uint32, error) {
 	return 0, nil
 }
 

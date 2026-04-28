@@ -123,6 +123,7 @@ func (c *tntConn) ProtocolInfo() ProtocolInfo {
 // protocolConn is a wrapper for connections, so they contain the ProtocolInfo.
 type protocolConn struct {
 	Conn
+
 	protocolInfo ProtocolInfo
 }
 
@@ -134,6 +135,7 @@ func (c *protocolConn) ProtocolInfo() ProtocolInfo {
 // greetingConn is a wrapper for connections, so they contain the Greeting.
 type greetingConn struct {
 	Conn
+
 	greeting Greeting
 }
 
@@ -219,6 +221,7 @@ func (a fdAddr) String() string {
 
 type fdConn struct {
 	net.Conn
+
 	Addr fdAddr
 }
 

@@ -21,7 +21,7 @@ type MockResponse struct {
 // body should be passed as a structure to be encoded.
 // The encoded body is served as response data and will be decoded once the
 // response is decoded.
-func NewMockResponse(t T, body interface{}) *MockResponse {
+func NewMockResponse(t T, body any) *MockResponse {
 	t.Helper()
 
 	buf := bytes.NewBuffer([]byte{})
@@ -59,7 +59,7 @@ func (resp *MockResponse) Release() {
 }
 
 // Decode returns the result of decoding the response data as slice.
-func (resp *MockResponse) Decode() ([]interface{}, error) {
+func (resp *MockResponse) Decode() ([]any, error) {
 	if resp.data == nil {
 		return nil, nil
 	}
@@ -68,7 +68,7 @@ func (resp *MockResponse) Decode() ([]interface{}, error) {
 }
 
 // DecodeTyped returns the result of decoding the response data.
-func (resp *MockResponse) DecodeTyped(res interface{}) error {
+func (resp *MockResponse) DecodeTyped(res any) error {
 	if resp.data == nil {
 		return nil
 	}

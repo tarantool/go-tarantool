@@ -8,8 +8,8 @@ import (
 
 // Future is an interface that handle asynchronous request.
 type Future interface {
-	Get() ([]interface{}, error)
-	GetTyped(result interface{}) error
+	Get() ([]any, error)
+	GetTyped(result any) error
 	GetResponse() (Response, error)
 	Release()
 	WaitChan() <-chan struct{}
@@ -152,7 +152,7 @@ func (fut *future) GetResponse() (Response, error) {
 //
 // "error" could be Error, if it is error returned by Tarantool,
 // or ClientError, if something bad happens in a client process.
-func (fut *future) Get() ([]interface{}, error) {
+func (fut *future) Get() ([]any, error) {
 	fut.wait()
 	if fut.err != nil {
 		return nil, fut.err
@@ -164,7 +164,7 @@ func (fut *future) Get() ([]interface{}, error) {
 // It is could be much faster than Get() function.
 //
 // Note: Tarantool usually returns array of tuples (except for Eval and Call actions).
-func (fut *future) GetTyped(result interface{}) error {
+func (fut *future) GetTyped(result any) error {
 	fut.wait()
 	if fut.err != nil {
 		return fut.err

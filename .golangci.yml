@@ -23,7 +23,6 @@ linters:
     - cyclop
     - depguard
     - dupl
-    - embeddedstructfieldcheck
     - err113
     - errname
     - errorlint
@@ -45,13 +44,8 @@ linters:
     - intrange
     - ireturn
     - maintidx
-    - makezero
-    - misspell
     - mnd
-    - modernize
-    - nakedret
     - nestif
-    - nilerr
     - nilnil
     - nlreturn
     - noctx
@@ -67,7 +61,6 @@ linters:
     - tparallel
     - testableexamples
     - testpackage
-    - thelper
     - unqueryvet
     - varnamelen
     - wrapcheck

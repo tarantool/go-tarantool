@@ -73,7 +73,7 @@ type SetRequest struct {
 	impl *tarantool.UpdateRequest
 }
 
-func newSetRequest(setting string, value interface{}) *SetRequest {
+func newSetRequest(setting string, value any) *SetRequest {
 	return &SetRequest{
 		impl: tarantool.NewUpdateRequest(sessionSettingsSpace).
 			Key(tarantool.StringKey{S: setting}).

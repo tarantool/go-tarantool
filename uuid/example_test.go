@@ -48,7 +48,7 @@ func Example() {
 	}
 
 	data, err := client.Do(tarantool.NewReplaceRequest(spaceNo).
-		Tuple([]interface{}{id}),
+		Tuple([]any{id}),
 	).Get()
 
 	fmt.Println("UUID tuple replace")

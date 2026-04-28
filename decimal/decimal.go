@@ -234,7 +234,7 @@ func (d Decimal) stringFromInt64(value int64, scale int) string {
 
 		// Add leading zeros.
 		zeros := scale - length
-		for i := 0; i < zeros; i++ {
+		for range zeros {
 			buf[pos] = '0'
 			pos++
 		}
@@ -328,7 +328,7 @@ func (d Decimal) handleMinInt64(scale int) string {
 		pos += 2
 
 		zeros := scale - length
-		for i := 0; i < zeros; i++ {
+		for range zeros {
 			buf[pos] = '0'
 			pos++
 		}

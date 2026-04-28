@@ -22,6 +22,7 @@ type TupleOperationsData struct {
 // `crud.upsert_many` for execution by a Connection.
 type UpsertManyRequest struct {
 	spaceRequest
+
 	tuplesOperationsData []TupleOperationsData
 	opts                 UpsertManyOpts
 }
@@ -88,6 +89,7 @@ type ObjectOperationsData struct {
 // `crud.upsert_object_many` for execution by a Connection.
 type UpsertObjectManyRequest struct {
 	spaceRequest
+
 	objectsOperationsData []ObjectOperationsData
 	opts                  UpsertObjectManyOpts
 }
