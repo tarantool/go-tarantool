@@ -43,7 +43,7 @@ type BoxError struct {
 	// Fields are additional fields depending on error type. For example, if
 	// type is "AccessDeniedError", then it will include "object_type",
 	// "object_name", "access_type".
-	Fields map[string]interface{}
+	Fields map[string]any
 	// Prev is the previous error in stack.
 	Prev *BoxError
 }
@@ -132,9 +132,9 @@ func decodeBoxError(d *msgpack.Decoder) (*BoxError, error) {
 						}
 					case keyErrorFields:
 						var mapk string
-						var mapv interface{}
+						var mapv any
 
-						errorStack[i].Fields = make(map[string]interface{})
+						errorStack[i].Fields = make(map[string]any)
 
 						if l2, err = d.DecodeMapLen(); err != nil {
 							return nil, err

@@ -15,6 +15,7 @@ type UpdateOpts = SimpleOperationOpts
 // for execution by a Connection.
 type UpdateRequest struct {
 	spaceRequest
+
 	key        Tuple
 	operations []Operation
 	opts       UpdateOpts
@@ -62,7 +63,7 @@ func (req UpdateRequest) Opts(opts UpdateOpts) UpdateRequest {
 // Body fills an encoder with the call request body.
 func (req UpdateRequest) Body(res tarantool.SchemaResolver, enc *msgpack.Encoder) error {
 	if req.key == nil {
-		req.key = []interface{}{}
+		req.key = []any{}
 	}
 	args := updateArgs{Space: req.space, Key: req.key,
 		Operations: req.operations, Opts: req.opts}

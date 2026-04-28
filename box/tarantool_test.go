@@ -24,22 +24,24 @@ var dialer = tarantool.NetDialer{
 	Password: "test",
 }
 
-func validateInfo(t testing.TB, info box.Info) {
+func validateInfo(tb testing.TB, info box.Info) {
+	tb.Helper()
+
 	var err error
 
 	// Check all fields run correctly.
 	_, err = uuid.Parse(info.UUID)
-	require.NoErrorf(t, err, "validate instance uuid is valid")
+	require.NoErrorf(tb, err, "validate instance uuid is valid")
 
-	require.NotEmpty(t, info.Version)
+	require.NotEmpty(tb, info.Version)
 	// Check that pid parsed correctly.
-	require.NotEqual(t, 0, info.PID)
+	require.NotEqual(tb, 0, info.PID)
 
 	// Check replication is parsed correctly.
-	require.NotEmpty(t, info.Replication)
+	require.NotEmpty(tb, info.Replication)
 
 	// Check one replica uuid is equal system uuid.
-	require.Equal(t, info.UUID, info.Replication[1].UUID)
+	require.Equal(tb, info.UUID, info.Replication[1].UUID)
 }
 
 func TestBox_Sugar_Info(t *testing.T) {

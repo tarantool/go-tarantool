@@ -123,12 +123,12 @@ import (
 func logMsgpackAsJsonConvert(t *testing.T, data []byte) {
 	t.Helper()
 
-	var decodedMsgpack map[int]interface{}
+	var decodedMsgpack map[int]any
 
 	decoder := msgpack.NewDecoder(bytes.NewReader(data))
 	require.NoError(t, decoder.Decode(&decodedMsgpack))
 
-	decodedConvertedMsgpack := map[string]interface{}{}
+	decodedConvertedMsgpack := map[string]any{}
 	for k, v := range decodedMsgpack {
 		decodedConvertedMsgpack[fmt.Sprintf("%s[%d]", iproto.Key(k).String(), k)] = v
 	}
@@ -136,7 +136,7 @@ func logMsgpackAsJsonConvert(t *testing.T, data []byte) {
 	encodedJson, err := json.MarshalIndent(decodedConvertedMsgpack, "", "  ")
 	require.NoError(t, err, "failed to convert msgpack to json")
 
-	for _, line := range bytes.Split(encodedJson, []byte("\n")) {
+	for line := range bytes.SplitSeq(encodedJson, []byte("\n")) {
 		t.Log(string(line))
 	}
 }
@@ -187,6 +187,8 @@ func (tc goldenTestCase) Execute(t *testing.T) {
 		}
 
 		tc.Test = func(t *testing.T) tarantool.Request {
+			t.Helper()
+
 			return tc.Request
 		}
 	}
@@ -225,7 +227,7 @@ func (tc goldenTestCase) Execute(t *testing.T) {
 
 type dummySchemaResolver struct{}
 
-func interfaceToUint32(in interface{}) (uint32, bool) {
+func interfaceToUint32(in any) (uint32, bool) {
 	switch val := reflect.ValueOf(in); val.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		return uint32(val.Int()), true
@@ -236,14 +238,14 @@ func interfaceToUint32(in interface{}) (uint32, bool) {
 	}
 }
 
-func (d dummySchemaResolver) ResolveSpace(in interface{}) (uint32, error) {
+func (d dummySchemaResolver) ResolveSpace(in any) (uint32, error) {
 	if num, ok := interfaceToUint32(in); ok {
 		return num, nil
 	}
 	return 0, fmt.Errorf("unexpected space type %T", in)
 }
 
-func (d dummySchemaResolver) ResolveIndex(in interface{}, _ uint32) (uint32, error) {
+func (d dummySchemaResolver) ResolveIndex(in any, _ uint32) (uint32, error) {
 	if in == nil {
 		return 0, nil
 	} else if num, ok := interfaceToUint32(in); ok {
@@ -259,7 +261,7 @@ func (d dummySchemaResolver) NamesUseSupported() bool {
 func TestGolden(t *testing.T) {
 	precachedUUID := uuid.MustParse("819308aa-f0c1-4b74-9861-c4ab5a266308")
 	precachedTime := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	precachedTuple := []interface{}{1, "args", 3, precachedTime, precachedUUID, 1.2}
+	precachedTuple := []any{1, "args", 3, precachedTime, precachedUUID, 1.2}
 
 	precachedUpdateOps := tarantool.NewOperations().
 		Add(1, "test").
@@ -322,13 +324,13 @@ func TestGolden(t *testing.T) {
 		{
 			Name: "call-with-args.msgpack",
 			Request: tarantool.NewCallRequest("function.name").Args(
-				[]interface{}{1, 2, 3},
+				[]any{1, 2, 3},
 			),
 		},
 		{
 			Name: "call-with-args-mixed.msgpack",
 			Request: tarantool.NewCallRequest("function.name").Args(
-				[]interface{}{1, "args", 3, precachedTime, precachedUUID, 1.2},
+				[]any{1, "args", 3, precachedTime, precachedUUID, 1.2},
 			),
 		},
 		{
@@ -366,22 +368,22 @@ func TestGolden(t *testing.T) {
 		{
 			Name: "delete-snumber-inumber.msgpack",
 			Request: tarantool.NewDeleteRequest(246).
-				Index(123).Key([]interface{}{123}),
+				Index(123).Key([]any{123}),
 		},
 		{
 			Name: "delete-snumber-iname.msgpack",
 			Request: tarantool.NewDeleteRequest(246).
-				Index("index_name").Key([]interface{}{123}),
+				Index("index_name").Key([]any{123}),
 		},
 		{
 			Name: "delete-sname-inumber.msgpack",
 			Request: tarantool.NewDeleteRequest("table_name").
-				Index(123).Key([]interface{}{123}),
+				Index(123).Key([]any{123}),
 		},
 		{
 			Name: "delete-sname-iname.msgpack",
 			Request: tarantool.NewDeleteRequest("table_name").
-				Index("index_name").Key([]interface{}{123}),
+				Index("index_name").Key([]any{123}),
 		},
 		{
 			Name: "replace-sname.msgpack",
@@ -410,19 +412,19 @@ func TestGolden(t *testing.T) {
 		{
 			Name: "update-snumber-iname.msgpack",
 			Request: tarantool.NewUpdateRequest(123).
-				Index("index_name").Key([]interface{}{123}).
+				Index("index_name").Key([]any{123}).
 				Operations(precachedUpdateOps),
 		},
 		{
 			Name: "update-sname-iname.msgpack",
 			Request: tarantool.NewUpdateRequest("table_name").
-				Index("index_name").Key([]interface{}{123}).
+				Index("index_name").Key([]any{123}).
 				Operations(precachedUpdateOps),
 		},
 		{
 			Name: "update-sname-inumber.msgpack",
 			Request: tarantool.NewUpdateRequest("table_name").
-				Index(123).Key([]interface{}{123}).
+				Index(123).Key([]any{123}).
 				Operations(precachedUpdateOps),
 		},
 		{

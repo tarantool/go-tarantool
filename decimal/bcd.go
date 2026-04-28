@@ -154,7 +154,7 @@ func encodeStringToBCD(buf string) ([]byte, error) {
 			highNibble = false
 		} else {
 			if len(byteBuf) == 0 {
-				byteBuf = make([]byte, 1)
+				byteBuf = []byte{0}
 			}
 			// Add a digit to a low nibble.
 			lowByteIdx := len(byteBuf) - 1

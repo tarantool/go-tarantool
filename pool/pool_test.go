@@ -589,7 +589,7 @@ func TestConnSuccessfullyDuplicates(t *testing.T) {
 	server := servers[0]
 
 	var instances []pool.Instance
-	for i := 0; i < 4; i++ {
+	for i := range 4 {
 		instances = append(instances, pool.Instance{
 			Name: fmt.Sprintf("c%d", i),
 			Dialer: tarantool.NetDialer{
@@ -1159,7 +1159,7 @@ func TestRemove_concurrent(t *testing.T) {
 	)
 
 	wg.Add(concurrency)
-	for i := 0; i < concurrency; i++ {
+	for range concurrency {
 		go func() {
 			defer wg.Done()
 			err := connPool.Remove(servers[1])
@@ -1311,7 +1311,7 @@ func TestCloseGraceful(t *testing.T) {
 `
 
 	evalSleep := 3 // In seconds.
-	req := tarantool.NewEvalRequest(eval).Args([]interface{}{evalSleep})
+	req := tarantool.NewEvalRequest(eval).Args([]any{evalSleep})
 	fut := connPool.Do(req, pool.ModeAny)
 	go func() {
 		err := connPool.CloseGraceful()
@@ -1437,13 +1437,13 @@ func TestHandlerOpenUpdateClose(t *testing.T) {
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
 	_, err = connPool.Do(tarantool.NewCallRequest("box.cfg").
-		Args([]interface{}{map[string]bool{
+		Args([]any{map[string]bool{
 			"read_only": true,
 		}}),
 		pool.ModeRW).GetResponse()
 	require.NoErrorf(t, err, "failed to make ro")
 
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		// Wait for read_only update, it should report about close connection
 		// with old role.
 		if atomic.LoadUint32(&h.discovered) >= 3 {
@@ -1461,7 +1461,7 @@ func TestHandlerOpenUpdateClose(t *testing.T) {
 
 	_ = connPool.Close()
 
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		// Wait for close of all connections.
 		if atomic.LoadUint32(&h.deactivated) >= 3 {
 			break
@@ -1729,13 +1729,13 @@ func TestDoWithCallRequest(t *testing.T) {
 	// ModePreferRO
 	data, err := connPool.Do(
 		tarantool.NewCallRequest("box.info").
-			Args([]interface{}{}),
+			Args([]any{}),
 		pool.ModePreferRO).Get()
 	require.NoErrorf(t, err, "failed to Do with CallRequest")
 	require.NotNilf(t, data, "response is nil after Do with CallRequest")
 	require.GreaterOrEqualf(t, len(data), 1, "response.Data is empty after Do with CallRequest")
 
-	val := data[0].(map[interface{}]interface{})["ro"]
+	val := data[0].(map[any]any)["ro"]
 	ro, ok := val.(bool)
 	require.Truef(t, ok, "expected `true` with mode `ModePreferRO`")
 	require.Truef(t, ro, "expected `true` with mode `ModePreferRO`")
@@ -1743,13 +1743,13 @@ func TestDoWithCallRequest(t *testing.T) {
 	// ModePreferRW
 	data, err = connPool.Do(
 		tarantool.NewCallRequest("box.info").
-			Args([]interface{}{}),
+			Args([]any{}),
 		pool.ModePreferRW).Get()
 	require.NoErrorf(t, err, "failed to Do with CallRequest")
 	require.NotNilf(t, data, "response is nil after Do with CallRequest")
 	require.GreaterOrEqualf(t, len(data), 1, "response.Data is empty after Do with CallRequest")
 
-	val = data[0].(map[interface{}]interface{})["ro"]
+	val = data[0].(map[any]any)["ro"]
 	ro, ok = val.(bool)
 	require.Truef(t, ok, "expected `false` with mode `ModePreferRW`")
 	require.Falsef(t, ro, "expected `false` with mode `ModePreferRW`")
@@ -1757,13 +1757,13 @@ func TestDoWithCallRequest(t *testing.T) {
 	// ModeRO
 	data, err = connPool.Do(
 		tarantool.NewCallRequest("box.info").
-			Args([]interface{}{}),
+			Args([]any{}),
 		pool.ModeRO).Get()
 	require.NoErrorf(t, err, "failed to Do with CallRequest")
 	require.NotNilf(t, data, "response is nil after Do with CallRequest")
 	require.GreaterOrEqualf(t, len(data), 1, "response.Data is empty after Do with CallRequest")
 
-	val = data[0].(map[interface{}]interface{})["ro"]
+	val = data[0].(map[any]any)["ro"]
 	ro, ok = val.(bool)
 	require.Truef(t, ok, "expected `true` with mode `ModeRO`")
 	require.Truef(t, ro, "expected `true` with mode `ModeRO`")
@@ -1771,13 +1771,13 @@ func TestDoWithCallRequest(t *testing.T) {
 	// ModeRW
 	data, err = connPool.Do(
 		tarantool.NewCallRequest("box.info").
-			Args([]interface{}{}),
+			Args([]any{}),
 		pool.ModeRW).Get()
 	require.NoErrorf(t, err, "failed to Do with CallRequest")
 	require.NotNilf(t, data, "response is nil after Do with CallRequest")
 	require.GreaterOrEqualf(t, len(data), 1, "response.Data is empty after Do with CallRequest")
 
-	val = data[0].(map[interface{}]interface{})["ro"]
+	val = data[0].(map[any]any)["ro"]
 	ro, ok = val.(bool)
 	require.Truef(t, ok, "expected `false` with mode `ModeRW`")
 	require.Falsef(t, ro, "expected `false` with mode `ModeRW`")
@@ -1801,7 +1801,7 @@ func TestDoWithEvalRequest(t *testing.T) {
 	// ModePreferRO
 	data, err := connPool.Do(
 		tarantool.NewEvalRequest("return box.info().ro").
-			Args([]interface{}{}),
+			Args([]any{}),
 		pool.ModePreferRO).Get()
 	require.NoErrorf(t, err, "failed to Do with EvalRequest")
 	require.NotNilf(t, data, "response is nil after Do with EvalRequest")
@@ -1814,7 +1814,7 @@ func TestDoWithEvalRequest(t *testing.T) {
 	// ModePreferRW
 	data, err = connPool.Do(
 		tarantool.NewEvalRequest("return box.info().ro").
-			Args([]interface{}{}),
+			Args([]any{}),
 		pool.ModePreferRW).Get()
 	require.NoErrorf(t, err, "failed to Do with EvalRequest")
 	require.NotNilf(t, data, "response is nil after Do with EvalRequest")
@@ -1827,7 +1827,7 @@ func TestDoWithEvalRequest(t *testing.T) {
 	// ModeRO
 	data, err = connPool.Do(
 		tarantool.NewEvalRequest("return box.info().ro").
-			Args([]interface{}{}),
+			Args([]any{}),
 		pool.ModeRO).Get()
 	require.NoErrorf(t, err, "failed to Do with EvalRequest")
 	require.NotNilf(t, data, "response is nil after Do with EvalRequest")
@@ -1840,7 +1840,7 @@ func TestDoWithEvalRequest(t *testing.T) {
 	// ModeRW
 	data, err = connPool.Do(
 		tarantool.NewEvalRequest("return box.info().ro").
-			Args([]interface{}{}),
+			Args([]any{}),
 		pool.ModeRW).Get()
 	require.NoErrorf(t, err, "failed to Do with EvalRequest")
 	require.NotNilf(t, data, "response is nil after Do with EvalRequest")
@@ -1894,12 +1894,12 @@ func TestDoWithExecuteRequest(t *testing.T) {
 	request := "SELECT NAME0, NAME1 FROM SQL_TEST WHERE NAME0 == 1;"
 	mem := []Member{}
 
-	fut := connPool.Do(tarantool.NewExecuteRequest(request).Args([]interface{}{}), pool.ModeAny)
+	fut := connPool.Do(tarantool.NewExecuteRequest(request).Args([]any{}), pool.ModeAny)
 	data, err := fut.Get()
 	require.NoErrorf(t, err, "failed to Do with ExecuteRequest")
 	require.NotNilf(t, data, "response is nil after Execute")
 	require.GreaterOrEqualf(t, len(data), 1, "response.Data is empty after Do with ExecuteRequest")
-	require.Lenf(t, data[0].([]interface{}), 2, "unexpected response")
+	require.Lenf(t, data[0].([]any), 2, "unexpected response")
 	err = fut.GetTyped(&mem)
 	require.NoErrorf(t, err, "Unable to GetTyped of fut")
 	require.Lenf(t, mem, 1, "wrong count of result")
@@ -2024,7 +2024,7 @@ func TestRoundRobinStrategy_NoReplica(t *testing.T) {
 	// ModeRO
 	_, err = connPool.Do(
 		tarantool.NewEvalRequest("return box.cfg.listen").
-			Args([]interface{}{}),
+			Args([]any{}),
 		pool.ModeRO).Get()
 	require.Errorf(t, err, "expected to fail after Do with EvalRequest, but error is nil")
 	require.Equal(t, "can't find ro instance in pool", err.Error())
@@ -2101,7 +2101,7 @@ func TestRoundRobinStrategy_NoMaster(t *testing.T) {
 	// ModeRW
 	_, err = connPool.Do(
 		tarantool.NewEvalRequest("return box.cfg.listen").
-			Args([]interface{}{}),
+			Args([]any{}),
 		pool.ModeRW).Get()
 	require.Errorf(t, err, "expected to fail after Do with EvalRequest, but error is nil")
 	require.Equal(t, "can't find rw instance in pool", err.Error())
@@ -2348,13 +2348,13 @@ func TestDoWithInsertRequest(t *testing.T) {
 
 	// ModeRW
 	data, err := connPool.Do(tarantool.NewInsertRequest(spaceName).
-		Tuple([]interface{}{"rw_insert_key", "rw_insert_value"}),
+		Tuple([]any{"rw_insert_key", "rw_insert_value"}),
 		pool.ModeRW).Get()
 	require.NoErrorf(t, err, "failed to Insert")
 	require.NotNilf(t, data, "response is nil after Insert")
 	require.Lenf(t, data, 1, "response Body len != 1 after Insert")
 
-	tpl, ok := data[0].([]interface{})
+	tpl, ok := data[0].([]any)
 	require.Truef(t, ok, "unexpected body of Insert")
 	require.Lenf(t, tpl, 2, "unexpected body of Insert")
 
@@ -2375,12 +2375,12 @@ func TestDoWithInsertRequest(t *testing.T) {
 		Index(indexNo).
 		Limit(1).
 		Iterator(tarantool.IterEq).
-		Key([]interface{}{"rw_insert_key"})
+		Key([]any{"rw_insert_key"})
 	data, err = conn.Do(sel).Get()
 	require.NoErrorf(t, err, "failed to Select")
 	require.Lenf(t, data, 1, "response Body len != 1 after Select")
 
-	tpl, ok = data[0].([]interface{})
+	tpl, ok = data[0].([]any)
 	require.Truef(t, ok, "unexpected body of Select")
 	require.Lenf(t, tpl, 2, "unexpected body of Select")
 
@@ -2394,12 +2394,12 @@ func TestDoWithInsertRequest(t *testing.T) {
 
 	// ModePreferRW
 	data, err = connPool.Do(tarantool.NewInsertRequest(spaceName).Tuple(
-		[]interface{}{"preferRW_insert_key", "preferRW_insert_value"}), pool.ModePreferRW).Get()
+		[]any{"preferRW_insert_key", "preferRW_insert_value"}), pool.ModePreferRW).Get()
 	require.NoErrorf(t, err, "failed to Insert")
 	require.NotNilf(t, data, "response is nil after Insert")
 	require.Lenf(t, data, 1, "response Body len != 1 after Insert")
 
-	tpl, ok = data[0].([]interface{})
+	tpl, ok = data[0].([]any)
 	require.Truef(t, ok, "unexpected body of Insert")
 	require.Lenf(t, tpl, 2, "unexpected body of Insert")
 
@@ -2415,12 +2415,12 @@ func TestDoWithInsertRequest(t *testing.T) {
 		Index(indexNo).
 		Limit(1).
 		Iterator(tarantool.IterEq).
-		Key([]interface{}{"preferRW_insert_key"})
+		Key([]any{"preferRW_insert_key"})
 	data, err = conn.Do(sel).Get()
 	require.NoErrorf(t, err, "failed to Select")
 	require.Lenf(t, data, 1, "response Body len != 1 after Select")
 
-	tpl, ok = data[0].([]interface{})
+	tpl, ok = data[0].([]any)
 	require.Truef(t, ok, "unexpected body of Select")
 	require.Lenf(t, tpl, 2, "unexpected body of Select")
 
@@ -2453,12 +2453,12 @@ func TestDoWithDeleteRequest(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, makeDialer(servers[2]), connOpts)
 	defer func() { _ = conn.Close() }()
 
-	ins := tarantool.NewInsertRequest(spaceNo).Tuple([]interface{}{"delete_key", "delete_value"})
+	ins := tarantool.NewInsertRequest(spaceNo).Tuple([]any{"delete_key", "delete_value"})
 	data, err := conn.Do(ins).Get()
 	require.NoErrorf(t, err, "failed to Insert")
 	require.Lenf(t, data, 1, "response Body len != 1 after Insert")
 
-	tpl, ok := data[0].([]interface{})
+	tpl, ok := data[0].([]any)
 	require.Truef(t, ok, "unexpected body of Insert")
 	require.Lenf(t, tpl, 2, "unexpected body of Insert")
 
@@ -2473,13 +2473,13 @@ func TestDoWithDeleteRequest(t *testing.T) {
 	data, err = connPool.Do(
 		tarantool.NewDeleteRequest(spaceName).
 			Index(indexNo).
-			Key([]interface{}{"delete_key"}),
+			Key([]any{"delete_key"}),
 		pool.ModeRW).Get()
 	require.NoErrorf(t, err, "failed to Do with DeleteRequest")
 	require.NotNilf(t, data, "response is nil after Do with DeleteRequest")
 	require.Lenf(t, data, 1, "response Body len != 1 after Do with DeleteRequest")
 
-	tpl, ok = data[0].([]interface{})
+	tpl, ok = data[0].([]any)
 	require.Truef(t, ok, "unexpected body of Do with DeleteRequest")
 	require.Lenf(t, tpl, 2, "unexpected body of Do with DeleteRequest")
 
@@ -2495,7 +2495,7 @@ func TestDoWithDeleteRequest(t *testing.T) {
 		Index(indexNo).
 		Limit(1).
 		Iterator(tarantool.IterEq).
-		Key([]interface{}{"delete_key"})
+		Key([]any{"delete_key"})
 	data, err = conn.Do(sel).Get()
 	require.NoErrorf(t, err, "failed to Select")
 	require.Emptyf(t, data, "response Body len != 0 after Select")
@@ -2523,7 +2523,7 @@ func TestDoWithUpsertRequest(t *testing.T) {
 
 	// ModeRW
 	data, err := connPool.Do(tarantool.NewUpsertRequest(spaceName).Tuple(
-		[]interface{}{"upsert_key", "upsert_value"}).Operations(
+		[]any{"upsert_key", "upsert_value"}).Operations(
 		tarantool.NewOperations().Assign(1, "new_value")), pool.ModeRW).Get()
 	require.NoErrorf(t, err, "failed to Upsert")
 	require.NotNilf(t, data, "response is nil after Upsert")
@@ -2532,12 +2532,12 @@ func TestDoWithUpsertRequest(t *testing.T) {
 		Index(indexNo).
 		Limit(1).
 		Iterator(tarantool.IterEq).
-		Key([]interface{}{"upsert_key"})
+		Key([]any{"upsert_key"})
 	data, err = conn.Do(sel).Get()
 	require.NoErrorf(t, err, "failed to Select")
 	require.Lenf(t, data, 1, "response Body len != 1 after Select")
 
-	tpl, ok := data[0].([]interface{})
+	tpl, ok := data[0].([]any)
 	require.Truef(t, ok, "unexpected body of Select")
 	require.Lenf(t, tpl, 2, "unexpected body of Select")
 
@@ -2551,7 +2551,7 @@ func TestDoWithUpsertRequest(t *testing.T) {
 
 	// ModePreferRW
 	data, err = connPool.Do(tarantool.NewUpsertRequest(
-		spaceName).Tuple([]interface{}{"upsert_key", "upsert_value"}).Operations(
+		spaceName).Tuple([]any{"upsert_key", "upsert_value"}).Operations(
 		tarantool.NewOperations().Assign(1, "new_value")), pool.ModePreferRW).Get()
 
 	require.NoErrorf(t, err, "failed to Upsert")
@@ -2561,7 +2561,7 @@ func TestDoWithUpsertRequest(t *testing.T) {
 	require.NoErrorf(t, err, "failed to Select")
 	require.Lenf(t, data, 1, "response Body len != 1 after Select")
 
-	tpl, ok = data[0].([]interface{})
+	tpl, ok = data[0].([]any)
 	require.Truef(t, ok, "unexpected body of Select")
 	require.Lenf(t, tpl, 2, "unexpected body of Select")
 
@@ -2595,12 +2595,12 @@ func TestDoWithUpdateRequest(t *testing.T) {
 	defer func() { _ = conn.Close() }()
 
 	ins := tarantool.NewInsertRequest(spaceNo).
-		Tuple([]interface{}{"update_key", "update_value"})
+		Tuple([]any{"update_key", "update_value"})
 	data, err := conn.Do(ins).Get()
 	require.NoErrorf(t, err, "failed to Insert")
 	require.Lenf(t, data, 1, "response Body len != 1 after Insert")
 
-	tpl, ok := data[0].([]interface{})
+	tpl, ok := data[0].([]any)
 	require.Truef(t, ok, "unexpected body of Insert")
 	require.Lenf(t, tpl, 2, "unexpected body of Insert")
 
@@ -2615,7 +2615,7 @@ func TestDoWithUpdateRequest(t *testing.T) {
 	// ModeRW
 	resp, err := connPool.Do(tarantool.NewUpdateRequest(spaceName).
 		Index(indexNo).
-		Key([]interface{}{"update_key"}).
+		Key([]any{"update_key"}).
 		Operations(tarantool.NewOperations().Assign(1, "new_value")),
 		pool.ModeRW).Get()
 	require.NoErrorf(t, err, "failed to Update")
@@ -2625,12 +2625,12 @@ func TestDoWithUpdateRequest(t *testing.T) {
 		Index(indexNo).
 		Limit(1).
 		Iterator(tarantool.IterEq).
-		Key([]interface{}{"update_key"})
+		Key([]any{"update_key"})
 	data, err = conn.Do(sel).Get()
 	require.NoErrorf(t, err, "failed to Select")
 	require.Lenf(t, data, 1, "response Body len != 1 after Select")
 
-	tpl, ok = data[0].([]interface{})
+	tpl, ok = data[0].([]any)
 	require.Truef(t, ok, "unexpected body of Select")
 	require.Lenf(t, tpl, 2, "unexpected body of Select")
 
@@ -2645,7 +2645,7 @@ func TestDoWithUpdateRequest(t *testing.T) {
 	// ModePreferRW
 	resp, err = connPool.Do(tarantool.NewUpdateRequest(spaceName).
 		Index(indexNo).
-		Key([]interface{}{"update_key"}).
+		Key([]any{"update_key"}).
 		Operations(tarantool.NewOperations().Assign(1, "another_value")),
 		pool.ModePreferRW).Get()
 
@@ -2656,7 +2656,7 @@ func TestDoWithUpdateRequest(t *testing.T) {
 	require.NoErrorf(t, err, "failed to Select")
 	require.Lenf(t, data, 1, "response Body len != 1 after Select")
 
-	tpl, ok = data[0].([]interface{})
+	tpl, ok = data[0].([]any)
 	require.Truef(t, ok, "unexpected body of Select")
 	require.Lenf(t, tpl, 2, "unexpected body of Select")
 
@@ -2690,12 +2690,12 @@ func TestDoWithReplaceRequest(t *testing.T) {
 	defer func() { _ = conn.Close() }()
 
 	ins := tarantool.NewInsertRequest(spaceNo).
-		Tuple([]interface{}{"replace_key", "replace_value"})
+		Tuple([]any{"replace_key", "replace_value"})
 	data, err := conn.Do(ins).Get()
 	require.NoErrorf(t, err, "failed to Insert")
 	require.Lenf(t, data, 1, "response Body len != 1 after Insert")
 
-	tpl, ok := data[0].([]interface{})
+	tpl, ok := data[0].([]any)
 	require.Truef(t, ok, "unexpected body of Insert")
 	require.Lenf(t, tpl, 2, "unexpected body of Insert")
 
@@ -2709,7 +2709,7 @@ func TestDoWithReplaceRequest(t *testing.T) {
 
 	// ModeRW
 	resp, err := connPool.Do(tarantool.NewReplaceRequest(spaceNo).
-		Tuple([]interface{}{"new_key", "new_value"}),
+		Tuple([]any{"new_key", "new_value"}),
 		pool.ModeRW).Get()
 	require.NoErrorf(t, err, "failed to Do with ReplaceRequest")
 	require.NotNilf(t, resp, "response is nil after Do with ReplaceRequest")
@@ -2718,12 +2718,12 @@ func TestDoWithReplaceRequest(t *testing.T) {
 		Index(indexNo).
 		Limit(1).
 		Iterator(tarantool.IterEq).
-		Key([]interface{}{"new_key"})
+		Key([]any{"new_key"})
 	data, err = conn.Do(sel).Get()
 	require.NoErrorf(t, err, "failed to Select")
 	require.Lenf(t, data, 1, "response Body len != 1 after Select")
 
-	tpl, ok = data[0].([]interface{})
+	tpl, ok = data[0].([]any)
 	require.Truef(t, ok, "unexpected body of Select")
 	require.Lenf(t, tpl, 2, "unexpected body of Select")
 
@@ -2737,7 +2737,7 @@ func TestDoWithReplaceRequest(t *testing.T) {
 
 	// ModePreferRW
 	resp, err = connPool.Do(tarantool.NewReplaceRequest(spaceNo).
-		Tuple([]interface{}{"new_key", "new_value"}),
+		Tuple([]any{"new_key", "new_value"}),
 		pool.ModePreferRW).Get()
 	require.NoErrorf(t, err, "failed to Do with ReplaceRequest")
 	require.NotNilf(t, resp, "response is nil after Do with ReplaceRequest")
@@ -2746,7 +2746,7 @@ func TestDoWithReplaceRequest(t *testing.T) {
 	require.NoErrorf(t, err, "failed to Select")
 	require.Lenf(t, data, 1, "response Body len != 1 after Select")
 
-	tpl, ok = data[0].([]interface{})
+	tpl, ok = data[0].([]any)
 	require.Truef(t, ok, "unexpected body of Select")
 	require.Lenf(t, tpl, 2, "unexpected body of Select")
 
@@ -2778,13 +2778,13 @@ func TestDoWithSelectRequest(t *testing.T) {
 	rwServers := []string{servers[2], servers[4]}
 	allServers := []string{servers[0], servers[1], servers[2], servers[3], servers[4]}
 
-	roTpl := []interface{}{"ro_select_key", "ro_select_value"}
-	rwTpl := []interface{}{"rw_select_key", "rw_select_value"}
-	anyTpl := []interface{}{"any_select_key", "any_select_value"}
+	roTpl := []any{"ro_select_key", "ro_select_value"}
+	rwTpl := []any{"rw_select_key", "rw_select_value"}
+	anyTpl := []any{"any_select_key", "any_select_value"}
 
-	roKey := []interface{}{"ro_select_key"}
-	rwKey := []interface{}{"rw_select_key"}
-	anyKey := []interface{}{"any_select_key"}
+	roKey := []any{"ro_select_key"}
+	rwKey := []any{"rw_select_key"}
+	anyKey := []any{"any_select_key"}
 
 	err = test_helpers.InsertOnInstances(ctx, makeDialers(roServers), connOpts, spaceNo, roTpl)
 	require.NoError(t, err)
@@ -2807,7 +2807,7 @@ func TestDoWithSelectRequest(t *testing.T) {
 	require.NotNilf(t, data, "response is nil after Do with SelectRequest")
 	require.Lenf(t, data, 1, "response Body len != 1 after Do with SelectRequest")
 
-	tpl, ok := data[0].([]interface{})
+	tpl, ok := data[0].([]any)
 	require.Truef(t, ok, "unexpected body of Do with SelectRequest")
 	require.Lenf(t, tpl, 2, "unexpected body of Do with SelectRequest")
 
@@ -2831,7 +2831,7 @@ func TestDoWithSelectRequest(t *testing.T) {
 	require.NotNilf(t, data, "response is nil after Do with SelectRequest")
 	require.Lenf(t, data, 1, "response Body len != 1 after Do with SelectRequest")
 
-	tpl, ok = data[0].([]interface{})
+	tpl, ok = data[0].([]any)
 	require.Truef(t, ok, "unexpected body of Do with SelectRequest")
 	require.Lenf(t, tpl, 2, "unexpected body of Do with SelectRequest")
 
@@ -2851,7 +2851,7 @@ func TestDoWithSelectRequest(t *testing.T) {
 	require.NotNilf(t, data, "response is nil after Do with SelectRequest")
 	require.Lenf(t, data, 1, "response Body len != 1 after Do with SelectRequest")
 
-	tpl, ok = data[0].([]interface{})
+	tpl, ok = data[0].([]any)
 	require.Truef(t, ok, "unexpected body of Do with SelectRequest")
 	require.Lenf(t, tpl, 2, "unexpected body of Do with SelectRequest")
 
@@ -2875,7 +2875,7 @@ func TestDoWithSelectRequest(t *testing.T) {
 	require.NotNilf(t, data, "response is nil after Do with SelectRequest")
 	require.Lenf(t, data, 1, "response Body len != 1 after Do with SelectRequest")
 
-	tpl, ok = data[0].([]interface{})
+	tpl, ok = data[0].([]any)
 	require.Truef(t, ok, "unexpected body of Do with SelectRequest")
 	require.Lenf(t, tpl, 2, "unexpected body of Do with SelectRequest")
 
@@ -2899,7 +2899,7 @@ func TestDoWithSelectRequest(t *testing.T) {
 	require.NotNilf(t, data, "response is nil after Do with SelectRequest")
 	require.Lenf(t, data, 1, "response Body len != 1 after Do with SelectRequest")
 
-	tpl, ok = data[0].([]interface{})
+	tpl, ok = data[0].([]any)
 	require.Truef(t, ok, "unexpected body of Do with SelectRequest")
 	require.Lenf(t, tpl, 2, "unexpected body of Do with SelectRequest")
 
@@ -3009,7 +3009,7 @@ func TestDo_concurrent(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(concurrency)
 
-	for i := 0; i < concurrency; i++ {
+	for range concurrency {
 		go func() {
 			defer wg.Done()
 
@@ -3035,7 +3035,7 @@ func TestDoOn(t *testing.T) {
 	for _, server := range servers {
 		data, err := connPool.DoOn(req, server).Get()
 		require.NoError(t, err)
-		assert.Equal(t, []interface{}{server}, data)
+		assert.Equal(t, []any{server}, data)
 	}
 }
 
@@ -3074,14 +3074,14 @@ func TestDoOn_concurrent(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(concurrency)
 
-	for i := 0; i < concurrency; i++ {
+	for range concurrency {
 		go func() {
 			defer wg.Done()
 
 			for _, server := range servers {
 				data, err := connPool.DoOn(eval, server).Get()
 				assert.NoError(t, err)
-				assert.Equal(t, []interface{}{server}, data)
+				assert.Equal(t, []any{server}, data)
 			}
 			_, err := connPool.DoOn(ping, "not_exist").Get()
 			assert.ErrorIs(t, err, pool.ErrNoHealthyInstance)
@@ -3115,12 +3115,12 @@ func TestNewPrepared(t *testing.T) {
 	executeReq := tarantool.NewExecutePreparedRequest(stmt)
 	unprepareReq := tarantool.NewUnprepareRequest(stmt)
 
-	resp, err := connPool.Do(executeReq.Args([]interface{}{1, "test"}), pool.ModeAny).GetResponse()
+	resp, err := connPool.Do(executeReq.Args([]any{1, "test"}), pool.ModeAny).GetResponse()
 	require.NoError(t, err, "failed to execute prepared")
 	require.NotNil(t, resp, "nil response")
 	data, err := resp.Decode()
 	require.NoError(t, err, "failed to Decode")
-	assert.NotEqual(t, []interface{}{1, "test"}, data[0], "Select with named arguments failed")
+	assert.NotEqual(t, []any{1, "test"}, data[0], "Select with named arguments failed")
 	prepResp, ok := resp.(*tarantool.ExecuteResponse)
 	require.True(t, ok, "Not a Prepare response")
 	metaData, err := prepResp.MetaData()
@@ -3198,7 +3198,7 @@ func TestStream_Commit(t *testing.T) {
 
 	// Insert in stream
 	req = tarantool.NewInsertRequest(spaceName).
-		Tuple([]interface{}{"commit_key", "commit_value"})
+		Tuple([]any{"commit_key", "commit_value"})
 	_, err = stream.Do(req).Get()
 	require.NoErrorf(t, err, "failed to Insert")
 
@@ -3215,7 +3215,7 @@ func TestStream_Commit(t *testing.T) {
 		Index(indexNo).
 		Limit(1).
 		Iterator(tarantool.IterEq).
-		Key([]interface{}{"commit_key"})
+		Key([]any{"commit_key"})
 	data, err := conn.Do(selectReq).Get()
 	require.NoErrorf(t, err, "failed to Select")
 	require.Emptyf(t, data, "response Data len != 0")
@@ -3225,7 +3225,7 @@ func TestStream_Commit(t *testing.T) {
 	require.NoErrorf(t, err, "failed to Select")
 	require.Lenf(t, data, 1, "response Body len != 1 after Select")
 
-	tpl, ok := data[0].([]interface{})
+	tpl, ok := data[0].([]any)
 	require.Truef(t, ok, "unexpected body of Select")
 	require.Lenf(t, tpl, 2, "unexpected body of Select")
 
@@ -3247,7 +3247,7 @@ func TestStream_Commit(t *testing.T) {
 	require.NoErrorf(t, err, "failed to Select")
 	require.Lenf(t, data, 1, "response Body len != 1 after Select")
 
-	tpl, ok = data[0].([]interface{})
+	tpl, ok = data[0].([]any)
 	require.Truef(t, ok, "unexpected body of Select")
 	require.Lenf(t, tpl, 2, "unexpected body of Select")
 
@@ -3290,7 +3290,7 @@ func TestStream_Rollback(t *testing.T) {
 
 	// Insert in stream
 	req = tarantool.NewInsertRequest(spaceName).
-		Tuple([]interface{}{"rollback_key", "rollback_value"})
+		Tuple([]any{"rollback_key", "rollback_value"})
 	_, err = stream.Do(req).Get()
 	require.NoErrorf(t, err, "failed to Insert")
 
@@ -3306,7 +3306,7 @@ func TestStream_Rollback(t *testing.T) {
 		Index(indexNo).
 		Limit(1).
 		Iterator(tarantool.IterEq).
-		Key([]interface{}{"rollback_key"})
+		Key([]any{"rollback_key"})
 	data, err := conn.Do(selectReq).Get()
 	require.NoErrorf(t, err, "failed to Select")
 	require.Emptyf(t, data, "response Data len != 0")
@@ -3316,7 +3316,7 @@ func TestStream_Rollback(t *testing.T) {
 	require.NoErrorf(t, err, "failed to Select")
 	require.Lenf(t, data, 1, "response Body len != 1 after Select")
 
-	tpl, ok := data[0].([]interface{})
+	tpl, ok := data[0].([]any)
 	require.Truef(t, ok, "unexpected body of Select")
 	require.Lenf(t, tpl, 2, "unexpected body of Select")
 
@@ -3387,7 +3387,7 @@ func TestStream_TxnIsolationLevel(t *testing.T) {
 
 		// Insert in stream
 		req = tarantool.NewInsertRequest(spaceName).
-			Tuple([]interface{}{"level_key", "level_value"})
+			Tuple([]any{"level_key", "level_value"})
 		_, err = stream.Do(req).Get()
 		require.NoErrorf(t, err, "failed to Insert")
 
@@ -3398,7 +3398,7 @@ func TestStream_TxnIsolationLevel(t *testing.T) {
 			Index(indexNo).
 			Limit(1).
 			Iterator(tarantool.IterEq).
-			Key([]interface{}{"level_key"})
+			Key([]any{"level_key"})
 		data, err := conn.Do(selectReq).Get()
 		require.NoErrorf(t, err, "failed to Select")
 		require.Emptyf(t, data, "response Data len != 0")
@@ -3408,7 +3408,7 @@ func TestStream_TxnIsolationLevel(t *testing.T) {
 		require.NoErrorf(t, err, "failed to Select")
 		require.Lenf(t, data, 1, "response Body len != 1 after Select")
 
-		tpl, ok := data[0].([]interface{})
+		tpl, ok := data[0].([]any)
 		require.Truef(t, ok, "unexpected body of Select")
 		require.Lenf(t, tpl, 2, "unexpected body of Select")
 
@@ -3435,7 +3435,7 @@ func TestStream_TxnIsolationLevel(t *testing.T) {
 		require.NoErrorf(t, err, "failed to Select")
 		require.Emptyf(t, data, "response Data len != 0")
 
-		test_helpers.DeleteRecordByKey(t, conn, spaceNo, indexNo, []interface{}{"level_key"})
+		test_helpers.DeleteRecordByKey(t, conn, spaceNo, indexNo, []any{"level_key"})
 	}
 }
 
@@ -3575,7 +3575,7 @@ func TestPool_NewWatcher_update(t *testing.T) {
 
 	// Wait for all initial events.
 	testMap := make(map[string]int)
-	for i := 0; i < initCnt; i++ {
+	for range initCnt {
 		select {
 		case event := <-events:
 			require.NotNil(t, event.Conn)
@@ -3654,7 +3654,7 @@ func TestWatcher_Unregister(t *testing.T) {
 	}, mode)
 	require.NoErrorf(t, err, "failed to create a watcher")
 
-	for i := 0; i < expectedCnt; i++ {
+	for range expectedCnt {
 		select {
 		case <-events:
 		case <-time.After(time.Second):
@@ -3664,7 +3664,7 @@ func TestWatcher_Unregister(t *testing.T) {
 	watcher.Unregister()
 
 	broadcast := tarantool.NewBroadcastRequest(key).Value("foo")
-	for i := 0; i < expectedCnt; i++ {
+	for range expectedCnt {
 		_, err := pool.Do(broadcast, mode).Get()
 		require.NoErrorf(t, err, "failed to send a broadcast request")
 	}
@@ -3677,7 +3677,7 @@ func TestWatcher_Unregister(t *testing.T) {
 
 	// Reset to the initial state.
 	broadcast = tarantool.NewBroadcastRequest(key)
-	for i := 0; i < expectedCnt; i++ {
+	for range expectedCnt {
 		_, err := pool.Do(broadcast, mode).Get()
 		require.NoErrorf(t, err, "failed to send a broadcast request")
 	}
@@ -3707,7 +3707,7 @@ func TestPool_NewWatcher_concurrent(t *testing.T) {
 
 	mode := pool.ModeAny
 	callback := func(event tarantool.WatchEvent) {}
-	for i := 0; i < testConcurrency; i++ {
+	for range testConcurrency {
 		go func() {
 			defer wg.Done()
 
@@ -3747,7 +3747,7 @@ func TestWatcher_Unregister_concurrent(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(testConcurrency)
 
-	for i := 0; i < testConcurrency; i++ {
+	for range testConcurrency {
 		go func() {
 			defer wg.Done()
 			watcher.Unregister()

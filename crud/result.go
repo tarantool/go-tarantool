@@ -21,7 +21,7 @@ func (format *FieldFormat) DecodeMsgpack(d *msgpack.Decoder) error {
 	if err != nil {
 		return err
 	}
-	for i := 0; i < l; i++ {
+	for range l {
 		key, err := d.DecodeString()
 		if err != nil {
 			return err
@@ -52,7 +52,7 @@ func (format *FieldFormat) DecodeMsgpack(d *msgpack.Decoder) error {
 // Result describes CRUD result as an object containing metadata and rows.
 type Result struct {
 	Metadata []FieldFormat
-	Rows     interface{}
+	Rows     any
 	rowType  reflect.Type
 }
 
@@ -87,7 +87,7 @@ func (r *Result) DecodeMsgpack(d *msgpack.Decoder) error {
 		return err
 	}
 
-	for i := 0; i < l; i++ {
+	for range l {
 		key, err := d.DecodeString()
 		if err != nil {
 			return err
@@ -102,7 +102,7 @@ func (r *Result) DecodeMsgpack(d *msgpack.Decoder) error {
 
 			metadata := make([]FieldFormat, metadataLen)
 
-			for i := 0; i < metadataLen; i++ {
+			for i := range metadataLen {
 				fieldFormat := FieldFormat{}
 				if err = d.Decode(&fieldFormat); err != nil {
 					return err
@@ -120,7 +120,7 @@ func (r *Result) DecodeMsgpack(d *msgpack.Decoder) error {
 				}
 				r.Rows = tuples.Elem().Interface()
 			} else {
-				var decoded []interface{}
+				var decoded []any
 				if err = d.Decode(&decoded); err != nil {
 					return err
 				}

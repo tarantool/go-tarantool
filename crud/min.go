@@ -15,14 +15,15 @@ type MinOpts = BorderOpts
 // for execution by a Connection.
 type MinRequest struct {
 	spaceRequest
-	index interface{}
+
+	index any
 	opts  MinOpts
 }
 
 type minArgs struct {
 	_msgpack struct{} `msgpack:",asArray"` //nolint:unused
 	Space    string
-	Index    interface{}
+	Index    any
 	Opts     MinOpts
 }
 
@@ -37,7 +38,7 @@ func MakeMinRequest(space string) MinRequest {
 
 // Index sets the index name/id for the MinRequest request.
 // Note: default value is nil.
-func (req MinRequest) Index(index interface{}) MinRequest {
+func (req MinRequest) Index(index any) MinRequest {
 	req.index = index
 	return req
 }

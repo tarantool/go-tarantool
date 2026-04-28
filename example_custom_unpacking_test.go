@@ -113,7 +113,7 @@ func Example_customUnpacking() {
 		Index(indexNo).
 		Limit(1).
 		Iterator(tarantool.IterEq).
-		Key([]interface{}{777})
+		Key([]any{777})
 	err = conn.Do(selectReq).GetTyped(&tuples1)
 	if err != nil {
 		log.Fatalf("Failed to SelectTyped: %s", err.Error())

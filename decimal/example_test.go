@@ -45,7 +45,7 @@ func Example() {
 	}
 
 	data, err := client.Do(tarantool.NewReplaceRequest(spaceNo).
-		Tuple([]interface{}{number}),
+		Tuple([]any{number}),
 	).Get()
 	if err != nil {
 		log.Fatalf("Decimal replace failed: %s", err)

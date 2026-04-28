@@ -14,12 +14,12 @@ import (
 // by a Connection.
 type InsertRequest struct {
 	arrow Arrow
-	space interface{}
+	space any
 	ctx   context.Context
 }
 
 // NewInsertRequest returns a new InsertRequest.
-func NewInsertRequest(space interface{}, arrow Arrow) *InsertRequest {
+func NewInsertRequest(space any, arrow Arrow) *InsertRequest {
 	return &InsertRequest{
 		space: space,
 		arrow: arrow,

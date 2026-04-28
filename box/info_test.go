@@ -14,7 +14,7 @@ func TestInfo(t *testing.T) {
 	cases := []struct {
 		Name   string
 		Struct box.Info
-		Data   map[string]interface{}
+		Data   map[string]any
 	}{
 		{
 			Name: "Case: base info struct",
@@ -27,7 +27,7 @@ func TestInfo(t *testing.T) {
 				Status:  "running",
 				LSN:     8,
 			},
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"version": "2.11.4-0-g8cebbf2cad",
 				"id":      1,
 				"ro":      false,
@@ -76,7 +76,7 @@ func TestInfo(t *testing.T) {
 					},
 				},
 			},
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"version": "2.11.4-0-g8cebbf2cad",
 				"id":      1,
 				"ro":      false,
@@ -84,17 +84,17 @@ func TestInfo(t *testing.T) {
 				"pid":     1,
 				"status":  "running",
 				"lsn":     8,
-				"replication": map[interface{}]interface{}{
-					1: map[string]interface{}{
+				"replication": map[any]any{
+					1: map[string]any{
 						"id":   1,
 						"uuid": "69360e9b-4641-4ec3-ab51-297f46749849",
 						"lsn":  8,
 					},
-					2: map[string]interface{}{
+					2: map[string]any{
 						"id":   2,
 						"uuid": "75f5f5aa-89f0-4d95-b5a9-96a0eaa0ce36",
 						"lsn":  0,
-						"upstream": map[string]interface{}{
+						"upstream": map[string]any{
 							"status":         "follow",
 							"idle":           2.4564633660484,
 							"peer":           "other.tarantool:3301",
@@ -102,10 +102,10 @@ func TestInfo(t *testing.T) {
 							"message":        "'getaddrinfo: Name or service not known'",
 							"system_message": "Input/output error",
 						},
-						"downstream": map[string]interface{}{
+						"downstream": map[string]any{
 							"status":         "follow",
 							"idle":           2.8306158290943,
-							"vclock":         map[interface{}]interface{}{1: 8},
+							"vclock":         map[any]any{1: 8},
 							"lag":            0,
 							"message":        "'unexpected EOF when reading from socket'",
 							"system_message": "Broken pipe",

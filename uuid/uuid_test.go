@@ -56,10 +56,12 @@ func (t *TupleUUID) DecodeMsgpack(d *msgpack.Decoder) error {
 	return nil
 }
 
-func tupleValueIsId(t *testing.T, tuples []interface{}, id uuid.UUID) {
+func tupleValueIsId(t *testing.T, tuples []any, id uuid.UUID) {
+	t.Helper()
+
 	require.Len(t, tuples, 1, "Response Data len != 1")
 
-	tpl, ok := tuples[0].([]interface{})
+	tpl, ok := tuples[0].([]any)
 	require.True(t, ok, "Unexpected return value body")
 	require.Len(t, tpl, 1, "Unexpected return value body (tuple len)")
 	val, ok := tpl[0].(uuid.UUID)
@@ -82,7 +84,7 @@ func TestSelect(t *testing.T) {
 		Index(index).
 		Limit(1).
 		Iterator(IterEq).
-		Key([]interface{}{id})
+		Key([]any{id})
 	data, errSel := conn.Do(sel).Get()
 	require.NoError(t, errSel, "UUID select failed")
 	tupleValueIsId(t, data, id)
@@ -105,7 +107,7 @@ func TestReplace(t *testing.T) {
 	id, uuidErr := uuid.Parse("64d22e4d-ac92-4a23-899a-e59f34af5479")
 	require.NoError(t, uuidErr, "Failed to prepare test uuid")
 
-	rep := NewReplaceRequest(space).Tuple([]interface{}{id})
+	rep := NewReplaceRequest(space).Tuple([]any{id})
 	dataRep, errRep := conn.Do(rep).Get()
 	require.NoError(t, errRep, "UUID replace failed")
 	tupleValueIsId(t, dataRep, id)
@@ -114,7 +116,7 @@ func TestReplace(t *testing.T) {
 		Index(index).
 		Limit(1).
 		Iterator(IterEq).
-		Key([]interface{}{id})
+		Key([]any{id})
 	dataSel, errSel := conn.Do(sel).Get()
 	require.NoError(t, errSel, "UUID select failed")
 	tupleValueIsId(t, dataSel, id)

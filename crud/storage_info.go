@@ -21,7 +21,7 @@ func (statusTable *StatusTable) DecodeMsgpack(d *msgpack.Decoder) error {
 	if err != nil {
 		return err
 	}
-	for i := 0; i < l; i++ {
+	for range l {
 		key, err := d.DecodeString()
 		if err != nil {
 			return err
@@ -68,7 +68,7 @@ func (r *StorageInfoResult) DecodeMsgpack(d *msgpack.Decoder) error {
 	}
 
 	info := make(map[string]StatusTable)
-	for i := 0; i < l; i++ {
+	for range l {
 		key, err := d.DecodeString()
 		if err != nil {
 			return err
@@ -76,7 +76,7 @@ func (r *StorageInfoResult) DecodeMsgpack(d *msgpack.Decoder) error {
 
 		statusTable := StatusTable{}
 		if err := d.Decode(&statusTable); err != nil {
-			return nil
+			return err
 		}
 
 		info[key] = statusTable
@@ -94,6 +94,7 @@ type StorageInfoOpts = BaseOpts
 // `crud.storage_info` for execution by a Connection.
 type StorageInfoRequest struct {
 	baseRequest
+
 	opts StorageInfoOpts
 }
 

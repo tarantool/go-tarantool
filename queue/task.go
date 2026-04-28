@@ -11,7 +11,7 @@ import (
 type Task struct {
 	id     uint64
 	status string
-	data   interface{}
+	data   any
 	q      *queue
 }
 
@@ -44,7 +44,7 @@ func (t *Task) Id() uint64 {
 }
 
 // Data is a getter for task data.
-func (t *Task) Data() interface{} {
+func (t *Task) Data() any {
 	return t.data
 }
 

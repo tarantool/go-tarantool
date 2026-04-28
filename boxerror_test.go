@@ -28,7 +28,7 @@ var samples = map[string]BoxError{
 		Msg:   "Execute access to function 'forbidden_function' is denied for user 'no_grants'",
 		Errno: uint64(0),
 		Code:  uint64(42),
-		Fields: map[string]interface{}{
+		Fields: map[string]any{
 			"object_type": "function",
 			"object_name": "forbidden_function",
 			"access_type": "Execute",
@@ -305,7 +305,7 @@ func TestErrorTypeEval(t *testing.T) {
 	for name, testcase := range tupleCases {
 		t.Run(name, func(t *testing.T) {
 			data, err := conn.Do(NewEvalRequest("return ...").
-				Args([]interface{}{&testcase.tuple.val}),
+				Args([]any{&testcase.tuple.val}),
 			).Get()
 			require.NoError(t, err)
 			require.NotNil(t, data)
@@ -327,7 +327,7 @@ func TestErrorTypeEvalTyped(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			var res []BoxError
 			err := conn.Do(NewEvalRequest("return ...").
-				Args([]interface{}{&testcase.tuple.val}),
+				Args([]any{&testcase.tuple.val}),
 			).GetTyped(&res)
 			require.NoError(t, err)
 			require.NotNil(t, res)
@@ -344,7 +344,7 @@ func TestErrorTypeInsert(t *testing.T) {
 	defer func() { _ = conn.Close() }()
 
 	truncateEval := fmt.Sprintf("box.space[%q]:truncate()", space)
-	_, err := conn.Do(NewEvalRequest(truncateEval).Args([]interface{}{})).Get()
+	_, err := conn.Do(NewEvalRequest(truncateEval).Args([]any{})).Get()
 	require.NoError(t, err)
 
 	for name, testcase := range tupleCases {
@@ -369,7 +369,7 @@ func TestErrorTypeInsert(t *testing.T) {
 			// of connector BoxError are equal to the Tarantool ones
 			// since they may differ between different Tarantool versions
 			// and editions.
-			_, err := conn.Do(NewEvalRequest(checkEval).Args([]interface{}{})).Get()
+			_, err := conn.Do(NewEvalRequest(checkEval).Args([]any{})).Get()
 			require.NoErrorf(t, err, "Tuple has been successfully inserted")
 		})
 	}
@@ -382,7 +382,7 @@ func TestErrorTypeInsertTyped(t *testing.T) {
 	defer func() { _ = conn.Close() }()
 
 	truncateEval := fmt.Sprintf("box.space[%q]:truncate()", space)
-	_, err := conn.Do(NewEvalRequest(truncateEval).Args([]interface{}{})).Get()
+	_, err := conn.Do(NewEvalRequest(truncateEval).Args([]any{})).Get()
 	require.NoError(t, err)
 
 	for name, testcase := range tupleCases {
@@ -411,7 +411,7 @@ func TestErrorTypeInsertTyped(t *testing.T) {
 			// of connector BoxError are equal to the Tarantool ones
 			// since they may differ between different Tarantool versions
 			// and editions.
-			_, err := conn.Do(NewEvalRequest(checkEval).Args([]interface{}{})).Get()
+			_, err := conn.Do(NewEvalRequest(checkEval).Args([]any{})).Get()
 			require.NoErrorf(t, err, "Tuple has been successfully inserted")
 		})
 	}
@@ -424,7 +424,7 @@ func TestErrorTypeSelect(t *testing.T) {
 	defer func() { _ = conn.Close() }()
 
 	truncateEval := fmt.Sprintf("box.space[%q]:truncate()", space)
-	_, err := conn.Do(NewEvalRequest(truncateEval).Args([]interface{}{})).Get()
+	_, err := conn.Do(NewEvalRequest(truncateEval).Args([]any{})).Get()
 	require.NoError(t, err)
 
 	for name, testcase := range tupleCases {
@@ -437,7 +437,7 @@ func TestErrorTypeSelect(t *testing.T) {
 				assert(tuple ~= nil)
 			`, testcase.ttObj, space, testcase.tuple.pk)
 
-			_, err := conn.Do(NewEvalRequest(insertEval).Args([]interface{}{})).Get()
+			_, err := conn.Do(NewEvalRequest(insertEval).Args([]any{})).Get()
 			require.NoErrorf(t, err, "Tuple has been successfully inserted")
 
 			var offset uint32 = 0
@@ -447,12 +447,12 @@ func TestErrorTypeSelect(t *testing.T) {
 				Offset(offset).
 				Limit(limit).
 				Iterator(IterEq).
-				Key([]interface{}{testcase.tuple.pk}),
+				Key([]any{testcase.tuple.pk}),
 			).Get()
 			require.NoError(t, err)
 			require.NotNil(t, data)
 			require.Lenf(t, data, 1, "Exactly one tuple had been found")
-			tpl, ok := data[0].([]interface{})
+			tpl, ok := data[0].([]any)
 			require.Truef(t, ok, "Tuple has valid type")
 			require.Equal(t, testcase.tuple.pk, tpl[0])
 			actual, ok := tpl[1].(*BoxError)
@@ -473,7 +473,7 @@ func TestErrorTypeSelectTyped(t *testing.T) {
 	defer func() { _ = conn.Close() }()
 
 	truncateEval := fmt.Sprintf("box.space[%q]:truncate()", space)
-	_, err := conn.Do(NewEvalRequest(truncateEval).Args([]interface{}{})).Get()
+	_, err := conn.Do(NewEvalRequest(truncateEval).Args([]any{})).Get()
 	require.NoError(t, err)
 
 	for name, testcase := range tupleCases {
@@ -486,7 +486,7 @@ func TestErrorTypeSelectTyped(t *testing.T) {
 				assert(tuple ~= nil)
 			`, testcase.ttObj, space, testcase.tuple.pk)
 
-			_, err := conn.Do(NewEvalRequest(insertEval).Args([]interface{}{})).Get()
+			_, err := conn.Do(NewEvalRequest(insertEval).Args([]any{})).Get()
 			require.NoErrorf(t, err, "Tuple has been successfully inserted")
 
 			var offset uint32 = 0
@@ -497,7 +497,7 @@ func TestErrorTypeSelectTyped(t *testing.T) {
 				Offset(offset).
 				Limit(limit).
 				Iterator(IterEq).
-				Key([]interface{}{testcase.tuple.pk}),
+				Key([]any{testcase.tuple.pk}),
 			).GetTyped(&resp)
 			require.NoError(t, err)
 			require.NotNil(t, resp)

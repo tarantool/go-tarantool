@@ -52,7 +52,7 @@ func (uer *UserExistsResponse) DecodeMsgpack(d *msgpack.Decoder) error {
 
 // NewUserExistsRequest creates a new request to check if a user exists.
 func NewUserExistsRequest(username string) UserExistsRequest {
-	callReq := tarantool.NewCallRequest("box.schema.user.exists").Args([]interface{}{username})
+	callReq := tarantool.NewCallRequest("box.schema.user.exists").Args([]any{username})
 
 	return UserExistsRequest{
 		callReq,
@@ -87,7 +87,7 @@ type UserCreateRequest struct {
 // NewUserCreateRequest creates a new request to create a user with specified options.
 func NewUserCreateRequest(username string, options UserCreateOptions) UserCreateRequest {
 	callReq := tarantool.NewCallRequest("box.schema.user.create").
-		Args([]interface{}{username, options})
+		Args([]any{username, options})
 
 	return UserCreateRequest{
 		callReq,
@@ -133,7 +133,7 @@ type UserDropRequest struct {
 // NewUserDropRequest creates a new request to drop a user with specified options.
 func NewUserDropRequest(username string, options UserDropOptions) UserDropRequest {
 	callReq := tarantool.NewCallRequest("box.schema.user.drop").
-		Args([]interface{}{username, options})
+		Args([]any{username, options})
 
 	return UserDropRequest{
 		callReq,
@@ -169,7 +169,7 @@ type UserPasswordRequest struct {
 // It takes the username and constructs the request to Tarantool.
 func NewUserPasswordRequest(username string) UserPasswordRequest {
 	// Create a request to get the user's password.
-	callReq := tarantool.NewCallRequest("box.schema.user.password").Args([]interface{}{username})
+	callReq := tarantool.NewCallRequest("box.schema.user.password").Args([]any{username})
 
 	return UserPasswordRequest{
 		callReq,
@@ -234,9 +234,9 @@ func NewUserPasswdRequest(args ...string) (UserPasswdRequest, error) {
 
 	switch len(args) {
 	case 1:
-		callReq.Args([]interface{}{args[0]})
+		callReq.Args([]any{args[0]})
 	case 2:
-		callReq.Args([]interface{}{args[0], args[1]})
+		callReq.Args([]any{args[0], args[1]})
 	default:
 		return UserPasswdRequest{}, fmt.Errorf("len of fields must be 1 or 2, got %d", len(args))
 	}
@@ -279,7 +279,7 @@ type UserInfoRequest struct {
 
 // NewUserInfoRequest creates a new request to get user privileges.
 func NewUserInfoRequest(username string) UserInfoRequest {
-	callReq := tarantool.NewCallRequest("box.schema.user.info").Args([]interface{}{username})
+	callReq := tarantool.NewCallRequest("box.schema.user.info").Args([]any{username})
 
 	return UserInfoRequest{
 		callReq,
@@ -426,8 +426,8 @@ func (u *SchemaUser) Info(ctx context.Context, username string) ([]Privilege, er
 // It accepts a username, a privilege, and options for either granting or revoking.
 // The generic type T can be UserGrantOptions or UserRevokeOptions.
 func prepareGrantAndRevokeArgs[T UserGrantOptions | UserRevokeOptions](username string,
-	privilege Privilege, opts T) []interface{} {
-	args := []interface{}{username} // Initialize args slice with the username.
+	privilege Privilege, opts T) []any {
+	args := []any{username} // Initialize args slice with the username.
 
 	switch privilege.Type {
 	case PrivilegeUniverse:

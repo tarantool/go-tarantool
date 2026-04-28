@@ -62,17 +62,17 @@ func (resp *futureMockResponse) Release() {
 	resp.released = true
 }
 
-func (resp *futureMockResponse) Decode() ([]interface{}, error) {
+func (resp *futureMockResponse) Decode() ([]any, error) {
 	resp.decodeCnt++
 
-	dataInt := make([]interface{}, len(resp.data))
+	dataInt := make([]any, len(resp.data))
 	for i := range resp.data {
 		dataInt[i] = resp.data[i]
 	}
 	return dataInt, nil
 }
 
-func (resp *futureMockResponse) DecodeTyped(res interface{}) error {
+func (resp *futureMockResponse) DecodeTyped(res any) error {
 	resp.decodeTypedCnt++
 	return nil
 }
@@ -97,7 +97,7 @@ func TestFuture_Get(t *testing.T) {
 
 	data, err := fut.Get()
 	require.NoError(t, err)
-	assert.Equal(t, []interface{}{uint8('v'), uint8('2')}, data)
+	assert.Equal(t, []any{uint8('v'), uint8('2')}, data)
 	assert.Equal(t, 1, mockResp.decodeCnt)
 	assert.Equal(t, 0, mockResp.decodeTypedCnt)
 }
@@ -137,7 +137,7 @@ func TestFuture_GetResponse(t *testing.T) {
 
 	data, err := resp.Decode()
 	require.NoError(t, err)
-	assert.Equal(t, []interface{}{uint8('v'), uint8('2')}, data)
+	assert.Equal(t, []any{uint8('v'), uint8('2')}, data)
 }
 
 func TestFuture_Release(t *testing.T) {
@@ -192,6 +192,8 @@ func testFuturePoolRoundtripErr(data []byte) error {
 }
 
 func testFuturePoolRoundtrip(t *testing.T, data []byte) {
+	t.Helper()
+
 	require.NoError(t, testFuturePoolRoundtripErr(data))
 }
 
@@ -291,11 +293,11 @@ type futureMock struct {
 
 var _ = Future(&futureMock{})
 
-func (f *futureMock) Get() ([]interface{}, error) {
-	return []interface{}{f.value}, nil
+func (f *futureMock) Get() ([]any, error) {
+	return []any{f.value}, nil
 }
 
-func (f *futureMock) GetTyped(val interface{}) error {
+func (f *futureMock) GetTyped(val any) error {
 	if value, ok := val.(*int); ok {
 		*value = f.value
 		return nil
@@ -320,12 +322,12 @@ func TestFuture(t *testing.T) {
 
 	values, err := fut.Get()
 	require.NoError(t, err)
-	assert.Equal(t, []interface{}{5}, values)
+	assert.Equal(t, []any{5}, values)
 
 	var typed int
 	err = fut.GetTyped(&typed)
 	require.NoError(t, err)
-	assert.Equal(t, interface{}(5), typed)
+	assert.Equal(t, any(5), typed)
 
 	resp, err := fut.GetResponse()
 	require.NoError(t, err)

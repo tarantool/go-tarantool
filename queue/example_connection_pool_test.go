@@ -25,7 +25,7 @@ type QueueHandler struct {
 	err        error
 	mutex      sync.Mutex
 	updated    chan struct{}
-	masterCnt  int32
+	masterCnt  atomic.Int32
 }
 
 // QueueHandler implements the Handler interface.
@@ -108,7 +108,7 @@ func (h *QueueHandler) Discovered(name string, conn *tarantool.Connection,
 	}
 
 	fmt.Printf("Master %s is ready to work!\n", name)
-	atomic.AddInt32(&h.masterCnt, 1)
+	h.masterCnt.Add(1)
 
 	return nil
 }
@@ -117,7 +117,7 @@ func (h *QueueHandler) Discovered(name string, conn *tarantool.Connection,
 func (h *QueueHandler) Deactivated(name string, conn *tarantool.Connection,
 	role pool.Role) error {
 	if role == pool.RoleMaster {
-		atomic.AddInt32(&h.masterCnt, -1)
+		h.masterCnt.Add(-1)
 	}
 	return nil
 }
@@ -234,7 +234,7 @@ func Example_connectionPool() {
 		return
 	}
 
-	for i := 0; i < 2 && atomic.LoadInt32(&h.masterCnt) != 1; i++ {
+	for i := 0; i < 2 && h.masterCnt.Load() != 1; i++ {
 		// The pool does not immediately detect role switching. It may happen
 		// that requests will be sent to ModeRO instances. In that case q.Take()
 		// method will return a nil value.

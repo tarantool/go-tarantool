@@ -15,14 +15,15 @@ type MaxOpts = BorderOpts
 // for execution by a Connection.
 type MaxRequest struct {
 	spaceRequest
-	index interface{}
+
+	index any
 	opts  MaxOpts
 }
 
 type maxArgs struct {
 	_msgpack struct{} `msgpack:",asArray"` //nolint:unused
 	Space    string
-	Index    interface{}
+	Index    any
 	Opts     MaxOpts
 }
 
@@ -37,7 +38,7 @@ func MakeMaxRequest(space string) MaxRequest {
 
 // Index sets the index name/id for the MaxRequest request.
 // Note: default value is nil.
-func (req MaxRequest) Index(index interface{}) MaxRequest {
+func (req MaxRequest) Index(index any) MaxRequest {
 	req.index = index
 	return req
 }

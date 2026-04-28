@@ -22,16 +22,16 @@ func TestOperations_EncodeMsgpack(t *testing.T) {
 		Insert(1, 2).
 		Delete(1, 2).
 		Assign(1, 2)
-	refOps := []interface{}{
-		[]interface{}{"+", 1, 2},
-		[]interface{}{"-", 1, 2},
-		[]interface{}{"&", 1, 2},
-		[]interface{}{"|", 1, 2},
-		[]interface{}{"^", 1, 2},
-		[]interface{}{":", 1, 2, 3, "a"},
-		[]interface{}{"!", 1, 2},
-		[]interface{}{"#", 1, 2},
-		[]interface{}{"=", 1, 2},
+	refOps := []any{
+		[]any{"+", 1, 2},
+		[]any{"-", 1, 2},
+		[]any{"&", 1, 2},
+		[]any{"|", 1, 2},
+		[]any{"^", 1, 2},
+		[]any{":", 1, 2, 3, "a"},
+		[]any{"!", 1, 2},
+		[]any{"#", 1, 2},
+		[]any{"=", 1, 2},
 	}
 
 	var refBuf bytes.Buffer

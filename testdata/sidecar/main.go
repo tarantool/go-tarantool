@@ -25,13 +25,13 @@ func main() {
 	}
 	// Insert new tuple.
 	if _, err := conn.Do(tarantool.NewInsertRequest("test").
-		Tuple([]interface{}{239})).Get(); err != nil {
+		Tuple([]any{239})).Get(); err != nil {
 		panic(err)
 	}
 	// Delete inserted tuple.
 	if _, err := conn.Do(tarantool.NewDeleteRequest("test").
 		Index("primary").
-		Key([]interface{}{239})).Get(); err != nil {
+		Key([]any{239})).Get(); err != nil {
 		panic(err)
 	}
 }

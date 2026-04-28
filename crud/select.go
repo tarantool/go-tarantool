@@ -62,7 +62,7 @@ func (opts SelectOpts) EncodeMsgpack(enc *msgpack.Encoder) error {
 		firstOptName, afterOptName, batchSizeOptName,
 		forceMapCallOptName, fullscanOptName, fetchLatestMetadataOptName,
 		yieldEveryOptName}
-	values := [optsCnt]interface{}{}
+	values := [optsCnt]any{}
 	exists := [optsCnt]bool{}
 	values[0], exists[0] = opts.Timeout.Get()
 	values[1], exists[1] = opts.VshardRouter.Get()
@@ -86,6 +86,7 @@ func (opts SelectOpts) EncodeMsgpack(enc *msgpack.Encoder) error {
 // for execution by a Connection.
 type SelectRequest struct {
 	spaceRequest
+
 	conditions []Condition
 	opts       SelectOpts
 }

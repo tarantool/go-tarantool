@@ -93,5 +93,6 @@ func (req baseRequest) Response(header tarantool.Header,
 
 type spaceRequest struct {
 	baseRequest
+
 	space string
 }

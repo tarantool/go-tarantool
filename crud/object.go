@@ -6,7 +6,7 @@ import (
 
 // Object is an interface to describe object for CRUD methods. It can be any
 // type that msgpack can encode as a map.
-type Object = interface{}
+type Object = any
 
 // Objects is a type to describe an array of object for CRUD methods. It can be
 // any type that msgpack can encode, but encoded data must be an array of
@@ -14,10 +14,10 @@ type Object = interface{}
 //
 // See the reason why not just []Object:
 // https://github.com/tarantool/go-tarantool/issues/365
-type Objects = interface{}
+type Objects = any
 
 // MapObject is a type to describe object as a map.
-type MapObject map[string]interface{}
+type MapObject map[string]any
 
 func (o MapObject) EncodeMsgpack(enc *msgpack.Encoder) {
 	_ = enc.Encode(o)

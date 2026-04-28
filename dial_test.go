@@ -327,7 +327,7 @@ func TestConn_ContextCancel(t *testing.T) {
 
 func genSalt() [64]byte {
 	salt := [64]byte{}
-	for i := 0; i < 44; i++ {
+	for i := range 44 {
 		salt[i] = 'a'
 	}
 	return salt
@@ -509,6 +509,8 @@ func testDialAccept(opts testDialOpts, l net.Listener) chan dialServerActual {
 
 func testDialer(t *testing.T, l net.Listener, dialer tarantool.Dialer,
 	opts testDialOpts) {
+	t.Helper()
+
 	ctx, cancel := test_helpers.GetConnectContext()
 	defer cancel()
 	ch := testDialAccept(opts, l)

@@ -35,7 +35,7 @@ func writeConfig(name string, port int) error {
 	}
 
 	t := template.Must(template.New("config").Parse(string(tcsConfig)))
-	return t.Execute(cfg, map[string]interface{}{
+	return t.Execute(cfg, map[string]any{
 		"host": "localhost",
 		"port": port,
 	})

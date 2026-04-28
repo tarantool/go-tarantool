@@ -56,6 +56,7 @@ func (req *MockRequest) Response(header tarantool.Header,
 // MockDoer by checking the Name field of recorded requests.
 type MockRequestNamed struct {
 	MockRequest
+
 	Name string
 }
 

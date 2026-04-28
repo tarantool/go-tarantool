@@ -27,7 +27,7 @@ type CheckStatusesArgs struct {
 	ExpectedStatuses   map[string]bool
 }
 
-func compareTuples(expectedTpl []interface{}, actualTpl []interface{}) error {
+func compareTuples(expectedTpl []any, actualTpl []any) error {
 	if len(actualTpl) != len(expectedTpl) {
 		return fmt.Errorf("unexpected body of Insert (tuple len)")
 	}
@@ -116,7 +116,7 @@ func ProcessListenOnInstance(args ListenOnInstanceArgs) error {
 }
 
 func InsertOnInstance(ctx context.Context, dialer tarantool.Dialer, connOpts tarantool.Opts,
-	space interface{}, tuple interface{}) error {
+	space any, tuple any) error {
 	conn, err := tarantool.Connect(ctx, dialer, connOpts)
 
 	switch {
@@ -137,12 +137,12 @@ func InsertOnInstance(ctx context.Context, dialer tarantool.Dialer, connOpts tar
 		return fmt.Errorf("response Body len != 1")
 	}
 
-	tpl, ok := data[0].([]interface{})
+	tpl, ok := data[0].([]any)
 	if !ok {
 		return fmt.Errorf("unexpected body of Insert")
 	}
 
-	expectedTpl, ok := tuple.([]interface{})
+	expectedTpl, ok := tuple.([]any)
 	if !ok {
 		return fmt.Errorf("failed to cast")
 	}
@@ -158,11 +158,11 @@ func InsertOnInstances(
 	ctx context.Context,
 	dialers []tarantool.Dialer,
 	connOpts tarantool.Opts,
-	space interface{},
-	tuple interface{}) error {
+	space any,
+	tuple any) error {
 	serversNumber := len(dialers)
 	roles := make([]bool, serversNumber)
-	for i := 0; i < serversNumber; i++ {
+	for i := range serversNumber {
 		roles[i] = false
 	}
 
@@ -186,7 +186,7 @@ func SetInstanceRO(ctx context.Context, dialer tarantool.Dialer, connOpts tarant
 	defer func() { _ = conn.Close() }()
 
 	req := tarantool.NewCallRequest("box.cfg").
-		Args([]interface{}{map[string]bool{"read_only": isReplica}})
+		Args([]any{map[string]bool{"read_only": isReplica}})
 	if _, err := conn.Do(req).Get(); err != nil {
 		return err
 	}

@@ -16,11 +16,11 @@ import (
 type ValidSchemeResolver struct {
 }
 
-func (*ValidSchemeResolver) ResolveSpace(s interface{}) (uint32, error) {
+func (*ValidSchemeResolver) ResolveSpace(s any) (uint32, error) {
 	return 0, nil
 }
 
-func (*ValidSchemeResolver) ResolveIndex(i interface{}, spaceNo uint32) (uint32, error) {
+func (*ValidSchemeResolver) ResolveIndex(i any, spaceNo uint32) (uint32, error) {
 	return 0, nil
 }
 

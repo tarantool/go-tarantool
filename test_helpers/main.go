@@ -110,11 +110,11 @@ type T interface {
 	// Helper marks the calling function as a test helper function.
 	Helper()
 	// Errorf marks the test as a test failure.
-	Errorf(format string, args ...interface{})
+	Errorf(format string, args ...any)
 	// Fatalf marks the test as a test failure and stops its execution.
-	Fatalf(format string, args ...interface{})
+	Fatalf(format string, args ...any)
 	// Skipf marks the test as skipped.
-	Skipf(format string, args ...interface{})
+	Skipf(format string, args ...any)
 	// FailNow marks the function as having failed and stops its execution.
 	// It is required for github.com/stretchr/testify/require functions.
 	FailNow()
@@ -591,7 +591,7 @@ func copyFile(srcFile, dstFile string) error {
 // ConvertUint64 converts an interface value to uint64. The msgpack.v5
 // decodes different uint types depending on value, this function helps
 // to unify a result.
-func ConvertUint64(v interface{}) (result uint64, err error) {
+func ConvertUint64(v any) (result uint64, err error) {
 	switch v := v.(type) {
 	case uint:
 		result = uint64(v)

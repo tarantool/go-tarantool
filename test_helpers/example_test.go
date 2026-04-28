@@ -16,14 +16,14 @@ import (
 
 func TestExampleMockDoer_Responses(t *testing.T) {
 	mockDoer := test_helpers.NewMockDoer(t).
-		AddResponseRaw([]interface{}{"some data"}).
+		AddResponseRaw([]any{"some data"}).
 		AddResponseError(fmt.Errorf("some error")).
 		AddResponseRaw("some typed data").
 		AddResponseError(fmt.Errorf("some error"))
 
 	data, err := mockDoer.Do(tarantool.NewPingRequest()).Get()
 	require.NoError(t, err)
-	assert.Equal(t, []interface{}{"some data"}, data)
+	assert.Equal(t, []any{"some data"}, data)
 
 	data, err = mockDoer.Do(tarantool.NewSelectRequest("foo")).Get()
 	require.EqualError(t, err, "some error")
@@ -68,7 +68,7 @@ func ExampleMockDoer_noResponses() {
 	// This example demonstrates that MockDoer calls Fatalf on the test
 	// when Do() is called more times than responses were configured.
 	mockDoer := test_helpers.NewMockDoer(testingAdapter{}).
-		AddResponseRaw([]interface{}{"first"})
+		AddResponseRaw([]any{"first"})
 
 	data, err := mockDoer.Do(tarantool.NewPingRequest()).Get()
 	if err != nil {
@@ -89,6 +89,6 @@ type testingAdapter struct {
 }
 
 func (testingAdapter) Helper() {}
-func (testingAdapter) Fatalf(format string, args ...interface{}) {
+func (testingAdapter) Fatalf(format string, args ...any) {
 	_, _ = fmt.Fprintf(os.Stdout, format, args...)
 }

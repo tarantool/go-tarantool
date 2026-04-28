@@ -49,6 +49,7 @@ func NewPreparedFromResponse(conn *Connection, resp Response) (*Prepared, error)
 // by a Connection.
 type PrepareRequest struct {
 	baseRequest
+
 	expr string
 }
 
@@ -100,6 +101,7 @@ func (req *PrepareRequest) Response(header Header, body io.Reader) (Response, er
 // execution by a Connection.
 type UnprepareRequest struct {
 	baseRequest
+
 	stmt *Prepared
 }
 
@@ -142,10 +144,12 @@ func (req *UnprepareRequest) Context(ctx context.Context) *UnprepareRequest {
 
 // ExecutePreparedRequest helps you to create an execute prepared request
 // object for execution by a Connection.
+
 type ExecutePreparedRequest struct {
 	baseRequest
+
 	stmt *Prepared
-	args interface{}
+	args any
 }
 
 // NewExecutePreparedRequest returns a new empty preparedExecuteRequest.
@@ -153,7 +157,7 @@ func NewExecutePreparedRequest(stmt *Prepared) *ExecutePreparedRequest {
 	req := new(ExecutePreparedRequest)
 	req.rtype = iproto.IPROTO_EXECUTE
 	req.stmt = stmt
-	req.args = []interface{}{}
+	req.args = []any{}
 	return req
 }
 
@@ -164,7 +168,7 @@ func (req *ExecutePreparedRequest) Conn() *Connection {
 
 // Args sets the args for execute the prepared request.
 // Note: default value is empty.
-func (req *ExecutePreparedRequest) Args(args interface{}) *ExecutePreparedRequest {
+func (req *ExecutePreparedRequest) Args(args any) *ExecutePreparedRequest {
 	req.args = args
 	return req
 }

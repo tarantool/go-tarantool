@@ -18,6 +18,7 @@ type TruncateOpts = BaseOpts
 // for execution by a Connection.
 type TruncateRequest struct {
 	spaceRequest
+
 	opts TruncateOpts
 }
 

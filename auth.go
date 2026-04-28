@@ -73,7 +73,7 @@ func scramble(encodedSalt, pass string) (scramble []byte, err error) {
 
 func xor(left, right []byte, size int) []byte {
 	result := make([]byte, size)
-	for i := 0; i < size; i++ {
+	for i := range size {
 		result[i] = left[i] ^ right[i]
 	}
 	return result

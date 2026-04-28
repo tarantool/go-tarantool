@@ -31,8 +31,8 @@ const (
 // {operator, field_identifier, position, length, replace_string}.
 type Operation struct {
 	Operator Operator
-	Field    interface{} // Number or string.
-	Value    interface{}
+	Field    any // Number or string.
+	Value    any
 	// Pos, Len, Replace fields used in the Splice operation.
 	Pos     int
 	Len     int

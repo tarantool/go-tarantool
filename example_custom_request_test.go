@@ -71,7 +71,7 @@ func ExampleRequest_Response() {
 type manualRequest struct {
 	ctx     context.Context
 	spaceNo uint32
-	key     []interface{}
+	key     []any
 }
 
 func (r *manualRequest) Type() iproto.Type {
@@ -148,7 +148,7 @@ type manualResponse struct {
 func (r *manualResponse) Header() tarantool.Header { return r.header }
 func (r *manualResponse) Release()                 { r.body = nil }
 
-func (r *manualResponse) Decode() ([]interface{}, error) {
+func (r *manualResponse) Decode() ([]any, error) {
 	if len(r.body) == 0 {
 		return nil, nil
 	}
@@ -160,9 +160,9 @@ func (r *manualResponse) Decode() ([]interface{}, error) {
 		return nil, err
 	}
 
-	var result []interface{}
+	var result []any
 
-	for i := 0; i < mapLen; i++ {
+	for range mapLen {
 		key, err := dec.DecodeInt()
 		if err != nil {
 			return nil, err
@@ -182,7 +182,7 @@ func (r *manualResponse) Decode() ([]interface{}, error) {
 	return result, nil
 }
 
-func (r *manualResponse) DecodeTyped(res interface{}) error {
+func (r *manualResponse) DecodeTyped(res any) error {
 	if len(r.body) == 0 {
 		return nil
 	}
@@ -194,7 +194,7 @@ func (r *manualResponse) DecodeTyped(res interface{}) error {
 		return err
 	}
 
-	for i := 0; i < mapLen; i++ {
+	for range mapLen {
 		key, err := dec.DecodeInt()
 		if err != nil {
 			return err
@@ -222,7 +222,7 @@ func ExampleRequest_Response_manual() {
 
 	// Insert test data.
 	_, err := conn.Do(tarantool.NewReplaceRequest(spaceNo).
-		Tuple([]interface{}{uint(1111), "hello", "world"}),
+		Tuple([]any{uint(1111), "hello", "world"}),
 	).Get()
 	if err != nil {
 		fmt.Println("Error", err)
@@ -233,12 +233,12 @@ func ExampleRequest_Response_manual() {
 	defer func() {
 		_, _ = conn.Do(tarantool.NewDeleteRequest(spaceNo).
 			Index(indexNo).
-			Key([]interface{}{uint(1111)}),
+			Key([]any{uint(1111)}),
 		).Get()
 	}()
 
 	// Execute custom select request.
-	req := &manualRequest{spaceNo: spaceNo, key: []interface{}{uint(1111)}}
+	req := &manualRequest{spaceNo: spaceNo, key: []any{uint(1111)}}
 	future := conn.Do(req)
 
 	data, err := future.Get()
@@ -259,7 +259,7 @@ func ExampleRequest_Response_manualDecodeTyped() {
 
 	// Insert test data.
 	_, err := conn.Do(tarantool.NewReplaceRequest(spaceNo).
-		Tuple([]interface{}{uint(1111), "hello", "world"}),
+		Tuple([]any{uint(1111), "hello", "world"}),
 	).Get()
 	if err != nil {
 		fmt.Println("Error", err)
@@ -270,12 +270,12 @@ func ExampleRequest_Response_manualDecodeTyped() {
 	defer func() {
 		_, _ = conn.Do(tarantool.NewDeleteRequest(spaceNo).
 			Index(indexNo).
-			Key([]interface{}{uint(1111)}),
+			Key([]any{uint(1111)}),
 		).Get()
 	}()
 
 	// Execute custom select request.
-	req := &manualRequest{spaceNo: spaceNo, key: []interface{}{uint(1111)}}
+	req := &manualRequest{spaceNo: spaceNo, key: []any{uint(1111)}}
 	future := conn.Do(req)
 
 	var tuples []Tuple

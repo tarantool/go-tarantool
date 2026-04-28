@@ -15,6 +15,7 @@ type DeleteOpts = SimpleOperationOpts
 // for execution by a Connection.
 type DeleteRequest struct {
 	spaceRequest
+
 	key  Tuple
 	opts DeleteOpts
 }
@@ -52,7 +53,7 @@ func (req DeleteRequest) Opts(opts DeleteOpts) DeleteRequest {
 // Body fills an encoder with the call request body.
 func (req DeleteRequest) Body(res tarantool.SchemaResolver, enc *msgpack.Encoder) error {
 	if req.key == nil {
-		req.key = []interface{}{}
+		req.key = []any{}
 	}
 	args := deleteArgs{Space: req.space, Key: req.key, Opts: req.opts}
 	req.impl = req.impl.Args(args)

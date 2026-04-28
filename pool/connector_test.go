@@ -16,6 +16,7 @@ var testMode Mode = ModeRW
 
 type connectedNowMock struct {
 	Pooler
+
 	called int
 	mode   Mode
 	retErr bool
@@ -53,6 +54,7 @@ func TestConnectorConnectedNowWithError(t *testing.T) {
 
 type closeMock struct {
 	Pooler
+
 	called int
 	retErr bool
 }
@@ -85,6 +87,7 @@ func TestConnectorCloseWithError(t *testing.T) {
 
 type configuredTimeoutMock struct {
 	Pooler
+
 	called  int
 	timeout time.Duration
 	mode    Mode
@@ -132,6 +135,7 @@ var reqPrepared *tarantool.Prepared = &tarantool.Prepared{}
 
 type newPreparedMock struct {
 	Pooler
+
 	called int
 	expr   string
 	mode   Mode
@@ -163,6 +167,7 @@ var reqStream *tarantool.Stream = &tarantool.Stream{}
 
 type newStreamMock struct {
 	Pooler
+
 	called int
 	mode   Mode
 }
@@ -195,6 +200,7 @@ var reqWatcher tarantool.Watcher = &watcherMock{}
 
 type newWatcherMock struct {
 	Pooler
+
 	key      string
 	callback tarantool.WatchCallback
 	called   int
@@ -228,6 +234,7 @@ var reqRequest tarantool.Request = tarantool.NewPingRequest()
 
 type doMock struct {
 	Pooler
+
 	called int
 	req    tarantool.Request
 	mode   Mode

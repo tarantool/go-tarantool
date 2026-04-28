@@ -15,6 +15,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"slices"
 	"sync"
 	"time"
 
@@ -610,7 +611,7 @@ func (p *Pool) DoOn(req tarantool.Request, name string) tarantool.Future {
 func (p *Pool) getConnectionRole(conn *tarantool.Connection) (Role, error) {
 	var (
 		roFieldName string
-		data        []interface{}
+		data        []any
 		err         error
 	)
 
@@ -629,7 +630,7 @@ func (p *Pool) getConnectionRole(conn *tarantool.Connection) (Role, error) {
 		return RoleUnknown, ErrIncorrectResponse
 	}
 
-	respFields, ok := data[0].(map[interface{}]interface{})
+	respFields, ok := data[0].(map[any]any)
 	if !ok {
 		return RoleUnknown, ErrIncorrectResponse
 	}
@@ -1058,10 +1059,5 @@ func (p *Pool) getNextConnection(mode Mode) (*tarantool.Connection, error) {
 }
 
 func isFeatureInSlice(expected iproto.Feature, actualSlice []iproto.Feature) bool {
-	for _, actual := range actualSlice {
-		if expected == actual {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(actualSlice, expected)
 }

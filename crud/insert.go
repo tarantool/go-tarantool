@@ -15,6 +15,7 @@ type InsertOpts = SimpleOperationOpts
 // for execution by a Connection.
 type InsertRequest struct {
 	spaceRequest
+
 	tuple Tuple
 	opts  InsertOpts
 }
@@ -52,7 +53,7 @@ func (req InsertRequest) Opts(opts InsertOpts) InsertRequest {
 // Body fills an encoder with the call request body.
 func (req InsertRequest) Body(res tarantool.SchemaResolver, enc *msgpack.Encoder) error {
 	if req.tuple == nil {
-		req.tuple = []interface{}{}
+		req.tuple = []any{}
 	}
 	args := insertArgs{Space: req.space, Tuple: req.tuple, Opts: req.opts}
 	req.impl = req.impl.Args(args)
@@ -73,6 +74,7 @@ type InsertObjectOpts = SimpleOperationObjectOpts
 // `crud.insert_object` for execution by a Connection.
 type InsertObjectRequest struct {
 	spaceRequest
+
 	object Object
 	opts   InsertObjectOpts
 }
