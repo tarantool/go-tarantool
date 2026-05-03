@@ -1,12 +1,12 @@
 package tarantool_test
 
 import (
-	"bytes"
 	"context"
 	"encoding/binary"
 	"fmt"
 	"io"
 	"log"
+	"log/slog"
 	"math"
 	"os"
 	"os/exec"
@@ -2371,21 +2371,20 @@ func TestStream_DoWithClosedConn(t *testing.T) {
 }
 
 func TestConnectionBoxSessionPushUnsupported(t *testing.T) {
-	old := log.Writer()
-	defer log.SetOutput(old)
+	var buf safeBuffer
+	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn}))
 
-	var buf bytes.Buffer
-	log.SetOutput(&buf)
+	testOpts := opts
+	testOpts.Logger = logger
 
-	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
+	conn := test_helpers.ConnectWithValidation(t, dialer, testOpts)
 	defer func() { _ = conn.Close() }()
 
 	_, err := conn.Do(NewCallRequest("push_func").Args([]any{1})).Get()
 	require.NoError(t, err)
 
 	actualLog := buf.String()
-	expectedLog := "unsupported box.session.push()"
-	require.Contains(t, actualLog, expectedLog)
+	require.Contains(t, actualLog, LogMsgPushUnsupported)
 }
 
 func TestConnectionProtocolInfoSupported(t *testing.T) {

@@ -8,7 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"math"
 	"net"
 	"runtime"
@@ -33,7 +33,6 @@ const (
 const shutdownEventKey = "box.shutdown"
 
 type ConnEventKind int
-type ConnLogKind int
 
 var (
 	errUnknownRequest = errors.New("the passed connected request doesn't belong " +
@@ -52,19 +51,6 @@ const (
 	// Closed signals that either reconnect attempts exhausted, or explicit
 	// Close is called.
 	Closed
-
-	// LogReconnectFailed is logged when reconnect attempt failed.
-	LogReconnectFailed ConnLogKind = iota + 1
-	// LogLastReconnectFailed is logged when last reconnect attempt failed,
-	// connection will be closed after that.
-	LogLastReconnectFailed
-	// LogUnexpectedResultId is logged when response with unknown id was received.
-	// Most probably it is due to request timeout.
-	LogUnexpectedResultId
-	// LogWatchEventReadFailed is logged when failed to read a watch event.
-	LogWatchEventReadFailed
-	// LogBoxSessionPushUnsupported is logged when response type turned IPROTO_CHUNK.
-	LogBoxSessionPushUnsupported
 )
 
 // ConnEvent is sent throw Notify channel specified in Opts.
@@ -81,53 +67,6 @@ type connWatchEvent struct {
 }
 
 var epoch = time.Now()
-
-// Logger is logger type expected to be passed in options.
-type Logger interface {
-	Report(event ConnLogKind, conn *Connection, v ...any)
-}
-
-type defaultLogger struct{}
-
-func (d defaultLogger) Report(event ConnLogKind, conn *Connection, v ...any) {
-	switch event {
-	case LogReconnectFailed:
-		reconnects := v[0].(uint)
-		err := v[1].(error)
-		addr := conn.Addr()
-		if addr == nil {
-			log.Printf("tarantool: connect (%d/%d) failed: %s",
-				reconnects, conn.opts.MaxReconnects, err)
-		} else {
-			log.Printf("tarantool: reconnect (%d/%d) to %s failed: %s",
-				reconnects, conn.opts.MaxReconnects, addr, err)
-		}
-	case LogLastReconnectFailed:
-		err := v[0].(error)
-		addr := conn.Addr()
-		if addr == nil {
-			log.Printf("tarantool: last connect failed: %s, giving it up",
-				err)
-		} else {
-			log.Printf("tarantool: last reconnect to %s failed: %s, giving it up",
-				addr, err)
-		}
-	case LogUnexpectedResultId:
-		header := v[0].(Header)
-		log.Printf("tarantool: connection %s got unexpected request ID (%d) in response "+
-			"(probably cancelled request)",
-			conn.Addr(), header.RequestId)
-	case LogWatchEventReadFailed:
-		err := v[0].(error)
-		log.Printf("tarantool: unable to parse watch event: %s", err)
-	case LogBoxSessionPushUnsupported:
-		header := v[0].(Header)
-		log.Printf("tarantool: unsupported box.session.push() for request %d", header.RequestId)
-	default:
-		args := append([]any{"tarantool: unexpected event ", event, conn}, v...)
-		log.Print(args...)
-	}
-}
 
 // Connection is a handle with a single connection to a Tarantool instance.
 //
@@ -214,6 +153,8 @@ type Connection struct {
 
 	// alloc is an allocator for response buffers.
 	alloc Allocator
+	// logger is a structured logger for the connection.
+	logger *slog.Logger
 }
 
 var _ = Connector(&Connection{}) // Check compatibility with connector interface.
@@ -329,8 +270,10 @@ type Opts struct {
 	// Handle is user specified value, that could be retrivied with
 	// Handle() method.
 	Handle any
-	// Logger is user specified logger used for error messages.
-	Logger Logger
+	// Logger is a structured logger for the connection. If nil, logs are
+	// discarded. If non-nil, the logger is automatically wrapped with
+	// WithGroup("tarantool") to namespace library attributes.
+	Logger *slog.Logger
 	// Allocator is used to allocate and deallocate response buffers.
 	// If nil, default Go allocation is used.
 	Allocator Allocator
@@ -376,8 +319,10 @@ func Connect(ctx context.Context, dialer Dialer, opts Opts) (conn *Connection, e
 		}
 	}
 
-	if conn.opts.Logger == nil {
-		conn.opts.Logger = defaultLogger{}
+	if opts.Logger == nil {
+		conn.logger = slog.New(slog.DiscardHandler)
+	} else {
+		conn.logger = opts.Logger.WithGroup("tarantool")
 	}
 
 	if conn.opts.Allocator != nil {
@@ -451,6 +396,13 @@ func (conn *Connection) CloseGraceful() error {
 // Addr returns a configured address of Tarantool socket.
 func (conn *Connection) Addr() net.Addr {
 	return conn.addr
+}
+
+func (conn *Connection) addrString() string {
+	if a := conn.Addr(); a != nil {
+		return a.String()
+	}
+	return ""
 }
 
 // Handle returns a user-specified handle from Opts.
@@ -687,7 +639,12 @@ func (conn *Connection) runReconnects(ctx context.Context) error {
 			return nil
 		}
 
-		conn.opts.Logger.Report(LogReconnectFailed, conn, reconnects, err)
+		conn.logger.Warn(LogMsgReconnectFailed,
+			slog.Uint64(LogKeyAttempt, uint64(reconnects)),
+			slog.Uint64(LogKeyMaxAttempts, uint64(conn.opts.MaxReconnects)),
+			slog.Any(LogKeyError, err),
+			slog.String(LogKeyAddress, conn.addrString()),
+		)
 		conn.notify(ReconnectFailed)
 		reconnects++
 		conn.mutex.Unlock()
@@ -702,7 +659,10 @@ func (conn *Connection) runReconnects(ctx context.Context) error {
 		conn.mutex.Lock()
 	}
 
-	conn.opts.Logger.Report(LogLastReconnectFailed, conn, err)
+	conn.logger.Warn(LogMsgLastReconnectFailed,
+		slog.Any(LogKeyError, err),
+		slog.String(LogKeyAddress, conn.addrString()),
+	)
 	// mark connection as closed to avoid reopening by another goroutine
 	return ClientError{ErrConnectionClosed, "last reconnect failed"}
 }
@@ -878,7 +838,10 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 			fut := conn.fetchFuture(r.header.RequestId)
 			if fut == nil {
 				r.buf.Release()
-				conn.opts.Logger.Report(LogUnexpectedResultId, conn, r.header)
+				conn.logger.Warn(LogMsgUnexpectedRequestId,
+					slog.Uint64(LogKeyRequestId, uint64(r.header.RequestId)),
+					slog.String(LogKeyAddress, conn.addrString()),
+				)
 				continue
 			}
 
@@ -927,12 +890,16 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 					ErrProtocolError,
 					fmt.Sprintf("failed to decode IPROTO_EVENT: %s", err),
 				}
-				conn.opts.Logger.Report(LogWatchEventReadFailed, conn, err)
+				conn.logger.Warn(LogMsgWatchEventReadFailed,
+					slog.Any(LogKeyError, err),
+				)
 			}
 			buf.Release()
 		case iproto.IPROTO_CHUNK:
 			buf.Release()
-			conn.opts.Logger.Report(LogBoxSessionPushUnsupported, conn, header)
+			conn.logger.Warn(LogMsgPushUnsupported,
+				slog.Uint64(LogKeyRequestId, uint64(header.RequestId)),
+			)
 		default:
 			resps <- resp{header: header, buf: buf}
 		}

@@ -86,6 +86,13 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
   `ModeRW`, `RO` → `ModeRO`, `PreferRW` → `ModePreferRW`, `PreferRO` →
   `ModePreferRO`, `UnknownRole` → `RoleUnknown`, `MasterRole` → `RoleMaster`,
   `ReplicaRole` → `RoleReplica`.
+* Replaced custom `Logger` interface with `*slog.Logger` from the standard
+  library (#504). The `Logger` interface, `ConnLogKind` type, and its constants
+  (`LogReconnectFailed`, `LogLastReconnectFailed`, `LogUnexpectedResultId`,
+  `LogWatchEventReadFailed`, `LogBoxSessionPushUnsupported`) are removed.
+  Use `Opts.Logger *slog.Logger` instead. Pool `Opts.Logger *slog.Logger`
+  replaces direct `log.Printf` calls that were not customizable.
+  By default, logs are discarded (silent). See MIGRATION.md for details.
 
 ### Removed
 
@@ -93,6 +100,10 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
   `NewCallRequest` instead.
 * `test_helpers.Retry` function. Use `assert.Eventually` from testify instead.
   `test_helpers.WaitUntilReconnected` reimplemented without `Retry`.
+* `Logger` interface and `defaultLogger` type — replaced by
+  `*slog.Logger` (#504).
+* `ConnLogKind` type and its constants — log messages are now identified
+  by string constants in `log.go` (#504).
 
 ### Fixed
 

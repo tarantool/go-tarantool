@@ -103,6 +103,69 @@ TODO
   All functions in `test_helpers` that previously accepted `*testing.T` now
   accept the `T` interface instead, making them usable in broader contexts like
   example functions and custom test runners.
+* Replaced custom `Logger` interface with `*slog.Logger` from the standard
+  library. The `Logger` interface, `ConnLogKind` type, and its constants
+  are removed. Use `Opts.Logger *slog.Logger` instead. Pool `Opts.Logger
+  *slog.Logger` replaces direct `log.Printf` calls. By default, logs are
+  discarded (silent).
+
+  Before:
+  ```go
+  type MyLogger struct{}
+
+  func (l MyLogger) Report(event tarantool.ConnLogKind, conn *tarantool.Connection, v ...any) {
+      switch event {
+      case tarantool.LogReconnectFailed:
+          reconnects := v[0].(uint)
+          err := v[1].(error)
+          log.Printf("reconnect %d failed: %s", reconnects, err)
+      // ... other cases
+      }
+  }
+
+  opts := tarantool.Opts{
+      Logger: MyLogger{},
+  }
+  ```
+
+  After:
+  ```go
+  import "log/slog"
+
+  opts := tarantool.Opts{
+      Logger: slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+          Level: slog.LevelWarn,
+      })),
+  }
+  ```
+
+  For pool:
+  ```go
+  poolOpts := pool.Opts{
+      CheckTimeout: time.Second,
+      Logger: slog.New(slog.NewTextHandler(os.Stderr, nil)),
+  }
+  connPool, err := pool.NewWithOpts(ctx, instances, poolOpts)
+  ```
+
+  Removed types and constants:
+
+  | Removed | Replacement |
+  |---|---|
+  | `Logger` interface | `*slog.Logger` in `Opts.Logger` |
+  | `ConnLogKind` type | String constants (e.g., `LogMsgReconnectFailed`) |
+  | `LogReconnectFailed` | `LogMsgReconnectFailed` |
+  | `LogLastReconnectFailed` | `LogMsgLastReconnectFailed` |
+  | `LogUnexpectedResultId` | `LogMsgUnexpectedRequestId` |
+  | `LogWatchEventReadFailed` | `LogMsgWatchEventReadFailed` |
+  | `LogBoxSessionPushUnsupported` | `LogMsgPushUnsupported` |
+  | `defaultLogger` type | Discarded by default (previously logged to stderr via `log.Printf`) |
+
+  Note about log groups: connection log messages appear under the
+  `tarantool` group, while pool-level log messages appear under the
+  `tarantool.pool` group. When a pool logger is set and a connection
+  does not have its own logger, the pool passes its logger to each
+  connection, which then applies its own `WithGroup("tarantool")`.
 
 ## Migration from v1.x.x to v2.x.x
 
