@@ -38,6 +38,7 @@ faster than other packages according to public benchmarks.
   * [API reference](#api-reference)
   * [Walking\-through example](#walking-through-example)
   * [Example with encrypting traffic](#example-with-encrypting-traffic)
+  * [Logging](#logging)
 * [Migration guide](#migration-guide)
 * [Contributing](#contributing)
 * [Related libraries](#related-libraries)
@@ -236,6 +237,52 @@ func main() {
 
 Note that [traffic encryption](https://www.tarantool.io/en/doc/latest/enterprise/security/#encrypting-traffic)
 is only available in Tarantool Enterprise Edition 2.10 or newer.
+
+### Logging
+
+The library uses Go's standard `log/slog` package for structured logging. By
+default, all log output is discarded. To enable logging, pass a `*slog.Logger`
+to `Opts.Logger`:
+
+```go
+import (
+    "log/slog"
+    "os"
+
+    "github.com/tarantool/go-tarantool/v3"
+)
+
+opts := tarantool.Opts{
+    Logger: slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+        Level: slog.LevelWarn,
+    })),
+}
+```
+
+The library automatically wraps the logger with `WithGroup("tarantool")` to
+namespace its attributes. For pool connections, the group is
+`tarantool.pool`. This prevents key collisions with your application's own
+log attributes.
+
+When a pool logger is set and a connection does not have its own logger, the
+pool passes the original (unwrapped) logger to each connection, which then
+applies its own `WithGroup("tarantool")`. As a result, pool-level messages
+appear under the `tarantool.pool` group, while connection-level messages
+appear under the `tarantool` group.
+
+For a production-ready structured logging library, see
+[go-tlog](https://github.com/tarantool/go-tlog) — it supports multiple
+output formats (text, JSON), multiple destinations, log levels, and
+automatic stacktraces for errors. Since `tlog.Logger()` returns a
+`*slog.Logger`, it integrates directly:
+
+```go
+import "github.com/tarantool/go-tlog"
+
+opts := tarantool.Opts{
+    Logger: tlog.Logger(),
+}
+```
 
 ### Custom Requests
 

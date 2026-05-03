@@ -1,10 +1,10 @@
 package pool_test
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"log"
+	"log/slog"
 	"net"
 	"os"
 	"strings"
@@ -391,24 +391,29 @@ func TestConn_no_execute_supported(t *testing.T) {
 func TestConn_no_execute_unsupported(t *testing.T) {
 	test_helpers.SkipIfWatchOnceSupported(t)
 
-	var buf bytes.Buffer
-	log.SetOutput(&buf)
-	defer log.SetOutput(os.Stderr)
+	var buf safeBuffer
+	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn}))
 
 	healthyServ := servers[0]
 
+	poolOpts := pool.Opts{
+		CheckTimeout: 1 * time.Second,
+		Logger:       logger,
+	}
+
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
-	connPool, err := pool.New(ctx,
-		[]pool.Instance{makeNoExecuteInstance(healthyServ, connOpts)})
+	connPool, err := pool.NewWithOpts(ctx,
+		[]pool.Instance{makeNoExecuteInstance(healthyServ, connOpts)}, poolOpts)
 	require.NoErrorf(t, err, "failed to connect")
 	require.NotNilf(t, connPool, "conn is nil after Connect")
 
 	defer func() { _ = connPool.Close() }()
 
-	require.Contains(t, buf.String(),
-		fmt.Sprintf("connect to %s failed: Execute access to function "+
-			"'box.info' is denied for user '%s'", servers[0], userNoExec))
+	output := buf.String()
+	require.Contains(t, output, pool.LogMsgConnectFailed)
+	require.Contains(t, output, pool.LogKeyInstance)
+	require.Contains(t, output, healthyServ)
 
 	args := test_helpers.CheckStatusesArgs{
 		Pool:               connPool,
@@ -1483,18 +1488,18 @@ func TestHandlerOpenUpdateClose(t *testing.T) {
 }
 
 type testAddErrorHandler struct {
-	discovered, deactivated int
+	discovered, deactivated uint32
 }
 
 func (h *testAddErrorHandler) Discovered(name string, conn *tarantool.Connection,
 	role pool.Role) error {
-	h.discovered++
+	atomic.AddUint32(&h.discovered, 1)
 	return fmt.Errorf("any error")
 }
 
 func (h *testAddErrorHandler) Deactivated(name string, conn *tarantool.Connection,
 	role pool.Role) error {
-	h.deactivated++
+	atomic.AddUint32(&h.deactivated, 1)
 	return nil
 }
 
@@ -1526,8 +1531,10 @@ func TestHandlerOpenError(t *testing.T) {
 
 	// It could happen additional reconnect attempts in the background, but
 	// at least 2 connects on start.
-	require.GreaterOrEqualf(t, h.discovered, 2, "unexpected discovered count")
-	require.Equalf(t, 0, h.deactivated, "unexpected deactivated count")
+	require.GreaterOrEqualf(t, atomic.LoadUint32(&h.discovered), uint32(2),
+		"unexpected discovered count")
+	require.Equalf(t, uint32(0), atomic.LoadUint32(&h.deactivated),
+		"unexpected deactivated count")
 }
 
 type testUpdateErrorHandler struct {

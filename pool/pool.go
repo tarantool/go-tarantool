@@ -14,7 +14,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"slices"
 	"sync"
 	"time"
@@ -107,6 +107,13 @@ type Opts struct {
 	CheckTimeout time.Duration
 	// Handler provides an ability to handle connection updates.
 	Handler Handler
+	// Logger is a structured logger for the pool. If nil, logs are
+	// discarded. If non-nil, the logger is automatically wrapped with
+	// WithGroup("tarantool.pool") to namespace library attributes.
+	//
+	// If a logger is not set in connection opts, the pool logger will
+	// be set for each connection automatically.
+	Logger *slog.Logger
 }
 
 /*
@@ -133,7 +140,12 @@ type Pool struct {
 	ends      map[string]*endpoint
 	endsMutex sync.RWMutex
 
-	opts Opts
+	opts   Opts
+	logger *slog.Logger
+	// rawLogger is the original logger without a WithGroup wrapper.
+	// It is passed to child connections so they can apply their own
+	// WithGroup("tarantool") namespace.
+	rawLogger *slog.Logger
 
 	state            state
 	done             chan struct{}
@@ -227,6 +239,13 @@ func NewWithOpts(ctx context.Context, instances []Instance,
 		rwPool:  rwPool,
 		roPool:  roPool,
 		anyPool: anyPool,
+	}
+
+	if opts.Logger == nil {
+		p.logger = slog.New(slog.DiscardHandler)
+	} else {
+		p.logger = opts.Logger.WithGroup("tarantool.pool")
+		p.rawLogger = opts.Logger
 	}
 
 	fillCtx, fillCancel := context.WithCancel(ctx)
@@ -371,7 +390,10 @@ func (p *Pool) Add(ctx context.Context, instance Instance) error {
 			close(e.closed)
 			return err
 		} else {
-			log.Printf("tarantool: connect to %s failed: %s\n", instance.Name, err)
+			p.logger.Warn(LogMsgConnectFailed,
+				slog.String(LogKeyInstance, instance.Name),
+				slog.Any(LogKeyError, err),
+			)
 		}
 	}
 
@@ -716,7 +738,10 @@ func (p *Pool) addConnection(name string,
 			for _, watcher := range watched {
 				watcher.unwatch(conn)
 			}
-			log.Printf("tarantool: failed initialize watchers for %s: %s", name, err)
+			p.logger.Warn(LogMsgInitWatchersFailed,
+				slog.String(LogKeyInstance, name),
+				slog.Any(LogKeyError, err),
+			)
 			return err
 		}
 	}
@@ -740,7 +765,10 @@ func (p *Pool) handlerDiscovered(name string, conn *tarantool.Connection,
 	}
 
 	if err != nil {
-		log.Printf("tarantool: storing connection to %s canceled: %s\n", name, err)
+		p.logger.Warn(LogMsgStoringConnectionCanceled,
+			slog.String(LogKeyInstance, name),
+			slog.Any(LogKeyError, err),
+		)
 		return false
 	}
 	return true
@@ -754,8 +782,10 @@ func (p *Pool) handlerDeactivated(name string, conn *tarantool.Connection,
 	}
 
 	if err != nil {
-		log.Printf("tarantool: deactivating connection to %s by user failed: %s\n",
-			name, err)
+		p.logger.Warn(LogMsgDeactivatingFailed,
+			slog.String(LogKeyInstance, name),
+			slog.Any(LogKeyError, err),
+		)
 	}
 }
 
@@ -774,7 +804,10 @@ func (p *Pool) fillPools(ctx context.Context, instances []Instance) <-chan error
 
 		go func() {
 			if err := p.tryConnect(ctx, end); err != nil {
-				log.Printf("tarantool: connect to %s failed: %s\n", name, err)
+				p.logger.Warn(LogMsgConnectFailed,
+					slog.String(LogKeyInstance, name),
+					slog.Any(LogKeyError, err),
+				)
 				done <- fmt.Errorf("failed to connect to %s :%w", name, err)
 
 				return
@@ -851,6 +884,9 @@ func (p *Pool) tryConnect(ctx context.Context, e *endpoint) error {
 
 	connOpts := e.opts
 	connOpts.Notify = e.notify
+	if connOpts.Logger == nil && p.rawLogger != nil {
+		connOpts.Logger = p.rawLogger
+	}
 	conn, err := tarantool.Connect(ctx, e.dialer, connOpts)
 
 	p.poolsMutex.Lock()
@@ -870,8 +906,10 @@ func (p *Pool) tryConnect(ctx context.Context, e *endpoint) error {
 
 		if err != nil {
 			_ = conn.Close()
-			log.Printf("tarantool: storing connection to %s failed: %s\n",
-				e.name, err)
+			p.logger.Warn(LogMsgStoringConnectionFailed,
+				slog.String(LogKeyInstance, e.name),
+				slog.Any(LogKeyError, err),
+			)
 			return err
 		}
 
@@ -919,7 +957,10 @@ func (p *Pool) reconnect(ctx context.Context, e *endpoint) {
 	e.role = RoleUnknown
 
 	if err := p.tryConnect(ctx, e); err != nil {
-		log.Printf("tarantool: reconnect to %s failed: %s\n", e.name, err)
+		p.logger.Warn(LogMsgReconnectFailed,
+			slog.String(LogKeyInstance, e.name),
+			slog.Any(LogKeyError, err),
+		)
 	}
 }
 
@@ -1010,8 +1051,10 @@ func (p *Pool) controller(ctx context.Context, e *endpoint) {
 					switch {
 					case e.conn == nil:
 						if err := p.tryConnect(ctx, e); err != nil {
-							log.Printf("tarantool: reopen connection to %s failed: %s\n",
-								e.name, err)
+							p.logger.Warn(LogMsgReopenFailed,
+								slog.String(LogKeyInstance, e.name),
+								slog.Any(LogKeyError, err),
+							)
 						}
 					case !e.conn.ClosedNow():
 						p.updateConnection(e)

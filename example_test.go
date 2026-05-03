@@ -3,7 +3,9 @@ package tarantool_test
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net"
+	"os"
 	"regexp"
 	"time"
 
@@ -1182,6 +1184,41 @@ func ExampleConnect_reconnects() {
 	}
 	defer func() { _ = conn.Close() }()
 	if conn != nil {
+		fmt.Println("Connection is ready")
+	}
+	// Output:
+	// Connection is ready
+}
+
+// ExampleOpts_Logger demonstrates how to configure a structured logger
+// for the connection. By default, all log output is discarded.
+func ExampleOpts_Logger() {
+	dialer := tarantool.NetDialer{
+		Address:  server,
+		User:     "test",
+		Password: "test",
+	}
+
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+		Level: slog.LevelWarn,
+	}))
+
+	opts := tarantool.Opts{
+		Timeout: 5 * time.Second,
+		Logger:  logger,
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
+
+	conn, err := tarantool.Connect(ctx, dialer, opts)
+	if err != nil {
+		fmt.Println("No connection available")
+		return
+	}
+
+	if conn != nil {
+		defer func() { _ = conn.Close() }()
 		fmt.Println("Connection is ready")
 	}
 	// Output:
