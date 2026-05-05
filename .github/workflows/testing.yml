@@ -92,7 +92,7 @@ jobs:
     runs-on: ${{ matrix.runs-on }}
     steps:
       - name: Clone the connector
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           path: ${{ env.SRCDIR }}
 
@@ -105,7 +105,7 @@ jobs:
         run: brew install tarantool
 
       - name: Setup golang for the connector and tests
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: ${{ matrix.golang }}
 
