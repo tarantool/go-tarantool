@@ -1296,8 +1296,8 @@ func (conn *Connection) NewPrepared(expr string) (*Prepared, error) {
 func (conn *Connection) NewStream() (*Stream, error) {
 	next := conn.lastStreamId.Add(1)
 	return &Stream{
-		Id:   next,
-		Conn: conn,
+		id:   next,
+		conn: conn,
 	}, nil
 }
 

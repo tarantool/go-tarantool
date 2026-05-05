@@ -31,8 +31,13 @@ var (
 )
 
 type Stream struct {
-	Id   uint64
-	Conn *Connection
+	id   uint64
+	conn *Connection
+}
+
+// Id returns the stream identifier assigned by the connection.
+func (s *Stream) Id() uint64 {
+	return s.id
 }
 
 // BeginRequest helps you to create a begin request object for execution
@@ -241,9 +246,9 @@ func (req *RollbackRequest) Context(ctx context.Context) *RollbackRequest {
 // create the future.
 func (s *Stream) Do(req Request) Future {
 	if connectedReq, ok := req.(ConnectedRequest); ok {
-		if connectedReq.Conn() != s.Conn {
+		if connectedReq.Conn() != s.conn {
 			return NewFutureWithErr(req, errUnknownStreamRequest)
 		}
 	}
-	return s.Conn.send(req, s.Id)
+	return s.conn.send(req, s.id)
 }
