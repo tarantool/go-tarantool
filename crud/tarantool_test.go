@@ -1446,12 +1446,11 @@ func TestYieldEveryOption(t *testing.T) {
 // https://stackoverflow.com/questions/27629380/how-to-exit-a-go-program-honoring-deferred-calls
 func runTestMain(m *testing.M) int {
 	inst, err := test_helpers.StartTarantool(startOpts)
-	defer test_helpers.StopTarantoolWithCleanup(inst)
-
 	if err != nil {
 		log.Printf("Failed to prepare test tarantool: %s", err)
 		return 1
 	}
+	defer test_helpers.StopTarantoolWithCleanup(inst)
 
 	return m.Run()
 }
