@@ -99,6 +99,9 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
   Use `Opts.Logger *slog.Logger` instead. Pool `Opts.Logger *slog.Logger`
   replaces direct `log.Printf` calls that were not customizable.
   By default, logs are discarded (silent). See MIGRATION.md for details.
+* `Stream` struct fields `Id` and `Conn` are now unexported, making `Stream`
+  an opaque handle. Neither the stream identifier nor the underlying
+  connection is reachable from outside the package (#471).
 
 ### Removed
 

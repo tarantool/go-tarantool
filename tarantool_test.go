@@ -7,7 +7,6 @@ import (
 	"io"
 	"log"
 	"log/slog"
-	"math"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -2087,36 +2086,6 @@ func TestComplexStructs(t *testing.T) {
 	assert.Equal(t, tuple.Cid, tuples[0].Cid)
 	assert.Len(t, tuple.Members, len(tuples[0].Members))
 	assert.Equal(t, tuple.Members[1].Name, tuples[0].Members[1].Name)
-}
-
-func TestStream_IdValues(t *testing.T) {
-	test_helpers.SkipIfStreamsUnsupported(t)
-
-	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
-	defer func() { _ = conn.Close() }()
-
-	cases := []uint64{
-		1,
-		128,
-		math.MaxUint8,
-		math.MaxUint8 + 1,
-		math.MaxUint16,
-		math.MaxUint16 + 1,
-		math.MaxUint32,
-		math.MaxUint32 + 1,
-		math.MaxUint64,
-	}
-
-	stream, _ := conn.NewStream()
-	req := NewPingRequest()
-
-	for _, id := range cases {
-		t.Run(fmt.Sprintf("%d", id), func(t *testing.T) {
-			stream.Id = id
-			_, err := stream.Do(req).Get()
-			require.NoError(t, err, "Failed to Ping")
-		})
-	}
 }
 
 func TestStream_Commit(t *testing.T) {
