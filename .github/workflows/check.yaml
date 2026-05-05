@@ -4,6 +4,9 @@ on:
   push:
   pull_request:
 
+env:
+  GOLANGCI_LINT_VERSION: v2.11.4
+
 jobs:
   luacheck:
     runs-on: ubuntu-24.04
@@ -45,6 +48,7 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
+          version: ${{ env.GOLANGCI_LINT_VERSION }}
           args: --config=.golangci.yml
 
   codespell:
