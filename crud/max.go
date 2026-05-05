@@ -14,8 +14,9 @@ type MaxOpts = BorderOpts
 // MaxRequest helps you to create request object to call `crud.max`
 // for execution by a Connection.
 type MaxRequest struct {
-	spaceRequest
+	baseRequest
 
+	space string
 	index any
 	opts  MaxOpts
 }
@@ -29,11 +30,11 @@ type maxArgs struct {
 
 // MakeMaxRequest returns a new empty MaxRequest.
 func MakeMaxRequest(space string) MaxRequest {
-	req := MaxRequest{}
-	req.impl = newCall("crud.max")
-	req.space = space
-	req.opts = MaxOpts{}
-	return req
+	return MaxRequest{
+		baseRequest: newBaseRequest("crud.max"),
+		space:       space,
+		opts:        MaxOpts{},
+	}
 }
 
 // Index sets the index name/id for the MaxRequest request.

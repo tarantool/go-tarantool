@@ -23,7 +23,7 @@ func (b *Box) Session() *Session {
 
 // SessionSuRequest struct wraps a Tarantool call request specifically for session switching.
 type SessionSuRequest struct {
-	*tarantool.CallRequest // Underlying Tarantool call request.
+	baseCallRequest
 }
 
 // NewSessionSuRequest creates a new SessionSuRequest for switching session to a specified username.
@@ -31,12 +31,17 @@ type SessionSuRequest struct {
 func NewSessionSuRequest(username string) (SessionSuRequest, error) {
 	args := []any{username} // Create args slice with the username.
 
-	// Create a new call request for the box.session.su method with the given args.
-	callReq := tarantool.NewCallRequest("box.session.su").Args(args)
-
 	return SessionSuRequest{
-		callReq, // Return the new SessionSuRequest containing the call request.
+		baseCallRequest: baseCallRequest{
+			call: tarantool.NewCallRequest("box.session.su").Args(args),
+		},
 	}, nil
+}
+
+// Context sets a passed context to the request.
+func (req SessionSuRequest) Context(ctx context.Context) SessionSuRequest {
+	req.call = req.call.Context(ctx)
+	return req
 }
 
 // Su method is used to switch the session to the specified username.
@@ -48,7 +53,7 @@ func (s *Session) Su(ctx context.Context, username string) error {
 		return err // Return any errors encountered while creating the request.
 	}
 
-	req.Context(ctx) // Attach the context to the request for cancellation and timeout.
+	req = req.Context(ctx) // Attach the context to the request.
 
 	// Execute the request and return the future response, or an error.
 	fut := s.conn.Do(req)

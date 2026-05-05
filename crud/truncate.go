@@ -17,9 +17,10 @@ type TruncateOpts = BaseOpts
 // TruncateRequest helps you to create request object to call `crud.truncate`
 // for execution by a Connection.
 type TruncateRequest struct {
-	spaceRequest
+	baseRequest
 
-	opts TruncateOpts
+	space string
+	opts  TruncateOpts
 }
 
 type truncateArgs struct {
@@ -30,11 +31,11 @@ type truncateArgs struct {
 
 // MakeTruncateRequest returns a new empty TruncateRequest.
 func MakeTruncateRequest(space string) TruncateRequest {
-	req := TruncateRequest{}
-	req.impl = newCall("crud.truncate")
-	req.space = space
-	req.opts = TruncateOpts{}
-	return req
+	return TruncateRequest{
+		baseRequest: newBaseRequest("crud.truncate"),
+		space:       space,
+		opts:        TruncateOpts{},
+	}
 }
 
 // Opts sets the options for the TruncateRequest request.

@@ -63,11 +63,13 @@ import (
 )
 
 type baseRequest struct {
-	impl *tarantool.CallRequest
+	impl tarantool.CallRequest
 }
 
-func newCall(method string) *tarantool.CallRequest {
-	return tarantool.NewCallRequest(method)
+func newBaseRequest(method string) baseRequest {
+	return baseRequest{
+		impl: tarantool.NewCallRequest(method),
+	}
 }
 
 // Type returns IPROTO type for CRUD request.
@@ -86,13 +88,9 @@ func (req baseRequest) Async() bool {
 }
 
 // Response creates a response for the baseRequest.
-func (req baseRequest) Response(header tarantool.Header,
-	body io.Reader) (tarantool.Response, error) {
+func (req baseRequest) Response(
+	header tarantool.Header,
+	body io.Reader,
+) (tarantool.Response, error) {
 	return req.impl.Response(header, body)
-}
-
-type spaceRequest struct {
-	baseRequest
-
-	space string
 }

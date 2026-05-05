@@ -14,8 +14,9 @@ type UpdateOpts = SimpleOperationOpts
 // UpdateRequest helps you to create request object to call `crud.update`
 // for execution by a Connection.
 type UpdateRequest struct {
-	spaceRequest
+	baseRequest
 
+	space      string
 	key        Tuple
 	operations []Operation
 	opts       UpdateOpts
@@ -31,12 +32,12 @@ type updateArgs struct {
 
 // MakeUpdateRequest returns a new empty UpdateRequest.
 func MakeUpdateRequest(space string) UpdateRequest {
-	req := UpdateRequest{}
-	req.impl = newCall("crud.update")
-	req.space = space
-	req.operations = []Operation{}
-	req.opts = UpdateOpts{}
-	return req
+	return UpdateRequest{
+		baseRequest: newBaseRequest("crud.update"),
+		space:       space,
+		operations:  []Operation{},
+		opts:        UpdateOpts{},
+	}
 }
 
 // Key sets the key for the UpdateRequest request.

@@ -19,9 +19,9 @@ type StatsRequest struct {
 
 // MakeStatsRequest returns a new empty StatsRequest.
 func MakeStatsRequest() StatsRequest {
-	req := StatsRequest{}
-	req.impl = newCall("crud.stats")
-	return req
+	return StatsRequest{
+		baseRequest: newBaseRequest("crud.stats"),
+	}
 }
 
 // Space sets the space name for the StatsRequest request.

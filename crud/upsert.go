@@ -14,8 +14,9 @@ type UpsertOpts = SimpleOperationOpts
 // UpsertRequest helps you to create request object to call `crud.upsert`
 // for execution by a Connection.
 type UpsertRequest struct {
-	spaceRequest
+	baseRequest
 
+	space      string
 	tuple      Tuple
 	operations []Operation
 	opts       UpsertOpts
@@ -31,12 +32,12 @@ type upsertArgs struct {
 
 // MakeUpsertRequest returns a new empty UpsertRequest.
 func MakeUpsertRequest(space string) UpsertRequest {
-	req := UpsertRequest{}
-	req.impl = newCall("crud.upsert")
-	req.space = space
-	req.operations = []Operation{}
-	req.opts = UpsertOpts{}
-	return req
+	return UpsertRequest{
+		baseRequest: newBaseRequest("crud.upsert"),
+		space:       space,
+		operations:  []Operation{},
+		opts:        UpsertOpts{},
+	}
 }
 
 // Tuple sets the tuple for the UpsertRequest request.
@@ -84,8 +85,9 @@ type UpsertObjectOpts = SimpleOperationOpts
 // UpsertObjectRequest helps you to create request object to call
 // `crud.upsert_object` for execution by a Connection.
 type UpsertObjectRequest struct {
-	spaceRequest
+	baseRequest
 
+	space      string
 	object     Object
 	operations []Operation
 	opts       UpsertObjectOpts
@@ -101,12 +103,12 @@ type upsertObjectArgs struct {
 
 // MakeUpsertObjectRequest returns a new empty UpsertObjectRequest.
 func MakeUpsertObjectRequest(space string) UpsertObjectRequest {
-	req := UpsertObjectRequest{}
-	req.impl = newCall("crud.upsert_object")
-	req.space = space
-	req.operations = []Operation{}
-	req.opts = UpsertObjectOpts{}
-	return req
+	return UpsertObjectRequest{
+		baseRequest: newBaseRequest("crud.upsert_object"),
+		space:       space,
+		operations:  []Operation{},
+		opts:        UpsertObjectOpts{},
+	}
 }
 
 // Object sets the tuple for the UpsertObjectRequest request.

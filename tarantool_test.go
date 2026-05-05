@@ -1364,8 +1364,7 @@ func TestConnection_SetSchema_Changes(t *testing.T) {
 	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
 	defer func() { _ = conn.Close() }()
 
-	req := NewInsertRequest(spaceName)
-	req.Tuple([]any{uint(1010), "Tarantool"})
+	req := NewInsertRequest(spaceName).Tuple([]any{uint(1010), "Tarantool"})
 	_, err := conn.Do(req).Get()
 	require.NoError(t, err, "Failed to Insert")
 
@@ -1377,8 +1376,7 @@ func TestConnection_SetSchema_Changes(t *testing.T) {
 	// connection schema.
 	s.Spaces[spaceName] = Space{}
 
-	reqS := NewSelectRequest(spaceName)
-	reqS.Key([]any{uint(1010)})
+	reqS := NewSelectRequest(spaceName).Key([]any{uint(1010)})
 	data, err := conn.Do(reqS).Get()
 	require.NoError(t, err, "failed to Select")
 	assert.Equal(t, "Tarantool", data[0].([]any)[1], "wrong Select body")
