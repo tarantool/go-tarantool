@@ -36,7 +36,7 @@ format:
 
 .PHONY: golangci-lint
 golangci-lint:
-	golangci-lint run --max-same-issues 0 --max-issues-per-linter 100
+	golangci-lint run ./...
 
 .PHONY: test
 test:

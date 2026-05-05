@@ -1,5 +1,10 @@
 version: "2"
 
+issues:
+  # Disable limits on the number of printed issues
+  max-issues-per-linter: 0 # 0 = no limit
+  max-same-issues: 0 # 0 = no limit
+
 formatters:
   enable:
     - goimports
