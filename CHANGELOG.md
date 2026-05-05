@@ -109,6 +109,13 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 * Fixed the fluctuating behavior of the TestConnectionHandlerOpenUpdateClose
   test by increasing the waiting time (#502).
+* On Linux, tarantool processes started by `test_helpers.StartTarantool`
+  are now terminated when the parent test process dies, preventing leaked
+  instances after a panic (#147).
+* Reordered tests to defer `test_helpers.StopTarantoolWithCleanup` only
+  after asserting `StartTarantool` did not return an error, so a failed
+  start no longer panics with a nil-pointer dereference in the deferred
+  cleanup (#147).
 
 ## [v2.4.1] - 2025-10-16
 
