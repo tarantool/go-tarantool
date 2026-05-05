@@ -430,7 +430,7 @@ func StartTarantool(startOpts StartOpts) (*TarantoolInstance, error) {
 		args = append(args, "--config", startOpts.ConfigFile)
 		args = append(args, "--name", startOpts.InstanceName)
 	}
-	inst.Cmd = exec.Command(getTarantoolExec(), args...)
+	inst.Cmd = commandKillOnExit(getTarantoolExec(), args...)
 	inst.Cmd.Dir = startOpts.WorkDir
 
 	inst.Cmd.Env = append(
