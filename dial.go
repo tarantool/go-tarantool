@@ -642,13 +642,12 @@ func readResponse(ctx context.Context, conn Conn, req Request) (Response, error)
 
 	_, err = resp.Decode()
 	if err != nil {
-		switch err.(type) {
-		case Error:
+		var serverErr ServerError
+		if errors.As(err, &serverErr) {
 			return resp, err
-		default:
-			resp.Release()
-			return nil, fmt.Errorf("decode response body error: %w", err)
 		}
+		resp.Release()
+		return nil, fmt.Errorf("decode response body error: %w", err)
 	}
 
 	return resp, nil

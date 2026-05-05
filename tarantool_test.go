@@ -679,7 +679,7 @@ func TestClient(t *testing.T) {
 	}
 	req = NewInsertRequest(spaceNo).Tuple(&Tuple{Id: 1, Msg: "hello", Name: "world"})
 	data, err = conn.Do(req).Get()
-	tntErr, ok := err.(Error)
+	tntErr, ok := err.(ServerError)
 	require.True(t, ok, "Expected Error type")
 	assert.Equal(t, iproto.ER_TUPLE_FOUND, tntErr.Code,
 		"Expected %s but got: %v", iproto.ER_TUPLE_FOUND, err)
@@ -1198,7 +1198,7 @@ func TestStressSQL(t *testing.T) {
 	_, err = resp.Decode()
 	require.Error(t, err, "Expected error while decoding")
 
-	tntErr, ok := err.(Error)
+	tntErr, ok := err.(ServerError)
 	assert.True(t, ok)
 	assert.Equal(t, iproto.ER_SPACE_EXISTS, tntErr.Code)
 	require.Equal(t, iproto.ER_SPACE_EXISTS, resp.Header().Error, "Unexpected response error")
@@ -1998,10 +1998,11 @@ func TestComparableErrorsCancelCauseContext(t *testing.T) {
 
 	ctxCause, cancelCause := context.WithCancelCause(context.Background())
 	req := NewPingRequest().Context(ctxCause)
-	cancelCause(ClientError{ErrConnectionClosed, "something went wrong"})
+	cancelCause(ClientError{Code: CodeConnectionClosed, Msg: "something went wrong"})
 	_, err := conn.Do(req).Get()
 	var tmpErr ClientError
 	require.ErrorAs(t, err, &tmpErr)
+	require.ErrorIs(t, err, ErrConnectionClosed)
 }
 
 // waitCtxRequest waits for the WaitGroup in Body() call and returns
@@ -2633,7 +2634,7 @@ func TestErrorExtendedInfoBasic(t *testing.T) {
 	_, err := conn.Do(NewEvalRequest("not a Lua code").Args([]any{})).Get()
 	require.Errorf(t, err, "expected error on invalid Lua code")
 
-	ttErr, ok := err.(Error)
+	ttErr, ok := err.(ServerError)
 	require.Truef(t, ok, "error is built from a Tarantool error")
 
 	expected := BoxError{
@@ -2661,7 +2662,7 @@ func TestErrorExtendedInfoStack(t *testing.T) {
 	_, err := conn.Do(NewEvalRequest("error(chained_error)").Args([]any{})).Get()
 	require.Errorf(t, err, "expected error on explicit error raise")
 
-	ttErr, ok := err.(Error)
+	ttErr, ok := err.(ServerError)
 	require.Truef(t, ok, "error is built from a Tarantool error")
 
 	expected := BoxError{
@@ -2697,7 +2698,7 @@ func TestErrorExtendedInfoFields(t *testing.T) {
 	_, err := conn.Do(NewEvalRequest("error(access_denied_error)").Args([]any{})).Get()
 	require.Errorf(t, err, "expected error on forbidden action")
 
-	ttErr, ok := err.(Error)
+	ttErr, ok := err.(ServerError)
 	require.Truef(t, ok, "error is built from a Tarantool error")
 
 	expected := BoxError{

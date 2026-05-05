@@ -153,7 +153,7 @@ func TestBox_Sugar_Schema_UserCreate_AlreadyExists(t *testing.T) {
 	require.Error(t, err)
 
 	// Require that error code is ER_USER_EXISTS.
-	var boxErr tarantool.Error
+	var boxErr tarantool.ServerError
 	errors.As(err, &boxErr)
 	require.Equal(t, iproto.ER_USER_EXISTS, boxErr.Code)
 }
@@ -295,7 +295,7 @@ func TestBox_Sugar_Schema_UserDrop_UnknownUser(t *testing.T) {
 	err = b.Schema().User().Drop(ctx, "some_strange_not_existing_name", box.UserDropOptions{})
 	require.Error(t, err)
 
-	var boxErr tarantool.Error
+	var boxErr tarantool.ServerError
 
 	// Require that error code is ER_NO_SUCH_USER
 	errors.As(err, &boxErr)
@@ -313,7 +313,7 @@ func TestSchemaUser_Passwd_NotFound(t *testing.T) {
 	err = b.Schema().User().Passwd(ctx, "not-exists-passwd", "new_password")
 	require.Error(t, err)
 	// Require that error code is ER_USER_EXISTS.
-	var boxErr tarantool.Error
+	var boxErr tarantool.ServerError
 	errors.As(err, &boxErr)
 	require.Equal(t, iproto.ER_NO_SUCH_USER, boxErr.Code)
 }
@@ -391,7 +391,7 @@ func TestSchemaUser_Passwd_WithoutGrants(t *testing.T) {
 	require.Error(t, err)
 
 	// Require that error code is AccessDeniedError,
-	var boxErr tarantool.Error
+	var boxErr tarantool.ServerError
 	errors.As(err, &boxErr)
 	require.Equal(t, iproto.ER_ACCESS_DENIED, boxErr.Code)
 }
@@ -456,7 +456,7 @@ func TestBox_Sugar_Schema_UserGrant_NoSu(t *testing.T) {
 	require.Error(t, err)
 
 	// Require that error code is ER_ACCESS_DENIED.
-	var boxErr tarantool.Error
+	var boxErr tarantool.ServerError
 	errors.As(err, &boxErr)
 	require.Equal(t, iproto.ER_ACCESS_DENIED, boxErr.Code)
 }
@@ -546,7 +546,7 @@ func TestSchemaUser_Revoke_WithoutSu(t *testing.T) {
 	require.Error(t, err)
 
 	// Require that error code is ER_ACCESS_DENIED.
-	var boxErr tarantool.Error
+	var boxErr tarantool.ServerError
 	errors.As(err, &boxErr)
 	require.Equal(t, iproto.ER_ACCESS_DENIED, boxErr.Code)
 }
