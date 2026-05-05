@@ -149,12 +149,11 @@ func runTestMain(m *testing.M) int {
 		ConnectRetry: 10,
 		RetryTimeout: 500 * time.Millisecond,
 	})
-	defer test_helpers.StopTarantoolWithCleanup(inst)
-
 	if err != nil {
 		log.Printf("Failed to prepare test tarantool: %s", err)
 		return 1
 	}
+	defer test_helpers.StopTarantoolWithCleanup(inst)
 
 	return m.Run()
 }

@@ -2762,8 +2762,8 @@ func newWatcherReconnectionPrepareTestConnection(t *testing.T) (*Connection, con
 		ConnectRetry: 10,
 		RetryTimeout: 500 * time.Millisecond,
 	})
-	t.Cleanup(func() { test_helpers.StopTarantoolWithCleanup(inst) })
 	require.NoErrorf(t, err, "Unable to start Tarantool")
+	t.Cleanup(func() { test_helpers.StopTarantoolWithCleanup(inst) })
 
 	ctx, cancel := test_helpers.GetConnectContext()
 
@@ -2843,8 +2843,8 @@ func TestConnection_NewWatcher_reconnect(t *testing.T) {
 		ConnectRetry: 10,
 		RetryTimeout: 500 * time.Millisecond,
 	})
-	defer test_helpers.StopTarantoolWithCleanup(inst)
 	require.NoErrorf(t, err, "Unable to start Tarantool")
+	defer test_helpers.StopTarantoolWithCleanup(inst)
 
 	reconnectOpts := opts
 	reconnectOpts.Reconnect = 100 * time.Millisecond
@@ -3097,8 +3097,8 @@ func TestConnection_named_index_after_reconnect(t *testing.T) {
 		ConnectRetry: 10,
 		RetryTimeout: 500 * time.Millisecond,
 	})
-	defer test_helpers.StopTarantoolWithCleanup(inst)
 	require.NoErrorf(t, err, "Unable to start Tarantool")
+	defer test_helpers.StopTarantoolWithCleanup(inst)
 
 	reconnectOpts := opts
 	reconnectOpts.Reconnect = 100 * time.Millisecond
@@ -3205,8 +3205,8 @@ func TestConnectIsBlocked(t *testing.T) {
 		ConnectRetry: 10,
 		RetryTimeout: 500 * time.Millisecond,
 	})
-	defer test_helpers.StopTarantoolWithCleanup(inst)
 	require.NoErrorf(t, err, "Unable to start Tarantool")
+	defer test_helpers.StopTarantoolWithCleanup(inst)
 
 	var counter int
 	mockDialer := mockSlowDialer{original: testDialer, counter: &counter}
