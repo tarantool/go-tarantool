@@ -384,7 +384,7 @@ func (resp *baseResponse) Decode() ([]any, error) {
 		}
 
 		if info.decodedError != "" {
-			resp.err = Error{resp.header.Error, info.decodedError,
+			resp.err = ServerError{resp.header.Error, info.decodedError,
 				info.errorExtendedInfo}
 		}
 	}
@@ -447,7 +447,7 @@ func (resp *SelectResponse) Decode() ([]any, error) {
 		}
 
 		if info.decodedError != "" {
-			resp.err = Error{resp.header.Error, info.decodedError,
+			resp.err = ServerError{resp.header.Error, info.decodedError,
 				info.errorExtendedInfo}
 		}
 	}
@@ -515,7 +515,7 @@ func (resp *ExecuteResponse) Decode() ([]any, error) {
 		}
 
 		if info.decodedError != "" {
-			resp.err = Error{resp.header.Error, info.decodedError,
+			resp.err = ServerError{resp.header.Error, info.decodedError,
 				info.errorExtendedInfo}
 		}
 	}
@@ -580,7 +580,7 @@ func (resp *baseResponse) DecodeTyped(res any) error {
 			}
 		}
 		if info.decodedError != "" {
-			err = Error{resp.header.Error, info.decodedError, info.errorExtendedInfo}
+			err = ServerError{resp.header.Error, info.decodedError, info.errorExtendedInfo}
 		}
 	}
 	return err
@@ -628,7 +628,7 @@ func (resp *SelectResponse) DecodeTyped(res any) error {
 			}
 		}
 		if info.decodedError != "" {
-			err = Error{resp.header.Error, info.decodedError, info.errorExtendedInfo}
+			err = ServerError{resp.header.Error, info.decodedError, info.errorExtendedInfo}
 		}
 	}
 	return err
@@ -679,7 +679,7 @@ func (resp *ExecuteResponse) DecodeTyped(res any) error {
 			}
 		}
 		if info.decodedError != "" {
-			err = Error{resp.header.Error, info.decodedError, info.errorExtendedInfo}
+			err = ServerError{resp.header.Error, info.decodedError, info.errorExtendedInfo}
 		}
 	}
 	return err

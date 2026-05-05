@@ -76,7 +76,7 @@ func TestInsert_invalid(t *testing.T) {
 
 			req := arrow.NewInsertRequest(space, arr)
 			_, err = conn.Do(req).Get()
-			ttErr := err.(tarantool.Error)
+			ttErr := err.(tarantool.ServerError)
 
 			require.Contains(t, a.expected, ttErr.Code)
 		})

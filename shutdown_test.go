@@ -4,6 +4,7 @@
 package tarantool_test
 
 import (
+	"errors"
 	"sync"
 	"syscall"
 	"testing"
@@ -92,8 +93,8 @@ func testGracefulShutdown(t *testing.T, conn *Connection, inst *test_helpers.Tar
 
 	require.Eventually(t, func() bool {
 		_, err := conn.Do(NewPingRequest()).Get()
-		return err != nil && err.Error() == "server shutdown in progress (0x4005)"
-	}, timeout, tick, "expected shutdown error 'server shutdown in progress (0x4005)'")
+		return err != nil && errors.Is(err, ErrConnectionShutdown)
+	}, timeout, tick, "expected shutdown error matching ErrConnectionShutdown")
 
 	// Check that requests started before the shutdown finish successfully.
 	data, err := fut.Get()

@@ -40,6 +40,14 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 ### Changed
 
 * Required Go version is `1.24` now (#456).
+* Error types redesigned around `errors.Is` / `errors.As` (#469):
+  `tarantool.Error` renamed to `tarantool.ServerError`; the seven legacy
+  client error code constants are now package-level `error` sentinels
+  (`ErrConnectionClosed`, `ErrTimeouted`, ...) with numeric forms exposed
+  as `tarantool.Code*`; `ClientError` gained a `Cause` field that wraps
+  the underlying I/O error; `ClientError.Temporary()` removed in favour
+  of `tarantool.IsRetryable(err)` / `errors.Is(err, ErrRetryable)`.
+  See MIGRATION.md.
 * `test_helpers.MockDoer` is now an interface instead of a struct. The
   `Requests` field became a method `Requests()`. The `NewMockDoer()`
   constructor now returns the interface and uses a builder pattern.
