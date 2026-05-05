@@ -380,7 +380,7 @@ func (conn *Connection) ClosedNow() bool {
 // Close closes Connection.
 // After this method called, there is no way to reopen this Connection.
 func (conn *Connection) Close() error {
-	err := ClientError{ErrConnectionClosed, "connection closed by client"}
+	err := newClientError(CodeConnectionClosed, "connection closed by client", nil)
 	conn.mutex.Lock()
 	defer conn.mutex.Unlock()
 	return conn.closeConnection(err, true)
@@ -552,7 +552,7 @@ func (conn *Connection) connect(ctx context.Context) error {
 		}
 	}
 	if conn.state == connClosed {
-		err = ClientError{ErrConnectionClosed, "using closed connection"}
+		err = newClientError(CodeConnectionClosed, "using closed connection", nil)
 	}
 	return err
 }
@@ -631,8 +631,7 @@ func (conn *Connection) runReconnects(ctx context.Context) error {
 			if ctx.Err() != nil {
 				return err
 			}
-			if clientErr, ok := err.(ClientError); ok &&
-				clientErr.Code == ErrConnectionClosed {
+			if errors.Is(err, ErrConnectionClosed) {
 				return err
 			}
 		} else {
@@ -664,7 +663,7 @@ func (conn *Connection) runReconnects(ctx context.Context) error {
 		slog.String(LogKeyAddress, conn.addrString()),
 	)
 	// mark connection as closed to avoid reopening by another goroutine
-	return ClientError{ErrConnectionClosed, "last reconnect failed"}
+	return newClientError(CodeConnectionClosed, "last reconnect failed", nil)
 }
 
 func (conn *Connection) reconnectImpl(neterr error, c Conn) {
@@ -737,11 +736,11 @@ func (conn *Connection) writer(w writeFlusher, c Conn) {
 			runtime.Gosched()
 			if len(conn.dirtyShard) == 0 {
 				if err := w.Flush(); err != nil {
-					err = ClientError{
-						ErrIoError,
-						fmt.Sprintf("failed to flush data to the connection: %s", err),
-					}
-					conn.reconnect(err, c)
+					conn.reconnect(newClientError(
+						CodeIoError,
+						"failed to flush data to the connection",
+						err,
+					), c)
 					return
 				}
 			}
@@ -764,11 +763,11 @@ func (conn *Connection) writer(w writeFlusher, c Conn) {
 			continue
 		}
 		if _, err := w.Write(packet.b); err != nil {
-			err = ClientError{
-				ErrIoError,
-				fmt.Sprintf("failed to write data to the connection: %s", err),
-			}
-			conn.reconnect(err, c)
+			conn.reconnect(newClientError(
+				CodeIoError,
+				"failed to write data to the connection",
+				err,
+			), c)
 			return
 		}
 		packet.Reset()
@@ -861,23 +860,23 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 		buf, err = read(r, conn.lenbuf[:], conn.alloc)
 
 		if err != nil {
-			err = ClientError{
-				ErrIoError,
-				fmt.Sprintf("failed to read data from the connection: %s", err),
-			}
-			conn.reconnect(err, c)
+			conn.reconnect(newClientError(
+				CodeIoError,
+				"failed to read data from the connection",
+				err,
+			), c)
 			return
 		}
 
 		header, code, err := decodeHeader(conn.dec, &buf)
 
 		if err != nil {
-			err = ClientError{
-				ErrProtocolError,
-				fmt.Sprintf("failed to decode IPROTO header: %s", err),
-			}
 			buf.Release()
-			conn.reconnect(err, c)
+			conn.reconnect(newClientError(
+				CodeProtocolError,
+				"failed to decode IPROTO header",
+				err,
+			), c)
 			return
 		}
 
@@ -886,12 +885,13 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 			if event, err := readWatchEvent(&buf); err == nil {
 				events <- event
 			} else {
-				err = ClientError{
-					ErrProtocolError,
-					fmt.Sprintf("failed to decode IPROTO_EVENT: %s", err),
-				}
+				wrapped := newClientError(
+					CodeProtocolError,
+					"failed to decode IPROTO_EVENT",
+					err,
+				)
 				conn.logger.Warn(LogMsgWatchEventReadFailed,
-					slog.Any(LogKeyError, err),
+					slog.Any(LogKeyError, wrapped),
 				)
 			}
 			buf.Release()
@@ -938,10 +938,11 @@ func (conn *Connection) newFuture(req Request) *future {
 		select {
 		case conn.rlimit <- struct{}{}:
 		default:
-			fut.err = ClientError{
-				ErrRateLimited,
-				"Request is rate limited on client",
-			}
+			fut.err = newClientError(
+				CodeRateLimited,
+				"request is rate limited on client",
+				nil,
+			)
 			fut.finish()
 			return fut
 		}
@@ -952,26 +953,17 @@ func (conn *Connection) newFuture(req Request) *future {
 	shard.rmut.Lock()
 	switch atomic.LoadUint32(&conn.state) {
 	case connClosed:
-		fut.err = ClientError{
-			ErrConnectionClosed,
-			"using closed connection",
-		}
+		fut.err = newClientError(CodeConnectionClosed, "using closed connection", nil)
 		fut.finish()
 		shard.rmut.Unlock()
 		return fut
 	case connDisconnected:
-		fut.err = ClientError{
-			ErrConnectionNotReady,
-			"client connection is not ready",
-		}
+		fut.err = newClientError(CodeConnectionNotReady, "client connection is not ready", nil)
 		fut.finish()
 		shard.rmut.Unlock()
 		return fut
 	case connShutdown:
-		fut.err = ClientError{
-			ErrConnectionShutdown,
-			"server shutdown in progress",
-		}
+		fut.err = newClientError(CodeConnectionShutdown, "server shutdown in progress", nil)
 		fut.finish()
 		shard.rmut.Unlock()
 		return fut
@@ -1174,10 +1166,11 @@ func (conn *Connection) timeouts() {
 					} else {
 						fut.next = nil
 					}
-					fut.setError(ClientError{
-						Code: ErrTimeouted,
-						Msg:  fmt.Sprintf("client timeout for request %d", fut.requestId),
-					})
+					fut.setError(newClientError(
+						CodeTimeouted,
+						fmt.Sprintf("client timeout for request %d", fut.requestId),
+						nil,
+					))
 					conn.markDone()
 					shard.bufmut.Unlock()
 				}
@@ -1562,7 +1555,7 @@ func (conn *Connection) shutdown(forever bool) error {
 
 	if !atomic.CompareAndSwapUint32(&conn.state, connConnected, connShutdown) {
 		if forever {
-			err := ClientError{ErrConnectionClosed, "connection closed by client"}
+			err := newClientError(CodeConnectionClosed, "connection closed by client", nil)
 			return conn.closeConnection(err, true)
 		}
 		return nil
@@ -1593,7 +1586,7 @@ func (conn *Connection) shutdown(forever bool) error {
 	}
 
 	if forever {
-		err := ClientError{ErrConnectionClosed, "connection closed by client"}
+		err := newClientError(CodeConnectionClosed, "connection closed by client", nil)
 		return conn.closeConnection(err, true)
 	} else {
 		// Start to reconnect based on common rules, same as in net.box.
@@ -1601,10 +1594,11 @@ func (conn *Connection) shutdown(forever bool) error {
 		// subscribed connections are terminated.
 		// See https://www.tarantool.io/en/doc/latest/dev_guide/internals/iproto/graceful_shutdown/
 		// step 3.
-		conn.reconnectImpl(ClientError{
-			ErrConnectionClosed,
+		conn.reconnectImpl(newClientError(
+			CodeConnectionClosed,
 			"connection closed after server shutdown",
-		}, conn.c)
+			nil,
+		), conn.c)
 		return nil
 	}
 }
