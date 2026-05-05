@@ -36,6 +36,12 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 * New `MockRequestNamed` type for verifying specific requests in tests.
 * New `test_helpers.ExecuteOnAll` function to execute operations on all
   instances in parallel with context support.
+* New `(*test_helpers.TarantoolInstance).LogTail()` method that returns
+  the last 50 lines of captured tarantool stdout/stderr (#147).
+* New `test_helpers.DumpLogsIfFailed(t, inst)` helper that prints the
+  captured tarantool log via `t.Logf` when the test failed — intended
+  for `defer test_helpers.DumpLogsIfFailed(t, inst)` after a successful
+  `StartTarantool` (#147).
 
 ### Changed
 
@@ -112,6 +118,11 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 * On Linux, tarantool processes started by `test_helpers.StartTarantool`
   are now terminated when the parent test process dies, preventing leaked
   instances after a panic (#147).
+* `test_helpers.StartTarantool` now captures the last lines of the
+  spawned tarantool's stdout/stderr and includes them in the returned
+  error when startup fails, so test failures show the underlying
+  tarantool error directly instead of just "exit status 1" or a
+  connection timeout (#147).
 * Reordered tests to defer `test_helpers.StopTarantoolWithCleanup` only
   after asserting `StartTarantool` did not return an error, so a failed
   start no longer panics with a nil-pointer dereference in the deferred

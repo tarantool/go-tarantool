@@ -99,7 +99,8 @@ type TarantoolInstance struct {
 	// Dialer to check that connection established.
 	Dialer tarantool.Dialer
 
-	st chan state
+	st  chan state
+	log *logTailBuffer
 }
 
 // T is a subset of testing.T interface used by test helpers.
@@ -199,6 +200,17 @@ func (t *TarantoolInstance) Stop() error {
 // Signal sends a signal to the Tarantool instance.
 func (t *TarantoolInstance) Signal(sig os.Signal) error {
 	return t.Cmd.Process.Signal(sig)
+}
+
+// LogTail returns the tail of the spawned tarantool's combined
+// stdout/stderr captured since the process was started — up to
+// the last 50 lines. Includes a partial trailing line if the
+// process did not flush a newline. Empty if no output was captured.
+func (t *TarantoolInstance) LogTail() string {
+	if t == nil || t.log == nil {
+		return ""
+	}
+	return t.log.Tail()
 }
 
 func isReady(dialer tarantool.Dialer, opts *tarantool.Opts) error {
@@ -345,6 +357,7 @@ func RestartTarantool(inst *TarantoolInstance) error {
 
 	inst.Cmd.Process = startedInst.Cmd.Process
 	inst.st = startedInst.st
+	inst.log = startedInst.log
 
 	return err
 }
@@ -401,7 +414,8 @@ func prepareDir(workDir string) (string, error) {
 func StartTarantool(startOpts StartOpts) (*TarantoolInstance, error) {
 	// Prepare tarantool command.
 	inst := &TarantoolInstance{
-		st: make(chan state, 1),
+		st:  make(chan state, 1),
+		log: newLogTailBuffer(logTailLines),
 	}
 	init := state{
 		done: make(chan struct{}),
@@ -432,6 +446,8 @@ func StartTarantool(startOpts StartOpts) (*TarantoolInstance, error) {
 	}
 	inst.Cmd = commandKillOnExit(getTarantoolExec(), args...)
 	inst.Cmd.Dir = startOpts.WorkDir
+	inst.Cmd.Stdout = inst.log
+	inst.Cmd.Stderr = inst.log
 
 	inst.Cmd.Env = append(
 		os.Environ(),
@@ -485,15 +501,16 @@ func StartTarantool(startOpts StartOpts) (*TarantoolInstance, error) {
 	}
 
 	if inst.IsExit() && inst.result() != nil {
+		runErr := inst.result()
 		StopTarantool(inst)
-		return nil, fmt.Errorf("unexpected terminated Tarantool %q: %w",
-			inst.Opts.Listen, inst.result())
+		return nil, fmt.Errorf("unexpected terminated Tarantool %q: %w%s",
+			inst.Opts.Listen, runErr, formatLogTail(inst.log))
 	}
 
 	if err != nil {
 		StopTarantool(inst)
-		return nil, fmt.Errorf("failed to connect Tarantool %q: %w",
-			inst.Opts.Listen, err)
+		return nil, fmt.Errorf("failed to connect Tarantool %q: %w%s",
+			inst.Opts.Listen, err, formatLogTail(inst.log))
 	}
 
 	return inst, nil
