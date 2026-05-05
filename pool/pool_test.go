@@ -95,7 +95,7 @@ var connOpts = tarantool.Opts{
 	Timeout: 5 * time.Second,
 }
 
-const defaultCountRetry = 5
+const defaultCountRetry = 20
 
 const tick = 500 * time.Millisecond
 const timeout = defaultCountRetry * tick
