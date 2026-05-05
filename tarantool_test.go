@@ -2112,7 +2112,7 @@ func TestStream_IdValues(t *testing.T) {
 
 	for _, id := range cases {
 		t.Run(fmt.Sprintf("%d", id), func(t *testing.T) {
-			stream.Id = id
+			SetStreamIdForTesting(stream, id)
 			_, err := stream.Do(req).Get()
 			require.NoError(t, err, "Failed to Ping")
 		})

@@ -166,6 +166,22 @@ TODO
   `tarantool.pool` group. When a pool logger is set and a connection
   does not have its own logger, the pool passes its logger to each
   connection, which then applies its own `WithGroup("tarantool")`.
+* `Stream` struct fields are unexported. The exported `Stream.Id` field
+  is now an `Id()` method, and `Stream.Conn` is no longer accessible —
+  the underlying connection is an internal detail and callers should
+  hold their own `*Connection` reference if they need it.
+
+  Before:
+  ```go
+  stream, _ := conn.NewStream()
+  log.Printf("opened stream %d on %v", stream.Id, stream.Conn)
+  ```
+
+  After:
+  ```go
+  stream, _ := conn.NewStream()
+  log.Printf("opened stream %d on %v", stream.Id(), conn)
+  ```
 
 ## Migration from v1.x.x to v2.x.x
 
