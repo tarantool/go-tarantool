@@ -36,6 +36,12 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 * New `MockRequestNamed` type for verifying specific requests in tests.
 * New `test_helpers.ExecuteOnAll` function to execute operations on all
   instances in parallel with context support.
+* New `pool.Pool.WaitConnected(ctx, mode)` method (also added to the
+  `pool.Pooler` interface) that blocks until the pool holds a connection
+  satisfying the mode, or `ctx` is done, or the pool is closed. `pool.New`
+  still returns a pool even when no instance is reachable, so callers that
+  require a usable connection before proceeding should use `WaitConnected`
+  instead of the racy `ConnectedNow` snapshot.
 
 ### Changed
 
@@ -49,6 +55,14 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 * `box.New` returns an error instead of panic (#448).
 * Now cases of `<-ctx.Done()` returns wrapped error provided by `ctx.Cause()`.
   Allows you compare it using `errors.Is/As` (#457).
+* `pool.NewWithOpts`/`pool.New` no longer use `Opts.CheckTimeout` to bound the
+  initial connect: the wait for the instance dials is now bounded only by the
+  supplied `ctx`, so a slow or unreachable instance no longer blocks past the
+  `ctx` deadline (previously the wait was capped at `Opts.CheckTimeout` after
+  the first successful dial). `Opts.CheckTimeout` is unchanged for the
+  reconnect/role-relocate timer. Pass a `context.Context` with a deadline if
+  you cannot tolerate an unbounded wait, and use `pool.Pool.WaitConnected` if
+  you need a connection in a specific mode to be ready before proceeding.
 * Removed deprecated `pool` methods, related interfaces and tests are
   updated (#478).
 * Removed deprecated `box.session.push()` support: Future.AppendPush()

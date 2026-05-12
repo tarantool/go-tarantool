@@ -75,6 +75,78 @@ TODO
 * `pool.Pool.DoInstance()` renamed to `pool.Pool.DoOn()`.
 * `pool.Connect()` renamed to `pool.New()`, `pool.ConnectWithOpts()` renamed to
   `pool.NewWithOpts()`.
+* `pool.New()`/`pool.NewWithOpts()` no longer use `pool.Opts.CheckTimeout` to
+  bound the initial connect. They still dial all instances concurrently and
+  wait for those dials to finish, but the wait is now bounded only by the
+  supplied `ctx` (previously it was additionally capped at `CheckTimeout`
+  after the first successful dial). Consequence: if `ctx` has no deadline and
+  an instance is unreachable in a way that hangs (e.g. a black-hole address),
+  the constructor blocks until that dial times out on its own instead of
+  returning after `CheckTimeout` — pass a `context.Context` with a deadline.
+  Instances that fail to connect are left to the background controllers, as
+  before. `pool.Opts.CheckTimeout` is unchanged for the reconnect/role-relocate
+  timer. If you need a connection in a specific mode to be ready before
+  proceeding, use the new `pool.Pool.WaitConnected(ctx, mode)` — the readiness
+  counterpart to the racy `ConnectedNow` snapshot, also part of the
+  `pool.Pooler` interface.
+
+  Before:
+  ```Go
+  connPool, err := pool.ConnectWithOpts(ctx, instances, poolOpts)
+  // a working connection was likely (but not guaranteed) available here
+  ```
+
+  After:
+  ```Go
+  connPool, err := pool.NewWithOpts(ctx, instances, poolOpts)
+  if err != nil {
+      // ...
+  }
+  // ctx should carry a deadline; WaitConnected returns ctx.Err() on timeout.
+  if err := connPool.WaitConnected(ctx, pool.ModeRW); err != nil {
+      // ...
+  }
+  ```
+
+  If you relied on the old behaviour where the constructor effectively
+  blocked until a connection was (likely) available, reproduce it explicitly
+  by giving the call a deadline via `context.WithTimeout` and waiting for the
+  pool to become ready:
+  ```Go
+  ctx, cancel := context.WithTimeout(context.Background(), connectTimeout)
+  defer cancel()
+
+  connPool, err := pool.NewWithOpts(ctx, instances, poolOpts)
+  if err != nil {
+      // ctx expired before any instance connected, or an invalid argument
+      return err
+  }
+  if err := connPool.WaitConnected(ctx, pool.ModeRW); err != nil {
+      // no usable connection within connectTimeout (returns ctx.Err()),
+      // or the pool was closed (pool.ErrClosed)
+      _ = connPool.Close()
+      return err
+  }
+  // here a master connection is guaranteed to be available
+  ```
+  Note `pool.NewWithOpts` no longer takes any timeout of its own — pass a
+  bounded `context.Context` instead. `pool.Opts.CheckTimeout` only controls
+  the background reconnect/role-relocate timer now.
+* New `pool.Pool.WaitConnected(ctx context.Context, mode pool.Mode) error`
+  method (also added to the `pool.Pooler` interface). It blocks until the pool
+  holds a connection satisfying `mode`, returning `nil`; it returns `ctx.Err()`
+  if `ctx` is done first and `pool.ErrClosed` if the pool is (or becomes)
+  closed. Because `pool.New`/`pool.NewWithOpts` may return a pool with no live
+  connections (they do not fail when instances are unreachable), prefer
+  `WaitConnected` over the racy `ConnectedNow` snapshot when you need a usable
+  connection before proceeding. Typical usage:
+  ```Go
+  ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+  defer cancel()
+  if err := connPool.WaitConnected(ctx, pool.ModeRW); err != nil {
+      // no master available within the timeout (or pool closed)
+  }
+  ```
 * `pool` enum constants renamed to use prefix: `ANY` → `ModeAny`, `RW` →
   `ModeRW`, `RO` → `ModeRO`, `PreferRW` → `ModePreferRW`, `PreferRO` →
   `ModePreferRO`, `UnknownRole` → `RoleUnknown`, `MasterRole` → `RoleMaster`,
