@@ -147,12 +147,16 @@ type Pool struct {
 	// WithGroup("tarantool") namespace.
 	rawLogger *slog.Logger
 
-	state            state
-	done             chan struct{}
-	roPool           *roundRobinStrategy
-	rwPool           *roundRobinStrategy
-	anyPool          *roundRobinStrategy
-	poolsMutex       sync.RWMutex
+	state      state
+	done       chan struct{}
+	roPool     *roundRobinStrategy
+	rwPool     *roundRobinStrategy
+	anyPool    *roundRobinStrategy
+	poolsMutex sync.RWMutex
+	// connEvent is closed and replaced with a fresh channel whenever the set
+	// of active connections changes. It lets WaitConnected block until the
+	// pool becomes usable. Guarded by poolsMutex.
+	connEvent        chan struct{}
 	watcherContainer watcherContainer
 }
 
@@ -204,6 +208,14 @@ func newEndpoint(name string, dialer tarantool.Dialer, opts tarantool.Opts) *end
 
 // NewWithOpts creates pool for instances with specified instances and
 // opts. Instances must have unique names.
+//
+// It dials the instances concurrently and waits for the dials to finish;
+// ctx bounds that wait, so a slow or unreachable instance does not delay it
+// past the ctx deadline. If ctx is done before any instance connects, an
+// error is returned. Otherwise the pool is returned even if some (or all)
+// instances did not connect — the pool keeps reconnecting them in the
+// background; use Pool.WaitConnected if you need a usable connection before
+// proceeding.
 func NewWithOpts(ctx context.Context, instances []Instance,
 	opts Opts) (*Pool, error) {
 	unique := make(map[string]bool)
@@ -232,13 +244,14 @@ func NewWithOpts(ctx context.Context, instances []Instance,
 	anyPool := newRoundRobinStrategy(size)
 
 	p := &Pool{
-		ends:    make(map[string]*endpoint),
-		opts:    opts,
-		state:   connectedState,
-		done:    make(chan struct{}),
-		rwPool:  rwPool,
-		roPool:  roPool,
-		anyPool: anyPool,
+		ends:      make(map[string]*endpoint),
+		opts:      opts,
+		state:     connectedState,
+		done:      make(chan struct{}),
+		rwPool:    rwPool,
+		roPool:    roPool,
+		anyPool:   anyPool,
+		connEvent: make(chan struct{}),
 	}
 
 	if opts.Logger == nil {
@@ -248,33 +261,25 @@ func NewWithOpts(ctx context.Context, instances []Instance,
 		p.rawLogger = opts.Logger
 	}
 
+	// Dial all instances concurrently and wait for every dial to finish.
+	// The only deadline is ctx: when it expires the in-flight dials are
+	// cancelled, so a slow or unreachable instance does not block past it.
+	// Instances that fail to connect are left to the background controllers,
+	// which keep retrying. If nothing connects and ctx is done, fail;
+	// otherwise return the pool (which may have no live connections —
+	// callers that require one should follow up with Pool.WaitConnected).
 	fillCtx, fillCancel := context.WithCancel(ctx)
 	defer fillCancel()
 
-	var timeout <-chan time.Time
-
-	timeout = make(chan time.Time)
 	filled := p.fillPools(fillCtx, instances)
-	done := 0
-	success := len(instances) == 0
-
-	for done < len(instances) {
-		select {
-		case <-timeout:
-			fillCancel()
-			// To be sure that the branch is called only once.
-			timeout = make(chan time.Time)
-		case err := <-filled:
-			done++
-
-			if err == nil && !success {
-				timeout = time.After(opts.CheckTimeout)
-				success = true
-			}
+	connected := len(instances) == 0
+	for range instances {
+		if err := <-filled; err == nil {
+			connected = true
 		}
 	}
 
-	if !success && ctx.Err() != nil {
+	if !connected && ctx.Err() != nil {
 		p.state.set(closedState)
 		return nil, ctx.Err()
 	}
@@ -297,6 +302,23 @@ func New(ctx context.Context, instances []Instance) (*Pool, error) {
 	return NewWithOpts(ctx, instances, opts)
 }
 
+// hasConnection reports whether the pool currently holds a connection
+// satisfying mode. The caller must hold poolsMutex (read or write).
+func (p *Pool) hasConnection(mode Mode) (bool, error) {
+	switch mode {
+	case ModeAny:
+		return !p.anyPool.IsEmpty(), nil
+	case ModeRW:
+		return !p.rwPool.IsEmpty(), nil
+	case ModeRO:
+		return !p.roPool.IsEmpty(), nil
+	case ModePreferRW, ModePreferRO:
+		return !p.rwPool.IsEmpty() || !p.roPool.IsEmpty(), nil
+	default:
+		return false, ErrNoHealthyInstance
+	}
+}
+
 // ConnectedNow gets connected status of pool.
 func (p *Pool) ConnectedNow(mode Mode) (bool, error) {
 	p.poolsMutex.RLock()
@@ -305,19 +327,40 @@ func (p *Pool) ConnectedNow(mode Mode) (bool, error) {
 	if p.state.get() != connectedState {
 		return false, nil
 	}
-	switch mode {
-	case ModeAny:
-		return !p.anyPool.IsEmpty(), nil
-	case ModeRW:
-		return !p.rwPool.IsEmpty(), nil
-	case ModeRO:
-		return !p.roPool.IsEmpty(), nil
-	case ModePreferRW:
-		fallthrough
-	case ModePreferRO:
-		return !p.rwPool.IsEmpty() || !p.roPool.IsEmpty(), nil
-	default:
-		return false, ErrNoHealthyInstance
+	return p.hasConnection(mode)
+}
+
+// WaitConnected blocks until the pool holds at least one connection
+// satisfying mode, returning nil. It returns ctx.Err() if ctx is done first
+// and ErrClosed if the pool is (or becomes) closed.
+//
+// NewWithOpts does not fail when instances are unreachable: it returns a pool
+// that may have no live connections yet and keeps reconnecting in the
+// background. Callers that need a usable connection before proceeding should
+// use WaitConnected (typically with a deadline on ctx) instead of relying on
+// the racy ConnectedNow snapshot.
+func (p *Pool) WaitConnected(ctx context.Context, mode Mode) error {
+	for {
+		p.poolsMutex.RLock()
+		closed := p.state.get() != connectedState
+		ok, err := p.hasConnection(mode)
+		event := p.connEvent
+		p.poolsMutex.RUnlock()
+
+		switch {
+		case closed:
+			return ErrClosed
+		case err != nil:
+			return err
+		case ok:
+			return nil
+		}
+
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-event:
+		}
 	}
 }
 
@@ -457,6 +500,10 @@ func (p *Pool) Close() error {
 			close(s.close)
 		}
 		p.endsMutex.RUnlock()
+
+		p.poolsMutex.Lock()
+		p.notifyConnEvent()
+		p.poolsMutex.Unlock()
 	}
 
 	return p.waitClose()
@@ -472,6 +519,10 @@ func (p *Pool) CloseGraceful() error {
 			close(s.shutdown)
 		}
 		p.endsMutex.RUnlock()
+
+		p.poolsMutex.Lock()
+		p.notifyConnEvent()
+		p.poolsMutex.Unlock()
 	}
 
 	return p.waitClose()
@@ -692,11 +743,20 @@ func (p *Pool) getConnectionFromPool(name string) (*tarantool.Connection, Role) 
 	return p.anyPool.GetConnection(name), RoleUnknown
 }
 
+// notifyConnEvent wakes WaitConnected callers by closing the current
+// connEvent channel and installing a fresh one. The caller must hold
+// poolsMutex for writing.
+func (p *Pool) notifyConnEvent() {
+	close(p.connEvent)
+	p.connEvent = make(chan struct{})
+}
+
 func (p *Pool) deleteConnection(name string) {
 	if conn := p.anyPool.DeleteConnection(name); conn != nil {
 		if conn := p.rwPool.DeleteConnection(name); conn == nil {
 			p.roPool.DeleteConnection(name)
 		}
+		p.notifyConnEvent()
 		// The internal connection deinitialization.
 		p.watcherContainer.mutex.RLock()
 		defer p.watcherContainer.mutex.RUnlock()
@@ -754,6 +814,7 @@ func (p *Pool) addConnection(name string,
 	case RoleReplica:
 		p.roPool.AddConnection(name, conn)
 	}
+	p.notifyConnEvent()
 	return nil
 }
 

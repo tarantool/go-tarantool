@@ -196,6 +196,50 @@ func TestNewWithOpts_error_no_timeout(t *testing.T) {
 	require.ErrorIs(t, err, pool.ErrWrongCheckTimeout)
 }
 
+func TestPool_WaitConnected(t *testing.T) {
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.New(ctx, makeInstances(servers, connOpts))
+	require.NoError(t, err)
+	require.NotNil(t, connPool)
+	defer func() { _ = connPool.Close() }()
+
+	wctx, wcancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer wcancel()
+
+	require.NoError(t, connPool.WaitConnected(wctx, pool.ModeAny))
+	require.NoError(t, connPool.WaitConnected(wctx, pool.ModeRW))
+	require.NoError(t, connPool.WaitConnected(wctx, pool.ModePreferRO))
+}
+
+func TestPool_WaitConnected_context_canceled(t *testing.T) {
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	// "err" does not resolve, so the pool stays without connections.
+	connPool, err := pool.New(ctx, makeInstances([]string{"err"}, connOpts))
+	require.NoError(t, err)
+	require.NotNil(t, connPool)
+	defer func() { _ = connPool.Close() }()
+
+	wctx, wcancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer wcancel()
+
+	err = connPool.WaitConnected(wctx, pool.ModeAny)
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+}
+
+func TestPool_WaitConnected_closed(t *testing.T) {
+	ctx, cancel := test_helpers.GetPoolConnectContext()
+	defer cancel()
+	connPool, err := pool.New(ctx, makeInstances([]string{"err"}, connOpts))
+	require.NoError(t, err)
+	require.NotNil(t, connPool)
+	require.NoError(t, connPool.Close())
+
+	err = connPool.WaitConnected(context.Background(), pool.ModeAny)
+	require.ErrorIs(t, err, pool.ErrClosed)
+}
+
 func TestConnectWithOpts_error_reconnect(t *testing.T) {
 	ctx, cancel := test_helpers.GetPoolConnectContext()
 	defer cancel()
