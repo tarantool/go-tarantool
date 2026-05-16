@@ -17,9 +17,10 @@ type LenOpts = BaseOpts
 // LenRequest helps you to create request object to call `crud.len`
 // for execution by a Connection.
 type LenRequest struct {
-	spaceRequest
+	baseRequest
 
-	opts LenOpts
+	space string
+	opts  LenOpts
 }
 
 type lenArgs struct {
@@ -30,11 +31,11 @@ type lenArgs struct {
 
 // MakeLenRequest returns a new empty LenRequest.
 func MakeLenRequest(space string) LenRequest {
-	req := LenRequest{}
-	req.impl = newCall("crud.len")
-	req.space = space
-	req.opts = LenOpts{}
-	return req
+	return LenRequest{
+		baseRequest: newBaseRequest("crud.len"),
+		space:       space,
+		opts:        LenOpts{},
+	}
 }
 
 // Opts sets the options for the LenRequest request.
