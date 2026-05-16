@@ -479,7 +479,7 @@ func ExamplePool_CloseGraceful_force() {
 	// Force Pool.Close()!
 	// Pool.CloseGraceful() done!
 	// Result:
-	// [] connection closed by client (0x4001)
+	// [] connection closed: connection closed by client
 }
 
 func ExampleConnect_invalidOpts() {

@@ -79,6 +79,58 @@ TODO
   `ModeRW`, `RO` → `ModeRO`, `PreferRW` → `ModePreferRW`, `PreferRO` →
   `ModePreferRO`, `UnknownRole` → `RoleUnknown`, `MasterRole` → `RoleMaster`,
   `ReplicaRole` → `RoleReplica`.
+* Error types redesigned around Go's `errors.Is` / `errors.As` (#469):
+
+  * `tarantool.Error` (server-side error wrapper) renamed to
+    `tarantool.ServerError`.
+  * `ClientError.Code` is now a typed `tarantool.ClientErrorCode`
+    (underlying `uint32`, same numeric values).
+  * `ClientError.Temporary()` removed. Use `tarantool.IsRetryable(err)`
+    or `errors.Is(err, tarantool.ErrRetryable)`.
+  * The seven legacy `uint32` constants are now package-level `error`
+    sentinels matched via `errors.Is`. Numeric forms remain available as
+    `tarantool.Code*` constants:
+
+    | Old (`uint32` constant) | New sentinel              | Numeric (`ClientErrorCode`) |
+    |-------------------------|---------------------------|-----------------------------|
+    | `ErrConnectionNotReady` | `ErrConnectionNotReady`   | `CodeConnectionNotReady`    |
+    | `ErrConnectionClosed`   | `ErrConnectionClosed`     | `CodeConnectionClosed`      |
+    | `ErrProtocolError`      | `ErrProtocolError`        | `CodeProtocolError`         |
+    | `ErrTimeouted`          | `ErrTimeouted`            | `CodeTimeouted`             |
+    | `ErrRateLimited`        | `ErrRateLimited`          | `CodeRateLimited`           |
+    | `ErrConnectionShutdown` | `ErrConnectionShutdown`   | `CodeConnectionShutdown`    |
+    | `ErrIoError`            | `ErrIoError`              | `CodeIoError`               |
+
+  * `ClientError` gained a `Cause error` field; I/O failures wrap their
+    underlying `net`-layer error and can be inspected with `errors.As`.
+  * `ClientError.Error()` now formats as
+    `"<sentinel-message>: <Msg>: <cause>"` (omitting empty parts).
+
+  Before:
+  ```Go
+  if clientErr, ok := err.(tarantool.ClientError); ok {
+      if clientErr.Code == tarantool.ErrConnectionClosed {
+          // ...
+      }
+      if clientErr.Temporary() {
+          // retry
+      }
+  }
+  var tntErr tarantool.Error
+  if errors.As(err, &tntErr) { /* ... */ }
+  ```
+
+  After:
+  ```Go
+  if errors.Is(err, tarantool.ErrConnectionClosed) {
+      // ...
+  }
+  if tarantool.IsRetryable(err) {
+      // retry
+  }
+  var tntErr tarantool.ServerError
+  if errors.As(err, &tntErr) { /* ... */ }
+  ```
 * `Future.Release()` call could be used to free resources allocated for the
   `Future` object created by a `Connection` object.
 * Removed deprecated `NewCall16Request` and `NewCall17Request` constructors.

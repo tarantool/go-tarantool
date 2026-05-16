@@ -2,6 +2,7 @@ package tarantool_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net"
@@ -1375,7 +1376,10 @@ func ExampleConnection_Do_failure() {
 		// fmt.Printf("Failed to execute the request: %s\n", err)
 		if resp == nil {
 			// Something happens in a client process (timeout, IO error etc).
-			fmt.Printf("Resp == nil, ClientErr = %s\n", err.(tarantool.ClientError))
+			var clientErr tarantool.ClientError
+			if errors.As(err, &clientErr) {
+				fmt.Printf("Resp == nil, ClientErr = %s\n", clientErr)
+			}
 		} else {
 			// Response exist. So it could be a Tarantool error or a decode
 			// error. We need to check the error code.
@@ -1383,9 +1387,11 @@ func ExampleConnection_Do_failure() {
 			if resp.Header().Error == tarantool.ErrorNo {
 				fmt.Printf("Decode error: %s\n", err)
 			} else {
-				code := err.(tarantool.Error).Code
-				fmt.Printf("Error code from the error: %d\n", code)
-				fmt.Printf("Error short from the error: %s\n", code)
+				var serverErr tarantool.ServerError
+				if errors.As(err, &serverErr) {
+					fmt.Printf("Error code from the error: %d\n", serverErr.Code)
+					fmt.Printf("Error short from the error: %s\n", serverErr.Code)
+				}
 			}
 		}
 	}
@@ -1523,7 +1529,7 @@ func ExampleConnection_CloseGraceful_force() {
 	// Force Connection.Close()!
 	// Connection.CloseGraceful() done!
 	// Result:
-	// [] connection closed by client (0x4001)
+	// [] connection closed: connection closed by client
 }
 
 func ExampleWatchOnceRequest() {
