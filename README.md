@@ -9,17 +9,6 @@
 [![GitHub Discussions][discussions-badge]][discussions-url]
 [![Stack Overflow][stackoverflow-badge]][stackoverflow-url]
 
-# ⚠️ Development Status Notice
-
-**The current `main` branch is under active development for the next major
-release (v3).**
-
-The API on this branch is **unstable and subject to change**.
-
-**For production use and stable API, please use the
-[`v2`](https://github.com/tarantool/go-tarantool/tree/v2) branch of the
-repository.**
-
 # Client in Go for Tarantool
 
 The package `go-tarantool` contains everything you need to connect to
@@ -39,6 +28,8 @@ faster than other packages according to public benchmarks.
   * [Walking\-through example](#walking-through-example)
   * [Example with encrypting traffic](#example-with-encrypting-traffic)
   * [Logging](#logging)
+  * [Custom Allocator](#custom-allocator)
+  * [Custom Requests](#custom-requests)
 * [Migration guide](#migration-guide)
 * [Contributing](#contributing)
 * [Related libraries](#related-libraries)
@@ -283,6 +274,24 @@ opts := tarantool.Opts{
     Logger: tlog.Logger(),
 }
 ```
+
+### Custom Allocator
+
+For high-throughput workloads, you can use a custom `Allocator` to reuse
+response buffers and reduce GC pressure. The `PoolAllocator` implements
+`Allocator` using `sync.Pool` for power-of-two sized byte slices:
+
+```go
+import "github.com/tarantool/go-tarantool/v3"
+
+alloc, _ := tarantool.NewPoolAllocator([]int{10, 11, 12, 13})
+opts := tarantool.Opts{
+    Timeout:    time.Second,
+    Allocator:  alloc,
+}
+```
+
+By default, `Opts.Allocator` is `nil` and standard Go allocation is used.
 
 ### Custom Requests
 
