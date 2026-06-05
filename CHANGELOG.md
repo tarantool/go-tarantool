@@ -10,6 +10,33 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [v3.0.0] - 2026-06-08
+
+v3 redesigns the connector for a simpler, more idiomatic Go experience.
+
+Logging plugs into `*slog.Logger` — no custom interface.
+
+Error handling now works the way Go expects: `errors.Is` and `errors.As`
+just work — write `if errors.Is(err, tarantool.ErrTimeouted)` instead of
+comparing numeric codes. Context cancellation errors carry `ctx.Cause()`,
+so the underlying reason is always inspectable.
+
+Request builders return immutable values, safe to share across goroutines
+without defensive copying.
+
+For high-throughput workloads, the new `Allocator` interface and
+`Future.Release()` give you explicit control over buffer reuse — push
+allocations out of the hot path. `Future` and `Stream` became opaque
+interfaces, hiding internals and giving us freedom to evolve them.
+
+Requires Go 1.24. See [MIGRATION.md](./MIGRATION.md) for upgrade details.
+
+### Added
+
 * New types for MessagePack extensions compatible with go-option (#459).
 * Added `box.MustNew` wrapper for `box.New` without an error (#448).
 * Added missing IPROTO feature flags to greeting negotiation
@@ -18,46 +45,47 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
   marks Future as done (#496).
 * Added function String() for type datetime (#322).
 * New `Future` interface (#470).
-* Method `Release` for `Future` and `Response` interface that allows
-  to free used data directly by calling (#493).
+* Method `Release` for `Future` and `Response` interface that allows to free
+  used data directly by calling (#493).
 * Resources allocated for a `Future` object created by the `Connection` type
-  could be released with the `Future.Release()` call.
+  could be released with the `Future.Release()` call (#493).
 * Added function String() for type interval (#322).
 * New `Allocator` interface for custom allocation of response buffers (#493).
 * New `PoolAllocator` type that implements `Allocator` using sync.Pool for
   power-of-two sized byte slices (#493).
-* New `Opts.Allocator` option to configure a custom allocator for a
-  connection (#493).
+* New `Opts.Allocator` option to configure a custom allocator for a connection
+  (#493).
 * Method String() for type decimal.Decimal (#322).
-* New `T` interface compatible with testing.T methods
-  to make testing easier, `test_helpers` updated with it (#474).
+* New `T` interface compatible with testing.T methods to make testing easier,
+  `test_helpers` updated with it (#474).
 * New `MockDoer` interface for custom `Doer` testing with builder pattern
-  methods: `AddResponse`, `AddResponseRaw`, `AddResponseError`, `Requests`.
-* New `MockRequestNamed` type for verifying specific requests in tests.
+  methods: `AddResponse`, `AddResponseRaw`, `AddResponseError`, `Requests`
+  (#487).
+* New `MockRequestNamed` type for verifying specific requests in tests (#574).
 * New `test_helpers.ExecuteOnAll` function to execute operations on all
-  instances in parallel with context support.
-* New `(*test_helpers.TarantoolInstance).LogTail()` method that returns
-  the last 50 lines of captured tarantool stdout/stderr (#147).
-* New `test_helpers.DumpLogsIfFailed(t, inst)` helper that prints the
-  captured tarantool log via `t.Logf` when the test failed — intended
-  for `defer test_helpers.DumpLogsIfFailed(t, inst)` after a successful
-  `StartTarantool` (#147).
+  instances in parallel with context support (#485).
+* New `(*test_helpers.TarantoolInstance).LogTail()` method that returns the
+  last 50 lines of captured tarantool stdout/stderr (#587).
+* New `test_helpers.DumpLogsIfFailed(t, inst)` helper that prints the captured
+  tarantool log via `t.Logf` when the test failed — intended for `defer
+  test_helpers.DumpLogsIfFailed(t, inst)` after a successful `StartTarantool`
+  (#587).
 
 ### Changed
 
 * All top-level `New*Request()` constructors now return values instead of
-  pointers. All methods on request types use value receivers and return
-  values, enabling immutable builder-style chaining.
+  pointers. All methods on request types use value receivers and return values,
+  enabling immutable builder-style chaining (#584).
 * Renamed value constructors `Make*` to `New*` for naming consistency across
-  the connector. Affects `crud.Make*Request` (now `crud.New*Request`),
+  the connector (#584). Affects `crud.Make*Request` (now `crud.New*Request`),
   `datetime.MakeDatetime` (now `datetime.NewDatetime`), `decimal.MakeDecimal`
   and `decimal.MakeDecimalFromString` (now `decimal.NewDecimal` and
   `decimal.NewDecimalFromString`), `decimal.MustMakeDecimal` (now
   `decimal.MustNewDecimal`), `arrow.MakeArrow` (now `arrow.NewArrow`), and
   `crud.MakeResult` (now `crud.NewResult`).
-* Removed intermediate `spaceRequest`, `spaceIndexRequest` types — `space`
-  and `index` fields are now inlined directly into each request struct.
-  The same flattening was applied to `crud.spaceRequest`.
+* Removed intermediate `spaceRequest`, `spaceIndexRequest` types — `space` and
+  `index` fields are now inlined directly into each request struct. The same
+  flattening was applied to `crud.spaceRequest` (#584).
 * Required Go version is `1.24` now (#456).
 * Error types redesigned around `errors.Is` / `errors.As` (#469):
   `tarantool.Error` renamed to `tarantool.ServerError`; the seven legacy
@@ -67,90 +95,88 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
   the underlying I/O error; `ClientError.Temporary()` removed in favour
   of `tarantool.IsRetryableError(err)` / `errors.Is(err, ErrRetryable)`.
   See MIGRATION.md.
-* `test_helpers.MockDoer` is now an interface instead of a struct. The
+* `test_helpers.MockDoer` is now an interface instead of a struct (#487). The
   `Requests` field became a method `Requests()`. The `NewMockDoer()`
-  constructor now returns the interface and uses a builder pattern.
-  Old `NewMockDoer(t, ...interface{})` is removed. Use `NewMockDoer(t)`,
-  then chain `AddResponseRaw()`, `AddResponseError()`, `AddResponse()`
-  to configure responses.
+  constructor now returns the interface and uses a builder pattern. Old
+  `NewMockDoer(t, ...interface{})` is removed. Use `NewMockDoer(t)`, then chain
+  `AddResponseRaw()`, `AddResponseError()`, `AddResponse()` to configure
+  responses.
 * `box.New` returns an error instead of panic (#448).
 * Now cases of `<-ctx.Done()` returns wrapped error provided by `ctx.Cause()`.
   Allows you compare it using `errors.Is/As` (#457).
-* Removed deprecated `pool` methods, related interfaces and tests are
-  updated (#478).
-* Removed deprecated `box.session.push()` support: Future.AppendPush()
-  and Future.GetIterator() methods, ResponseIterator and
-  TimeoutResponseIterator types, Future.pushes[], Future.ready (#480, #497).
+* Removed deprecated `pool` methods, related interfaces and tests are updated
+  (#478).
+* Removed deprecated `box.session.push()` support: Future.AppendPush() and
+  Future.GetIterator() methods, ResponseIterator and TimeoutResponseIterator
+  types, Future.pushes[], Future.ready (#480, #497).
 * `LogAppendPushFailed` replaced with `LogBoxSessionPushUnsupported` (#480).
 * Removed deprecated `Connection` methods, related interfaces and tests are
   updated (#479).
 * Replaced the use of optional types in crud with go-option library (#492).
-* Future.done replaced with Future.cond (sync.Cond) + Future.finished
-  bool (#496).
+* Future.done replaced with Future.cond (sync.Cond) + Future.finished bool
+  (#496).
 * `Future` transform into `future` that implements interface `Future` and
   become private, `SetError` and `SetResponse` become private (#470).
 * `ConnectionPool.Close()` returns a single error value, combining multiple
   errors using errors.Join() (#540).
 * `test_helpers.CheckPoolStatuses` and `test_helpers.ProcessListenOnInstance`
   now accept typed arguments (`CheckStatusesArgs` and `ListenOnInstanceArgs`
-  respectively) instead of `interface{}`.
+  respectively) instead of `interface{}` (#485).
 * `ConnectionPool.ConnectWithOpts()`, `ConnectionPool.Connect()` and
   `ConnectionPool.Add()` now return an error if `tarantool.Opts.Reconnect`,
-  `tarantool.Opts.MaxReconnects` or `tarantool.Opts.Notify` options are set
-  for an instance connection. These options conflict with the pool's own
+  `tarantool.Opts.MaxReconnects` or `tarantool.Opts.Notify` options are set for
+  an instance connection (#581). These options conflict with the pool's own
   reconnection logic and produce misleading events. Use
   `pool.ConnectionHandler` to track connection availability instead of
   `tarantool.Opts.Notify`. All validation errors are combined using
   `errors.Join` and can be checked with `errors.Is`.
 * Rename `pool.ConnectionPool` to `pool.Pool`, `pool.ConnectionHandler` to
-  `pool.Handler`, `pool.ConnectionInfo` to `pool.Info`, `pool.ConnectionInfo.ConnRole`
-  to `pool.Info.Role`.
-* Rename `pool.Pool.GetInfo()` to `pool.Pool.Info()`.
-* Rename `pool.Pool.DoInstance()` to `pool.Pool.DoOn()`.
+  `pool.Handler`, `pool.ConnectionInfo` to `pool.Info`,
+  `pool.ConnectionInfo.ConnRole` to `pool.Info.Role` (#580).
+* Rename `pool.Pool.GetInfo()` to `pool.Pool.Info()` (#580).
+* Rename `pool.Pool.DoInstance()` to `pool.Pool.DoOn()` (#580).
 * Rename `pool.Connect()` to `pool.New()`, `pool.ConnectWithOpts()` to
-  `pool.NewWithOpts()`.
+  `pool.NewWithOpts()` (#580).
 * Rename `pool` enum constants to use prefix: `ANY` → `ModeAny`, `RW` →
   `ModeRW`, `RO` → `ModeRO`, `PreferRW` → `ModePreferRW`, `PreferRO` →
   `ModePreferRO`, `UnknownRole` → `RoleUnknown`, `MasterRole` → `RoleMaster`,
-  `ReplicaRole` → `RoleReplica`.
+  `ReplicaRole` → `RoleReplica` (#580).
 * Replaced custom `Logger` interface with `*slog.Logger` from the standard
   library (#504). The `Logger` interface, `ConnLogKind` type, and its constants
   (`LogReconnectFailed`, `LogLastReconnectFailed`, `LogUnexpectedResultId`,
-  `LogWatchEventReadFailed`, `LogBoxSessionPushUnsupported`) are removed.
-  Use `Opts.Logger *slog.Logger` instead. Pool `Opts.Logger *slog.Logger`
-  replaces direct `log.Printf` calls that were not customizable.
-  By default, logs are discarded (silent). See MIGRATION.md for details.
-* `Stream` struct fields `Id` and `Conn` are now unexported, making `Stream`
-  an opaque handle. Neither the stream identifier nor the underlying
-  connection is reachable from outside the package (#471).
+  `LogWatchEventReadFailed`, `LogBoxSessionPushUnsupported`) are removed. Use
+  `Opts.Logger *slog.Logger` instead. Pool `Opts.Logger *slog.Logger` replaces
+  direct `log.Printf` calls that were not customizable. By default, logs are
+  discarded (silent). See MIGRATION.md for details.
+* `Stream` struct fields `Id` and `Conn` are now unexported, making `Stream` an
+  opaque handle. Neither the stream identifier nor the underlying connection is
+  reachable from outside the package (#471).
 
 ### Removed
 
 * Deprecated `NewCall16Request` and `NewCall17Request` constructors. Use
-  `NewCallRequest` instead.
+  `NewCallRequest` instead (#579).
 * `test_helpers.Retry` function. Use `assert.Eventually` from testify instead.
-  `test_helpers.WaitUntilReconnected` reimplemented without `Retry`.
-* `Logger` interface and `defaultLogger` type — replaced by
-  `*slog.Logger` (#504).
-* `ConnLogKind` type and its constants — log messages are now identified
-  by string constants in `log.go` (#504).
+  `test_helpers.WaitUntilReconnected` reimplemented without `Retry` (#485).
+* `Logger` interface and `defaultLogger` type — replaced by `*slog.Logger`
+  (#504).
+* `ConnLogKind` type and its constants — log messages are now identified by
+  string constants in `log.go` (#504).
 
 ### Fixed
 
 * Fixed the fluctuating behavior of the TestConnectionHandlerOpenUpdateClose
   test by increasing the waiting time (#502).
-* On Linux, tarantool processes started by `test_helpers.StartTarantool`
-  are now terminated when the parent test process dies, preventing leaked
-  instances after a panic (#147).
-* `test_helpers.StartTarantool` now captures the last lines of the
-  spawned tarantool's stdout/stderr and includes them in the returned
-  error when startup fails, so test failures show the underlying
-  tarantool error directly instead of just "exit status 1" or a
-  connection timeout (#147).
-* Reordered tests to defer `test_helpers.StopTarantoolWithCleanup` only
-  after asserting `StartTarantool` did not return an error, so a failed
-  start no longer panics with a nil-pointer dereference in the deferred
-  cleanup (#147).
+* On Linux, tarantool processes started by `test_helpers.StartTarantool` are
+  now terminated when the parent test process dies, preventing leaked instances
+  after a panic (#586).
+* `test_helpers.StartTarantool` now captures the last lines of the spawned
+  tarantool's stdout/stderr and includes them in the returned error when
+  startup fails, so test failures show the underlying tarantool error directly
+  instead of just "exit status 1" or a connection timeout (#587).
+* Reordered tests to defer `test_helpers.StopTarantoolWithCleanup` only after
+  asserting `StartTarantool` did not return an error, so a failed start no
+  longer panics with a nil-pointer dereference in the deferred cleanup (#586).
 
 ## [v2.4.1] - 2025-10-16
 

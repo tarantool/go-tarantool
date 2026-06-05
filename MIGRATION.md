@@ -1,51 +1,429 @@
 # Migration guide
 
+* [Migration from v2.x.x to v3.x.x](#migration-from-v2xx-to-v3xx)
+  * [Major changes](#major-changes-v3)
+  * [Main package](#main-package-v3)
+    * [Import path](#import-path)
+    * [Go version](#go-version-v3)
+    * [Future type](#future-type-v3)
+    * [Request types](#request-types-v3)
+    * [Response interface](#response-interface-v3)
+    * [Logger](#logger-v3)
+    * [Stream type](#stream-type-v3)
+    * [Removed deprecated methods](#removed-deprecated-methods-v3)
+    * [Context cancellation](#context-cancellation-v3)
+    * [Allocator](#allocator-v3)
+    * [Miscellaneous](#miscellaneous-v3)
+  * [pool package](#pool-package-v3)
+  * [box package](#box-package-v3)
+  * [crud package](#crud-package-v3)
+  * [decimal package](#decimal-package-v3)
+  * [datetime package](#datetime-package-v3)
+  * [arrow package](#arrow-package-v3)
+  * [uuid package](#uuid-package-v3)
+  * [settings package](#settings-package-v3)
+  * [queue package](#queue-package-v3)
+  * [test_helpers package](#test_helpers-package-v3)
+* [Migration from v1.x.x to v2.x.x](#migration-from-v1xx-to-v2xx)
+  * [Major changes](#major-changes-v2)
+  * [Main package](#main-package)
+    * [Go version](#go-version)
+    * [msgpack/v5](#msgpackv5)
+    * [Call = Call17](#call--call17)
+    * [IPROTO constants](#iproto-constants)
+    * [Request interface](#request-interface)
+    * [Request changes](#request-changes)
+    * [Response interface](#response-interface)
+    * [Response changes](#response-changes)
+    * [Future type](#future-type)
+    * [Protocol types](#protocol-types)
+    * [Connector interface](#connector-interface)
+    * [Connect function](#connect-function)
+    * [Connection schema](#connection-schema)
+    * [Schema type](#schema-type)
+  * [datetime package](#datetime-package)
+  * [decimal package](#decimal-package)
+  * [multi package](#multi-package)
+  * [pool package](#pool-package)
+  * [crud package](#crud-package)
+  * [test_helpers package](#test_helpers-package)
+
 ## Migration from v2.x.x to v3.x.x
-
-* [Major changes](#major-changes-v3)
-
-TODO
 
 ### <a id="major-changes-v3">Major changes</a>
 
 * Required Go version is `1.24` now.
-* `box.New` returns an error instead of panic
-* Added `box.MustNew` wrapper for `box.New` without an error
-* Removed deprecated `pool` methods, related interfaces and tests are updated.
-* Removed `box.session.push()` support: Future.AppendPush() and Future.GetIterator()
-  methods, ResponseIterator and TimeoutResponseIterator types.
-* Removed deprecated `Connection` methods, related interfaces and tests are updated.
+* Import path changed from `github.com/tarantool/go-tarantool/v2` to
+  `github.com/tarantool/go-tarantool/v3`.
+* `Future` is an interface now (was a concrete struct). All code that depends
+  on the concrete `*Future` type must be updated to use the `Future` interface.
+* All request types use value receivers and constructors return values instead
+  of pointers. Builder methods return modified copies instead of mutating in
+  place.
+* `Response` interface has a new `Release()` method. Any custom implementations
+  must be updated.
+* Replaced custom `Logger` interface with `*slog.Logger` from the standard
+  library.
+* Removed deprecated `Connection` and `Connector` methods. Use `Do()` with
+  request types instead.
+* Removed deprecated `pool` methods. Use `Do()` with request types instead.
+* Removed `box.session.push()` support: `Future.AppendPush()` and
+  `Future.GetIterator()` methods, `ResponseIterator` and
+  `TimeoutResponseIterator` types, `PushResponse` type.
+* Renamed value constructors from `Make*` to `New*` for naming consistency
+  across the connector.
+* `Pool.Close()` and `Pool.CloseGraceful()` return a single `error` instead of
+  `[]error`.
+* Pool types and constants renamed for consistency.
 
-  *NOTE*: due to Future.GetTyped() doesn't decode SelectRequest into structure, substitute Connection.GetTyped() following the example:
-  ```Go
-  var singleTpl = Tuple{}
-  err = conn.GetTyped(space, index, key, &singleTpl)
-  ```
-  At now became:
-  ```Go
-  var tpl []Tuple
-	err = conn.Do(NewSelectRequest(space).
-		Index(index).
-		Limit(1).
-		Key(key)
-	).GetTyped(&tpl)
-	singleTpl := tpl[0]
-  ```
-* Future.done replaced with Future.cond (sync.Cond) + Future.finished bool.
-* `Future` is an interface now.
-* `ConnectionPool.Close()` returns a single error value, combining multiple errors using errors.Join()
-* `ConnectionPool.ConnectWithOpts()`, `ConnectionPool.Connect()` and
-  `ConnectionPool.Add()` now return an error if `tarantool.Opts.Reconnect`,
-  `tarantool.Opts.MaxReconnects` or `tarantool.Opts.Notify` options are set
-  for an instance connection. These options create conflicts with the pool's
-  own reconnection logic: the pool reconnects via `pool.Opts.CheckTimeout`,
-  so an internal `Reconnect` creates a race with the pool; `MaxReconnects`
-  permanently closes a Connection while the pool would create a new one;
-  `Notify` events from an individual connection are misleading in a pool
-  context (e.g., `Disconnected` does not mean the endpoint is unavailable).
-  Use `pool.ConnectionHandler` to track endpoint availability.
-  All validation errors are combined using `errors.Join` and can be
-  checked with `errors.Is`.
+### Main package
+
+#### <a id="import-path">Import path</a>
+
+The module path changed from `github.com/tarantool/go-tarantool/v2` to
+`github.com/tarantool/go-tarantool/v3`. All import statements must be updated:
+
+```Go
+// Before.
+import "github.com/tarantool/go-tarantool/v2"
+
+// After.
+import "github.com/tarantool/go-tarantool/v3"
+```
+
+The same applies to all subpackages (`pool`, `box`, `crud`, `decimal`,
+`datetime`, `uuid`, `arrow`, `settings`, `queue`, `test_helpers`).
+
+#### <a id="go-version-v3">Go version</a>
+
+Required Go version is updated from `1.20` to `1.24`.
+
+#### <a id="future-type-v3">Future type</a>
+
+`Future` is now an interface instead of a concrete struct. The unexported
+`future` struct implements it. This affects type assertions, variable
+declarations, and any code that directly constructed `Future` values.
+
+* `Doer.Do()` and `Connection.Do()` now return `Future` (interface) instead of
+  `*Future`.
+* `Stream.Do()` returns `Future` instead of `*Future`.
+* `Future.Release()` is a new method that frees resources allocated for the
+  `Future` object. Call it when the future is no longer needed to allow buffer
+  reuse.
+* `Future.done` replaced with `Future.cond` (`sync.Cond`) + `Future.finished`
+  bool internally. `Future.SetResponse()` and `Future.SetError()` are
+  unexported now (use `NewFutureWithErr` / `NewFutureWithResponse`).
+* Removed `Future.AppendPush()`, `Future.GetIterator()`, `Future.SetResponse()`,
+  `Future.SetError()` methods.
+* `Future.Get()` return type changed from `[]interface{}` to `[]any`.
+* `Future.GetTyped()` parameter type changed from `interface{}` to `any`.
+
+New factory functions replace direct construction:
+
+| Function | Description |
+|---|---|
+| `NewFutureWithErr(req Request, err error) Future` | Creates a future with a pre-set error |
+| `NewFutureWithResponse(req Request, header Header, body io.Reader) (Future, error)` | Creates a future with a pre-set response |
+
+#### <a id="request-types-v3">Request types</a>
+
+All request types now use value receivers and constructors return values instead
+of pointers. Builder methods return modified copies instead of mutating in place.
+
+**Breaking**: calling a builder method without using its return value silently
+discards the change:
+
+```Go
+// Before (pointer receivers, mutation in place).
+req := NewSelectRequest("space")
+req.Index("idx")           // Mutated req directly.
+conn.Do(req)
+
+// After (value receivers, must use return value).
+req := NewSelectRequest("space")
+req = req.Index("idx")     // Must reassign.
+conn.Do(req)
+
+// Or chain directly.
+conn.Do(NewSelectRequest("space").Index("idx"))
+```
+
+Constructor return types changed for all request types:
+
+| Before | After |
+|---|---|
+| `NewPingRequest() *PingRequest` | `NewPingRequest() PingRequest` |
+| `NewSelectRequest(space) *SelectRequest` | `NewSelectRequest(space) SelectRequest` |
+| `NewInsertRequest(space) *InsertRequest` | `NewInsertRequest(space) InsertRequest` |
+| `NewReplaceRequest(space) *ReplaceRequest` | `NewReplaceRequest(space) ReplaceRequest` |
+| `NewDeleteRequest(space) *DeleteRequest` | `NewDeleteRequest(space) DeleteRequest` |
+| `NewUpdateRequest(space) *UpdateRequest` | `NewUpdateRequest(space) UpdateRequest` |
+| `NewUpsertRequest(space) *UpsertRequest` | `NewUpsertRequest(space) UpsertRequest` |
+| `NewCallRequest(func) *CallRequest` | `NewCallRequest(func) CallRequest` |
+| `NewEvalRequest(expr) *EvalRequest` | `NewEvalRequest(expr) EvalRequest` |
+| `NewExecuteRequest(expr) *ExecuteRequest` | `NewExecuteRequest(expr) ExecuteRequest` |
+| `NewWatchOnceRequest(key) *WatchOnceRequest` | `NewWatchOnceRequest(key) WatchOnceRequest` |
+| `NewPrepareRequest(expr) *PrepareRequest` | `NewPrepareRequest(expr) PrepareRequest` |
+| `NewUnprepareRequest(stmt) *UnprepareRequest` | `NewUnprepareRequest(stmt) UnprepareRequest` |
+| `NewExecutePreparedRequest(stmt) *ExecutePreparedRequest` | `NewExecutePreparedRequest(stmt) ExecutePreparedRequest` |
+| `NewBeginRequest() *BeginRequest` | `NewBeginRequest() BeginRequest` |
+| `NewCommitRequest() *CommitRequest` | `NewCommitRequest() CommitRequest` |
+| `NewRollbackRequest() *RollbackRequest` | `NewRollbackRequest() RollbackRequest` |
+| `NewBroadcastRequest(key) *BroadcastRequest` | `NewBroadcastRequest(key) BroadcastRequest` |
+
+Removed deprecated `NewCall16Request` and `NewCall17Request` constructors. Use
+`NewCallRequest` instead. `NewCallRequest` uses `IPROTO_CALL`, which has been
+the default since Tarantool 1.7.2.
+
+Removed intermediate `spaceRequest` and `spaceIndexRequest` types. The `space`
+and `index` fields are now inlined directly into each request struct.
+
+In the `box` subpackage, request types (`InfoRequest`, `UserExistsRequest`,
+`UserCreateRequest`, `SessionSuRequest`, etc.) no longer embed
+`tarantool.CallRequest`. They store it as a private field and implement their
+own `Context()` method returning the wrapper type. Usage stays clean:
+
+```Go
+req := box.NewUserExistsRequest(username).Context(ctx)
+```
+
+`BroadcastRequest.Code()` method renamed to `BroadcastRequest.Type()` for
+consistency with the `Request` interface.
+
+The same value-receiver pattern was applied to `arrow.InsertRequest` and
+`settings.SetRequest`/`settings.GetRequest`.
+
+#### <a id="response-interface-v3">Response interface</a>
+
+* `Response.Release()` is a new method added to the `Response` interface. Any
+  custom implementations must be updated. Call `Release()` to free resources
+  allocated for a response (buffers, etc.).
+* `SelectResponse.Release()`, `ExecuteResponse.Release()`,
+  `PrepareResponse.Release()` — new methods that return response buffers to
+  internal `sync.Pool` for reuse.
+* `SelectResponse.Pos()`, `ExecuteResponse.MetaData()`,
+  `ExecuteResponse.SQLInfo()` — now properly return errors from implicit
+  `Decode()` calls (previously errors were silently discarded).
+* `Response.Decode()` return type changed from `[]interface{}` to `[]any`.
+* `Response.DecodeTyped()` parameter type changed from `interface{}` to `any`.
+* Removed `PushResponse` type.
+* Removed `ResponseIterator` and `TimeoutResponseIterator` interfaces.
+
+#### <a id="logger-v3">Logger</a>
+
+Replaced custom `Logger` interface with `*slog.Logger` from the standard
+library. The `Logger` interface, `ConnLogKind` type, and its constants are
+removed. Use `Opts.Logger *slog.Logger` instead. Pool `Opts.Logger
+*slog.Logger` replaces direct `log.Printf` calls. By default, logs are
+discarded (silent).
+
+Before:
+```go
+type MyLogger struct{}
+
+func (l MyLogger) Report(event tarantool.ConnLogKind, conn *tarantool.Connection, v ...any) {
+    switch event {
+    case tarantool.LogReconnectFailed:
+        reconnects := v[0].(uint)
+        err := v[1].(error)
+        log.Printf("reconnect %d failed: %s", reconnects, err)
+    // ... other cases.
+    }
+}
+
+opts := tarantool.Opts{
+    Logger: MyLogger{},
+}
+```
+
+After:
+```go
+import "log/slog"
+
+opts := tarantool.Opts{
+    Logger: slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+        Level: slog.LevelWarn,
+    })),
+}
+```
+
+For pool:
+```go
+poolOpts := pool.Opts{
+    CheckTimeout: time.Second,
+    Logger: slog.New(slog.NewTextHandler(os.Stderr, nil)),
+}
+connPool, err := pool.NewWithOpts(ctx, instances, poolOpts)
+```
+
+Removed types and constants:
+
+| Removed | Replacement |
+|---|---|
+| `Logger` interface | `*slog.Logger` in `Opts.Logger` |
+| `ConnLogKind` type | String constants (e.g., `LogMsgReconnectFailed`) |
+| `LogReconnectFailed` | `LogMsgReconnectFailed` |
+| `LogLastReconnectFailed` | `LogMsgLastReconnectFailed` |
+| `LogUnexpectedResultId` | `LogMsgUnexpectedRequestId` |
+| `LogWatchEventReadFailed` | `LogMsgWatchEventReadFailed` |
+| `LogAppendPushFailed` | `LogMsgPushUnsupported` |
+| `LogBoxSessionPushUnsupported` | `LogMsgPushUnsupported` |
+| `defaultLogger` type | Discarded by default (previously logged to stderr via `log.Printf`) |
+
+Note about log groups: connection log messages appear under the `tarantool`
+group, while pool-level log messages appear under the `tarantool.pool` group.
+When a pool logger is set and a connection does not have its own logger, the
+pool passes its logger to each connection, which then applies its own
+`WithGroup("tarantool")`.
+
+#### <a id="stream-type-v3">Stream type</a>
+
+`Stream` struct fields `Id` and `Conn` are unexported (`id` and `conn`),
+making `Stream` an opaque handle. The stream identifier and the underlying
+connection are internal details; callers should hold their own `*Connection`
+reference if they need it.
+
+Before:
+```go
+stream, _ := conn.NewStream()
+log.Printf("opened stream %d on %v", stream.Id, stream.Conn)
+```
+
+After:
+```go
+stream, _ := conn.NewStream()
+log.Printf("opened stream on %v", conn)
+```
+
+#### <a id="removed-deprecated-methods-v3">Removed deprecated methods</a>
+
+All previously-deprecated synchronous and async helper methods are removed from
+`Connection`, `Connector` interface, and `Pooler` interface. Use `Do()` with
+the corresponding request type instead.
+
+Removed from `Connection` and `Connector`:
+
+`Ping`, `Select`, `Insert`, `Replace`, `Delete`, `Update`, `Upsert`, `Call`,
+`Call16`, `Call17`, `Eval`, `Execute`, `GetTyped`, `SelectTyped`,
+`InsertTyped`, `ReplaceTyped`, `DeleteTyped`, `UpdateTyped`, `CallTyped`,
+`Call16Typed`, `Call17Typed`, `EvalTyped`, `ExecuteTyped`, `SelectAsync`,
+`InsertAsync`, `ReplaceAsync`, `DeleteAsync`, `UpdateAsync`, `UpsertAsync`,
+`CallAsync`, `Call16Async`, `Call17Async`, `EvalAsync`, `ExecuteAsync`.
+
+*NOTE*: to substitute `Connection.GetTyped()` for a single-tuple select,
+use the following pattern:
+
+```Go
+// Before.
+var singleTpl Tuple
+err = conn.GetTyped(space, index, key, &singleTpl)
+
+// After.
+var tpl []Tuple
+err = conn.Do(NewSelectRequest(space).
+    Index(index).
+    Limit(1).
+    Key(key),
+).GetTyped(&tpl)
+singleTpl := tpl[0]
+```
+
+#### <a id="context-cancellation-v3">Context cancellation</a>
+
+When a context is canceled, the error returned now wraps `ctx.Cause()`. This
+allows you to check the original cancellation reason using `errors.Is` /
+`errors.As`:
+
+```Go
+ctx, cancel := context.WithCancelCause(ctx)
+cancel(errors.New("my reason"))
+_, err := conn.Do(req).Get()
+// Err now wraps the cause.
+errors.Is(err, context.Canceled) // Still true.
+// And you can retrieve the original cause.
+errors.Is(err, context.Cause(ctx)) // True.
+```
+
+#### <a id="allocator-v3">Allocator</a>
+
+A new `Allocator` interface allows custom allocation of response buffers.
+This is useful for reducing GC pressure in high-throughput scenarios.
+
+```go
+type Allocator interface {
+    Get(length int) *[]byte
+    Put(buf *[]byte)
+}
+```
+
+`PoolAllocator` implements `Allocator` using `sync.Pool` for power-of-two
+sized byte slices:
+
+```go
+alloc, _ := tarantool.NewPoolAllocator([]int{10, 11, 12, 13})
+opts := tarantool.Opts{
+    Allocator: alloc,
+}
+```
+
+`Opts.Allocator` is a new optional field. If not set, the standard Go
+allocation is used (same as v2 behavior).
+
+#### <a id="miscellaneous-v3">Miscellaneous</a>
+
+* `RLimitActions` type renamed to `RLimitAction` (typo fix).
+* `Opts.Handle` field type changed from `interface{}` to `any`.
+* `BoxError.Fields` field type changed from `map[string]interface{}` to
+  `map[string]any`.
+* `WatchEvent.Value` field type changed from `interface{}` to `any`.
+* `SchemaResolver.ResolveSpace()` parameter changed from `interface{}` to `any`.
+* `SchemaResolver.ResolveIndex()` parameter changed from `interface{}` to `any`.
+* `EncodeSpace()` parameter changed from `interface{}` to `any`.
+* `KeyValueBind.Value` field type changed from `interface{}` to `any`.
+* New `OptionalBoxError` type for optional `BoxError` values (compatible with
+  the `go-option` library).
+* New `LogKeyAttempt`, `LogKeyMaxAttempts`, `LogKeyError`, `LogKeyRequestId`,
+  `LogKeyAddress` string constants for structured log attribute keys.
+
+### <a id="pool-package-v3">pool package</a>
+
+* `ConnectionPool` type renamed to `Pool`.
+* `ConnectionHandler` interface renamed to `Handler`.
+* `ConnectionInfo` type renamed to `Info`, field `ConnRole` renamed to `Role`.
+* `ConnectionPoolOpts` type renamed to `Opts`.
+* `Pool.GetInfo()` renamed to `Pool.Info()`.
+* `Pool.DoInstance()` renamed to `Pool.DoOn()`.
+* `pool.Connect()` renamed to `pool.New()`, `pool.ConnectWithOpts()` renamed to
+  `pool.NewWithOpts()`.
+
+Enum constants renamed to use prefix:
+
+| Before | After |
+|---|---|
+| `ANY` | `ModeAny` |
+| `RW` | `ModeRW` |
+| `RO` | `ModeRO` |
+| `PreferRW` | `ModePreferRW` |
+| `PreferRO` | `ModePreferRO` |
+| `UnknownRole` | `RoleUnknown` |
+| `MasterRole` | `RoleMaster` |
+| `ReplicaRole` | `RoleReplica` |
+
+* `Pool.Close()` and `Pool.CloseGraceful()` now return a single `error` instead
+  of `[]error`. Multiple errors are combined using `errors.Join()`.
+* `Pooler` interface updated: `Close() error`, `CloseGraceful() error`,
+  `Do(req Request, mode Mode) Future` (was `*tarantool.Future`).
+* `pool.New()`, `pool.NewWithOpts()` and `Pool.Add()` now return an error if
+  `tarantool.Opts.Reconnect`, `tarantool.Opts.MaxReconnects` or
+  `tarantool.Opts.Notify` options are set for an instance connection. These
+  options create conflicts with the pool's own reconnection logic: the pool
+  reconnects via `pool.Opts.CheckTimeout`, so an internal `Reconnect` creates
+  a race with the pool; `MaxReconnects` permanently closes a Connection while
+  the pool would create a new one; `Notify` events from an individual
+  connection are misleading in a pool context (e.g., `Disconnected` does not
+  mean the endpoint is unavailable). Use `pool.Handler` to track endpoint
+  availability. All validation errors are combined using `errors.Join` and can
+  be checked with `errors.Is`.
 
   Before:
   ```Go
@@ -63,10 +441,10 @@ TODO
       // Reconnect, MaxReconnects, Notify must not be set.
   }
   poolOpts := pool.Opts{
-      CheckTimeout:      time.Second,
-      ConnectionHandler: myHandler, // Implement pool.ConnectionHandler.
+      CheckTimeout: time.Second,
+      Handler:      myHandler, // Implement pool.Handler.
   }
-  connPool, err := pool.ConnectWithOpts(ctx, instances, poolOpts)
+  connPool, err := pool.NewWithOpts(ctx, instances, poolOpts)
   ```
 * `pool.ConnectionPool` renamed to `pool.Pool`.
 * `pool.ConnectionHandler` renamed to `pool.Handler`.
@@ -142,12 +520,11 @@ TODO
   changes.
 
   ```Go
-  // T is a subset of testing.T interface used by test helpers.
   type T interface {
       Helper()
-      Errorf(format string, args ...interface{})
-      Fatalf(format string, args ...interface{})
-      Skipf(format string, args ...interface{})
+      Errorf(format string, args ...any)
+      Fatalf(format string, args ...any)
+      Skipf(format string, args ...any)
       FailNow()
   }
   ```
@@ -155,155 +532,42 @@ TODO
   All functions in `test_helpers` that previously accepted `*testing.T` now
   accept the `T` interface instead, making them usable in broader contexts like
   example functions and custom test runners.
-* Replaced custom `Logger` interface with `*slog.Logger` from the standard
-  library. The `Logger` interface, `ConnLogKind` type, and its constants
-  are removed. Use `Opts.Logger *slog.Logger` instead. Pool `Opts.Logger
-  *slog.Logger` replaces direct `log.Printf` calls. By default, logs are
-  discarded (silent).
+
+* `MockDoer` is now an interface instead of a struct. Use `NewMockDoer(t)` to
+  create an instance, then chain `AddResponseRaw()`, `AddResponseError()`,
+  `AddResponse()` to configure responses. The `Requests` field is now a
+  method `Requests()` that returns recorded requests.
 
   Before:
-  ```go
-  type MyLogger struct{}
-
-  func (l MyLogger) Report(event tarantool.ConnLogKind, conn *tarantool.Connection, v ...any) {
-      switch event {
-      case tarantool.LogReconnectFailed:
-          reconnects := v[0].(uint)
-          err := v[1].(error)
-          log.Printf("reconnect %d failed: %s", reconnects, err)
-      // ... other cases
-      }
-  }
-
-  opts := tarantool.Opts{
-      Logger: MyLogger{},
-  }
+  ```Go
+  mock := test_helpers.NewMockDoer(t,
+      test_helpers.NewMockResponse(t, []any{"data"}),
+      errors.New("some error"),
+  )
+  requests := mock.Requests
   ```
 
   After:
-  ```go
-  import "log/slog"
-
-  opts := tarantool.Opts{
-      Logger: slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
-          Level: slog.LevelWarn,
-      })),
-  }
-  ```
-
-  For pool:
-  ```go
-  poolOpts := pool.Opts{
-      CheckTimeout: time.Second,
-      Logger: slog.New(slog.NewTextHandler(os.Stderr, nil)),
-  }
-  connPool, err := pool.NewWithOpts(ctx, instances, poolOpts)
-  ```
-
-  Removed types and constants:
-
-  | Removed | Replacement |
-  |---|---|
-  | `Logger` interface | `*slog.Logger` in `Opts.Logger` |
-  | `ConnLogKind` type | String constants (e.g., `LogMsgReconnectFailed`) |
-  | `LogReconnectFailed` | `LogMsgReconnectFailed` |
-  | `LogLastReconnectFailed` | `LogMsgLastReconnectFailed` |
-  | `LogUnexpectedResultId` | `LogMsgUnexpectedRequestId` |
-  | `LogWatchEventReadFailed` | `LogMsgWatchEventReadFailed` |
-  | `LogBoxSessionPushUnsupported` | `LogMsgPushUnsupported` |
-  | `defaultLogger` type | Discarded by default (previously logged to stderr via `log.Printf`) |
-
-  Note about log groups: connection log messages appear under the
-  `tarantool` group, while pool-level log messages appear under the
-  `tarantool.pool` group. When a pool logger is set and a connection
-  does not have its own logger, the pool passes its logger to each
-  connection, which then applies its own `WithGroup("tarantool")`.
-* `Stream` struct fields `Id` and `Conn` are unexported, making `Stream` an
-  opaque handle. The stream identifier and the underlying connection are
-  internal details; callers should hold their own `*Connection` reference if
-  they need it.
-
-  Before:
-  ```go
-  stream, _ := conn.NewStream()
-  log.Printf("opened stream %d on %v", stream.Id, stream.Conn)
-  ```
-
-  After:
-  ```go
-  stream, _ := conn.NewStream()
-  log.Printf("opened stream on %v", conn)
-  ```
-* All request types (`PingRequest`, `SelectRequest`, `CallRequest`, etc.) now
-  use value receivers and constructors return values instead of pointers.
-  Builder methods return modified copies instead of mutating in place.
-
-  **Breaking**: calling a builder method without using its return value silently
-  discards the change:
   ```Go
-  // Before (pointer receivers, mutation in place):
-  req := NewSelectRequest("space")
-  req.Index("idx")           // mutated req directly
-  conn.Do(req)
-
-  // After (value receivers, must use return value):
-  req := NewSelectRequest("space")
-  req = req.Index("idx")     // must reassign
-  conn.Do(req)
-
-  // Or chain directly:
-  conn.Do(NewSelectRequest("space").Index("idx"))
+  mock := test_helpers.NewMockDoer(t).
+      AddResponseRaw([]any{"data"}).
+      AddResponseError(errors.New("some error"))
+  requests := mock.Requests()
   ```
 
-  The same value-receiver pattern was applied to `arrow.InsertRequest` and
-  `settings.SetRequest`/`settings.GetRequest`.
-
-  In the `box` subpackage, request types (`InfoRequest`, `UserExistsRequest`,
-  `UserCreateRequest`, `SessionSuRequest`, etc.) no longer embed
-  `tarantool.CallRequest`. They store it as a private field and implement
-  their own `Context()` method returning the wrapper type. Usage stays clean:
-  ```Go
-  req := box.NewUserExistsRequest(username).Context(ctx)
-  ```
-* Renamed value constructors from `Make*` to `New*` for naming consistency
-  across the connector. Previously, the main package used `New*Request` while
-  the `crud` package and value-type constructors used `Make*`. They now all
-  use the `New*` prefix.
-
-  | Before | After |
-  |---|---|
-  | `datetime.MakeDatetime` | `datetime.NewDatetime` |
-  | `decimal.MakeDecimal` | `decimal.NewDecimal` |
-  | `decimal.MakeDecimalFromString` | `decimal.NewDecimalFromString` |
-  | `decimal.MustMakeDecimal` | `decimal.MustNewDecimal` |
-  | `arrow.MakeArrow` | `arrow.NewArrow` |
-  | `crud.MakeResult` | `crud.NewResult` |
-  | `crud.Make*Request` (all of them) | `crud.New*Request` |
+* `test_helpers.CheckPoolStatuses` and `test_helpers.ProcessListenOnInstance`
+  now accept typed arguments (`CheckStatusesArgs` and `ListenOnInstanceArgs`
+  respectively) instead of `interface{}`.
+* New `test_helpers.ExecuteOnAll` function to execute operations on all
+  instances in parallel with context support.
+* New `test_helpers.DumpLogsIfFailed(t, inst)` helper that prints captured
+  tarantool logs via `t.Logf` when the test failed.
+* New `(*TarantoolInstance).LogTail()` method that returns the last 50 lines
+  of captured tarantool stdout/stderr.
+* Removed `test_helpers.Retry` function. Use `assert.Eventually` from testify
+  instead.
 
 ## Migration from v1.x.x to v2.x.x
-
-* [Major changes](#major-changes-v2)
-* [Main package](#main-package)
-  * [Go version](#go-version)
-  * [msgpack/v5](#msgpackv5)
-  * [Call = Call17](#call--call17)
-  * [IPROTO constants](#iproto-constants)
-  * [Request interface](#request-interface)
-  * [Request changes](#request-changes)
-  * [Response interface](#response-interface)
-  * [Response changes](#response-changes)
-  * [Future type](#future-type)
-  * [Protocol types](#protocol-types)
-  * [Connector interface](#connector-interface)
-  * [Connect function](#connect-function)
-  * [Connection schema](#connection-schema)
-  * [Schema type](#schema-type)
-* [datetime package](#datetime-package)
-* [decimal package](#decimal-package)
-* [multi package](#multi-package)
-* [pool package](#pool-package)
-* [crud package](#crud-package)
-* [test_helpers package](#test_helpers-package)
 
 ### <a id="major-changes-v2">Major changes</a>
 
@@ -330,9 +594,9 @@ import (
 	"fmt"
 
 	"github.com/tarantool/go-tarantool"
-	_ "github.com/tarantool/go-tarantool/v3/datetime"
-	_ "github.com/tarantool/go-tarantool/v3/decimal"
-	_ "github.com/tarantool/go-tarantool/v3/uuid"
+	_ "github.com/tarantool/go-tarantool/v2/datetime"
+	_ "github.com/tarantool/go-tarantool/v2/decimal"
+	_ "github.com/tarantool/go-tarantool/v2/uuid"
 )
 
 func main() {
@@ -362,10 +626,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tarantool/go-tarantool/v3"
-	_ "github.com/tarantool/go-tarantool/v3/datetime"
-	_ "github.com/tarantool/go-tarantool/v3/decimal"
-	_ "github.com/tarantool/go-tarantool/v3/uuid"
+	"github.com/tarantool/go-tarantool/v2"
+	_ "github.com/tarantool/go-tarantool/v2/datetime"
+	_ "github.com/tarantool/go-tarantool/v2/decimal"
+	_ "github.com/tarantool/go-tarantool/v2/uuid"
 )
 
 func main() {
