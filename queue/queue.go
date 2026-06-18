@@ -9,6 +9,7 @@
 package queue
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -17,6 +18,8 @@ import (
 
 	"github.com/tarantool/go-tarantool/v3"
 )
+
+var ErrEmptyStatistic = errors.New("empty statistic response")
 
 // Queue is a handle to Tarantool queue's tube.
 type Queue interface {
@@ -439,7 +442,7 @@ func (q *queue) Statistic() (any, error) {
 		return data[0], nil
 	}
 
-	return nil, nil
+	return nil, ErrEmptyStatistic
 }
 
 func makeCmd(q *queue) {

@@ -471,30 +471,30 @@ func generateObjectsOperationsData(objs []crud.Object,
 	return objectsOperationsData
 }
 
-func getCrudError(req tarantool.Request, crudError any) (any, error) {
+func getCrudError(req tarantool.Request, crudError any) error {
 	var err []any
 	var ok bool
 
 	rtype := req.Type()
 	if crudError != nil {
 		if rtype == iproto.IPROTO_CALL {
-			return crudError, nil
+			return fmt.Errorf("CRUD error: %v", crudError)
 		}
 
 		if err, ok = crudError.([]any); !ok {
-			return nil, fmt.Errorf("Incorrect CRUD error format")
+			return fmt.Errorf("incorrect CRUD error format")
 		}
 
 		if len(err) < 1 {
-			return nil, fmt.Errorf("Incorrect CRUD error format")
+			return fmt.Errorf("incorrect CRUD error format")
 		}
 
 		if err[0] != nil {
-			return err[0], nil
+			return fmt.Errorf("CRUD error: %v", err[0])
 		}
 	}
 
-	return nil, nil
+	return nil
 }
 
 func testCrudRequestPrepareData(t *testing.T, conn tarantool.Connector) {
@@ -532,9 +532,8 @@ func testCrudRequestCheck(t *testing.T, req tarantool.Request,
 	// resp.Data[0] - CRUD res.
 	// resp.Data[1] - CRUD err.
 	if expectedLen >= 2 && data[1] != nil {
-		crudErr, getErr := getCrudError(req, data[1])
-		require.NoError(t, getErr, "Failed to get CRUD error")
-		require.Nil(t, crudErr, "Failed to perform CRUD request on CRUD side")
+		crudErr := getCrudError(req, data[1])
+		require.NoError(t, crudErr, "Failed to perform CRUD request on CRUD side")
 	}
 }
 

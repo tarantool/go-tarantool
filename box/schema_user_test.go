@@ -15,6 +15,8 @@ import (
 )
 
 func TestUserExistsResponse_DecodeMsgpack(t *testing.T) {
+	t.Parallel()
+
 	tCases := map[bool]func() *bytes.Buffer{
 		true: func() *bytes.Buffer {
 			buf := bytes.NewBuffer(nil)
@@ -47,6 +49,8 @@ func TestUserExistsResponse_DecodeMsgpack(t *testing.T) {
 }
 
 func TestUserPasswordResponse_DecodeMsgpack(t *testing.T) {
+	t.Parallel()
+
 	tCases := []string{
 		"test",
 		"$tr0ng_pass",
