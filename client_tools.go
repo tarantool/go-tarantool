@@ -144,8 +144,8 @@ func (ops *Operations) append(op string, field int, arg any) *Operations {
 	return ops
 }
 
-func (ops *Operations) appendSplice(op string, field, pos, len int, replace string) *Operations {
-	ops.ops = append(ops.ops, operation{Op: op, Field: field, Pos: pos, Len: len, Replace: replace})
+func (ops *Operations) appendSplice(op string, field, pos, length int, replace string) *Operations {
+	ops.ops = append(ops.ops, operation{Op: op, Field: field, Pos: pos, Len: length, Replace: replace})
 	return ops
 }
 
@@ -175,8 +175,8 @@ func (ops *Operations) BitwiseXor(field int, arg any) *Operations {
 }
 
 // Splice adds a splice operation to the collection of update operations.
-func (ops *Operations) Splice(field, pos, len int, replace string) *Operations {
-	return ops.appendSplice(spliceOperator, field, pos, len, replace)
+func (ops *Operations) Splice(field, pos, length int, replace string) *Operations {
+	return ops.appendSplice(spliceOperator, field, pos, length, replace)
 }
 
 // Insert adds an insert operation to the collection of update operations.

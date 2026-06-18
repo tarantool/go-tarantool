@@ -51,7 +51,6 @@ linters:
     - maintidx
     - mnd
     - nestif
-    - nilnil
     - nlreturn
     - noctx
     - noinlineerr
@@ -59,11 +58,9 @@ linters:
     - paralleltest
     - perfsprint
     - prealloc
-    - predeclared
     - recvcheck
     - revive
     - staticcheck
-    - tparallel
     - testableexamples
     - testpackage
     - unqueryvet
