@@ -417,6 +417,13 @@ func (conn *Connection) cancelFuture(fut *future, err error) {
 	}
 }
 
+func (conn *Connection) cancelFutureById(reqId uint32, err error) {
+	if fut := conn.fetchFuture(reqId); fut != nil {
+		fut.setError(err)
+		conn.markDone()
+	}
+}
+
 func (conn *Connection) dial(ctx context.Context) error {
 	opts := conn.opts
 
@@ -1006,17 +1013,20 @@ func (conn *Connection) newFuture(req Request) *future {
 // This method removes a future from the internal queue if the context
 // is "done" before the response is come.
 func (conn *Connection) contextWatchdog(fut *future, ctx context.Context) {
-	select {
-	case <-fut.WaitChan():
-	case <-ctx.Done():
-	}
+	reqId := fut.requestId
 
 	select {
 	case <-fut.WaitChan():
-		return
-	default:
-		conn.cancelFuture(fut, fmt.Errorf("context is done (request ID %d): %w",
-			fut.requestId, context.Cause(ctx)))
+	case <-ctx.Done():
+		err := fmt.Errorf("context is done (request ID %d)", reqId)
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			if cause := context.Cause(ctx); cause != nil {
+				err = fmt.Errorf("%s: %w", err, cause)
+			} else {
+				err = fmt.Errorf("%s: %w", err, ctxErr)
+			}
+		}
+		conn.cancelFutureById(reqId, err)
 	}
 }
 
