@@ -1018,15 +1018,7 @@ func (conn *Connection) contextWatchdog(fut *future, ctx context.Context) {
 	select {
 	case <-fut.WaitChan():
 	case <-ctx.Done():
-		err := fmt.Errorf("context is done (request ID %d)", reqId)
-		if ctxErr := ctx.Err(); ctxErr != nil {
-			if cause := context.Cause(ctx); cause != nil {
-				err = fmt.Errorf("%s: %w", err, cause)
-			} else {
-				err = fmt.Errorf("%s: %w", err, ctxErr)
-			}
-		}
-		conn.cancelFutureById(reqId, err)
+		conn.cancelFutureById(reqId, context.Cause(ctx))
 	}
 }
 
