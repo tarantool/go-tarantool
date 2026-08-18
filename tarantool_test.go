@@ -3646,6 +3646,25 @@ func TestDoContextCancelConcurrency(t *testing.T) {
 	wg.Wait()
 }
 
+func TestDoWaitChanReleaseConcurrency(t *testing.T) {
+	conn := test_helpers.ConnectWithValidation(t, dialer, opts)
+	defer func() { _ = conn.Close() }()
+
+	var wg sync.WaitGroup
+	for range 50 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for range 200 {
+				fut := conn.Do(NewPingRequest())
+				<-fut.WaitChan()
+				fut.Release()
+			}
+		}()
+	}
+	wg.Wait()
+}
+
 func runTestMain(m *testing.M) int {
 	// Tarantool supports streams and interactive transactions since version 2.10.0
 	isStreamUnsupported, err := test_helpers.IsTarantoolVersionLess(2, 10, 0)

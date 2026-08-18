@@ -44,19 +44,6 @@ func (fut *future) wait() {
 	}
 }
 
-func (fut *future) finish() {
-	fut.mutex.Lock()
-	defer fut.mutex.Unlock()
-
-	fut.finished = true
-
-	if fut.done != nil {
-		close(fut.done)
-	}
-
-	fut.cond.Broadcast()
-}
-
 // NewFutureWithErr returns Future with given error.
 func NewFutureWithErr(req Request, err error) Future {
 	fut := newFuture(req)
@@ -90,28 +77,47 @@ func (fut *future) isFinished() bool {
 	return fut.finished
 }
 
+// finalize is a common code across finish methods.
+func (fut *future) finalize() {
+	fut.finished = true
+
+	done := fut.done
+
+	fut.cond.Broadcast()
+
+	fut.mutex.Unlock()
+
+	if done != nil {
+		close(done)
+	}
+}
+
+func (fut *future) finish() {
+	fut.mutex.Lock()
+
+	fut.finalize()
+}
+
 // setResponse sets a response for the future and finishes the future.
 func (fut *future) setResponse(header Header, body io.Reader) error {
 	fut.mutex.Lock()
-	defer fut.mutex.Unlock()
 
 	if fut.finished {
+		fut.mutex.Unlock()
+
 		return nil
 	}
 
 	resp, err := fut.req.Response(header, body)
 	if err != nil {
+		fut.mutex.Unlock()
+
 		return err
 	}
+
 	fut.resp = resp
 
-	fut.finished = true
-
-	if fut.done != nil {
-		close(fut.done)
-	}
-
-	fut.cond.Broadcast()
+	fut.finalize()
 
 	return nil
 }
@@ -119,20 +125,16 @@ func (fut *future) setResponse(header Header, body io.Reader) error {
 // setError sets an error for the future and finishes the future.
 func (fut *future) setError(err error) {
 	fut.mutex.Lock()
-	defer fut.mutex.Unlock()
 
 	if fut.finished {
+		fut.mutex.Unlock()
+
 		return
 	}
+
 	fut.err = err
 
-	fut.finished = true
-
-	if fut.done != nil {
-		close(fut.done)
-	}
-
-	fut.cond.Broadcast()
+	fut.finalize()
 }
 
 // GetResponse waits for Future to be filled and returns Response and error.

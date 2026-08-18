@@ -17,6 +17,9 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 * A data race that could cause "unlock of unlocked mutex" panics when
   a request's context was cancelled concurrently with response arrival and
   future release.
+* A data race when `Future.Release()` was called right after
+  `Future.WaitChan()` closed, which could cause "unlock of unlocked mutex"
+  panics.
 
 ## [v3.0.0] - 2026-06-08
 
