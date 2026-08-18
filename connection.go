@@ -1003,20 +1003,27 @@ func (conn *Connection) newFuture(req Request) *future {
 	return fut
 }
 
-// This method removes a future from the internal queue if the context
-// is "done" before the response is come.
-func (conn *Connection) contextWatchdog(fut *future, ctx context.Context) {
-	select {
-	case <-fut.WaitChan():
-	case <-ctx.Done():
-	}
+func (conn *Connection) startContextWatchdog(ctx context.Context, fut *future) {
+	// We need to save it before start a gorouitine to avoid use released
+	// future object.
+	waitChan := fut.WaitChan()
+	reqId := fut.requestId
 
+	go conn.contextWatchdog(ctx, waitChan, reqId)
+}
+
+// contextWatchdog removes a future from the internal queue if the context
+// is "done" before the response is come.
+func (conn *Connection) contextWatchdog(ctx context.Context, ch <-chan struct{}, reqId uint32) {
 	select {
-	case <-fut.WaitChan():
+	case <-ch:
 		return
-	default:
-		conn.cancelFuture(fut, fmt.Errorf("context is done (request ID %d): %w",
-			fut.requestId, context.Cause(ctx)))
+	case <-ctx.Done():
+		if fut := conn.fetchFuture(reqId); fut != nil {
+			err := fmt.Errorf("context is done (request ID %d): %w", reqId, context.Cause(ctx))
+			fut.setError(err)
+			conn.markDone()
+		}
 	}
 }
 
@@ -1047,7 +1054,7 @@ func (conn *Connection) send(req Request, streamId uint64) *future {
 			return fut
 		default:
 		}
-		go conn.contextWatchdog(fut, req.Ctx())
+		conn.startContextWatchdog(req.Ctx(), fut)
 	}
 	conn.putFuture(fut, req, streamId)
 
