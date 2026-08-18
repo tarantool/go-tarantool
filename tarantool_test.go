@@ -3609,6 +3609,43 @@ func TestConnectionNilAllocatorNeverCallsPut(t *testing.T) {
 	assert.Zero(t, mockAlloc.putCallCount())
 }
 
+// TestDoContextCancelConcurrency verifies that there is no data race
+// when a request's context is cancelled concurrently with response
+// arrival and future release.
+func TestDoContextCancelConcurrency(t *testing.T) {
+	var err error
+
+	topts := opts
+	topts.Allocator, err = tarantool.NewPoolAllocator([]int{5, 8, 10})
+	require.NoError(t, err)
+
+	conn := test_helpers.ConnectWithValidation(t, dialer, topts)
+	defer func() { _ = conn.Close() }()
+
+	var wg sync.WaitGroup
+	const goroutines = 50
+	const iterations = 200
+
+	for range goroutines {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for range iterations {
+				ctx, cancel := context.WithCancel(context.Background())
+				fut := conn.Do(NewPingRequest().Context(ctx))
+				cancel()
+
+				_, err := fut.Get()
+				if err != nil {
+					assert.ErrorIs(t, err, context.Canceled)
+				}
+				fut.Release()
+			}
+		}()
+	}
+	wg.Wait()
+}
+
 func runTestMain(m *testing.M) int {
 	// Tarantool supports streams and interactive transactions since version 2.10.0
 	isStreamUnsupported, err := test_helpers.IsTarantoolVersionLess(2, 10, 0)

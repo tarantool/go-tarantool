@@ -14,6 +14,10 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Fixed
 
+* A data race that could cause "unlock of unlocked mutex" panics when
+  a request's context was cancelled concurrently with response arrival and
+  future release.
+
 ## [v3.0.0] - 2026-06-08
 
 v3 redesigns the connector for a simpler, more idiomatic Go experience.
