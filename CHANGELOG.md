@@ -14,6 +14,14 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Fixed
 
+## [v3.0.1] - 2026-08-19
+
+This patch release fixes two data races in the connection's `Future` handling
+that could surface as "unlock of unlocked mutex" panics under concurrent
+context cancellation and `Future.Release()`.
+
+### Fixed
+
 * A data race that could cause "unlock of unlocked mutex" panics when
   a request's context was cancelled concurrently with response arrival and
   future release.
