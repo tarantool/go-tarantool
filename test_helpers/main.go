@@ -352,14 +352,32 @@ func IsTarantoolEE() (bool, error) {
 // StartTarantool. Rewrites inst.Cmd.Process to stop
 // instance with StopTarantool.
 // Process must be stopped with StopTarantool.
+//
+// If the instance fails to start, inst is left untouched and the start
+// error is returned, so that a failed restart is reported to the caller
+// instead of panicking.
 func RestartTarantool(inst *TarantoolInstance) error {
+	if inst == nil || inst.Cmd == nil {
+		return fmt.Errorf("failed to restart Tarantool: no instance to restart")
+	}
+
 	startedInst, err := StartTarantool(inst.Opts)
+	if err != nil {
+		return err
+	}
+	// StartTarantool may return a nil error only together with a usable
+	// instance, but keep the check so that a future change there cannot
+	// turn a restart failure into a nil pointer dereference.
+	if startedInst == nil || startedInst.Cmd == nil {
+		return fmt.Errorf("failed to restart Tarantool %q: no process started",
+			inst.Opts.Listen)
+	}
 
 	inst.Cmd.Process = startedInst.Cmd.Process
 	inst.st = startedInst.st
 	inst.log = startedInst.log
 
-	return err
+	return nil
 }
 
 func removeByMask(dir string, masks ...string) error {
