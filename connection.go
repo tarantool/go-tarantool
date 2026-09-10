@@ -196,9 +196,11 @@ func (list *futureList) clear(err error, conn *Connection) {
 	list.first = nil
 	list.last = &list.first
 	for fut != nil {
+		next := fut.next
+		fut.next = nil
 		fut.setError(err)
 		conn.markDone()
-		fut, fut.next = fut.next, nil
+		fut = next
 	}
 }
 
