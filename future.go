@@ -11,6 +11,12 @@ type Future interface {
 	Get() ([]any, error)
 	GetTyped(result any) error
 	GetResponse() (Response, error)
+	// Release frees the Future resources and allows them to be reused.
+	// It must be called only after the request has completed, i.e. after
+	// Get(), GetTyped() or GetResponse() has returned, or after the
+	// channel returned by WaitChan() has been closed. Releasing an
+	// unfinished future is a no-op. After a Release() the Future must not
+	// be used any more.
 	Release()
 	WaitChan() <-chan struct{}
 }
@@ -210,7 +216,22 @@ func (fut *future) WaitChan() <-chan struct{} {
 
 // Release is freeing the Future resources.
 // After this, using this Future becomes invalid.
+//
+// Release must be called only after the request has completed, i.e. after
+// Get(), GetTyped() or GetResponse() has returned, or after the channel
+// returned by WaitChan() has been closed. Until then the future still belongs
+// to the connection, which keeps it in an internal list of pending requests;
+// recycling it there would corrupt that list and lose the pending request.
+// Releasing an unfinished future is therefore a no-op: the object is not
+// reused and is left to the garbage collector.
+//
+// Futures created by NewFutureWithErr() and NewFutureWithResponse() are
+// finished from the start, so they can be released right away.
 func (fut *future) Release() {
+	if !fut.isFinished() {
+		return
+	}
+
 	if fut.resp != nil {
 		fut.resp.Release()
 	}

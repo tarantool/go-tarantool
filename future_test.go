@@ -8,11 +8,13 @@ import (
 	"strconv"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tarantool/go-iproto"
 	. "github.com/tarantool/go-tarantool/v3"
+	"github.com/tarantool/go-tarantool/v3/test_helpers"
 	"github.com/vmihailenco/msgpack/v5"
 )
 
@@ -155,6 +157,41 @@ func TestFuture_Release(t *testing.T) {
 
 	fut.Release()
 	assert.True(t, mockResp.released)
+}
+
+// TestFuture_ReleaseBeforeGet checks that a fire-and-forget
+// `fut := conn.Do(req); fut.Release()` does not break the connection. The
+// future is still linked into the connection's list of pending requests at
+// that point, so recycling it there would truncate the list: the response
+// would never be matched back, the request would never be marked done and
+// CloseGraceful() would wait for it forever.
+//
+// Opts.Timeout is zero on purpose, so that the request reaper cannot hide the
+// leak by expiring the request.
+func TestFuture_ReleaseBeforeGet(t *testing.T) {
+	conn := test_helpers.ConnectWithValidation(t, dialer, Opts{})
+	defer func() { _ = conn.Close() }()
+
+	// A request slow enough to be pending when Release() is called.
+	fut := conn.Do(NewEvalRequest("require('fiber').sleep(0.5) return 1"))
+	fut.Release()
+
+	// A following request must not be lost.
+	data, err := conn.Do(NewEvalRequest("return 2")).Get()
+	require.NoError(t, err)
+	assert.Equal(t, []any{int8(2)}, data)
+
+	// CloseGraceful waits for every in-flight request to be marked done.
+	closed := make(chan error, 1)
+	go func() { closed <- conn.CloseGraceful() }()
+
+	select {
+	case err := <-closed:
+		require.NoError(t, err)
+	case <-time.After(10 * time.Second):
+		t.Fatal("CloseGraceful() hangs: the released request was never " +
+			"marked done")
+	}
 }
 
 func testFuturePoolRoundtripErr(data []byte) error {

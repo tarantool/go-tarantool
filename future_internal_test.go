@@ -152,3 +152,49 @@ func TestFutureList_clear(t *testing.T) {
 		wg.Wait()
 	})
 }
+
+// TestFutureRelease_UnfinishedKeepsListIntact checks the Release()
+// precondition: a future that has not completed yet still belongs to the
+// connection, so a fire-and-forget Release() must not zero it. Zeroing a
+// linked node truncates the list at it (request ids are never 0), so the
+// futures behind it are never finished and never marked done.
+func TestFutureRelease_UnfinishedKeepsListIntact(t *testing.T) {
+	list := newTestFutureList()
+	futs := []*future{newTestFuture(1), newTestFuture(3), newTestFuture(5)}
+	for _, fut := range futs {
+		list.addFuture(fut)
+	}
+
+	Future(futs[1]).Release()
+
+	assert.Equal(t, uint32(3), futs[1].requestId,
+		"an unfinished future must not be recycled")
+	require.Same(t, futs[0], list.first)
+	require.Same(t, futs[2], futs[1].next, "the list must stay intact")
+	// The tail must stay reachable, which is what a truncation loses.
+	require.Same(t, futs[2], list.findFuture(5, false))
+}
+
+// testResponse is a Response that only records its Release().
+type testResponse struct {
+	released *bool
+}
+
+func (*testResponse) Header() Header          { return Header{} }
+func (r *testResponse) Release()              { *r.released = true }
+func (*testResponse) Decode() ([]any, error)  { return nil, nil }
+func (*testResponse) DecodeTyped(_ any) error { return nil }
+
+// TestFutureRelease_FinishedReleasesResponse makes sure the precondition check
+// does not disable Release() for the futures that are allowed to use it.
+func TestFutureRelease_FinishedReleasesResponse(t *testing.T) {
+	released := false
+
+	fut := newTestFuture(1)
+	fut.resp = &testResponse{released: &released}
+	fut.finish()
+	require.True(t, fut.isFinished())
+
+	Future(fut).Release()
+	assert.True(t, released, "a finished future must release its response")
+}
