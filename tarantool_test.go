@@ -3666,9 +3666,10 @@ func TestDoWaitChanReleaseConcurrency(t *testing.T) {
 }
 
 // TestFutureReleaseRaceOnReconnect verifies that there is no data race
-// between Future.Release() and future clean when the server is
-// restarted while requests are in-flight and the caller uses the
-// documented Future lifecycle: Do -> Get -> Release.
+// between Future.Release() and the pending-future cleanup
+// (futureList.clear) when the server is restarted while requests are
+// in-flight and the caller uses the documented Future lifecycle:
+// Do -> Get -> Release.
 func TestFutureReleaseRaceOnReconnect(t *testing.T) {
 	const server = "127.0.0.1:3016"
 
@@ -3681,19 +3682,23 @@ func TestFutureReleaseRaceOnReconnect(t *testing.T) {
 		Listen:       server,
 		WaitStart:    100 * time.Millisecond,
 		ConnectRetry: 10,
-		RetryTimeout: 50 * time.Millisecond,
+		RetryTimeout: 500 * time.Millisecond,
 	})
 	require.NoErrorf(t, err, "Unable to start Tarantool")
 	defer test_helpers.StopTarantoolWithCleanup(inst)
 
 	reconnectOpts := opts
-	reconnectOpts.Reconnect = 50 * time.Millisecond
+	reconnectOpts.Reconnect = 100 * time.Millisecond
 	reconnectOpts.MaxReconnects = 0
 
 	conn := test_helpers.ConnectWithValidation(t, testDialer, reconnectOpts)
 	defer func() { _ = conn.Close() }()
 
-	const workers = 64
+	const (
+		workers            = 64
+		workersStopTimeout = 30 * time.Second
+	)
+
 	slowEval := "local fiber = require('fiber'); fiber.sleep(0.02); return 1"
 
 	stop := make(chan struct{})
@@ -3715,8 +3720,20 @@ func TestFutureReleaseRaceOnReconnect(t *testing.T) {
 		}()
 	}
 
+	// Stop and join the workers on every exit path, including a failed
+	// require in the restart loop below: t.FailNow() unwinds with
+	// runtime.Goexit(), so an inline close(stop) at the end of the test
+	// would be skipped and the workers would keep spinning on an already
+	// closed connection for the rest of the test binary. Registered after
+	// the workers are spawned, so it runs before the deferred conn.Close()
+	// above and no worker touches the connection after it is closed.
+	defer func() {
+		close(stop)
+		waitWithTimeout(t, &wg, workersStopTimeout)
+	}()
+
 	// Restart the server several times while requests are in-flight so
-	// that the client's reader goroutine runs futures clear over
+	// that the client's reader goroutine runs futureList.clear over the
 	// pending futures concurrently with Future.Release().
 	const restarts = 5
 	for range restarts {
@@ -3729,9 +3746,26 @@ func TestFutureReleaseRaceOnReconnect(t *testing.T) {
 			"Reconnect failed")
 	}
 	time.Sleep(100 * time.Millisecond)
+}
 
-	close(stop)
-	wg.Wait()
+// waitWithTimeout waits for wg with a timeout instead of forever. A
+// regression that orphans a future then fails in seconds with a readable
+// message rather than after the ten-minute `go test` timeout and its dump
+// of every stuck goroutine.
+func waitWithTimeout(t *testing.T, wg *sync.WaitGroup, timeout time.Duration) {
+	t.Helper()
+
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(timeout):
+		t.Fatalf("workers did not stop in %s, a request is likely stuck", timeout)
+	}
 }
 
 func runTestMain(m *testing.M) int {
