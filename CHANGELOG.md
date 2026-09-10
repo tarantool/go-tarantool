@@ -14,13 +14,21 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Fixed
 
+## [v3.0.2] - 2026-09-10
+
+This patch release fixes lost or stuck requests, occasional panics, and a
+data race on `Connection.Addr()` that could surface after a connection drop
+(server restart, network blip) while requests were in-flight.
+
+### Fixed
+
 * Lost or stuck requests, and occasional panics, after a connection drop
   (server restart, network blip) while requests were in-flight and the
-  documented `Do` → `Get` → `Release` lifecycle was used (#601).
+  documented `Do` → `Get` → `Release` lifecycle was used (#600).
 * A data race on `Connection.Addr()` that could be triggered when the
   connection was reconnecting in the background (e.g. after a server
   restart or a transient network failure) while the user code was
-  concurrently calling `Addr()` to log or inspect the endpoint (#602).
+  concurrently calling `Addr()` to log or inspect the endpoint (#601).
 
 ## [v3.0.1] - 2026-08-19
 
