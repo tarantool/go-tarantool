@@ -23,14 +23,17 @@ var futurePool = sync.Pool{
 type future struct {
 	requestId uint32
 	req       Request
-	next      *future
-	timeout   time.Duration
-	mutex     sync.Mutex
-	resp      Response
-	err       error
-	cond      sync.Cond
-	finished  bool
-	done      chan struct{}
+	// next links the future into a connection's futureList. It is owned by
+	// the shard mutex of that list and must be cleared before the future is
+	// finished, see the futureList documentation in connection.go.
+	next     *future
+	timeout  time.Duration
+	mutex    sync.Mutex
+	resp     Response
+	err      error
+	cond     sync.Cond
+	finished bool
+	done     chan struct{}
 }
 
 var _ = Future(&future{})
@@ -78,6 +81,15 @@ func (fut *future) isFinished() bool {
 }
 
 // finalize is a common code across finish methods.
+//
+// It is the ownership handover point: once finalize has returned, the future
+// belongs to the caller that awaits it. The caller may Release() it, which
+// zeroes the object and returns it to futurePool, where a concurrent Do() can
+// pick it up for an unrelated request. No connection code may read or write
+// the future after this, and in particular it must already be unlinked from
+// its futureList, see the futureList documentation in connection.go.
+//
+// finalize is called with fut.mutex held and returns with it released.
 func (fut *future) finalize() {
 	fut.finished = true
 

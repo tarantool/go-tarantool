@@ -157,9 +157,38 @@ type Connection struct {
 
 var _ = Connector(&Connection{}) // Check compatibility with connector interface.
 
+// futureList is a singly linked list of pending futures, threaded through the
+// future.next field. The list is guarded by the owning shard's rmut.
+//
+// A future must be fully unlinked from the list BEFORE it is finished
+// (setResponse/setError/finish). Finishing a future hands its ownership to the
+// caller, which is then free to Release() it into futurePool, from where a
+// concurrent Do() may immediately pick it up and link it into another list.
+// Writing fut.next after that point corrupts the list the future has been
+// reused in: the new request is silently dropped from the connection's
+// tracking, so its response is never matched back and its caller blocks
+// forever. See popFirst, clear and findFuture(fetch=true) for the correct
+// ordering, and the note on future.finalize.
 type futureList struct {
 	first *future
 	last  **future
+}
+
+// popFirst unlinks the head of the list and returns it, or nil if the list is
+// empty. The returned future is fully detached (its next field is nil), so the
+// caller may finish it without racing with a Release() of the same object.
+func (list *futureList) popFirst() *future {
+	fut := list.first
+	if fut == nil {
+		return nil
+	}
+	list.first = fut.next
+	if fut.next == nil {
+		list.last = &list.first
+	} else {
+		fut.next = nil
+	}
+	return fut
 }
 
 func (list *futureList) findFuture(reqid uint32, fetch bool) *future {
@@ -189,16 +218,17 @@ func (list *futureList) addFuture(fut *future) {
 	list.last = &fut.next
 }
 
+// clear finishes every pending future with the given error and empties the
+// list. Each future is unlinked before it is finished, see the futureList
+// documentation.
 func (list *futureList) clear(err error, conn *Connection) {
-	fut := list.first
-	list.first = nil
-	list.last = &list.first
-	for fut != nil {
-		next := fut.next
-		fut.next = nil
+	for {
+		fut := list.popFirst()
+		if fut == nil {
+			return
+		}
 		fut.setError(err)
 		conn.markDone()
-		fut = next
 	}
 }
 
@@ -1180,13 +1210,9 @@ func (conn *Connection) timeouts() {
 				pair := &shard.requests[pos]
 				for pair.first != nil && pair.first.timeout < nowepoch {
 					shard.bufmut.Lock()
-					fut := pair.first
-					pair.first = fut.next
-					if fut.next == nil {
-						pair.last = &pair.first
-					} else {
-						fut.next = nil
-					}
+					// popFirst detaches the future before it is
+					// finished below, see futureList docs.
+					fut := pair.popFirst()
 					fut.setError(newClientError(
 						CodeTimeouted,
 						fmt.Sprintf("client timeout for request %d", fut.requestId),
