@@ -14,6 +14,11 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Fixed
 
+* A data race between two reader goroutines of one connection: the length
+  buffer and the msgpack decoder were per-connection fields, while a
+  writer-initiated reconnect starts a new reader before the previous one
+  has finished draining the data buffered by the broken connection.
+
 ## [v3.0.2] - 2026-09-10
 
 This patch release fixes lost or stuck requests, occasional panics, and a
