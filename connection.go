@@ -1200,15 +1200,16 @@ func (conn *Connection) putFuture(fut *future, req Request, streamId uint64) {
 			 * to have race condition that lasts hours */
 			panic("Unknown future")
 		} else {
+			// The future was removed from the queue and completed by
+			// somebody else (a reconnect, a timeout or a context
+			// watchdog), so the request never reached the server and
+			// that error is the one the caller gets. The packing
+			// error cannot replace it: the future is already
+			// finished, and setError() on a finished future does
+			// nothing.
 			fut.wait()
 			if fut.err == nil {
 				panic("Future removed from queue without error")
-			}
-			if _, ok := fut.err.(ClientError); ok {
-				// packing error is more important than connection
-				// error, because it is indication of programmer's
-				// mistake.
-				fut.setError(err)
 			}
 		}
 		return

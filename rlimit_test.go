@@ -2,7 +2,6 @@ package tarantool
 
 import (
 	"context"
-	"errors"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -41,13 +40,13 @@ func TestConnection_rateLimit_tokenReleasedOnRefusedRequest(t *testing.T) {
 	for i := range rateLimit * 2 {
 		_, err := conn.Do(NewPingRequest()).Get()
 		require.Error(t, err)
-		assert.Falsef(t, errors.Is(err, ErrRateLimited),
+		require.NotErrorIsf(t, err, ErrRateLimited,
 			"request %d must not be rate limited: a refused request has to "+
 				"give its rate limit token back", i)
-		assert.ErrorIsf(t, err, ErrConnectionNotReady, "request %d", i)
+		require.ErrorIsf(t, err, ErrConnectionNotReady, "request %d", i)
 	}
 
-	assert.Lenf(t, conn.rlimit, 0,
+	assert.Emptyf(t, conn.rlimit, "%s",
 		"a refused request must not hold a rate limit token")
 	assert.Equal(t, int64(0), conn.requestCnt.Load(),
 		"a refused request must not be counted as active")
@@ -76,13 +75,13 @@ func TestConnection_rateLimit_tokenReleasedOnCancelledContext(t *testing.T) {
 	for i := range rateLimit * 2 {
 		_, err := conn.Do(NewPingRequest().Context(ctx)).Get()
 		require.Error(t, err)
-		assert.Falsef(t, errors.Is(err, ErrRateLimited),
+		require.NotErrorIsf(t, err, ErrRateLimited,
 			"request %d must not be rate limited: a request with a done "+
 				"context has to give its rate limit token back", i)
-		assert.ErrorIsf(t, err, context.Canceled, "request %d", i)
+		require.ErrorIsf(t, err, context.Canceled, "request %d", i)
 	}
 
-	assert.Lenf(t, conn.rlimit, 0,
+	assert.Emptyf(t, conn.rlimit, "%s",
 		"a request with a done context must not hold a rate limit token")
 	assert.Equal(t, int64(0), conn.requestCnt.Load(),
 		"a request with a done context must not be counted as active")
