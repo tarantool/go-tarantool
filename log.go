@@ -16,6 +16,11 @@ const (
 	// LogMsgPushUnsupported is a log message emitted when the server sends
 	// a push message but box.session.push() is not supported.
 	LogMsgPushUnsupported = "unsupported box.session.push()"
+	// LogMsgShutdownWatcherFailed is a log message emitted when the
+	// "box.shutdown" event watcher could not be registered on a new
+	// connection. The connection stays usable, but it does not support
+	// graceful shutdown until a reconnect registers the watcher.
+	LogMsgShutdownWatcherFailed = "failed to subscribe to box.shutdown"
 )
 
 const (

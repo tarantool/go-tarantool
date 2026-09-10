@@ -34,6 +34,10 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 * A data race on the server protocol info and greeting, rewritten on every
   reconnect while `ProtocolInfo()`, `NewWatcher()`, `SetSchema()` and
   `ConnectionPool` read them without synchronization.
+* A failure to subscribe to the `box.shutdown` event no longer fails a dial
+  and no longer leaves the connection connected without a `Connected`
+  notification; the failure is logged and the subscription is retried on the
+  next reconnect.
 * `test_helpers.RestartTarantool()` panicked instead of returning an error
   when the instance failed to start again.
 

@@ -542,14 +542,27 @@ func (conn *Connection) dial(ctx context.Context) error {
 	go conn.writer(c, c)
 	go conn.reader(c, c)
 
-	// Subscribe shutdown event to process graceful shutdown.
+	// Subscribe shutdown event to process graceful shutdown. It has to
+	// happen after the connection is published, because the watch request
+	// is sent over that very connection.
 	if conn.shutdownWatcher == nil &&
 		isFeatureInSlice(iproto.IPROTO_FEATURE_WATCHERS, info.Features) {
 		watcher, werr := conn.newWatcherImpl(shutdownEventKey, shutdownEventCallback)
 		if werr != nil {
-			return werr
+			// The connection itself is fine and already usable, so the dial
+			// must not fail here: returning an error would leave conn.c set,
+			// the reader and the writer running and the state connected,
+			// while the caller reports a failure and never notifies
+			// Connected. Only graceful shutdown support is lost, and the
+			// next reconnect retries the registration, because
+			// shutdownWatcher is still nil.
+			conn.logger.Warn(LogMsgShutdownWatcherFailed,
+				slog.Any(LogKeyError, werr),
+				slog.String(LogKeyAddress, conn.addrString()),
+			)
+		} else {
+			conn.shutdownWatcher = watcher
 		}
-		conn.shutdownWatcher = watcher
 	}
 
 	return nil
