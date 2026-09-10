@@ -38,6 +38,14 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
   and no longer leaves the connection connected without a `Connected`
   notification; the failure is logged and the subscription is retried on the
   next reconnect.
+* The counter of active requests could drift below zero when a reconnect
+  completed a request that `send()` was still processing, after which
+  `CloseGraceful()`, which waits for exactly zero, never returned.
+* A request refused with `Opts.RateLimit` and `RLimitAction: RLimitDrop`
+  (on a closed, disconnected or shutting down connection, or with an already
+  cancelled context) leaked its rate limit slot, so after `Opts.RateLimit`
+  such requests every request failed with `CodeRateLimited`, even after a
+  successful reconnect.
 * `test_helpers.RestartTarantool()` panicked instead of returning an error
   when the instance failed to start again.
 
