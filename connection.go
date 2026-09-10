@@ -397,14 +397,22 @@ func (conn *Connection) CloseGraceful() error {
 
 // Addr returns a configured address of Tarantool socket.
 func (conn *Connection) Addr() net.Addr {
+	conn.mutex.Lock()
+	defer conn.mutex.Unlock()
 	return conn.addr
 }
 
-func (conn *Connection) addrString() string {
-	if a := conn.Addr(); a != nil {
+func (conn *Connection) addrStringLocked() string {
+	if a := conn.addr; a != nil {
 		return a.String()
 	}
 	return ""
+}
+
+func (conn *Connection) addrString() string {
+	conn.mutex.Lock()
+	defer conn.mutex.Unlock()
+	return conn.addrStringLocked()
 }
 
 // Handle returns a user-specified handle from Opts.
@@ -644,7 +652,7 @@ func (conn *Connection) runReconnects(ctx context.Context) error {
 			slog.Uint64(LogKeyAttempt, uint64(reconnects)),
 			slog.Uint64(LogKeyMaxAttempts, uint64(conn.opts.MaxReconnects)),
 			slog.Any(LogKeyError, err),
-			slog.String(LogKeyAddress, conn.addrString()),
+			slog.String(LogKeyAddress, conn.addrStringLocked()),
 		)
 		conn.notify(ReconnectFailed)
 		reconnects++
@@ -662,7 +670,7 @@ func (conn *Connection) runReconnects(ctx context.Context) error {
 
 	conn.logger.Warn(LogMsgLastReconnectFailed,
 		slog.Any(LogKeyError, err),
-		slog.String(LogKeyAddress, conn.addrString()),
+		slog.String(LogKeyAddress, conn.addrStringLocked()),
 	)
 	// mark connection as closed to avoid reopening by another goroutine
 	return newClientError(CodeConnectionClosed, "last reconnect failed", nil)

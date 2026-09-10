@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -234,6 +235,67 @@ func TestConn_Addr(t *testing.T) {
 
 	assert.Equal(t, addr, conn.Addr().String())
 	assert.Equal(t, 1, dialer.conn.addrCnt)
+}
+
+// TestConn_Addr_race_on_reconnect verifies that Connection.Addr() is safe to
+// call concurrently with background reconnects. Before the fix, Addr()
+// read conn.addr without synchronization while dial() wrote it during
+// reconnects, causing a data race detectable only with the -race flag.
+func TestConn_Addr_race_on_reconnect(t *testing.T) {
+	var dialCount atomic.Uint32
+	dialer := mockIoDialer{
+		init: func(conn *mockIoConn) {
+			n := dialCount.Add(1)
+			addr := "addr1"
+			if n%2 == 0 {
+				addr = "addr2"
+			}
+			conn.addr = stubAddr{str: addr}
+			// Skip waitgroup blocking so Read() returns io.EOF immediately,
+			// triggering a reconnect on every new connection.
+			conn.readWgDelay = 100000
+			conn.writeWgDelay = 100000
+			conn.wgDoneOnClose = false
+		},
+	}
+
+	conn, err := tarantool.Connect(t.Context(), &dialer, tarantool.Opts{
+		Timeout:       1000 * time.Second,
+		Reconnect:     1 * time.Millisecond,
+		MaxReconnects: 0, // Infinite.
+		SkipSchema:    true,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, conn)
+	defer func() { _ = conn.Close() }()
+
+	// Concurrently call Addr() while reconnects write conn.addr in the
+	// background.
+	stop := make(chan struct{})
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for {
+			select {
+			case <-stop:
+				return
+			default:
+				_ = conn.Addr()
+			}
+		}
+	}()
+
+	time.Sleep(50 * time.Millisecond)
+
+	close(stop)
+	wg.Wait()
+	_ = conn.Close()
+
+	assert.Greater(t, dialCount.Load(), uint32(1),
+		"expected at least one reconnect to trigger dial()")
+	s := conn.Addr().String()
+	assert.Contains(t, []string{"addr1", "addr2"}, s)
 }
 
 func TestConn_Greeting(t *testing.T) {
