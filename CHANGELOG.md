@@ -14,6 +14,10 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Fixed
 
+* Lost or stuck requests, and occasional panics, after a connection drop
+  (server restart, network blip) while requests were in-flight and the
+  documented `Do` → `Get` → `Release` lifecycle was used (#600).
+
 ## [v3.0.1] - 2026-08-19
 
 This patch release fixes two data races in the connection's `Future` handling

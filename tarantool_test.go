@@ -3665,6 +3665,75 @@ func TestDoWaitChanReleaseConcurrency(t *testing.T) {
 	wg.Wait()
 }
 
+// TestFutureReleaseRaceOnReconnect verifies that there is no data race
+// between Future.Release() and future clean when the server is
+// restarted while requests are in-flight and the caller uses the
+// documented Future lifecycle: Do -> Get -> Release.
+func TestFutureReleaseRaceOnReconnect(t *testing.T) {
+	const server = "127.0.0.1:3016"
+
+	testDialer := dialer
+	testDialer.Address = server
+
+	inst, err := test_helpers.StartTarantool(test_helpers.StartOpts{
+		Dialer:       testDialer,
+		InitScript:   "config.lua",
+		Listen:       server,
+		WaitStart:    100 * time.Millisecond,
+		ConnectRetry: 10,
+		RetryTimeout: 50 * time.Millisecond,
+	})
+	require.NoErrorf(t, err, "Unable to start Tarantool")
+	defer test_helpers.StopTarantoolWithCleanup(inst)
+
+	reconnectOpts := opts
+	reconnectOpts.Reconnect = 50 * time.Millisecond
+	reconnectOpts.MaxReconnects = 0
+
+	conn := test_helpers.ConnectWithValidation(t, testDialer, reconnectOpts)
+	defer func() { _ = conn.Close() }()
+
+	const workers = 64
+	slowEval := "local fiber = require('fiber'); fiber.sleep(0.02); return 1"
+
+	stop := make(chan struct{})
+	var wg sync.WaitGroup
+	for range workers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for {
+				select {
+				case <-stop:
+					return
+				default:
+				}
+				fut := conn.Do(NewEvalRequest(slowEval))
+				_, _ = fut.Get()
+				fut.Release()
+			}
+		}()
+	}
+
+	// Restart the server several times while requests are in-flight so
+	// that the client's reader goroutine runs futures clear over
+	// pending futures concurrently with Future.Release().
+	const restarts = 5
+	for range restarts {
+		time.Sleep(100 * time.Millisecond)
+		test_helpers.StopTarantool(inst)
+		require.NoErrorf(t, test_helpers.RestartTarantool(inst),
+			"Unable to restart Tarantool")
+		require.True(t,
+			test_helpers.WaitUntilReconnected(conn, 100, 50*time.Millisecond),
+			"Reconnect failed")
+	}
+	time.Sleep(100 * time.Millisecond)
+
+	close(stop)
+	wg.Wait()
+}
+
 func runTestMain(m *testing.M) int {
 	// Tarantool supports streams and interactive transactions since version 2.10.0
 	isStreamUnsupported, err := test_helpers.IsTarantoolVersionLess(2, 10, 0)
