@@ -304,6 +304,77 @@ func TestConn_Addr_race_on_reconnect(t *testing.T) {
 	assert.Contains(t, []string{"addr1", "addr2"}, s)
 }
 
+// TestConn_Addr_doesNotBlockOnDial verifies that Connection.Addr() answers
+// while a reconnect is dialing. Connection.reconnect() holds conn.mutex for
+// the whole attempt, so an Addr() that takes that mutex waits for the dial to
+// finish - up to the dial timeout on every attempt, which is what a logging or
+// metrics call hits during an outage. The address is published through an
+// atomic instead, so the read never touches the lock.
+func TestConn_Addr_doesNotBlockOnDial(t *testing.T) {
+	// Larger than the number of Read()/Write() calls the first connection
+	// can make, so that neither ever blocks on its wait group and Read()
+	// reports io.EOF at once.
+	const noWgWait = 1 << 30
+
+	var dialCount atomic.Uint32
+	parked := make(chan struct{})
+	release := make(chan struct{})
+
+	dialer := mockIoDialer{
+		init: func(conn *mockIoConn) {
+			switch dialCount.Add(1) {
+			case 1:
+				// This connection breaks immediately, which starts
+				// exactly one reconnect.
+				conn.addr = stubAddr{str: "addr1"}
+				conn.readWgDelay = noWgWait
+				conn.writeWgDelay = noWgWait
+				conn.wgDoneOnClose = false
+			case 2:
+				// Park the redial inside Dial(), where conn.mutex is
+				// held. The connection handed out afterwards blocks in
+				// Read() until Close(), so there is no third dial.
+				conn.addr = stubAddr{str: "addr2"}
+				close(parked)
+				<-release
+			}
+		},
+	}
+
+	conn, err := tarantool.Connect(t.Context(), &dialer, tarantool.Opts{
+		Timeout:       1000 * time.Second, // Avoid pings.
+		Reconnect:     1 * time.Millisecond,
+		MaxReconnects: 0, // Infinite.
+		SkipSchema:    true,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, conn)
+
+	// Close() takes conn.mutex as well, so the dial has to be released
+	// first - including when the assertion below fails the test.
+	releaseOnce := sync.OnceFunc(func() { close(release) })
+	defer func() {
+		releaseOnce()
+		_ = conn.Close()
+	}()
+
+	<-parked
+
+	addr := make(chan string, 1)
+	go func() { addr <- conn.Addr().String() }()
+
+	select {
+	case got := <-addr:
+		assert.Equal(t, "addr1", got,
+			"Addr() must report the address of the last established connection")
+	case <-time.After(time.Second):
+		t.Fatal("Addr() blocked while a dial was in progress")
+	}
+
+	assert.Equal(t, uint32(2), dialCount.Load(),
+		"expected exactly one reconnect, parked in Dial()")
+}
+
 func TestConn_Greeting(t *testing.T) {
 	greeting := tarantool.Greeting{
 		Version: "any",
@@ -317,6 +388,7 @@ func TestConn_Greeting(t *testing.T) {
 	}()
 
 	assert.Equal(t, &greeting, conn.Greeting)
+	assert.Equal(t, greeting, conn.ServerGreeting())
 	assert.Equal(t, 1, dialer.conn.greetingCnt)
 }
 
@@ -337,6 +409,100 @@ func TestConn_ProtocolInfo(t *testing.T) {
 
 	assert.Equal(t, info, conn.ProtocolInfo())
 	assert.Equal(t, 1, dialer.conn.infoCnt)
+}
+
+// TestConn_ProtocolInfo_race_on_reconnect verifies that ProtocolInfo() and
+// ServerGreeting() are safe to call concurrently with background reconnects.
+// Before the fix, dial() overwrote conn.serverProtocolInfo and the fields of
+// conn.Greeting on every reconnect, while the readers accessed both without
+// any synchronization. ProtocolInfo.Features is a slice, so a reader could
+// even observe a torn slice header.
+func TestConn_ProtocolInfo_race_on_reconnect(t *testing.T) {
+	var dialCount atomic.Uint32
+	dialer := mockIoDialer{
+		init: func(conn *mockIoConn) {
+			n := dialCount.Add(1)
+			features := []iproto.Feature{iproto.IPROTO_FEATURE_STREAMS}
+			if n%2 == 0 {
+				features = []iproto.Feature{
+					iproto.IPROTO_FEATURE_ERROR_EXTENSION,
+					iproto.IPROTO_FEATURE_TRANSACTIONS,
+				}
+			}
+			conn.info = tarantool.ProtocolInfo{
+				Auth:     tarantool.ChapSha1Auth,
+				Version:  tarantool.ProtocolVersion(n),
+				Features: features,
+			}
+			conn.greeting = tarantool.Greeting{
+				Version: fmt.Sprintf("version-%d", n),
+				Salt:    fmt.Sprintf("salt-%d", n),
+			}
+			// Skip waitgroup blocking so Read() returns io.EOF immediately,
+			// triggering a reconnect on every new connection.
+			conn.readWgDelay = 100000
+			conn.writeWgDelay = 100000
+			conn.wgDoneOnClose = false
+		},
+	}
+
+	conn, err := tarantool.Connect(t.Context(), &dialer, tarantool.Opts{
+		Timeout:       1000 * time.Second,
+		Reconnect:     1 * time.Millisecond,
+		MaxReconnects: 0, // Infinite.
+		SkipSchema:    true,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, conn)
+	defer func() { _ = conn.Close() }()
+
+	// Concurrently read the server protocol info and the greeting while
+	// reconnects publish new ones in the background.
+	stop := make(chan struct{})
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for {
+			select {
+			case <-stop:
+				return
+			default:
+				// Clone() inside ProtocolInfo() reads both the slice
+				// header and its elements.
+				_ = conn.ProtocolInfo()
+				_ = conn.ServerGreeting()
+			}
+		}
+	}()
+
+	time.Sleep(50 * time.Millisecond)
+
+	close(stop)
+	wg.Wait()
+	_ = conn.Close()
+
+	assert.Greater(t, dialCount.Load(), uint32(1),
+		"expected at least one reconnect to trigger dial()")
+
+	info := conn.ProtocolInfo()
+	assert.Equal(t, tarantool.ChapSha1Auth, info.Auth)
+	assert.NotZero(t, info.Version)
+	// A dial publishes the features as a whole, so a partially updated
+	// value must never be observable.
+	if info.Version%2 == 0 {
+		assert.Equal(t, []iproto.Feature{
+			iproto.IPROTO_FEATURE_ERROR_EXTENSION,
+			iproto.IPROTO_FEATURE_TRANSACTIONS,
+		}, info.Features)
+	} else {
+		assert.Equal(t, []iproto.Feature{iproto.IPROTO_FEATURE_STREAMS},
+			info.Features)
+	}
+
+	greeting := conn.ServerGreeting()
+	assert.Equal(t, fmt.Sprintf("version-%d", info.Version), greeting.Version)
+	assert.Equal(t, fmt.Sprintf("salt-%d", info.Version), greeting.Salt)
 }
 
 func TestConn_ReadWrite(t *testing.T) {
