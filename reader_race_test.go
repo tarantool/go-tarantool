@@ -43,6 +43,11 @@ func makeReaderRaceStream(packets int) []byte {
 // by the previous connection, so the length buffer and the msgpack decoder
 // used by reader() must not be per-Connection fields. Before the fix the race
 // was reported by the -race flag on conn.lenbuf and conn.dec.
+//
+// TODO: remove the test once the minimal supported Go version is 1.25 or
+// newer. TestConn_reader_race_on_reconnect_synctest checks the same race on a
+// fake clock, but testing/synctest is not available in Go 1.24. Keep
+// readerRaceResponse and readerRaceStream, the synctest test uses them.
 func TestConn_reader_race_on_reconnect(t *testing.T) {
 	// Larger than the number of Read()/Write() calls a single connection can
 	// make, so that neither ever blocks on its wait group.
