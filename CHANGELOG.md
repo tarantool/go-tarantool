@@ -10,6 +10,11 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Added
 
+* `Connection.ServerGreeting()` returns the greeting of the current
+  connection without a data race. The `Connection.Greeting` field is
+  deprecated: a plain field read cannot be synchronized with the reconnect
+  that replaces it.
+
 ### Changed
 
 * `Future.Release()` is a no-op for a future whose request has not completed
@@ -23,6 +28,16 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
   buffer and the msgpack decoder were per-connection fields, while a
   writer-initiated reconnect starts a new reader before the previous one
   has finished draining the data buffered by the broken connection.
+* `Connection.Addr()` no longer blocks for the duration of a reconnect
+  attempt: the address is published atomically instead of being guarded by
+  the connection mutex.
+* A data race on the server protocol info and greeting, rewritten on every
+  reconnect while `ProtocolInfo()`, `NewWatcher()`, `SetSchema()` and
+  `ConnectionPool` read them without synchronization.
+* A failure to subscribe to the `box.shutdown` event no longer fails a dial
+  and no longer leaves the connection connected without a `Connected`
+  notification; the failure is logged and the subscription is retried on the
+  next reconnect.
 * `test_helpers.RestartTarantool()` panicked instead of returning an error
   when the instance failed to start again.
 

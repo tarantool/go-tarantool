@@ -116,7 +116,11 @@ var epoch = time.Now()
 // More on graceful shutdown:
 // https://www.tarantool.io/en/doc/latest/dev_guide/internals/iproto/graceful_shutdown/
 type Connection struct {
-	addr   net.Addr
+	// addr is an address of the current connection. It is published by
+	// dial() and read without any lock, because a reader must not wait for
+	// a dial attempt to complete (conn.mutex is held for the whole attempt
+	// during a reconnect).
+	addr   atomic.Pointer[net.Addr]
 	dialer Dialer
 	c      Conn
 	mutex  sync.Mutex
@@ -127,8 +131,17 @@ type Connection struct {
 	requestId uint32
 	// contextRequestId contains the last request ID for requests with context.
 	contextRequestId uint32
-	// Greeting contains first message sent by Tarantool.
+	// Greeting contains the greeting message sent by Tarantool on the most
+	// recent connection. A reconnect replaces the pointer with a greeting of
+	// the new connection, the pointed-to value is never modified in place.
+	//
+	// Deprecated: reading the field concurrently with a reconnect is a data
+	// race, because the connection has no way to synchronize a plain field
+	// access. Use ServerGreeting() instead.
 	Greeting *Greeting
+	// greeting is the same value as Greeting, published for lock-free reads
+	// by ServerGreeting().
+	greeting atomic.Pointer[Greeting]
 
 	shard      []connShard
 	dirtyShard chan uint32
@@ -140,7 +153,12 @@ type Connection struct {
 
 	lastStreamId atomic.Uint64
 
-	serverProtocolInfo ProtocolInfo
+	// serverProtocolInfo is the protocol info reported by the server on the
+	// most recent connection. It is published by dial() and read without any
+	// lock, so that a reader never waits for a dial attempt to complete. The
+	// pointed-to value, its Features slice included, is never modified after
+	// the store.
+	serverProtocolInfo atomic.Pointer[ProtocolInfo]
 	// watchMap is a map of key -> chan watchState.
 	watchMap sync.Map
 
@@ -423,23 +441,22 @@ func (conn *Connection) CloseGraceful() error {
 }
 
 // Addr returns a configured address of Tarantool socket.
+//
+// The address is updated on every (re)connect, so the returned value refers
+// to the most recent connection attempt. The call is lock-free: it never
+// waits for an ongoing reconnect to complete.
 func (conn *Connection) Addr() net.Addr {
-	conn.mutex.Lock()
-	defer conn.mutex.Unlock()
-	return conn.addr
-}
-
-func (conn *Connection) addrStringLocked() string {
-	if a := conn.addr; a != nil {
-		return a.String()
+	if addr := conn.addr.Load(); addr != nil {
+		return *addr
 	}
-	return ""
+	return nil
 }
 
 func (conn *Connection) addrString() string {
-	conn.mutex.Lock()
-	defer conn.mutex.Unlock()
-	return conn.addrStringLocked()
+	if addr := conn.Addr(); addr != nil {
+		return addr.String()
+	}
+	return ""
 }
 
 // Handle returns a user-specified handle from Opts.
@@ -465,15 +482,26 @@ func (conn *Connection) dial(ctx context.Context) error {
 		return err
 	}
 
-	conn.addr = c.Addr()
+	addr := c.Addr()
+	conn.addr.Store(&addr)
+
+	// The greeting and the protocol info are replaced, never modified in
+	// place: a user may hold a *Greeting or a ProtocolInfo obtained before
+	// this reconnect.
 	connGreeting := c.Greeting()
-	conn.Greeting.Version = connGreeting.Version
-	conn.Greeting.Salt = connGreeting.Salt
-	conn.serverProtocolInfo = c.ProtocolInfo()
+	greeting := &Greeting{
+		Version: connGreeting.Version,
+		Salt:    connGreeting.Salt,
+	}
+	conn.greeting.Store(greeting)
+	conn.Greeting = greeting
+
+	info := c.ProtocolInfo()
+	conn.serverProtocolInfo.Store(&info)
 
 	if conn.schemaResolver == nil {
 		namesSupported := isFeatureInSlice(iproto.IPROTO_FEATURE_SPACE_AND_INDEX_NAMES,
-			conn.serverProtocolInfo.Features)
+			info.Features)
 
 		conn.schemaResolver = &noSchemaResolver{
 			SpaceAndIndexNamesSupported: namesSupported,
@@ -514,15 +542,27 @@ func (conn *Connection) dial(ctx context.Context) error {
 	go conn.writer(c, c)
 	go conn.reader(c, c)
 
-	// Subscribe shutdown event to process graceful shutdown.
+	// Subscribe shutdown event to process graceful shutdown. It has to
+	// happen after the connection is published, because the watch request
+	// is sent over that very connection.
 	if conn.shutdownWatcher == nil &&
-		isFeatureInSlice(iproto.IPROTO_FEATURE_WATCHERS,
-			conn.serverProtocolInfo.Features) {
+		isFeatureInSlice(iproto.IPROTO_FEATURE_WATCHERS, info.Features) {
 		watcher, werr := conn.newWatcherImpl(shutdownEventKey, shutdownEventCallback)
 		if werr != nil {
-			return werr
+			// The connection itself is fine and already usable, so the dial
+			// must not fail here: returning an error would leave conn.c set,
+			// the reader and the writer running and the state connected,
+			// while the caller reports a failure and never notifies
+			// Connected. Only graceful shutdown support is lost, and the
+			// next reconnect retries the registration, because
+			// shutdownWatcher is still nil.
+			conn.logger.Warn(LogMsgShutdownWatcherFailed,
+				slog.Any(LogKeyError, werr),
+				slog.String(LogKeyAddress, conn.addrString()),
+			)
+		} else {
+			conn.shutdownWatcher = watcher
 		}
-		conn.shutdownWatcher = watcher
 	}
 
 	return nil
@@ -679,7 +719,7 @@ func (conn *Connection) runReconnects(ctx context.Context) error {
 			slog.Uint64(LogKeyAttempt, uint64(reconnects)),
 			slog.Uint64(LogKeyMaxAttempts, uint64(conn.opts.MaxReconnects)),
 			slog.Any(LogKeyError, err),
-			slog.String(LogKeyAddress, conn.addrStringLocked()),
+			slog.String(LogKeyAddress, conn.addrString()),
 		)
 		conn.notify(ReconnectFailed)
 		reconnects++
@@ -697,7 +737,7 @@ func (conn *Connection) runReconnects(ctx context.Context) error {
 
 	conn.logger.Warn(LogMsgLastReconnectFailed,
 		slog.Any(LogKeyError, err),
-		slog.String(LogKeyAddress, conn.addrStringLocked()),
+		slog.String(LogKeyAddress, conn.addrString()),
 	)
 	// mark connection as closed to avoid reopening by another goroutine
 	return newClientError(CodeConnectionClosed, "last reconnect failed", nil)
@@ -1304,7 +1344,7 @@ func (conn *Connection) SetSchema(s Schema) {
 	sCopy := s.copy()
 	spaceAndIndexNamesSupported :=
 		isFeatureInSlice(iproto.IPROTO_FEATURE_SPACE_AND_INDEX_NAMES,
-			conn.serverProtocolInfo.Features)
+			conn.protocolInfo().Features)
 
 	conn.mutex.Lock()
 	defer conn.mutex.Unlock()
@@ -1481,7 +1521,7 @@ func (conn *Connection) NewWatcher(key string, callback WatchCallback) (Watcher,
 	// That's why we can't just check the Tarantool response for an unsupported
 	// request error.
 	if !isFeatureInSlice(iproto.IPROTO_FEATURE_WATCHERS,
-		conn.serverProtocolInfo.Features) {
+		conn.protocolInfo().Features) {
 		err := fmt.Errorf("the feature %s must be supported by connection "+
 			"to create a watcher", iproto.IPROTO_FEATURE_WATCHERS)
 		return nil, err
@@ -1580,7 +1620,32 @@ func (conn *Connection) newWatcherImpl(key string, callback WatchCallback) (Watc
 //
 // Since 2.0.0.
 func (conn *Connection) ProtocolInfo() ProtocolInfo {
-	return conn.serverProtocolInfo.Clone()
+	return conn.protocolInfo().Clone()
+}
+
+// protocolInfo returns the protocol info of the most recent connection. The
+// returned value shares the Features slice with the stored one, so callers
+// must not modify it. Use ProtocolInfo() to hand the info to a user.
+func (conn *Connection) protocolInfo() ProtocolInfo {
+	if info := conn.serverProtocolInfo.Load(); info != nil {
+		return *info
+	}
+	return ProtocolInfo{}
+}
+
+// ServerGreeting returns the greeting message sent by Tarantool on the most
+// recent connection. Beware that the value might be outdated if the connection
+// is in a disconnected state.
+//
+// Unlike the Greeting field, the call is safe to use concurrently with a
+// reconnect.
+//
+// Since 3.1.0.
+func (conn *Connection) ServerGreeting() Greeting {
+	if greeting := conn.greeting.Load(); greeting != nil {
+		return *greeting
+	}
+	return Greeting{}
 }
 
 func shutdownEventCallback(event WatchEvent) {
