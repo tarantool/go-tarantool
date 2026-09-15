@@ -1015,12 +1015,24 @@ func (conn *Connection) eventer(events <-chan connWatchEvent) {
 	}
 }
 
-func (conn *Connection) newFuture(req Request) *future {
+// newFuture creates a future for the request and, unless the request has to be
+// refused right away, adds it to the request list of its shard.
+//
+// The linked return value reports whether the future was added to a list. Only
+// a linked future is completed by somebody else later (by a response, by a
+// context watchdog or by futureList.clear()), and only for such a future
+// conn.markDone() is eventually called. A future that was not linked is
+// already finished here and nobody else knows about it, so the caller is
+// responsible for its accounting.
+func (conn *Connection) newFuture(req Request) (fut *future, linked bool) {
 	ctx := req.Ctx()
-	fut := newFuture(req)
+	fut = newFuture(req)
+
+	rlimited := false
 	if conn.rlimit != nil && conn.opts.RLimitAction == RLimitDrop {
 		select {
 		case conn.rlimit <- struct{}{}:
+			rlimited = true
 		default:
 			fut.err = newClientError(
 				CodeRateLimited,
@@ -1028,38 +1040,46 @@ func (conn *Connection) newFuture(req Request) *future {
 				nil,
 			)
 			fut.finish()
-			return fut
+			return fut, false
 		}
 	}
+
+	// refuse finishes the future with err and gives the rate limit token
+	// taken above back. markDone(), which is the only other place that
+	// drains conn.rlimit, is never called for a future that was not added
+	// to a request list, so a token kept here would be lost forever.
+	refuse := func(err error) (*future, bool) {
+		fut.setError(err)
+		if rlimited {
+			<-conn.rlimit
+		}
+		return fut, false
+	}
+
 	fut.requestId = conn.nextRequestId(ctx != nil)
 	shardn := fut.requestId & (conn.opts.Concurrency - 1)
 	shard := &conn.shard[shardn]
 	shard.rmut.Lock()
 	switch atomic.LoadUint32(&conn.state) {
 	case connClosed:
-		fut.err = newClientError(CodeConnectionClosed, "using closed connection", nil)
-		fut.finish()
 		shard.rmut.Unlock()
-		return fut
+		return refuse(newClientError(CodeConnectionClosed, "using closed connection", nil))
 	case connDisconnected:
-		fut.err = newClientError(CodeConnectionNotReady, "client connection is not ready", nil)
-		fut.finish()
 		shard.rmut.Unlock()
-		return fut
+		return refuse(newClientError(CodeConnectionNotReady,
+			"client connection is not ready", nil))
 	case connShutdown:
-		fut.err = newClientError(CodeConnectionShutdown, "server shutdown in progress", nil)
-		fut.finish()
 		shard.rmut.Unlock()
-		return fut
+		return refuse(newClientError(CodeConnectionShutdown,
+			"server shutdown in progress", nil))
 	}
 	pos := (fut.requestId / conn.opts.Concurrency) & (requestsMap - 1)
 	if ctx != nil {
 		select {
 		case <-ctx.Done():
-			fut.setError(fmt.Errorf("context is done (request ID %d): %w",
-				fut.requestId, context.Cause(ctx)))
 			shard.rmut.Unlock()
-			return fut
+			return refuse(fmt.Errorf("context is done (request ID %d): %w",
+				fut.requestId, context.Cause(ctx)))
 		default:
 		}
 		shard.requestsWithCtx[pos].addFuture(fut)
@@ -1084,7 +1104,7 @@ func (conn *Connection) newFuture(req Request) *future {
 			}
 		}
 	}
-	return fut
+	return fut, true
 }
 
 func (conn *Connection) startContextWatchdog(ctx context.Context, fut *future) {
@@ -1124,9 +1144,16 @@ func (conn *Connection) decrementRequestCnt() {
 func (conn *Connection) send(req Request, streamId uint64) *future {
 	conn.incrementRequestCnt()
 
-	fut := conn.newFuture(req)
+	fut, linked := conn.newFuture(req)
 
-	if fut.isFinished() {
+	// A future that was not linked into a request list is already finished
+	// and nobody else will call markDone() for it, so the counter has to be
+	// decremented here. A linked future may be finished too, because a
+	// reconnect can complete it with futureList.clear() right after it was
+	// added to a list, but then clear() has already called markDone() for
+	// it, and decrementing again would drive the counter below zero and
+	// break the drain loop of CloseGraceful().
+	if !linked {
 		conn.decrementRequestCnt()
 		return fut
 	}
@@ -1173,15 +1200,16 @@ func (conn *Connection) putFuture(fut *future, req Request, streamId uint64) {
 			 * to have race condition that lasts hours */
 			panic("Unknown future")
 		} else {
+			// The future was removed from the queue and completed by
+			// somebody else (a reconnect, a timeout or a context
+			// watchdog), so the request never reached the server and
+			// that error is the one the caller gets. The packing
+			// error cannot replace it: the future is already
+			// finished, and setError() on a finished future does
+			// nothing.
 			fut.wait()
 			if fut.err == nil {
 				panic("Future removed from queue without error")
-			}
-			if _, ok := fut.err.(ClientError); ok {
-				// packing error is more important than connection
-				// error, because it is indication of programmer's
-				// mistake.
-				fut.setError(err)
 			}
 		}
 		return
