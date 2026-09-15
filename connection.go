@@ -137,8 +137,6 @@ type Connection struct {
 	rlimit  chan struct{}
 	opts    Opts
 	state   uint32
-	dec     *msgpack.Decoder
-	lenbuf  [packetLengthBytes]byte
 
 	lastStreamId atomic.Uint64
 
@@ -290,7 +288,6 @@ func Connect(ctx context.Context, dialer Dialer, opts Opts) (conn *Connection, e
 		Greeting:         &Greeting{},
 		control:          make(chan struct{}),
 		opts:             opts,
-		dec:              msgpack.NewDecoder(&smallBuf{}),
 	}
 	maxprocs := uint32(runtime.GOMAXPROCS(-1))
 	if conn.opts.Concurrency == 0 || conn.opts.Concurrency > maxprocs*128 {
@@ -864,10 +861,17 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 
 	buf := smallBuf{}
 
+	// lenbuf and dec must not be shared between reader goroutines: a
+	// writer-initiated reconnect starts a new reader while the old one may
+	// still be draining data buffered by the previous connection, so two
+	// readers can be alive at the same time.
+	var lenbuf [packetLengthBytes]byte
+	dec := msgpack.NewDecoder(&smallBuf{})
+
 	for atomic.LoadUint32(&conn.state) != connClosed {
 		var err error
 
-		buf, err = read(r, conn.lenbuf[:], conn.alloc)
+		buf, err = read(r, lenbuf[:], conn.alloc)
 
 		if err != nil {
 			conn.reconnect(newClientError(
@@ -878,7 +882,7 @@ func (conn *Connection) reader(r io.Reader, c Conn) {
 			return
 		}
 
-		header, code, err := decodeHeader(conn.dec, &buf)
+		header, code, err := decodeHeader(dec, &buf)
 
 		if err != nil {
 			buf.Release()

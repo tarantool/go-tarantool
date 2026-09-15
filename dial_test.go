@@ -99,6 +99,9 @@ type mockIoConn struct {
 	greeting tarantool.Greeting
 	// Value for ProtocolInfo().
 	info tarantool.ProtocolInfo
+	// Sleeps for flushWait and returns flushErr in Flush().
+	flushWait time.Duration
+	flushErr  error
 }
 
 func (m *mockIoConn) Read(b []byte) (int, error) {
@@ -135,7 +138,10 @@ func (m *mockIoConn) Write(b []byte) (int, error) {
 
 func (m *mockIoConn) Flush() error {
 	m.flushCnt++
-	return nil
+	if m.flushWait != 0 {
+		time.Sleep(m.flushWait)
+	}
+	return m.flushErr
 }
 
 func (m *mockIoConn) Close() error {
