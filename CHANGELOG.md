@@ -12,6 +12,11 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Changed
 
+* `Future.Release()` is a no-op for a future whose request has not completed
+  yet. Releasing such a future recycled an object that was still linked into
+  the list of pending requests, which lost the request and made
+  `CloseGraceful()` wait for it forever.
+
 ### Fixed
 
 * A data race between two reader goroutines of one connection: the length

@@ -11,6 +11,12 @@ type Future interface {
 	Get() ([]any, error)
 	GetTyped(result any) error
 	GetResponse() (Response, error)
+	// Release frees the Future resources and allows them to be reused.
+	// It must be called only after the request has completed, i.e. after
+	// Get(), GetTyped() or GetResponse() has returned, or after the
+	// channel returned by WaitChan() has been closed. Releasing an
+	// unfinished future is a no-op. After a Release() the Future must not
+	// be used any more.
 	Release()
 	WaitChan() <-chan struct{}
 }
@@ -23,14 +29,17 @@ var futurePool = sync.Pool{
 type future struct {
 	requestId uint32
 	req       Request
-	next      *future
-	timeout   time.Duration
-	mutex     sync.Mutex
-	resp      Response
-	err       error
-	cond      sync.Cond
-	finished  bool
-	done      chan struct{}
+	// next links the future into a connection's futureList. It is owned by
+	// the shard mutex of that list and must be cleared before the future is
+	// finished, see the futureList documentation in connection.go.
+	next     *future
+	timeout  time.Duration
+	mutex    sync.Mutex
+	resp     Response
+	err      error
+	cond     sync.Cond
+	finished bool
+	done     chan struct{}
 }
 
 var _ = Future(&future{})
@@ -78,6 +87,15 @@ func (fut *future) isFinished() bool {
 }
 
 // finalize is a common code across finish methods.
+//
+// It is the ownership handover point: once finalize has returned, the future
+// belongs to the caller that awaits it. The caller may Release() it, which
+// zeroes the object and returns it to futurePool, where a concurrent Do() can
+// pick it up for an unrelated request. No connection code may read or write
+// the future after this, and in particular it must already be unlinked from
+// its futureList, see the futureList documentation in connection.go.
+//
+// finalize is called with fut.mutex held and returns with it released.
 func (fut *future) finalize() {
 	fut.finished = true
 
@@ -198,7 +216,22 @@ func (fut *future) WaitChan() <-chan struct{} {
 
 // Release is freeing the Future resources.
 // After this, using this Future becomes invalid.
+//
+// Release must be called only after the request has completed, i.e. after
+// Get(), GetTyped() or GetResponse() has returned, or after the channel
+// returned by WaitChan() has been closed. Until then the future still belongs
+// to the connection, which keeps it in an internal list of pending requests;
+// recycling it there would corrupt that list and lose the pending request.
+// Releasing an unfinished future is therefore a no-op: the object is not
+// reused and is left to the garbage collector.
+//
+// Futures created by NewFutureWithErr() and NewFutureWithResponse() are
+// finished from the start, so they can be released right away.
 func (fut *future) Release() {
+	if !fut.isFinished() {
+		return
+	}
+
 	if fut.resp != nil {
 		fut.resp.Release()
 	}

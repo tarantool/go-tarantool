@@ -108,8 +108,11 @@ declarations, and any code that directly constructed `Future` values.
   `*Future`.
 * `Stream.Do()` returns `Future` instead of `*Future`.
 * `Future.Release()` is a new method that frees resources allocated for the
-  `Future` object. Call it when the future is no longer needed to allow buffer
-  reuse.
+  `Future` object. Call it once the request has completed — after `Get()`,
+  `GetTyped()` or `GetResponse()` has returned, or after the channel returned
+  by `WaitChan()` has been closed — to allow buffer reuse. Until then the
+  future still belongs to the connection, so releasing an unfinished future is
+  a no-op. After a `Release()` the `Future` must not be used any more.
 * `Future.done` replaced with `Future.cond` (`sync.Cond`) + `Future.finished`
   bool internally. `Future.SetResponse()` and `Future.SetError()` are
   unexported now (use `NewFutureWithErr` / `NewFutureWithResponse`).
@@ -510,7 +513,9 @@ Enum constants renamed to use prefix:
   if errors.As(err, &tntErr) { /* ... */ }
   ```
 * `Future.Release()` call could be used to free resources allocated for the
-  `Future` object created by a `Connection` object.
+  `Future` object created by a `Connection` object. It must be called only
+  after the request has completed (`Get()`, `GetTyped()`, `GetResponse()` or a
+  closed `WaitChan()`); releasing an unfinished future is a no-op.
 * Removed deprecated `NewCall16Request` and `NewCall17Request` constructors.
   Use `NewCallRequest` instead. `NewCallRequest` uses `IPROTO_CALL`, which
   has been the default since Tarantool 1.7.2.
