@@ -18,6 +18,8 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
   buffer and the msgpack decoder were per-connection fields, while a
   writer-initiated reconnect starts a new reader before the previous one
   has finished draining the data buffered by the broken connection.
+* `test_helpers.RestartTarantool()` panicked instead of returning an error
+  when the instance failed to start again.
 
 ## [v3.0.2] - 2026-09-10
 
