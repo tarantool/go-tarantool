@@ -20,26 +20,23 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/google/uuid"
 	"github.com/vmihailenco/msgpack/v5"
 )
 
 // UUID external type.
 const uuid_extID = 2
 
-//go:generate go tool gentypes -ext-code 2 -marshal-func marshalUUID -unmarshal-func unmarshalUUID -imports "github.com/google/uuid" uuid.UUID
-
-func marshalUUID(id uuid.UUID) ([]byte, error) {
+func marshalUUID(id UUID) ([]byte, error) {
 	return id.MarshalBinary()
 }
 
-func unmarshalUUID(uuid *uuid.UUID, data []byte) error {
-	return uuid.UnmarshalBinary(data)
+func unmarshalUUID(id *UUID, data []byte) error {
+	return id.UnmarshalBinary(data)
 }
 
-// encodeUUID encodes a uuid.UUID value into the msgpack format.
+// encodeUUID encodes a UUID value into the msgpack format.
 func encodeUUID(e *msgpack.Encoder, v reflect.Value) error {
-	id := v.Interface().(uuid.UUID)
+	id := v.Interface().(UUID)
 
 	bytes, err := id.MarshalBinary()
 	if err != nil {
@@ -54,9 +51,9 @@ func encodeUUID(e *msgpack.Encoder, v reflect.Value) error {
 	return nil
 }
 
-// decodeUUID decodes a uuid.UUID value from the msgpack format.
+// decodeUUID decodes a UUID value from the msgpack format.
 func decodeUUID(d *msgpack.Decoder, v reflect.Value) error {
-	var bytesCount = 16
+	const bytesCount = 16
 	bytes := make([]byte, bytesCount)
 
 	n, err := d.Buffered().Read(bytes)
@@ -67,7 +64,8 @@ func decodeUUID(d *msgpack.Decoder, v reflect.Value) error {
 		return fmt.Errorf("msgpack: unexpected end of stream after %d uuid bytes", n)
 	}
 
-	id, err := uuid.FromBytes(bytes)
+	// Используем пакетно-зависимую функцию парсинга байт
+	id, err := fromBytes(bytes)
 	if err != nil {
 		return fmt.Errorf("msgpack: can't create uuid from bytes: %w", err)
 	}
@@ -77,13 +75,14 @@ func decodeUUID(d *msgpack.Decoder, v reflect.Value) error {
 }
 
 func init() {
-	msgpack.Register(reflect.TypeFor[uuid.UUID](), encodeUUID, decodeUUID)
-	msgpack.RegisterExtEncoder(uuid_extID, uuid.UUID{},
+	// Регистрация типов msgpack v5 на основе нашего общего алиаса UUID
+	msgpack.Register(reflect.TypeFor[UUID](), encodeUUID, decodeUUID)
+	msgpack.RegisterExtEncoder(uuid_extID, UUID{},
 		func(e *msgpack.Encoder, v reflect.Value) ([]byte, error) {
-			uuid := v.Interface().(uuid.UUID)
+			uuid := v.Interface().(UUID)
 			return uuid.MarshalBinary()
 		})
-	msgpack.RegisterExtDecoder(uuid_extID, uuid.UUID{},
+	msgpack.RegisterExtDecoder(uuid_extID, UUID{},
 		func(d *msgpack.Decoder, v reflect.Value, extLen int) error {
 			return decodeUUID(d, v)
 		})
