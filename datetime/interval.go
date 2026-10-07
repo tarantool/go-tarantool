@@ -38,12 +38,12 @@ type Interval struct {
 	Adjust Adjust
 }
 
-func (ival Interval) countNonZeroFields() int {
+func (ival Interval) countNonZeroFields(adjust int64) int {
 	count := 0
 
 	for _, field := range []int64{
 		ival.Year, ival.Month, ival.Week, ival.Day, ival.Hour,
-		ival.Min, ival.Sec, ival.Nsec, adjustToDt[ival.Adjust],
+		ival.Min, ival.Sec, ival.Nsec, adjust,
 	} {
 		if field != 0 {
 			count++
@@ -98,7 +98,14 @@ func (ival Interval) MarshalMsgpack() ([]byte, error) {
 
 // MarshalMsgpackTo implements a custom msgpack marshaler.
 func (ival Interval) MarshalMsgpackTo(e *msgpack.Encoder) error {
-	var fieldNum = uint64(ival.countNonZeroFields())
+	// Check the adjust before encoding anything to avoid a partially
+	// encoded interval.
+	adjust, err := ival.Adjust.toDt()
+	if err != nil {
+		return err
+	}
+
+	var fieldNum = uint64(ival.countNonZeroFields(adjust))
 	if err := e.EncodeUint(fieldNum); err != nil {
 		return err
 	}
@@ -127,7 +134,7 @@ func (ival Interval) MarshalMsgpackTo(e *msgpack.Encoder) error {
 	if err := encodeIntervalValue(e, fieldNSec, ival.Nsec); err != nil {
 		return err
 	}
-	if err := encodeIntervalValue(e, fieldAdjust, adjustToDt[ival.Adjust]); err != nil {
+	if err := encodeIntervalValue(e, fieldAdjust, adjust); err != nil {
 		return err
 	}
 
@@ -135,13 +142,18 @@ func (ival Interval) MarshalMsgpackTo(e *msgpack.Encoder) error {
 }
 
 // UnmarshalMsgpackFrom implements a custom msgpack unmarshaler.
+//
+// The receiver is left unchanged if an error occurs.
 func (ival *Interval) UnmarshalMsgpackFrom(d *msgpack.Decoder) error {
 	fieldNum, err := d.DecodeUint()
 	if err != nil {
 		return err
 	}
 
-	ival.Adjust = dtToAdjust[int64(NoneAdjust)]
+	// Decode into a local value to avoid a partially decoded receiver on
+	// error.
+	var res Interval
+	res.Adjust = dtToAdjust[int64(NoneAdjust)]
 
 	for i := 0; i < int(fieldNum); i++ {
 		var fieldType uint
@@ -156,25 +168,29 @@ func (ival *Interval) UnmarshalMsgpackFrom(d *msgpack.Decoder) error {
 
 		switch fieldType {
 		case fieldYear:
-			ival.Year = fieldVal
+			res.Year = fieldVal
 		case fieldMonth:
-			ival.Month = fieldVal
+			res.Month = fieldVal
 		case fieldWeek:
-			ival.Week = fieldVal
+			res.Week = fieldVal
 		case fieldDay:
-			ival.Day = fieldVal
+			res.Day = fieldVal
 		case fieldHour:
-			ival.Hour = fieldVal
+			res.Hour = fieldVal
 		case fieldMin:
-			ival.Min = fieldVal
+			res.Min = fieldVal
 		case fieldSec:
-			ival.Sec = fieldVal
+			res.Sec = fieldVal
 		case fieldNSec:
-			ival.Nsec = fieldVal
+			res.Nsec = fieldVal
 		case fieldAdjust:
-			ival.Adjust = dtToAdjust[fieldVal]
+			if res.Adjust, err = adjustFromDt(fieldVal); err != nil {
+				return err
+			}
 		}
 	}
+
+	*ival = res
 
 	return nil
 }

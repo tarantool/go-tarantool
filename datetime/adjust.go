@@ -1,5 +1,7 @@
 package datetime
 
+import "fmt"
+
 // An Adjust is used as a parameter for date adjustions, see:
 // https://github.com/tarantool/tarantool/wiki/Datetime-Internals#date-adjustions-and-leap-years
 type Adjust int
@@ -28,4 +30,24 @@ var dtToAdjust = map[int64]Adjust{
 	dtExcess: ExcessAdjust,
 	dtLimit:  NoneAdjust,
 	dtSnap:   LastAdjust,
+}
+
+// toDt returns the Tarantool representation of the adjust or an error if the
+// adjust is unknown.
+func (a Adjust) toDt() (int64, error) {
+	dt, ok := adjustToDt[a]
+	if !ok {
+		return 0, fmt.Errorf("unknown interval adjust %d", a)
+	}
+	return dt, nil
+}
+
+// adjustFromDt returns the adjust for its Tarantool representation or an
+// error if the representation is unknown.
+func adjustFromDt(dt int64) (Adjust, error) {
+	adjust, ok := dtToAdjust[dt]
+	if !ok {
+		return 0, fmt.Errorf("unknown interval adjust %d in msgpack", dt)
+	}
+	return adjust, nil
 }

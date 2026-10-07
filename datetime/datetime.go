@@ -268,6 +268,10 @@ func (d *Datetime) UnmarshalMsgpack(data []byte) error {
 }
 
 func (d Datetime) add(ival Interval, positive bool) (Datetime, error) {
+	if _, err := ival.Adjust.toDt(); err != nil {
+		return Datetime{}, err
+	}
+
 	newVal := intervalFromDatetime(d)
 
 	var direction int64
@@ -293,13 +297,15 @@ func (d Datetime) add(ival Interval, positive bool) (Datetime, error) {
 }
 
 // Add creates a new Datetime as addition of the Datetime and Interval. It may
-// return an error if a new Datetime is out of supported range.
+// return an error if a new Datetime is out of supported range or the Interval
+// has an unknown Adjust value.
 func (d Datetime) Add(ival Interval) (Datetime, error) {
 	return d.add(ival, true)
 }
 
 // Sub creates a new Datetime as subtraction of the Datetime and Interval. It
-// may return an error if a new Datetime is out of supported range.
+// may return an error if a new Datetime is out of supported range or the
+// Interval has an unknown Adjust value.
 func (d Datetime) Sub(ival Interval) (Datetime, error) {
 	return d.add(ival, false)
 }

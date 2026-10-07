@@ -14,6 +14,13 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Fixed
 
+* An unknown `datetime.Interval.Adjust` value was silently replaced: encoded
+  as `excess`, decoded as `NoneAdjust` and treated as `NoneAdjust` by
+  `datetime.Datetime.Add()` and `datetime.Datetime.Sub()`. All of them now
+  return an error naming the unknown value (#609).
+* `datetime.Interval.UnmarshalMsgpack()` left the receiver partially
+  decoded on error. The receiver is now left unchanged (#609).
+
 ## [v3.0.2] - 2026-09-10
 
 This patch release fixes lost or stuck requests, occasional panics, and a
