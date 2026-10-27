@@ -68,6 +68,23 @@ func msgpackIsArray(code byte) bool {
 		msgpcode.IsFixedArray(code)
 }
 
+// decodeSlice decodes a msgpack array into a typed or []any slice.
+func decodeSlice(d *msgpack.Decoder, elemType reflect.Type) (any, error) {
+	if elemType != nil {
+		slice := reflect.New(reflect.SliceOf(elemType))
+		if err := d.DecodeValue(slice); err != nil {
+			return nil, err
+		}
+		return slice.Elem().Interface(), nil
+	}
+
+	var slice []any
+	if err := d.Decode(&slice); err != nil {
+		return nil, err
+	}
+	return slice, nil
+}
+
 // DecodeMsgpack provides custom msgpack decoder.
 func (r *Result) DecodeMsgpack(d *msgpack.Decoder) error {
 	arrLen, err := d.DecodeArrayLen()
@@ -113,18 +130,8 @@ func (r *Result) DecodeMsgpack(d *msgpack.Decoder) error {
 
 			r.Metadata = metadata
 		case "rows":
-			if r.rowType != nil {
-				tuples := reflect.New(reflect.SliceOf(r.rowType))
-				if err = d.DecodeValue(tuples); err != nil {
-					return err
-				}
-				r.Rows = tuples.Elem().Interface()
-			} else {
-				var decoded []any
-				if err = d.Decode(&decoded); err != nil {
-					return err
-				}
-				r.Rows = decoded
+			if r.Rows, err = decodeSlice(d, r.rowType); err != nil {
+				return err
 			}
 		default:
 			if err := d.Skip(); err != nil {

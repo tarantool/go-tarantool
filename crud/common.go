@@ -48,6 +48,10 @@
 //
 //   - storage_info
 //
+//   - storage_call
+//
+//   - storage_call_many
+//
 //   - count
 //
 //   - stats

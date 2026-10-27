@@ -32,6 +32,9 @@ const (
 	objectOptName                        = "object"
 	operationsOptName                    = "operations"
 	requestTimeoutOptName                = "request_timeout"
+	spaceNameOptName                     = "space_name"
+	funcNameOptName                      = "func_name"
+	argsOptName                          = "args"
 )
 
 // BaseOpts describes base options for CRUD operations.
