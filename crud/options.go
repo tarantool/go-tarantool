@@ -31,6 +31,7 @@ const (
 	tupleOptName                         = "tuple"
 	objectOptName                        = "object"
 	operationsOptName                    = "operations"
+	requestTimeoutOptName                = "request_timeout"
 )
 
 // BaseOpts describes base options for CRUD operations.

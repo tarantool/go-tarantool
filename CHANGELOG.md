@@ -21,6 +21,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 - Add `Thread()` method to the `Request` interface, so custom request
   implementations need to be updated (#614).
 - Support `crud.atomic_batch` request.
+- Support `crud.locate` request.
 
 ### Changed
 

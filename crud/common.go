@@ -40,6 +40,8 @@
 //
 //   - max
 //
+//   - locate
+//
 //   - truncate
 //
 //   - len

@@ -129,6 +129,10 @@ var maxOpts = crud.MaxOpts{
 	Timeout: option.SomeFloat64(timeout),
 }
 
+var locateOpts = crud.LocateOpts{
+	Timeout: option.SomeFloat64(timeout),
+}
+
 var baseOpts = crud.BaseOpts{
 	Timeout: option.SomeFloat64(timeout),
 }
@@ -897,6 +901,24 @@ func TestStorageInfoResult(t *testing.T) {
 		require.True(t, info.IsMaster, "Unexpected IsMaster")
 		require.Empty(t, info.Message, "Unexpected Message")
 	}
+}
+
+func TestLocate(t *testing.T) {
+	conn := connect(t)
+	defer func() { _ = conn.Close() }()
+
+	req := crud.NewLocateRequest(spaceName).Key(key).Opts(locateOpts)
+	resp := crud.LocateResult{}
+
+	// Test only the error path.
+	err := conn.Do(req).GetTyped(&resp)
+	require.Error(t, err, "Expected CRUD locate request to fail")
+
+	var crudErr *crud.Error
+	require.ErrorAs(t, err, &crudErr, "Expected *crud.Error, got %T", err)
+	require.Equal(t, "LocateError", crudErr.ClassName)
+	require.Contains(t, crudErr.Err, "Failed to locate")
+	require.Contains(t, crudErr.Err, "cooler")
 }
 
 func TestAtomicBatch(t *testing.T) {
