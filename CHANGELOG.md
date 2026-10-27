@@ -20,6 +20,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
   Only send `IPROTO_THREAD_ID` when connecting to Tarantool >= 3.7.1.
 - Add `Thread()` method to the `Request` interface, so custom request
   implementations need to be updated (#614).
+- Support `crud.atomic_batch` request.
 
 ### Changed
 
