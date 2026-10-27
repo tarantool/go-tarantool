@@ -33,6 +33,19 @@ var reqObjects = []crud.Object{
 	},
 }
 
+var reqStorageCalls = []crud.StorageCall{
+	{
+		FuncName: "func_name",
+		Args:     option.SomeAny([]any{uint(1019), "bla"}),
+		BucketId: option.SomeUint(1020),
+	},
+	{
+		FuncName:  "other_func",
+		SpaceName: option.SomeString(validSpace),
+		Key:       option.SomeAny([]any{uint(1019)}),
+	},
+}
+
 var reqObjectsOperationsData = []crud.ObjectOperationsData{
 	{
 		Object: crud.MapObject{
@@ -157,6 +170,8 @@ func TestRequestsCodes(t *testing.T) {
 		{req: crud.NewLenRequest(validSpace), rtype: CrudRequestType},
 		{req: crud.NewCountRequest(validSpace), rtype: CrudRequestType},
 		{req: crud.NewStorageInfoRequest(), rtype: CrudRequestType},
+		{req: crud.NewStorageCallRequest("func_name"), rtype: CrudRequestType},
+		{req: crud.NewStorageCallManyRequest(nil), rtype: CrudRequestType},
 		{req: crud.NewStatsRequest(), rtype: CrudRequestType},
 		{req: crud.NewSchemaRequest(), rtype: CrudRequestType},
 	}
@@ -195,6 +210,8 @@ func TestRequestsAsync(t *testing.T) {
 		{req: crud.NewLenRequest(validSpace), async: false},
 		{req: crud.NewCountRequest(validSpace), async: false},
 		{req: crud.NewStorageInfoRequest(), async: false},
+		{req: crud.NewStorageCallRequest("func_name"), async: false},
+		{req: crud.NewStorageCallManyRequest(nil), async: false},
 		{req: crud.NewStatsRequest(), async: false},
 		{req: crud.NewSchemaRequest(), async: false},
 	}
@@ -233,6 +250,8 @@ func TestRequestsCtx_default(t *testing.T) {
 		{req: crud.NewLenRequest(validSpace), expected: nil},
 		{req: crud.NewCountRequest(validSpace), expected: nil},
 		{req: crud.NewStorageInfoRequest(), expected: nil},
+		{req: crud.NewStorageCallRequest("func_name"), expected: nil},
+		{req: crud.NewStorageCallManyRequest(nil), expected: nil},
 		{req: crud.NewStatsRequest(), expected: nil},
 		{req: crud.NewSchemaRequest(), expected: nil},
 	}
@@ -272,6 +291,8 @@ func TestRequestsCtx_setter(t *testing.T) {
 		{req: crud.NewLenRequest(validSpace).Context(ctx), expected: ctx},
 		{req: crud.NewCountRequest(validSpace).Context(ctx), expected: ctx},
 		{req: crud.NewStorageInfoRequest().Context(ctx), expected: ctx},
+		{req: crud.NewStorageCallRequest("func_name").Context(ctx), expected: ctx},
+		{req: crud.NewStorageCallManyRequest(nil).Context(ctx), expected: ctx},
 		{req: crud.NewStatsRequest().Context(ctx), expected: ctx},
 		{req: crud.NewSchemaRequest().Context(ctx), expected: ctx},
 	}
@@ -433,6 +454,18 @@ func TestRequestsDefaultValues(t *testing.T) {
 			ref: tarantool.NewCallRequest("crud.storage_info").Args(
 				[]any{map[string]any{}}),
 			target: crud.NewStorageInfoRequest(),
+		},
+		{
+			name: "StorageCallRequest",
+			ref: tarantool.NewCallRequest("crud.storage_call").Args(
+				[]any{"func_name", []any{}, map[string]any{}}),
+			target: crud.NewStorageCallRequest("func_name"),
+		},
+		{
+			name: "StorageCallManyRequest",
+			ref: tarantool.NewCallRequest("crud.storage_call_many").Args(
+				[]any{[]any{}, map[string]any{}}),
+			target: crud.NewStorageCallManyRequest(nil),
 		},
 		{
 			name: "StatsRequest",
@@ -663,6 +696,19 @@ func TestRequestsSetters(t *testing.T) {
 			ref: tarantool.NewCallRequest("crud.storage_info").Args(
 				[]any{expectedOpts}),
 			target: crud.NewStorageInfoRequest().Opts(baseOpts),
+		},
+		{
+			name: "StorageCallRequest",
+			ref: tarantool.NewCallRequest("crud.storage_call").Args(
+				[]any{"func_name", []any{uint(1019), "bla"}, expectedOpts}),
+			target: crud.NewStorageCallRequest("func_name").
+				Args([]any{uint(1019), "bla"}).Opts(storageCallOpts),
+		},
+		{
+			name: "StorageCallManyRequest",
+			ref: tarantool.NewCallRequest("crud.storage_call_many").Args(
+				[]any{reqStorageCalls, expectedOpts}),
+			target: crud.NewStorageCallManyRequest(reqStorageCalls).Opts(storageCallManyOpts),
 		},
 		{
 			name: "StatsRequest",
@@ -948,6 +994,27 @@ func TestRequestsVshardRouter(t *testing.T) {
 				map[string]any{"vshard_router": "custom_router"},
 			}),
 			target: crud.NewStorageInfoRequest().Opts(crud.StorageInfoOpts{
+				VshardRouter: option.SomeString("custom_router"),
+			}),
+		},
+		{
+			name: "StorageCallRequest",
+			ref: tarantool.NewCallRequest("crud.storage_call").Args([]any{
+				"func_name",
+				[]any{},
+				map[string]any{"vshard_router": "custom_router"},
+			}),
+			target: crud.NewStorageCallRequest("func_name").Opts(crud.StorageCallOpts{
+				VshardRouter: option.SomeString("custom_router"),
+			}),
+		},
+		{
+			name: "StorageCallManyRequest",
+			ref: tarantool.NewCallRequest("crud.storage_call_many").Args([]any{
+				[]any{},
+				map[string]any{"vshard_router": "custom_router"},
+			}),
+			target: crud.NewStorageCallManyRequest(nil).Opts(crud.StorageCallManyOpts{
 				VshardRouter: option.SomeString("custom_router"),
 			}),
 		},

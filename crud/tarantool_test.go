@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"reflect"
 	"testing"
 	"time"
 
@@ -132,6 +133,14 @@ var maxOpts = crud.MaxOpts{
 }
 
 var locateOpts = crud.LocateOpts{
+	Timeout: option.SomeFloat64(timeout),
+}
+
+var storageCallOpts = crud.StorageCallOpts{
+	Timeout: option.SomeFloat64(timeout),
+}
+
+var storageCallManyOpts = crud.StorageCallManyOpts{
 	Timeout: option.SomeFloat64(timeout),
 }
 
@@ -907,6 +916,114 @@ func TestStorageInfoResult(t *testing.T) {
 		require.True(t, info.IsMaster, "Unexpected IsMaster")
 		require.Empty(t, info.Message, "Unexpected Message")
 	}
+}
+
+func TestStorageCall(t *testing.T) {
+	conn := connect(t)
+	defer func() { _ = conn.Close() }()
+
+	req := crud.NewStorageCallRequest("storage_call_test_returns").
+		Args([]any{"foo"}).
+		Opts(crud.StorageCallOpts{
+			BucketId: option.SomeUint(uint(1)),
+		})
+	resp := crud.StorageCallResult{}
+
+	err := conn.Do(req).GetTyped(&resp)
+	require.NoError(t, err, "Failed to Do CRUD storage_call request")
+	require.Equal(t, []any{"foo", nil, false}, resp.Returns)
+}
+
+func TestStorageCallTyped(t *testing.T) {
+	conn := connect(t)
+	defer func() { _ = conn.Close() }()
+
+	req := crud.NewStorageCallRequest("storage_call_test_echo").
+		Args([]any{"foo", "bar"}).
+		Opts(crud.StorageCallOpts{
+			BucketId: option.SomeUint(uint(1)),
+		})
+	resp := crud.NewStorageCallResult(reflect.TypeFor[string]())
+
+	err := conn.Do(req).GetTyped(&resp)
+	require.NoError(t, err, "Failed to Do CRUD storage_call request")
+	require.Equal(t, []string{"foo", "bar"}, resp.Returns)
+}
+
+func TestStorageCallError(t *testing.T) {
+	conn := connect(t)
+	defer func() { _ = conn.Close() }()
+
+	req := crud.NewStorageCallRequest("storage_call_test_error").
+		Opts(crud.StorageCallOpts{
+			BucketId: option.SomeUint(uint(1)),
+		})
+	resp := crud.StorageCallResult{}
+
+	err := conn.Do(req).GetTyped(&resp)
+	require.Error(t, err, "Expected CRUD storage_call request to fail")
+
+	crudErr, ok := err.(*crud.StorageCallError)
+	require.True(t, ok, "Expected StorageCallError, got %T", err)
+	require.Equal(t, "StorageCallError", crudErr.Base.ClassName)
+	require.Contains(t, crudErr.Base.Err, "storage call test error")
+	require.Equal(t, "storage_call_test_error", crudErr.FuncName.MustGet())
+	require.Equal(t, uint(1), crudErr.BucketId.MustGet())
+
+	mayHaveSideEffects, ok := crudErr.MayHaveSideEffects.Get()
+	require.True(t, ok)
+	require.True(t, mayHaveSideEffects)
+}
+
+func TestStorageCallMany(t *testing.T) {
+	conn := connect(t)
+	defer func() { _ = conn.Close() }()
+
+	calls := []crud.StorageCall{
+		{
+			FuncName: "storage_call_test_returns",
+			Args:     option.SomeAny([]any{"after error"}),
+			BucketId: option.SomeUint(uint(1)),
+		},
+		{
+			FuncName: "storage_call_test_error",
+			BucketId: option.SomeUint(uint(1)),
+		},
+	}
+	req := crud.NewStorageCallManyRequest(calls).Opts(baseOpts)
+	resp := crud.StorageCallManyResult{}
+
+	err := conn.Do(req).GetTyped(&resp)
+	require.NoError(t, err, "Failed to Do CRUD storage_call_many request")
+	require.Len(t, resp.Results, 2)
+
+	require.Equal(t, []any{"after error", nil, false}, resp.Results[0].Returns)
+	require.Nil(t, resp.Results[0].Error)
+
+	require.Nil(t, resp.Results[1].Returns)
+	require.NotNil(t, resp.Results[1].Error)
+	require.Contains(t, resp.Results[1].Error.Base.Err, "storage call test error")
+}
+
+func TestStorageCallManyTyped(t *testing.T) {
+	conn := connect(t)
+	defer func() { _ = conn.Close() }()
+
+	calls := []crud.StorageCall{
+		{
+			FuncName: "storage_call_test_echo",
+			Args:     option.SomeAny([]any{"foo", "bar"}),
+			BucketId: option.SomeUint(uint(1)),
+		},
+	}
+	req := crud.NewStorageCallManyRequest(calls).Opts(baseOpts)
+	resp := crud.NewStorageCallManyResult(reflect.TypeFor[string]())
+
+	err := conn.Do(req).GetTyped(&resp)
+	require.NoError(t, err, "Failed to Do CRUD storage_call_many request")
+	require.Len(t, resp.Results, 1)
+	require.Equal(t, []string{"foo", "bar"}, resp.Results[0].Returns)
+	require.Nil(t, resp.Results[0].Error)
 }
 
 func TestLocate(t *testing.T) {

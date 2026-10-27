@@ -12,6 +12,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 * Support `crud.atomic_batch` request.
 * Support `crud.locate` request.
+* Support `crud.storage_call` and `crud.storage_call_many` requests.
 
 ### Changed
 
