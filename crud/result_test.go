@@ -128,3 +128,59 @@ func TestAtomicBatchResult_DecodeMsgpackEmpty(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "unexpected empty response array")
 }
+
+func TestLocateResult_DecodeMsgpack(t *testing.T) {
+	sampleCrudResponse := []any{"memtx", nil}
+
+	b := bytes.NewBuffer([]byte{})
+	enc := msgpack.NewEncoder(b)
+	err := enc.Encode(sampleCrudResponse)
+	require.NoError(t, err)
+
+	var result crud.LocateResult
+	decoder := msgpack.NewDecoder(b)
+	err = decoder.Decode(&result)
+	require.NoError(t, err)
+	require.Equal(t, "memtx", result.Value)
+	require.True(t, result.Found)
+}
+
+func TestLocateResult_DecodeMsgpackNotFound(t *testing.T) {
+	sampleCrudResponse := []any{nil, nil}
+
+	b := bytes.NewBuffer([]byte{})
+	enc := msgpack.NewEncoder(b)
+	err := enc.Encode(sampleCrudResponse)
+	require.NoError(t, err)
+
+	var result crud.LocateResult
+	decoder := msgpack.NewDecoder(b)
+	err = decoder.Decode(&result)
+	require.NoError(t, err)
+	require.Empty(t, result.Value)
+	require.False(t, result.Found)
+}
+
+func TestLocateResult_DecodeMsgpackError(t *testing.T) {
+	errMsg := "Module 'cooler' with function 'locate' is not available on this storage"
+
+	sampleCrudResponse := []any{
+		nil,
+		map[string]any{
+			"class_name": "LocateError",
+			"err":        errMsg,
+			"str":        "LocateError: " + errMsg,
+		},
+	}
+
+	b := bytes.NewBuffer([]byte{})
+	enc := msgpack.NewEncoder(b)
+	err := enc.Encode(sampleCrudResponse)
+	require.NoError(t, err)
+
+	var result crud.LocateResult
+	decoder := msgpack.NewDecoder(b)
+	err = decoder.Decode(&result)
+	require.Error(t, err)
+	require.Equal(t, "LocateError: "+errMsg, err.Error())
+}

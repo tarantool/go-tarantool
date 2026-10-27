@@ -151,6 +151,7 @@ func TestRequestsCodes(t *testing.T) {
 		{req: crud.NewAtomicBatchRequest(), rtype: CrudRequestType},
 		{req: crud.NewMinRequest(validSpace), rtype: CrudRequestType},
 		{req: crud.NewMaxRequest(validSpace), rtype: CrudRequestType},
+		{req: crud.NewLocateRequest(validSpace), rtype: CrudRequestType},
 		{req: crud.NewSelectRequest(validSpace), rtype: CrudRequestType},
 		{req: crud.NewTruncateRequest(validSpace), rtype: CrudRequestType},
 		{req: crud.NewLenRequest(validSpace), rtype: CrudRequestType},
@@ -188,6 +189,7 @@ func TestRequestsAsync(t *testing.T) {
 		{req: crud.NewAtomicBatchRequest(), async: false},
 		{req: crud.NewMinRequest(validSpace), async: false},
 		{req: crud.NewMaxRequest(validSpace), async: false},
+		{req: crud.NewLocateRequest(validSpace), async: false},
 		{req: crud.NewSelectRequest(validSpace), async: false},
 		{req: crud.NewTruncateRequest(validSpace), async: false},
 		{req: crud.NewLenRequest(validSpace), async: false},
@@ -225,6 +227,7 @@ func TestRequestsCtx_default(t *testing.T) {
 		{req: crud.NewAtomicBatchRequest(), expected: nil},
 		{req: crud.NewMinRequest(validSpace), expected: nil},
 		{req: crud.NewMaxRequest(validSpace), expected: nil},
+		{req: crud.NewLocateRequest(validSpace), expected: nil},
 		{req: crud.NewSelectRequest(validSpace), expected: nil},
 		{req: crud.NewTruncateRequest(validSpace), expected: nil},
 		{req: crud.NewLenRequest(validSpace), expected: nil},
@@ -263,6 +266,7 @@ func TestRequestsCtx_setter(t *testing.T) {
 		{req: crud.NewAtomicBatchRequest().Context(ctx), expected: ctx},
 		{req: crud.NewMinRequest(validSpace).Context(ctx), expected: ctx},
 		{req: crud.NewMaxRequest(validSpace).Context(ctx), expected: ctx},
+		{req: crud.NewLocateRequest(validSpace).Context(ctx), expected: ctx},
 		{req: crud.NewSelectRequest(validSpace).Context(ctx), expected: ctx},
 		{req: crud.NewTruncateRequest(validSpace).Context(ctx), expected: ctx},
 		{req: crud.NewLenRequest(validSpace).Context(ctx), expected: ctx},
@@ -399,6 +403,12 @@ func TestRequestsDefaultValues(t *testing.T) {
 			ref: tarantool.NewCallRequest("crud.max").Args(
 				[]any{validSpace, nil, map[string]any{}}),
 			target: crud.NewMaxRequest(validSpace),
+		},
+		{
+			name: "LocateRequest",
+			ref: tarantool.NewCallRequest("crud.locate").Args(
+				[]any{validSpace, nil, map[string]any{}}),
+			target: crud.NewLocateRequest(validSpace),
 		},
 		{
 			name: "TruncateRequest",
@@ -623,6 +633,12 @@ func TestRequestsSetters(t *testing.T) {
 			ref: tarantool.NewCallRequest("crud.max").Args(
 				[]any{spaceName, indexName, expectedOpts}),
 			target: crud.NewMaxRequest(spaceName).Index(indexName).Opts(maxOpts),
+		},
+		{
+			name: "LocateRequest",
+			ref: tarantool.NewCallRequest("crud.locate").Args(
+				[]any{spaceName, key, expectedOpts}),
+			target: crud.NewLocateRequest(spaceName).Key(key).Opts(locateOpts),
 		},
 		{
 			name: "TruncateRequest",
@@ -881,6 +897,17 @@ func TestRequestsVshardRouter(t *testing.T) {
 				map[string]any{"vshard_router": "custom_router"},
 			}),
 			target: crud.NewMaxRequest(validSpace).Opts(crud.MaxOpts{
+				VshardRouter: option.SomeString("custom_router"),
+			}),
+		},
+		{
+			name: "LocateRequest",
+			ref: tarantool.NewCallRequest("crud.locate").Args([]any{
+				validSpace,
+				nil,
+				map[string]any{"vshard_router": "custom_router"},
+			}),
+			target: crud.NewLocateRequest(validSpace).Opts(crud.LocateOpts{
 				VshardRouter: option.SomeString("custom_router"),
 			}),
 		},

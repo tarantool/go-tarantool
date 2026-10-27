@@ -11,6 +11,7 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 ### Added
 
 * Support `crud.atomic_batch` request.
+* Support `crud.locate` request.
 
 ### Changed
 
