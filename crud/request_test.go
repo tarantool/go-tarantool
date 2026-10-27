@@ -148,6 +148,7 @@ func TestRequestsCodes(t *testing.T) {
 		{req: crud.NewUpsertObjectRequest(validSpace), rtype: CrudRequestType},
 		{req: crud.NewUpsertManyRequest(validSpace), rtype: CrudRequestType},
 		{req: crud.NewUpsertObjectManyRequest(validSpace), rtype: CrudRequestType},
+		{req: crud.NewAtomicBatchRequest(), rtype: CrudRequestType},
 		{req: crud.NewMinRequest(validSpace), rtype: CrudRequestType},
 		{req: crud.NewMaxRequest(validSpace), rtype: CrudRequestType},
 		{req: crud.NewSelectRequest(validSpace), rtype: CrudRequestType},
@@ -184,6 +185,7 @@ func TestRequestsAsync(t *testing.T) {
 		{req: crud.NewUpsertObjectRequest(validSpace), async: false},
 		{req: crud.NewUpsertManyRequest(validSpace), async: false},
 		{req: crud.NewUpsertObjectManyRequest(validSpace), async: false},
+		{req: crud.NewAtomicBatchRequest(), async: false},
 		{req: crud.NewMinRequest(validSpace), async: false},
 		{req: crud.NewMaxRequest(validSpace), async: false},
 		{req: crud.NewSelectRequest(validSpace), async: false},
@@ -220,6 +222,7 @@ func TestRequestsCtx_default(t *testing.T) {
 		{req: crud.NewUpsertObjectRequest(validSpace), expected: nil},
 		{req: crud.NewUpsertManyRequest(validSpace), expected: nil},
 		{req: crud.NewUpsertObjectManyRequest(validSpace), expected: nil},
+		{req: crud.NewAtomicBatchRequest(), expected: nil},
 		{req: crud.NewMinRequest(validSpace), expected: nil},
 		{req: crud.NewMaxRequest(validSpace), expected: nil},
 		{req: crud.NewSelectRequest(validSpace), expected: nil},
@@ -257,6 +260,7 @@ func TestRequestsCtx_setter(t *testing.T) {
 		{req: crud.NewUpsertObjectRequest(validSpace).Context(ctx), expected: ctx},
 		{req: crud.NewUpsertManyRequest(validSpace).Context(ctx), expected: ctx},
 		{req: crud.NewUpsertObjectManyRequest(validSpace).Context(ctx), expected: ctx},
+		{req: crud.NewAtomicBatchRequest().Context(ctx), expected: ctx},
 		{req: crud.NewMinRequest(validSpace).Context(ctx), expected: ctx},
 		{req: crud.NewMaxRequest(validSpace).Context(ctx), expected: ctx},
 		{req: crud.NewSelectRequest(validSpace).Context(ctx), expected: ctx},
@@ -371,6 +375,12 @@ func TestRequestsDefaultValues(t *testing.T) {
 			ref: tarantool.NewCallRequest("crud.upsert_object_many").Args(
 				[]any{validSpace, []any{}, map[string]any{}}),
 			target: crud.NewUpsertObjectManyRequest(validSpace),
+		},
+		{
+			name: "AtomicBatchRequest",
+			ref: tarantool.NewCallRequest("crud.atomic_batch").Args(
+				[]any{[]any{}, map[string]any{}}),
+			target: crud.NewAtomicBatchRequest(),
 		},
 		{
 			name: "SelectRequest",
@@ -539,6 +549,62 @@ func TestRequestsSetters(t *testing.T) {
 				[]any{spaceName, reqObjectsOperationsData, expectedOpts}),
 			target: crud.NewUpsertObjectManyRequest(spaceName).
 				ObjectsOperationsData(reqObjectsOperationsData).Opts(opManyOpts),
+		},
+		{
+			name: "AtomicBatchRequest",
+			ref: tarantool.NewCallRequest("crud.atomic_batch").Args(
+				[]any{
+					[]crud.AtomicBatchOperation{
+						{
+							Type:  crud.AtomicBatchGet,
+							Space: spaceName,
+							Key:   option.SomeAny(key),
+						},
+						{
+							Type:  crud.AtomicBatchInsert,
+							Space: spaceName,
+							Tuple: option.SomeAny(tuple),
+						},
+						{
+							Type:       crud.AtomicBatchUpdate,
+							Space:      spaceName,
+							Key:        option.SomeAny(key),
+							Operations: operations,
+						},
+						{
+							Type:   crud.AtomicBatchInsert,
+							Space:  spaceName,
+							Object: option.SomeAny(reqObject),
+						},
+					},
+					expectedOpts,
+				}),
+			target: crud.NewAtomicBatchRequest().Operations(
+				[]crud.AtomicBatchOperation{
+					{
+						Type:  crud.AtomicBatchGet,
+						Space: spaceName,
+						Key:   option.SomeAny(key),
+					},
+					{
+						Type:  crud.AtomicBatchInsert,
+						Space: spaceName,
+						Tuple: option.SomeAny(tuple),
+					},
+					{
+						Type:       crud.AtomicBatchUpdate,
+						Space:      spaceName,
+						Key:        option.SomeAny(key),
+						Operations: operations,
+					},
+					{
+						Type:   crud.AtomicBatchInsert,
+						Space:  spaceName,
+						Object: option.SomeAny(reqObject),
+					},
+				}).Opts(crud.AtomicBatchOpts{
+				Timeout: option.SomeFloat64(timeout),
+			}),
 		},
 		{
 			name: "SelectRequest",

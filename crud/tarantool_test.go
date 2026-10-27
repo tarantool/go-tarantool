@@ -905,6 +905,81 @@ func TestStorageInfoResult(t *testing.T) {
 	}
 }
 
+func TestAtomicBatch(t *testing.T) {
+	conn := connect(t)
+	defer func() { _ = conn.Close() }()
+
+	const id = uint(2001)
+	insertTuple := []any{id, nil, "atomic_batch"}
+
+	req := crud.NewAtomicBatchRequest().Operations([]crud.AtomicBatchOperation{
+		{Type: crud.AtomicBatchInsert, Space: spaceName, Tuple: option.SomeAny(insertTuple)},
+		{Type: crud.AtomicBatchGet, Space: spaceName, Key: option.SomeAny([]any{id})},
+	}).Opts(crud.AtomicBatchOpts{
+		Timeout: option.SomeFloat64(timeout),
+	})
+	resp := crud.AtomicBatchResult{}
+
+	err := conn.Do(req).GetTyped(&resp)
+	require.NoError(t, err, "Failed to Do CRUD atomic_batch request")
+
+	require.Contains(t, resp.Metadata, spaceName)
+	require.Len(t, resp.Metadata[spaceName], 3)
+
+	require.Equal(t, []crud.AtomicBatchOpDescriptor{
+		{Type: "insert", Space: spaceName},
+		{Type: "get", Space: spaceName},
+	}, resp.Ops)
+
+	require.Len(t, resp.Data, 2)
+	for _, item := range resp.Data {
+		tuple, ok := item.([]any)
+		require.True(t, ok, "Unexpected data item type %T", item)
+		require.Len(t, tuple, 3)
+		require.Equal(t, "atomic_batch", tuple[2])
+	}
+
+	delReq := tarantool.NewDeleteRequest(spaceName).Key([]any{id})
+	_, err = conn.Do(delReq).Get()
+	require.NoError(t, err, "Failed to clean up inserted tuple")
+}
+
+func TestAtomicBatchError(t *testing.T) {
+	conn := connect(t)
+	defer func() { _ = conn.Close() }()
+
+	const id = uint(2002)
+	insertTuple := []any{id, nil, "atomic_batch_error"}
+
+	opts := crud.AtomicBatchOpts{
+		Timeout: option.SomeFloat64(timeout),
+	}
+
+	insertReq := crud.NewAtomicBatchRequest().Operations([]crud.AtomicBatchOperation{
+		{Type: crud.AtomicBatchInsert, Space: spaceName, Tuple: option.SomeAny(insertTuple)},
+	}).Opts(opts)
+	var okResp crud.AtomicBatchResult
+	err := conn.Do(insertReq).GetTyped(&okResp)
+	require.NoError(t, err, "Failed to Do CRUD atomic_batch insert request")
+
+	dupReq := crud.NewAtomicBatchRequest().Operations([]crud.AtomicBatchOperation{
+		{Type: crud.AtomicBatchInsert, Space: spaceName, Tuple: option.SomeAny(insertTuple)},
+	}).Opts(opts)
+	var errResp crud.AtomicBatchResult
+	err = conn.Do(dupReq).GetTyped(&errResp)
+	require.Error(t, err, "Expected CRUD atomic_batch request to fail")
+
+	crudErr, ok := err.(*crud.Error)
+	require.True(t, ok, "Expected *crud.Error, got %T", err)
+	require.Equal(t, "AtomicBatchError", crudErr.ClassName)
+	require.Contains(t, crudErr.Err, "Duplicate key exists")
+	require.Contains(t, crudErr.Err, "Operation #1 (insert on")
+
+	delReq := tarantool.NewDeleteRequest(spaceName).Key([]any{id})
+	_, err = conn.Do(delReq).Get()
+	require.NoError(t, err, "Failed to clean up inserted tuple")
+}
+
 func TestGetAdditionalOpts(t *testing.T) {
 	conn := connect(t)
 	defer func() { _ = conn.Close() }()

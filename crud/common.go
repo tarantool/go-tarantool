@@ -32,6 +32,8 @@
 //
 //   - upsert_object_many
 //
+//   - atomic_batch
+//
 //   - select
 //
 //   - min

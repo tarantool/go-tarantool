@@ -24,6 +24,10 @@ type Error struct {
 	Str string
 	// OperationData is the object/tuple with which an error occurred.
 	OperationData any
+	// OperationIndex is the index of the operation that failed in a batch.
+	OperationIndex uint64
+	// UnrefError is an optional error of releasing a bucket lock.
+	UnrefError any
 	// operationDataType contains the type of OperationData.
 	operationDataType reflect.Type
 }
@@ -80,6 +84,14 @@ func (e *Error) DecodeMsgpack(d *msgpack.Decoder) error {
 				if err = d.Decode(&e.OperationData); err != nil {
 					return err
 				}
+			}
+		case "operation_index":
+			if e.OperationIndex, err = d.DecodeUint64(); err != nil {
+				return err
+			}
+		case "unref_error":
+			if err = d.Decode(&e.UnrefError); err != nil {
+				return err
 			}
 		default:
 			if err := d.Skip(); err != nil {
