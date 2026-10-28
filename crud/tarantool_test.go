@@ -42,6 +42,8 @@ var startOpts test_helpers.StartOpts = test_helpers.StartOpts{
 	RetryTimeout: 500 * time.Millisecond,
 }
 
+var isCrudSupported = false
+
 var timeout = float64(1.1)
 
 var operations = []crud.Operation{
@@ -175,6 +177,10 @@ var object = crud.MapObject{
 
 func connect(tb testing.TB) *tarantool.Connection {
 	tb.Helper()
+
+	if !isCrudSupported {
+		tb.Skip("Skipping test for Tarantool without crud support (requires >= 2.11.0)")
+	}
 
 	for range 10 {
 		ctx, cancel := test_helpers.GetConnectContext()
@@ -1444,6 +1450,19 @@ func TestYieldEveryOption(t *testing.T) {
 // is a separate function, see
 // https://stackoverflow.com/questions/27629380/how-to-exit-a-go-program-honoring-deferred-calls
 func runTestMain(m *testing.M) int {
+	isLess, err := test_helpers.IsTarantoolVersionLess(2, 11, 0)
+	if err != nil {
+		log.Printf("Failed to extract Tarantool version: %s", err)
+		return 1
+	}
+
+	if isLess {
+		log.Println("Skipping crud tests...")
+		isCrudSupported = false
+		return m.Run()
+	}
+	isCrudSupported = true
+
 	inst, err := test_helpers.StartTarantool(startOpts)
 	if err != nil {
 		log.Printf("Failed to prepare test tarantool: %s", err)
