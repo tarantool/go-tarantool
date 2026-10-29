@@ -1444,6 +1444,16 @@ func TestYieldEveryOption(t *testing.T) {
 // is a separate function, see
 // https://stackoverflow.com/questions/27629380/how-to-exit-a-go-program-honoring-deferred-calls
 func runTestMain(m *testing.M) int {
+	// Tarantool supports VShard and interactive transactions since version 2.11.0
+	isVShardUnsupported, err := test_helpers.IsTarantoolVersionLess(2, 11, 0)
+	if err != nil {
+		log.Fatalf("Could not check the Tarantool version: %s", err)
+	}
+	if isVShardUnsupported {
+		log.Printf("Skipping test for Tarantool without VShard support")
+		return 0
+	}
+
 	inst, err := test_helpers.StartTarantool(startOpts)
 	if err != nil {
 		log.Printf("Failed to prepare test tarantool: %s", err)

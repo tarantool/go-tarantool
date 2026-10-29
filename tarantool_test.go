@@ -1127,8 +1127,10 @@ func TestSQLBindings(t *testing.T) {
 		require.NotNil(t, resp, "Response is nil after Execute")
 		data, err := resp.Decode()
 		require.NoError(t, err, "Failed to Decode")
-		assert.NotEqual(t, []any{1, testData[1]}, data[0],
-			"Select with named arguments failed")
+		assert.NotEqual(t, []any{
+			KeyValueBind{Key: "id", Value: 1},
+			KeyValueBind{Key: "name", Value: testData[1]},
+		}, data[0], "Select with named arguments failed")
 		exResp, ok := resp.(*ExecuteResponse)
 		assert.True(t, ok, "Got wrong response type")
 		metaData, err := exResp.MetaData()
@@ -1271,11 +1273,17 @@ func TestNewPrepared(t *testing.T) {
 	executeReq := NewExecutePreparedRequest(stmt)
 	unprepareReq := NewUnprepareRequest(stmt)
 
-	resp, err := conn.Do(executeReq.Args([]any{1, "test"})).GetResponse()
+	resp, err := conn.Do(executeReq.Args([]any{
+		KeyValueBind{Key: "id", Value: 1},
+		KeyValueBind{Key: "name", Value: "test"},
+	})).GetResponse()
 	require.NoError(t, err, "failed to execute prepared")
 	data, err := resp.Decode()
 	require.NoError(t, err, "Failed to Decode")
-	assert.NotEqual(t, []any{1, "test"}, data[0], "Select with named arguments failed")
+	assert.NotEqual(t, []any{
+		KeyValueBind{Key: "id", Value: 1},
+		KeyValueBind{Key: "name", Value: "test"},
+	}, data[0], "Select with named arguments failed")
 	prepResp, ok := resp.(*ExecuteResponse)
 	assert.True(t, ok, "Got wrong response type")
 	metaData, err := prepResp.MetaData()
@@ -1316,7 +1324,10 @@ func TestExecutePrepareResponseRelease(t *testing.T) {
 
 	req := NewExecutePreparedRequest(stmt)
 
-	resp, err := conn.Do(req.Args([]any{1, "test"})).GetResponse()
+	resp, err := conn.Do(req.Args([]any{
+		KeyValueBind{Key: "id", Value: 1},
+		KeyValueBind{Key: "name", Value: "test"},
+	})).GetResponse()
 	require.NoError(t, err, "failed to execute prepared")
 
 	resp.Release()

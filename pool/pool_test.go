@@ -3122,12 +3122,18 @@ func TestNewPrepared(t *testing.T) {
 	executeReq := tarantool.NewExecutePreparedRequest(stmt)
 	unprepareReq := tarantool.NewUnprepareRequest(stmt)
 
-	resp, err := connPool.Do(executeReq.Args([]any{1, "test"}), pool.ModeAny).GetResponse()
+	resp, err := connPool.Do(executeReq.Args([]any{
+		map[string]any{":id": 1},
+		map[string]any{":name": "test"},
+	}), pool.ModeAny).GetResponse()
 	require.NoError(t, err, "failed to execute prepared")
 	require.NotNil(t, resp, "nil response")
 	data, err := resp.Decode()
 	require.NoError(t, err, "failed to Decode")
-	assert.NotEqual(t, []any{1, "test"}, data[0], "Select with named arguments failed")
+	assert.NotEqual(t, []any{
+		map[string]any{":id": 1},
+		map[string]any{":name": "test"},
+	}, data[0], "Select with named arguments failed")
 	prepResp, ok := resp.(*tarantool.ExecuteResponse)
 	require.True(t, ok, "Not a Prepare response")
 	metaData, err := prepResp.MetaData()
