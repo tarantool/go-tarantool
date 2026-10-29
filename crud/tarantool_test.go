@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"reflect"
 	"testing"
 	"time"
 
@@ -41,6 +42,8 @@ var startOpts test_helpers.StartOpts = test_helpers.StartOpts{
 	ConnectRetry: 10,
 	RetryTimeout: 500 * time.Millisecond,
 }
+
+var isCrudSupported = false
 
 var timeout = float64(1.1)
 
@@ -129,6 +132,18 @@ var maxOpts = crud.MaxOpts{
 	Timeout: option.SomeFloat64(timeout),
 }
 
+var locateOpts = crud.LocateOpts{
+	Timeout: option.SomeFloat64(timeout),
+}
+
+var storageCallOpts = crud.StorageCallOpts{
+	Timeout: option.SomeFloat64(timeout),
+}
+
+var storageCallManyOpts = crud.StorageCallManyOpts{
+	Timeout: option.SomeFloat64(timeout),
+}
+
 var baseOpts = crud.BaseOpts{
 	Timeout: option.SomeFloat64(timeout),
 }
@@ -175,6 +190,10 @@ var object = crud.MapObject{
 
 func connect(tb testing.TB) *tarantool.Connection {
 	tb.Helper()
+
+	if !isCrudSupported {
+		tb.Skip("Skipping test for Tarantool without crud support (requires >= 2.11.0)")
+	}
 
 	for range 10 {
 		ctx, cancel := test_helpers.GetConnectContext()
@@ -899,6 +918,207 @@ func TestStorageInfoResult(t *testing.T) {
 	}
 }
 
+func TestStorageCall(t *testing.T) {
+	conn := connect(t)
+	defer func() { _ = conn.Close() }()
+
+	req := crud.NewStorageCallRequest("storage_call_test_returns").
+		Args([]any{"foo"}).
+		Opts(crud.StorageCallOpts{
+			BucketId: option.SomeUint(uint(1)),
+		})
+	resp := crud.StorageCallResult{}
+
+	err := conn.Do(req).GetTyped(&resp)
+	require.NoError(t, err, "Failed to Do CRUD storage_call request")
+	require.Equal(t, []any{"foo", nil, false}, resp.Returns)
+}
+
+func TestStorageCallTyped(t *testing.T) {
+	conn := connect(t)
+	defer func() { _ = conn.Close() }()
+
+	req := crud.NewStorageCallRequest("storage_call_test_echo").
+		Args([]any{"foo", "bar"}).
+		Opts(crud.StorageCallOpts{
+			BucketId: option.SomeUint(uint(1)),
+		})
+	resp := crud.NewStorageCallResult(reflect.TypeFor[string]())
+
+	err := conn.Do(req).GetTyped(&resp)
+	require.NoError(t, err, "Failed to Do CRUD storage_call request")
+	require.Equal(t, []string{"foo", "bar"}, resp.Returns)
+}
+
+func TestStorageCallError(t *testing.T) {
+	conn := connect(t)
+	defer func() { _ = conn.Close() }()
+
+	req := crud.NewStorageCallRequest("storage_call_test_error").
+		Opts(crud.StorageCallOpts{
+			BucketId: option.SomeUint(uint(1)),
+		})
+	resp := crud.StorageCallResult{}
+
+	err := conn.Do(req).GetTyped(&resp)
+	require.Error(t, err, "Expected CRUD storage_call request to fail")
+
+	crudErr, ok := err.(*crud.StorageCallError)
+	require.True(t, ok, "Expected StorageCallError, got %T", err)
+	require.Equal(t, "StorageCallError", crudErr.Base.ClassName)
+	require.Contains(t, crudErr.Base.Err, "storage call test error")
+	require.Equal(t, "storage_call_test_error", crudErr.FuncName.MustGet())
+	require.Equal(t, uint(1), crudErr.BucketId.MustGet())
+
+	mayHaveSideEffects, ok := crudErr.MayHaveSideEffects.Get()
+	require.True(t, ok)
+	require.True(t, mayHaveSideEffects)
+}
+
+func TestStorageCallMany(t *testing.T) {
+	conn := connect(t)
+	defer func() { _ = conn.Close() }()
+
+	calls := []crud.StorageCall{
+		{
+			FuncName: "storage_call_test_returns",
+			Args:     option.SomeAny([]any{"after error"}),
+			BucketId: option.SomeUint(uint(1)),
+		},
+		{
+			FuncName: "storage_call_test_error",
+			BucketId: option.SomeUint(uint(1)),
+		},
+	}
+	req := crud.NewStorageCallManyRequest(calls).Opts(baseOpts)
+	resp := crud.StorageCallManyResult{}
+
+	err := conn.Do(req).GetTyped(&resp)
+	require.NoError(t, err, "Failed to Do CRUD storage_call_many request")
+	require.Len(t, resp.Results, 2)
+
+	require.Equal(t, []any{"after error", nil, false}, resp.Results[0].Returns)
+	require.Nil(t, resp.Results[0].Error)
+
+	require.Nil(t, resp.Results[1].Returns)
+	require.NotNil(t, resp.Results[1].Error)
+	require.Contains(t, resp.Results[1].Error.Base.Err, "storage call test error")
+}
+
+func TestStorageCallManyTyped(t *testing.T) {
+	conn := connect(t)
+	defer func() { _ = conn.Close() }()
+
+	calls := []crud.StorageCall{
+		{
+			FuncName: "storage_call_test_echo",
+			Args:     option.SomeAny([]any{"foo", "bar"}),
+			BucketId: option.SomeUint(uint(1)),
+		},
+	}
+	req := crud.NewStorageCallManyRequest(calls).Opts(baseOpts)
+	resp := crud.NewStorageCallManyResult(reflect.TypeFor[string]())
+
+	err := conn.Do(req).GetTyped(&resp)
+	require.NoError(t, err, "Failed to Do CRUD storage_call_many request")
+	require.Len(t, resp.Results, 1)
+	require.Equal(t, []string{"foo", "bar"}, resp.Results[0].Returns)
+	require.Nil(t, resp.Results[0].Error)
+}
+
+func TestLocate(t *testing.T) {
+	conn := connect(t)
+	defer func() { _ = conn.Close() }()
+
+	req := crud.NewLocateRequest(spaceName).Key(key).Opts(locateOpts)
+	resp := crud.LocateResult{}
+
+	// Test only the error path.
+	err := conn.Do(req).GetTyped(&resp)
+	require.Error(t, err, "Expected CRUD locate request to fail")
+
+	crudErr, ok := err.(*crud.Error)
+	require.True(t, ok, "Expected *crud.Error, got %T", err)
+	require.Equal(t, "LocateError", crudErr.ClassName)
+	require.Contains(t, crudErr.Err, "Failed to locate")
+	require.Contains(t, crudErr.Err, "cooler")
+}
+
+func TestAtomicBatch(t *testing.T) {
+	conn := connect(t)
+	defer func() { _ = conn.Close() }()
+
+	const id = uint(2001)
+	insertTuple := []any{id, nil, "atomic_batch"}
+
+	req := crud.NewAtomicBatchRequest().Operations([]crud.AtomicBatchOperation{
+		{Type: crud.AtomicBatchInsert, Space: spaceName, Tuple: option.SomeAny(insertTuple)},
+		{Type: crud.AtomicBatchGet, Space: spaceName, Key: option.SomeAny([]any{id})},
+	}).Opts(crud.AtomicBatchOpts{
+		Timeout: option.SomeFloat64(timeout),
+	})
+	resp := crud.AtomicBatchResult{}
+
+	err := conn.Do(req).GetTyped(&resp)
+	require.NoError(t, err, "Failed to Do CRUD atomic_batch request")
+
+	require.Contains(t, resp.Metadata, spaceName)
+	require.Len(t, resp.Metadata[spaceName], 3)
+
+	require.Equal(t, []crud.AtomicBatchOpDescriptor{
+		{Type: "insert", Space: spaceName},
+		{Type: "get", Space: spaceName},
+	}, resp.Ops)
+
+	require.Len(t, resp.Data, 2)
+	for _, item := range resp.Data {
+		tuple, ok := item.([]any)
+		require.True(t, ok, "Unexpected data item type %T", item)
+		require.Len(t, tuple, 3)
+		require.Equal(t, "atomic_batch", tuple[2])
+	}
+
+	delReq := tarantool.NewDeleteRequest(spaceName).Key([]any{id})
+	_, err = conn.Do(delReq).Get()
+	require.NoError(t, err, "Failed to clean up inserted tuple")
+}
+
+func TestAtomicBatchError(t *testing.T) {
+	conn := connect(t)
+	defer func() { _ = conn.Close() }()
+
+	const id = uint(2002)
+	insertTuple := []any{id, nil, "atomic_batch_error"}
+
+	opts := crud.AtomicBatchOpts{
+		Timeout: option.SomeFloat64(timeout),
+	}
+
+	insertReq := crud.NewAtomicBatchRequest().Operations([]crud.AtomicBatchOperation{
+		{Type: crud.AtomicBatchInsert, Space: spaceName, Tuple: option.SomeAny(insertTuple)},
+	}).Opts(opts)
+	var okResp crud.AtomicBatchResult
+	err := conn.Do(insertReq).GetTyped(&okResp)
+	require.NoError(t, err, "Failed to Do CRUD atomic_batch insert request")
+
+	dupReq := crud.NewAtomicBatchRequest().Operations([]crud.AtomicBatchOperation{
+		{Type: crud.AtomicBatchInsert, Space: spaceName, Tuple: option.SomeAny(insertTuple)},
+	}).Opts(opts)
+	var errResp crud.AtomicBatchResult
+	err = conn.Do(dupReq).GetTyped(&errResp)
+	require.Error(t, err, "Expected CRUD atomic_batch request to fail")
+
+	crudErr, ok := err.(*crud.Error)
+	require.True(t, ok, "Expected *crud.Error, got %T", err)
+	require.Equal(t, "AtomicBatchError", crudErr.ClassName)
+	require.Contains(t, crudErr.Err, "Duplicate key exists")
+	require.Contains(t, crudErr.Err, "Operation #1 (insert on")
+
+	delReq := tarantool.NewDeleteRequest(spaceName).Key([]any{id})
+	_, err = conn.Do(delReq).Get()
+	require.NoError(t, err, "Failed to clean up inserted tuple")
+}
+
 func TestGetAdditionalOpts(t *testing.T) {
 	conn := connect(t)
 	defer func() { _ = conn.Close() }()
@@ -1444,6 +1664,19 @@ func TestYieldEveryOption(t *testing.T) {
 // is a separate function, see
 // https://stackoverflow.com/questions/27629380/how-to-exit-a-go-program-honoring-deferred-calls
 func runTestMain(m *testing.M) int {
+	isLess, err := test_helpers.IsTarantoolVersionLess(2, 11, 0)
+	if err != nil {
+		log.Printf("Failed to extract Tarantool version: %s", err)
+		return 1
+	}
+
+	if isLess {
+		log.Println("Skipping crud tests...")
+		isCrudSupported = false
+		return m.Run()
+	}
+	isCrudSupported = true
+
 	inst, err := test_helpers.StartTarantool(startOpts)
 	if err != nil {
 		log.Printf("Failed to prepare test tarantool: %s", err)

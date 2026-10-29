@@ -20,6 +20,10 @@ on:
         required: false
         type: boolean
         default: false
+      test-tags:
+        required: false
+        type: string
+        default: ''
 
 jobs:
   run-tests:
@@ -77,10 +81,10 @@ jobs:
         run: make deps
 
       - name: Run regression tests
-        run: make test
+        run: make test TAGS="${{ inputs.test-tags }}"
 
       - name: Run race tests
-        run: make testrace
+        run: make testrace TAGS="${{ inputs.test-tags }}"
 
       - name: Run fuzzing tests
         if: ${{ inputs.fuzzing }}

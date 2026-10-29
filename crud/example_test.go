@@ -1,3 +1,5 @@
+//go:build !no_crud_examples
+
 package crud_test
 
 import (

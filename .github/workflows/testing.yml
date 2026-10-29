@@ -27,6 +27,7 @@ jobs:
       tarantool-version: ${{ matrix.tarantool }}
       coveralls: ${{ matrix.coveralls }}
       fuzzing: ${{ matrix.fuzzing }}
+      test-tags: no_crud_examples
 
   run-tests:
     if: (github.event_name == 'push') ||
