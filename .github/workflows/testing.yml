@@ -8,6 +8,24 @@ on:
   workflow_dispatch:
 
 jobs:
+  uuid-module:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go-uuid/go.mod
+          cache-dependency-path: go-uuid/go.sum
+
+      - name: Test standard UUID module
+        working-directory: go-uuid
+        run: go test -race ./...
+
+      - name: Vet standard UUID module
+        working-directory: go-uuid
+        run: go vet ./...
+
   run-tests-tarantool-1-10:
     if: (github.event_name == 'push') ||
       (github.event_name == 'pull_request' &&
