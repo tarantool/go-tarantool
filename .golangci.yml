@@ -11,6 +11,8 @@ formatters:
 
 linters:
   default: all
+  enable:
+    - gomodguard_v2
   settings:
     lll:
       line-length: 100
@@ -33,6 +35,7 @@ linters:
     - errorlint
     - exhaustive
     - exhaustruct
+    - exhaustruct_v5
     - forcetypeassert
     - funcorder
     - funlen
@@ -42,6 +45,7 @@ linters:
     - goconst
     - gocyclo
     - godox
+    - gomodguard
     - gosec
     - gosmopolitan
     - iface
