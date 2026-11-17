@@ -3,6 +3,7 @@ package tarantool_test
 import (
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -678,7 +679,8 @@ func TestClient(t *testing.T) {
 	}
 	req = NewInsertRequest(spaceNo).Tuple(&Tuple{Id: 1, Msg: "hello", Name: "world"})
 	data, err = conn.Do(req).Get()
-	tntErr, ok := err.(ServerError)
+	var tntErr ServerError
+	ok := errors.As(err, &tntErr)
 	require.True(t, ok, "Expected Error type")
 	assert.Equal(t, iproto.ER_TUPLE_FOUND, tntErr.Code,
 		"Expected %s but got: %v", iproto.ER_TUPLE_FOUND, err)
@@ -1199,7 +1201,8 @@ func TestStressSQL(t *testing.T) {
 	_, err = resp.Decode()
 	require.Error(t, err, "Expected error while decoding")
 
-	tntErr, ok := err.(ServerError)
+	var tntErr ServerError
+	ok = errors.As(err, &tntErr)
 	assert.True(t, ok)
 	assert.Equal(t, iproto.ER_SPACE_EXISTS, tntErr.Code)
 	require.Equal(t, iproto.ER_SPACE_EXISTS, resp.Header().Error, "Unexpected response error")
@@ -2612,7 +2615,8 @@ func TestErrorExtendedInfoBasic(t *testing.T) {
 	_, err := conn.Do(NewEvalRequest("not a Lua code").Args([]any{})).Get()
 	require.Errorf(t, err, "expected error on invalid Lua code")
 
-	ttErr, ok := err.(ServerError)
+	var ttErr ServerError
+	ok := errors.As(err, &ttErr)
 	require.Truef(t, ok, "error is built from a Tarantool error")
 
 	expected := BoxError{
@@ -2640,7 +2644,8 @@ func TestErrorExtendedInfoStack(t *testing.T) {
 	_, err := conn.Do(NewEvalRequest("error(chained_error)").Args([]any{})).Get()
 	require.Errorf(t, err, "expected error on explicit error raise")
 
-	ttErr, ok := err.(ServerError)
+	var ttErr ServerError
+	ok := errors.As(err, &ttErr)
 	require.Truef(t, ok, "error is built from a Tarantool error")
 
 	expected := BoxError{
@@ -2676,7 +2681,8 @@ func TestErrorExtendedInfoFields(t *testing.T) {
 	_, err := conn.Do(NewEvalRequest("error(access_denied_error)").Args([]any{})).Get()
 	require.Errorf(t, err, "expected error on forbidden action")
 
-	ttErr, ok := err.(ServerError)
+	var ttErr ServerError
+	ok := errors.As(err, &ttErr)
 	require.Truef(t, ok, "error is built from a Tarantool error")
 
 	expected := BoxError{

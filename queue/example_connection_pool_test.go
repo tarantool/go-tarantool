@@ -2,6 +2,7 @@ package queue_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -249,7 +250,7 @@ func Example_connectionPool() {
 		task, err := q.Take()
 
 		switch {
-		case err == pool.ErrNoRwInstance:
+		case errors.Is(err, pool.ErrNoRwInstance):
 			// It may be not registered yet by the pool.
 			continue
 		case err != nil:

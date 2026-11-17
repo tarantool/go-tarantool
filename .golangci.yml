@@ -32,7 +32,6 @@ linters:
     - dupl
     - err113
     - errname
-    - errorlint
     - exhaustive
     - exhaustruct
     - exhaustruct_v5

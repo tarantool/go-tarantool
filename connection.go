@@ -1103,7 +1103,8 @@ func (conn *Connection) putFuture(fut *future, req Request, streamId uint64) {
 			if fut.err == nil {
 				panic("Future removed from queue without error")
 			}
-			if _, ok := fut.err.(ClientError); ok {
+			var clientErr ClientError
+			if errors.As(fut.err, &clientErr) {
 				// packing error is more important than connection
 				// error, because it is indication of programmer's
 				// mistake.

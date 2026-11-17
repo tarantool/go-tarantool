@@ -2,6 +2,7 @@ package crud_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"time"
@@ -193,10 +194,12 @@ func ExampleResult_operationData() {
 
 	ret := crud.Result{}
 	if err := conn.Do(req).GetTyped(&ret); err != nil {
-		crudErrs := err.(crud.ErrorMany)
-		fmt.Println("Erroneous data:")
-		for _, crudErr := range crudErrs.Errors {
-			fmt.Println(crudErr.OperationData)
+		var crudErrs crud.ErrorMany
+		if errors.As(err, &crudErrs) {
+			fmt.Println("Erroneous data:")
+			for _, crudErr := range crudErrs.Errors {
+				fmt.Println(crudErr.OperationData)
+			}
 		}
 	} else {
 		fmt.Println(ret.Metadata)
@@ -240,11 +243,13 @@ func ExampleResult_operationDataCustomType() {
 
 	ret := crud.NewResult(reflect.TypeFor[Tuple]())
 	if err := conn.Do(req).GetTyped(&ret); err != nil {
-		crudErrs := err.(crud.ErrorMany)
-		fmt.Println("Erroneous data:")
-		for _, crudErr := range crudErrs.Errors {
-			operationData := crudErr.OperationData.(Tuple)
-			fmt.Println(operationData)
+		var crudErrs crud.ErrorMany
+		if errors.As(err, &crudErrs) {
+			fmt.Println("Erroneous data:")
+			for _, crudErr := range crudErrs.Errors {
+				operationData := crudErr.OperationData.(Tuple)
+				fmt.Println(operationData)
+			}
 		}
 	} else {
 		fmt.Println(ret.Metadata)
@@ -315,8 +320,10 @@ func ExampleResult_error() {
 
 	ret := crud.Result{}
 	if err := conn.Do(req).GetTyped(&ret); err != nil {
-		crudErr := err.(crud.Error)
-		fmt.Printf("Failed to execute request: %s", crudErr)
+		var crudErr crud.Error
+		if errors.As(err, &crudErr) {
+			fmt.Printf("Failed to execute request: %s", crudErr)
+		}
 	} else {
 		fmt.Println(ret.Metadata)
 		fmt.Println(ret.Rows)
@@ -342,10 +349,12 @@ func ExampleResult_errorMany() {
 		})
 	ret := crud.Result{}
 	if err := conn.Do(req).GetTyped(&ret); err != nil {
-		crudErr := err.(crud.ErrorMany)
-		// We need to trim the error message to make the example repeatable.
-		errmsg := crudErr.Error()[:10]
-		fmt.Printf("Failed to execute request: %s", errmsg)
+		var crudErr crud.ErrorMany
+		if errors.As(err, &crudErr) {
+			// We need to trim the error message to make the example repeatable.
+			errmsg := crudErr.Error()[:10]
+			fmt.Printf("Failed to execute request: %s", errmsg)
+		}
 	} else {
 		fmt.Println(ret.Metadata)
 		fmt.Println(ret.Rows)

@@ -194,7 +194,7 @@ func SetInstanceRO(ctx context.Context, dialer tarantool.Dialer, connOpts tarant
 	checkRole := func(conn *tarantool.Connection, isReplica bool) error {
 		boxInfo, err := box.MustNew(conn).Info()
 		if err != nil {
-			return fmt.Errorf("failed to get box.info: %s", err)
+			return fmt.Errorf("failed to get box.info: %w", err)
 		}
 
 		switch {
@@ -214,7 +214,7 @@ func SetInstanceRO(ctx context.Context, dialer tarantool.Dialer, connOpts tarant
 		select {
 		case <-time.After(10 * time.Millisecond):
 		case <-ctx.Done():
-			return fmt.Errorf("%w: failed to apply role, the last error: %s",
+			return fmt.Errorf("%w: failed to apply role, the last error: %w",
 				ctx.Err(), err)
 		}
 
