@@ -507,24 +507,36 @@ func pack(h *smallWBuf, enc *msgpack.Encoder, reqid uint32,
 	const uint64Code = 0xcf
 	const streamBytesLenUint64 = 10
 	const streamBytesLenUint32 = 6
+	const threadBytesLenUint32 = 6
 
 	hl := h.Len()
 
-	var streamBytesLen = 0
-	var streamBytes [streamBytesLenUint64]byte
+	var headerBytesLen = 0
+	var headerBytes [streamBytesLenUint64 + threadBytesLenUint32]byte
 	hMapLen := byte(0x82) // 2 element map.
+
 	if streamId != ignoreStreamId {
-		hMapLen = byte(0x83) // 3 element map.
-		streamBytes[0] = byte(iproto.IPROTO_STREAM_ID)
+		hMapLen++
+
+		headerBytes[0] = byte(iproto.IPROTO_STREAM_ID)
 		if streamId > math.MaxUint32 {
-			streamBytesLen = streamBytesLenUint64
-			streamBytes[1] = uint64Code
-			binary.BigEndian.PutUint64(streamBytes[2:], streamId)
+			headerBytesLen = streamBytesLenUint64
+			headerBytes[1] = uint64Code
+			binary.BigEndian.PutUint64(headerBytes[2:], streamId)
 		} else {
-			streamBytesLen = streamBytesLenUint32
-			streamBytes[1] = uint32Code
-			binary.BigEndian.PutUint32(streamBytes[2:], uint32(streamId))
+			headerBytesLen = streamBytesLenUint32
+			headerBytes[1] = uint32Code
+			binary.BigEndian.PutUint32(headerBytes[2:], uint32(streamId))
 		}
+	}
+
+	if thread, threadExist := req.Thread(); threadExist {
+		hMapLen++
+
+		headerBytes[headerBytesLen] = byte(iproto.IPROTO_THREAD_ID)
+		headerBytes[headerBytesLen+1] = uint32Code
+		binary.BigEndian.PutUint32(headerBytes[headerBytesLen+2:], thread)
+		headerBytesLen += threadBytesLenUint32
 	}
 
 	hBytes := append([]byte{
@@ -534,7 +546,7 @@ func pack(h *smallWBuf, enc *msgpack.Encoder, reqid uint32,
 		byte(iproto.IPROTO_SYNC), uint32Code,
 		byte(reqid >> 24), byte(reqid >> 16),
 		byte(reqid >> 8), byte(reqid),
-	}, streamBytes[:streamBytesLen]...)
+	}, headerBytes[:headerBytesLen]...)
 
 	if _, err := h.Write(hBytes); err != nil {
 		return err

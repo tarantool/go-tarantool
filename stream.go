@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/tarantool/go-iproto"
+	"github.com/tarantool/go-option"
 	"github.com/vmihailenco/msgpack/v5"
 )
 
@@ -143,6 +144,13 @@ func (req BeginRequest) Context(ctx context.Context) BeginRequest {
 	return req
 }
 
+// ThreadID sets an attached thread id for the request.
+func (req BeginRequest) ThreadID(id uint32) BeginRequest {
+	req.thread = option.SomeUint32(id)
+
+	return req
+}
+
 // CommitRequest helps you to create a commit request object for execution
 // by a Stream.
 // Commit request can not be processed out of stream.
@@ -205,6 +213,13 @@ func (req CommitRequest) Context(ctx context.Context) CommitRequest {
 	return req
 }
 
+// ThreadID sets an attached thread id for the request.
+func (req CommitRequest) ThreadID(id uint32) CommitRequest {
+	req.thread = option.SomeUint32(id)
+
+	return req
+}
+
 // RollbackRequest helps you to create a rollback request object for execution
 // by a Stream.
 // Rollback request can not be processed out of stream.
@@ -232,6 +247,13 @@ func (req RollbackRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
 // the root context.
 func (req RollbackRequest) Context(ctx context.Context) RollbackRequest {
 	req.ctx = ctx
+	return req
+}
+
+// ThreadID sets an attached thread id for the request.
+func (req RollbackRequest) ThreadID(id uint32) RollbackRequest {
+	req.thread = option.SomeUint32(id)
+
 	return req
 }
 

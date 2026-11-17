@@ -130,3 +130,10 @@ func (req InfoRequest) Context(ctx context.Context) InfoRequest {
 	req.call = req.call.Context(ctx)
 	return req
 }
+
+// ThreadID sets an attached thread id for the request.
+func (req InfoRequest) ThreadID(id uint32) InfoRequest {
+	req.call = req.call.ThreadID(id)
+
+	return req
+}

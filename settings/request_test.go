@@ -115,3 +115,49 @@ func TestRequestsCtx(t *testing.T) {
 		require.Equal(t, ctx, test.req.Context(ctx).Ctx())
 	}
 }
+
+func TestRequestsThread(t *testing.T) {
+	// tarantool.Request interface doesn't have ThreadID()
+	getTests := []struct {
+		req GetRequest
+	}{
+		{req: NewErrorMarshalingEnabledGetRequest()},
+		{req: NewSQLDefaultEngineGetRequest()},
+		{req: NewSQLDeferForeignKeysGetRequest()},
+		{req: NewSQLFullColumnNamesGetRequest()},
+		{req: NewSQLFullMetadataGetRequest()},
+		{req: NewSQLParserDebugGetRequest()},
+		{req: NewSQLRecursiveTriggersGetRequest()},
+		{req: NewSQLReverseUnorderedSelectsGetRequest()},
+		{req: NewSQLSelectDebugGetRequest()},
+		{req: NewSQLVDBEDebugGetRequest()},
+		{req: NewSessionSettingsGetRequest()},
+	}
+
+	for _, test := range getTests {
+		id, ok := test.req.ThreadID(42).Thread()
+		require.Equal(t, uint32(42), id)
+		require.True(t, ok)
+	}
+
+	setTests := []struct {
+		req SetRequest
+	}{
+		{req: NewErrorMarshalingEnabledSetRequest(false)},
+		{req: NewSQLDefaultEngineSetRequest("memtx")},
+		{req: NewSQLDeferForeignKeysSetRequest(false)},
+		{req: NewSQLFullColumnNamesSetRequest(false)},
+		{req: NewSQLFullMetadataSetRequest(false)},
+		{req: NewSQLParserDebugSetRequest(false)},
+		{req: NewSQLRecursiveTriggersSetRequest(false)},
+		{req: NewSQLReverseUnorderedSelectsSetRequest(false)},
+		{req: NewSQLSelectDebugSetRequest(false)},
+		{req: NewSQLVDBEDebugSetRequest(false)},
+	}
+
+	for _, test := range setTests {
+		id, ok := test.req.ThreadID(42).Thread()
+		require.Equal(t, uint32(42), id)
+		require.True(t, ok)
+	}
+}

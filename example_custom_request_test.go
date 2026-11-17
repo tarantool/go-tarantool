@@ -34,6 +34,10 @@ func (r *customPingRequest) Async() bool {
 	return false
 }
 
+func (r *customPingRequest) Thread() (uint32, bool) {
+	return 0, false
+}
+
 // Response creates a response for the custom request.
 // It reads all data from body using DecodeBaseResponse helper.
 func (r *customPingRequest) Response(
@@ -124,6 +128,10 @@ func (r *manualRequest) Ctx() context.Context {
 
 func (r *manualRequest) Async() bool {
 	return false
+}
+
+func (r *manualRequest) Thread() (uint32, bool) {
+	return 0, false
 }
 
 // Response creates a response by reading all data from body.

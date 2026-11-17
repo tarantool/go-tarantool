@@ -488,6 +488,10 @@ func (req *mockRequest) Async() bool {
 	return false
 }
 
+func (req *mockRequest) Thread() (uint32, bool) {
+	return 0, false
+}
+
 func (req *mockRequest) Body(resolver SchemaResolver, enc *msgpack.Encoder) error {
 	return nil
 }
@@ -2036,6 +2040,10 @@ func (req *waitCtxRequest) Ctx() context.Context {
 
 func (req *waitCtxRequest) Async() bool {
 	return NewPingRequest().Async()
+}
+
+func (req *waitCtxRequest) Thread() (uint32, bool) {
+	return NewPingRequest().Thread()
 }
 
 func (req *waitCtxRequest) Response(header Header, body io.Reader) (Response, error) {
@@ -3743,6 +3751,400 @@ func TestFutureReleaseRaceOnReconnect(t *testing.T) {
 
 	close(stop)
 	wg.Wait()
+}
+
+const threadsServer = "127.0.0.1:3017"
+
+var threadsDialer = NetDialer{
+	Address:  threadsServer,
+	User:     "admin",
+	Password: "secret",
+}
+
+func startThreadsTarantool(t *testing.T) *Connection {
+	t.Helper()
+	inst, err := test_helpers.StartTarantool(test_helpers.StartOpts{
+		Dialer:       threadsDialer,
+		InitScript:   "testdata/threads.lua",
+		Listen:       threadsServer,
+		WaitStart:    100 * time.Millisecond,
+		ConnectRetry: 10,
+		RetryTimeout: 500 * time.Millisecond,
+	})
+	require.NoErrorf(t, err, "Unable to start Tarantool")
+	t.Cleanup(func() { test_helpers.StopTarantoolWithCleanup(inst) })
+	return test_helpers.ConnectWithValidation(t, threadsDialer, tarantool.Opts{})
+}
+
+func testThreadIDOn(
+	t *testing.T, conn *Connection, name string,
+	threadID0 func() Request, threadID1 func() Request,
+) {
+	t.Helper()
+
+	_, err := conn.Do(threadID0()).Get()
+	require.NoError(t, err, "%s with ThreadID(0) should succeed", name)
+
+	_, err = conn.Do(threadID1()).Get()
+	var serr ServerError
+	require.ErrorAs(t, err, &serr, "%s with ThreadID(1) should error", name)
+	assert.Equal(t, iproto.ER_UNABLE_TO_PROCESS_IN_THREAD, serr.Code, "%s with ThreadID(1)", name)
+}
+
+func TestEvalRequestThreadID_set_function_route_to_thread_one(t *testing.T) {
+	test_helpers.SkipIfThreadRequestsUnsupported(t)
+
+	conn := startThreadsTarantool(t)
+
+	// Define function in thread 1.
+	res := conn.Do(NewEvalRequest("rawset(_G, 'test_func', function() return 42 end)").ThreadID(1))
+	_, err := res.Get()
+	require.NoError(t, err)
+	defer func() {
+		_, _ = conn.Do(NewEvalRequest("rawset(_G, 'test_func', nil)").ThreadID(1)).Get()
+	}()
+
+	// Call the function with thread_id=1, expect [42].
+	res = conn.Do(NewCallRequest("test_func").ThreadID(1))
+	data, err := res.Get()
+	require.NoError(t, err)
+	require.Len(t, data, 1)
+	assert.Equal(t, "42", fmt.Sprintf("%v", data[0]))
+
+	// Eval returning function call result.
+	res = conn.Do(NewEvalRequest("return test_func()").ThreadID(1))
+	data6, err := res.Get()
+	require.NoError(t, err)
+	require.Len(t, data6, 1)
+	assert.Equal(t, "42", fmt.Sprintf("%v", data6[0]))
+}
+
+func TestCallRequestThreadID_not_found_returns_no_such_proc(t *testing.T) {
+	test_helpers.SkipIfThreadRequestsUnsupported(t)
+
+	conn := startThreadsTarantool(t)
+
+	res := conn.Do(NewEvalRequest("rawset(_G, 'test_func', function() return 42 end)").ThreadID(1))
+	_, err := res.Get()
+	require.NoError(t, err)
+	defer func() {
+		_, _ = conn.Do(NewEvalRequest("rawset(_G, 'test_func', nil)").ThreadID(1)).Get()
+	}()
+
+	// Call with thread_id=0 (tx) -> ER_NO_SUCH_PROC.
+	res = conn.Do(NewCallRequest("test_func").ThreadID(0))
+	_, err = res.Get()
+	var serr ServerError
+	require.ErrorAs(t, err, &serr)
+	assert.Equal(t, iproto.ER_NO_SUCH_PROC, serr.Code)
+
+	// Call with thread_id=2 (different app thread) -> ER_NO_SUCH_PROC.
+	res = conn.Do(NewCallRequest("test_func").ThreadID(2))
+	_, err = res.Get()
+	require.ErrorAs(t, err, &serr)
+	assert.Equal(t, iproto.ER_NO_SUCH_PROC, serr.Code)
+
+	// Call without thread_id -> ER_NO_SUCH_PROC.
+	res = conn.Do(NewCallRequest("test_func"))
+	_, err = res.Get()
+	require.ErrorAs(t, err, &serr)
+	assert.Equal(t, iproto.ER_NO_SUCH_PROC, serr.Code)
+}
+
+func TestCallRequestThreadID_removed_returns_no_such_proc(t *testing.T) {
+	test_helpers.SkipIfThreadRequestsUnsupported(t)
+
+	conn := startThreadsTarantool(t)
+
+	// Define function.
+	res := conn.Do(NewEvalRequest("rawset(_G, 'test_func', function() return 42 end)").ThreadID(1))
+	_, err := res.Get()
+	require.NoError(t, err)
+	defer func() {
+		_, _ = conn.Do(NewEvalRequest("rawset(_G, 'test_func', nil)").ThreadID(1)).Get()
+	}()
+
+	// Verify function is removed.
+	res = conn.Do(NewEvalRequest("rawset(_G, 'test_func', nil)").ThreadID(1))
+	_, err = res.Get()
+	require.NoError(t, err)
+
+	res = conn.Do(NewCallRequest("test_func").ThreadID(1))
+	_, err = res.Get()
+	var serr ServerError
+	require.ErrorAs(t, err, &serr)
+	assert.Equal(t, iproto.ER_NO_SUCH_PROC, serr.Code)
+}
+
+func TestPingRequestThreadID_zero_succeeds(t *testing.T) {
+	test_helpers.SkipIfThreadRequestsUnsupported(t)
+
+	conn := startThreadsTarantool(t)
+
+	// ThreadID(0) on ping succeeds.
+	res := conn.Do(NewPingRequest().ThreadID(0))
+	_, err := res.Get()
+	require.NoError(t, err)
+}
+
+func TestPingRequestThreadID_one_returns_unable_to_process(t *testing.T) {
+	test_helpers.SkipIfThreadRequestsUnsupported(t)
+
+	conn := startThreadsTarantool(t)
+
+	// ThreadID(1) on ping returns ER_UNABLE_TO_PROCESS_IN_THREAD.
+	res := conn.Do(NewPingRequest().ThreadID(1))
+	_, err := res.Get()
+	var serr ServerError
+	require.ErrorAs(t, err, &serr)
+	assert.Equal(t, iproto.ER_UNABLE_TO_PROCESS_IN_THREAD, serr.Code)
+}
+
+func TestPingRequestThreadID_invalid_returns_no_such_thread(t *testing.T) {
+	test_helpers.SkipIfThreadRequestsUnsupported(t)
+
+	conn := startThreadsTarantool(t)
+
+	// ThreadID(99) on ping returns ER_NO_SUCH_THREAD.
+	res := conn.Do(NewPingRequest().ThreadID(99))
+	_, err := res.Get()
+	var serr ServerError
+	require.ErrorAs(t, err, &serr)
+	assert.Equal(t, iproto.ER_NO_SUCH_THREAD, serr.Code)
+}
+
+func TestUpdateRequestThreadID_one_returns_unable_to_process(t *testing.T) {
+	test_helpers.SkipIfThreadRequestsUnsupported(t)
+
+	conn := startThreadsTarantool(t)
+
+	testThreadIDOn(t, conn, "Update",
+		func() Request {
+			return NewUpdateRequest("test").
+				Key([]any{uint64(3)}).
+				Operations(NewOperations().Assign(1, "bar")).
+				ThreadID(0)
+		},
+		func() Request {
+			return NewUpdateRequest("test").
+				Key([]any{uint64(3)}).
+				Operations(NewOperations().Assign(1, "bar")).
+				ThreadID(1)
+		},
+	)
+}
+
+func TestUpsertRequestThreadID_one_returns_unable_to_process(t *testing.T) {
+	test_helpers.SkipIfThreadRequestsUnsupported(t)
+
+	conn := startThreadsTarantool(t)
+
+	testThreadIDOn(t, conn, "Upsert",
+		func() Request {
+			return NewUpsertRequest("test").
+				Tuple([]any{uint64(4)}).
+				Operations(NewOperations().Assign(1, "baz")).
+				ThreadID(0)
+		},
+		func() Request {
+			return NewUpsertRequest("test").
+				Tuple([]any{uint64(4)}).
+				Operations(NewOperations().Assign(1, "baz")).
+				ThreadID(1)
+		},
+	)
+}
+
+func TestDeleteRequestThreadID_one_returns_unable_to_process(t *testing.T) {
+	test_helpers.SkipIfThreadRequestsUnsupported(t)
+
+	conn := startThreadsTarantool(t)
+
+	testThreadIDOn(t, conn, "Delete",
+		func() Request { return NewDeleteRequest("test").Key([]any{uint64(5)}).ThreadID(0) },
+		func() Request { return NewDeleteRequest("test").Key([]any{uint64(5)}).ThreadID(1) },
+	)
+}
+
+func TestSelectRequestThreadID_one_returns_unable_to_process(t *testing.T) {
+	test_helpers.SkipIfThreadRequestsUnsupported(t)
+
+	conn := startThreadsTarantool(t)
+
+	testThreadIDOn(t, conn, "Select",
+		func() Request { return NewSelectRequest("test").Index("primary").Limit(1).ThreadID(0) },
+		func() Request { return NewSelectRequest("test").Index("primary").Limit(1).ThreadID(1) },
+	)
+}
+
+func TestExecuteRequestThreadID_one_returns_unable_to_process(t *testing.T) {
+	test_helpers.SkipIfThreadRequestsUnsupported(t)
+
+	conn := startThreadsTarantool(t)
+
+	testThreadIDOn(t, conn, "Execute",
+		func() Request { return NewExecuteRequest("SELECT 1").ThreadID(0) },
+		func() Request { return NewExecuteRequest("SELECT 1").ThreadID(1) },
+	)
+}
+
+func TestWatchOnceRequestThreadID_one_returns_unable_to_process(t *testing.T) {
+	test_helpers.SkipIfThreadRequestsUnsupported(t)
+
+	conn := startThreadsTarantool(t)
+
+	testThreadIDOn(t, conn, "WatchOnce",
+		func() Request { return NewWatchOnceRequest("foo").ThreadID(0) },
+		func() Request { return NewWatchOnceRequest("foo").ThreadID(1) },
+	)
+}
+
+func TestInsertRequestThreadID_one_returns_unable_to_process(t *testing.T) {
+	test_helpers.SkipIfThreadRequestsUnsupported(t)
+
+	conn := startThreadsTarantool(t)
+
+	testThreadIDOn(t, conn, "Insert",
+		func() Request {
+			return NewInsertRequest("test").
+				Tuple([]any{uint64(1)}).
+				ThreadID(0)
+		},
+		func() Request {
+			return NewInsertRequest("test").
+				Tuple([]any{uint64(1)}).
+				ThreadID(1)
+		},
+	)
+}
+
+func TestReplaceRequestThreadID_one_returns_unable_to_process(t *testing.T) {
+	test_helpers.SkipIfThreadRequestsUnsupported(t)
+
+	conn := startThreadsTarantool(t)
+
+	testThreadIDOn(t, conn, "Replace",
+		func() Request { return NewReplaceRequest("test").Tuple([]any{uint64(2)}).ThreadID(0) },
+		func() Request { return NewReplaceRequest("test").Tuple([]any{uint64(2)}).ThreadID(1) },
+	)
+}
+
+func TestPrepareRequestThreadID_one_returns_unable_to_process(t *testing.T) {
+	test_helpers.SkipIfThreadRequestsUnsupported(t)
+
+	conn := startThreadsTarantool(t)
+
+	// Prepare with thread_id=1 returns ER_UNABLE_TO_PROCESS_IN_THREAD.
+	res := conn.Do(NewPrepareRequest("SELECT 1").ThreadID(1))
+	_, err := res.Get()
+	var serr ServerError
+	require.ErrorAs(t, err, &serr)
+	assert.Equal(t, iproto.ER_UNABLE_TO_PROCESS_IN_THREAD, serr.Code)
+
+	// Prepare with thread_id=0 succeeds, then execute with ThreadID(1) returns 300.
+	res = conn.Do(NewPrepareRequest("SELECT 1").ThreadID(0))
+	prepared, err := res.Get()
+	require.NoError(t, err)
+	if len(prepared) > 0 {
+		stmt, ok := prepared[0].(*Prepared)
+		if ok {
+			stmt.Conn = conn
+			res = conn.Do(NewExecutePreparedRequest(stmt).ThreadID(1))
+			_, err = res.Get()
+			require.ErrorAs(t, err, &serr)
+			assert.Equal(t, iproto.ER_UNABLE_TO_PROCESS_IN_THREAD, serr.Code)
+		}
+	}
+}
+
+func TestStreamThreadID_correct_header_pack(t *testing.T) {
+	test_helpers.SkipIfThreadRequestsUnsupported(t)
+
+	conn := startThreadsTarantool(t)
+
+	// Stream with ThreadID(0) succeeds.
+	stream, err := conn.NewStream()
+	require.NoError(t, err)
+	res := stream.Do(NewSelectRequest("test").Index("primary").Limit(1).ThreadID(0))
+	_, err = res.Get()
+	require.NoError(t, err)
+
+	// Second stream request with ThreadID(0) also succeeds.
+	res = stream.Do(NewSelectRequest("test").Index("primary").Limit(1).ThreadID(0))
+	_, err = res.Get()
+	require.NoError(t, err)
+
+	// ThreadID(1) on stream returns ER_UNABLE_TO_PROCESS_IN_THREAD.
+	stream2, err := conn.NewStream()
+	require.NoError(t, err)
+	res = stream2.Do(NewSelectRequest("test").Index("primary").Limit(1).ThreadID(1))
+	_, err = res.Get()
+	var serr ServerError
+	require.ErrorAs(t, err, &serr)
+	assert.Equal(t, iproto.ER_UNABLE_TO_PROCESS_IN_THREAD, serr.Code)
+}
+
+func TestPingRequestThreadID_zero_version_behavior(t *testing.T) {
+	conn := test_helpers.ConnectWithValidation(t, dialer, tarantool.Opts{})
+	t.Cleanup(func() { _ = conn.Close() })
+
+	isLess_3_7_1, err := test_helpers.IsTarantoolVersionLess(3, 7, 1)
+	require.NoError(t, err)
+	isLess_3_7_0, err := test_helpers.IsTarantoolVersionLess(3, 7, 0)
+	require.NoError(t, err)
+	isLess_2_0, err := test_helpers.IsTarantoolVersionLess(2, 0, 0)
+	require.NoError(t, err)
+
+	res := conn.Do(NewPingRequest().ThreadID(0))
+	_, err = res.Get()
+
+	switch {
+	case isLess_2_0:
+		require.NoError(t, err, "1.10.x should ignore ThreadID(0)")
+	case isLess_3_7_0:
+		var serr ServerError
+		require.ErrorAs(t, err, &serr, "2.x-3.6.x should return ER_INVALID_MSGPACK")
+		assert.Equal(t, iproto.ER_INVALID_MSGPACK, serr.Code)
+	case isLess_3_7_1:
+		var serr ServerError
+		require.ErrorAs(t, err, &serr, "3.7.0 should return ER_THREAD_REQUESTS_DISABLED")
+		assert.Equal(t, uint32(304), serr.Code)
+	default:
+		assert.NoError(t, err, ">= 3.7.1 should support ThreadID(0)")
+	}
+}
+
+func TestPingRequestThreadID_one_version_behavior(t *testing.T) {
+	conn := test_helpers.ConnectWithValidation(t, dialer, tarantool.Opts{})
+	t.Cleanup(func() { _ = conn.Close() })
+
+	isLess_3_7_1, err := test_helpers.IsTarantoolVersionLess(3, 7, 1)
+	require.NoError(t, err)
+	isLess_3_7_0, err := test_helpers.IsTarantoolVersionLess(3, 7, 0)
+	require.NoError(t, err)
+	isLess_2_0, err := test_helpers.IsTarantoolVersionLess(2, 0, 0)
+	require.NoError(t, err)
+
+	res := conn.Do(NewPingRequest().ThreadID(1))
+	_, err = res.Get()
+
+	switch {
+	case isLess_2_0:
+		require.NoError(t, err, "1.10.x should ignore ThreadID(1)")
+	case isLess_3_7_0:
+		var serr ServerError
+		require.ErrorAs(t, err, &serr, "2.x-3.6.x should return ER_INVALID_MSGPACK for ThreadID(1)")
+		assert.Equal(t, iproto.ER_INVALID_MSGPACK, serr.Code)
+	case isLess_3_7_1:
+		var serr ServerError
+		require.ErrorAs(t, err, &serr, "3.7.0 should return ER_THREAD_REQUESTS_DISABLED for ThreadID(1)")
+		assert.Equal(t, uint32(304), serr.Code)
+	default:
+		var serr ServerError
+		require.ErrorAs(t, err, &serr,
+			">= 3.7.1 main server (app_threads=0) should return ER_NO_SUCH_THREAD for ThreadID(1)")
+		assert.Equal(t, iproto.ER_NO_SUCH_THREAD, serr.Code)
+	}
 }
 
 func runTestMain(m *testing.M) int {

@@ -44,6 +44,13 @@ func (req SessionSuRequest) Context(ctx context.Context) SessionSuRequest {
 	return req
 }
 
+// ThreadID sets an attached thread id for the request.
+func (req SessionSuRequest) ThreadID(id uint32) SessionSuRequest {
+	req.call = req.call.ThreadID(id)
+
+	return req
+}
+
 // Su method is used to switch the session to the specified username.
 // It sends the request to Tarantool and returns an error.
 func (s *Session) Su(ctx context.Context, username string) error {

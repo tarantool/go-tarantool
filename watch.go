@@ -36,6 +36,13 @@ func (req BroadcastRequest) Context(ctx context.Context) BroadcastRequest {
 	return req
 }
 
+// ThreadID sets an attached thread id for the request.
+func (req BroadcastRequest) ThreadID(id uint32) BroadcastRequest {
+	req.call = req.call.ThreadID(id)
+
+	return req
+}
+
 // Type returns IPROTO code for the broadcast request.
 func (req BroadcastRequest) Type() iproto.Type {
 	return req.call.Type()
@@ -54,6 +61,11 @@ func (req BroadcastRequest) Ctx() context.Context {
 // Async returns is the broadcast request expects a response.
 func (req BroadcastRequest) Async() bool {
 	return req.call.Async()
+}
+
+// Thread returns attached thread id.
+func (req BroadcastRequest) Thread() (uint32, bool) {
+	return req.call.Thread()
 }
 
 // Response creates a response for a BroadcastRequest.

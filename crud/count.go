@@ -118,3 +118,10 @@ func (req CountRequest) Context(ctx context.Context) CountRequest {
 
 	return req
 }
+
+// ThreadID sets an attached thread id for the request.
+func (req CountRequest) ThreadID(id uint32) CountRequest {
+	req.impl = req.impl.ThreadID(id)
+
+	return req
+}

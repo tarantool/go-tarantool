@@ -90,6 +90,13 @@ func (req SchemaRequest) Context(ctx context.Context) SchemaRequest {
 	return req
 }
 
+// ThreadID sets an attached thread id for the request.
+func (req SchemaRequest) ThreadID(id uint32) SchemaRequest {
+	req.impl = req.impl.ThreadID(id)
+
+	return req
+}
+
 // Schema contains CRUD cluster schema definition.
 type Schema map[string]SpaceSchema
 

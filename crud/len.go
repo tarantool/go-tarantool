@@ -58,3 +58,10 @@ func (req LenRequest) Context(ctx context.Context) LenRequest {
 
 	return req
 }
+
+// ThreadID sets an attached thread id for the request.
+func (req LenRequest) ThreadID(id uint32) LenRequest {
+	req.impl = req.impl.ThreadID(id)
+
+	return req
+}

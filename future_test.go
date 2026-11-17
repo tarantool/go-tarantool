@@ -27,6 +27,10 @@ func (req *futureMockRequest) Async() bool {
 	return false
 }
 
+func (req *futureMockRequest) Thread() (uint32, bool) {
+	return 0, false
+}
+
 func (req *futureMockRequest) Body(_ SchemaResolver, _ *msgpack.Encoder) error {
 	return nil
 }

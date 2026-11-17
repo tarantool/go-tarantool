@@ -87,6 +87,11 @@ func (req baseRequest) Async() bool {
 	return req.impl.Async()
 }
 
+// Thread returns attached thread id.
+func (req baseRequest) Thread() (uint32, bool) {
+	return req.impl.Thread()
+}
+
 // Response creates a response for the baseRequest.
 func (req baseRequest) Response(
 	header tarantool.Header,

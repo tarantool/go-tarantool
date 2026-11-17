@@ -48,3 +48,10 @@ func (req StatsRequest) Context(ctx context.Context) StatsRequest {
 
 	return req
 }
+
+// ThreadID sets an attached thread id for the request.
+func (req StatsRequest) ThreadID(id uint32) StatsRequest {
+	req.impl = req.impl.ThreadID(id)
+
+	return req
+}

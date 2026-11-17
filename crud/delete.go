@@ -67,3 +67,10 @@ func (req DeleteRequest) Context(ctx context.Context) DeleteRequest {
 
 	return req
 }
+
+// ThreadID sets an attached thread id for the request.
+func (req DeleteRequest) ThreadID(id uint32) DeleteRequest {
+	req.impl = req.impl.ThreadID(id)
+
+	return req
+}
