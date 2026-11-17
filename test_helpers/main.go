@@ -189,7 +189,7 @@ func (t *TarantoolInstance) Stop() error {
 	}
 	if t.Cmd != nil && t.Cmd.Process != nil {
 		if err := t.Cmd.Process.Kill(); err != nil && !t.IsExit() {
-			return fmt.Errorf("failed to kill tarantool %q (pid %d), got %s",
+			return fmt.Errorf("failed to kill tarantool %q (pid %d), got %w",
 				t.Opts.Listen, t.Cmd.Process.Pid, err)
 		}
 		_ = t.Wait()
@@ -249,7 +249,7 @@ func init() {
 func atoiUint64(str string) (uint64, error) {
 	res, err := strconv.ParseUint(str, 10, 64)
 	if err != nil {
-		return 0, fmt.Errorf("cast to number error (%s)", err)
+		return 0, fmt.Errorf("cast to number error (%w)", err)
 	}
 	return res, nil
 }
