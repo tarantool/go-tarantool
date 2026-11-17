@@ -64,3 +64,10 @@ func (req MaxRequest) Context(ctx context.Context) MaxRequest {
 
 	return req
 }
+
+// ThreadID sets an attached thread id for the request.
+func (req MaxRequest) ThreadID(id uint32) MaxRequest {
+	req.impl = req.impl.ThreadID(id)
+
+	return req
+}

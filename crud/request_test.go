@@ -273,6 +273,80 @@ func TestRequestsCtx_setter(t *testing.T) {
 	}
 }
 
+func TestRequestsThread_default(t *testing.T) {
+	tests := []struct {
+		req tarantool.Request
+	}{
+		{req: crud.NewInsertRequest(validSpace)},
+		{req: crud.NewInsertObjectRequest(validSpace)},
+		{req: crud.NewInsertManyRequest(validSpace)},
+		{req: crud.NewInsertObjectManyRequest(validSpace)},
+		{req: crud.NewGetRequest(validSpace)},
+		{req: crud.NewUpdateRequest(validSpace)},
+		{req: crud.NewDeleteRequest(validSpace)},
+		{req: crud.NewReplaceRequest(validSpace)},
+		{req: crud.NewReplaceObjectRequest(validSpace)},
+		{req: crud.NewReplaceManyRequest(validSpace)},
+		{req: crud.NewReplaceObjectManyRequest(validSpace)},
+		{req: crud.NewUpsertRequest(validSpace)},
+		{req: crud.NewUpsertObjectRequest(validSpace)},
+		{req: crud.NewUpsertManyRequest(validSpace)},
+		{req: crud.NewUpsertObjectManyRequest(validSpace)},
+		{req: crud.NewMinRequest(validSpace)},
+		{req: crud.NewMaxRequest(validSpace)},
+		{req: crud.NewSelectRequest(validSpace)},
+		{req: crud.NewTruncateRequest(validSpace)},
+		{req: crud.NewLenRequest(validSpace)},
+		{req: crud.NewCountRequest(validSpace)},
+		{req: crud.NewStorageInfoRequest()},
+		{req: crud.NewStatsRequest()},
+		{req: crud.NewSchemaRequest()},
+	}
+
+	for _, test := range tests {
+		id, ok := test.req.Thread()
+		assert.Equal(t, uint32(0), id, "An invalid thread id value")
+		assert.False(t, ok, "An unexpected thread id set")
+	}
+}
+
+func TestRequestsThread_setter(t *testing.T) {
+	tests := []struct {
+		req tarantool.Request
+	}{
+		{req: crud.NewInsertRequest(validSpace).ThreadID(42)},
+		{req: crud.NewInsertObjectRequest(validSpace).ThreadID(42)},
+		{req: crud.NewInsertManyRequest(validSpace).ThreadID(42)},
+		{req: crud.NewInsertObjectManyRequest(validSpace).ThreadID(42)},
+		{req: crud.NewGetRequest(validSpace).ThreadID(42)},
+		{req: crud.NewUpdateRequest(validSpace).ThreadID(42)},
+		{req: crud.NewDeleteRequest(validSpace).ThreadID(42)},
+		{req: crud.NewReplaceRequest(validSpace).ThreadID(42)},
+		{req: crud.NewReplaceObjectRequest(validSpace).ThreadID(42)},
+		{req: crud.NewReplaceManyRequest(validSpace).ThreadID(42)},
+		{req: crud.NewReplaceObjectManyRequest(validSpace).ThreadID(42)},
+		{req: crud.NewUpsertRequest(validSpace).ThreadID(42)},
+		{req: crud.NewUpsertObjectRequest(validSpace).ThreadID(42)},
+		{req: crud.NewUpsertManyRequest(validSpace).ThreadID(42)},
+		{req: crud.NewUpsertObjectManyRequest(validSpace).ThreadID(42)},
+		{req: crud.NewMinRequest(validSpace).ThreadID(42)},
+		{req: crud.NewMaxRequest(validSpace).ThreadID(42)},
+		{req: crud.NewSelectRequest(validSpace).ThreadID(42)},
+		{req: crud.NewTruncateRequest(validSpace).ThreadID(42)},
+		{req: crud.NewLenRequest(validSpace).ThreadID(42)},
+		{req: crud.NewCountRequest(validSpace).ThreadID(42)},
+		{req: crud.NewStorageInfoRequest().ThreadID(42)},
+		{req: crud.NewStatsRequest().ThreadID(42)},
+		{req: crud.NewSchemaRequest().ThreadID(42)},
+	}
+
+	for _, test := range tests {
+		id, ok := test.req.Thread()
+		assert.Equal(t, uint32(42), id, "An invalid thread id value")
+		assert.True(t, ok, "An expected thread id is not set")
+	}
+}
+
 func TestRequestsDefaultValues(t *testing.T) {
 	testCases := []struct {
 		name   string

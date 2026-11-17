@@ -29,6 +29,11 @@ func (req *MockRequest) Async() bool {
 	return false
 }
 
+// Thread returns attached thread id.
+func (req *MockRequest) Thread() (uint32, bool) {
+	return 0, false
+}
+
 // Body fills an msgpack.Encoder with the watch request body.
 func (req *MockRequest) Body(resolver tarantool.SchemaResolver, enc *msgpack.Encoder) error {
 	return nil

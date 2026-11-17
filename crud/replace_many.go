@@ -68,6 +68,13 @@ func (req ReplaceManyRequest) Context(ctx context.Context) ReplaceManyRequest {
 	return req
 }
 
+// ThreadID sets an attached thread id for the request.
+func (req ReplaceManyRequest) ThreadID(id uint32) ReplaceManyRequest {
+	req.impl = req.impl.ThreadID(id)
+
+	return req
+}
+
 // ReplaceObjectManyOpts describes options for `crud.replace_object_many` method.
 type ReplaceObjectManyOpts = OperationObjectManyOpts
 
@@ -124,6 +131,13 @@ func (req ReplaceObjectManyRequest) Body(res tarantool.SchemaResolver, enc *msgp
 // Context sets a passed context to CRUD request.
 func (req ReplaceObjectManyRequest) Context(ctx context.Context) ReplaceObjectManyRequest {
 	req.impl = req.impl.Context(ctx)
+
+	return req
+}
+
+// ThreadID sets an attached thread id for the request.
+func (req ReplaceObjectManyRequest) ThreadID(id uint32) ReplaceObjectManyRequest {
+	req.impl = req.impl.ThreadID(id)
 
 	return req
 }

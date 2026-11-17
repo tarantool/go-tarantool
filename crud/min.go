@@ -64,3 +64,10 @@ func (req MinRequest) Context(ctx context.Context) MinRequest {
 
 	return req
 }
+
+// ThreadID sets an attached thread id for the request.
+func (req MinRequest) ThreadID(id uint32) MinRequest {
+	req.impl = req.impl.ThreadID(id)
+
+	return req
+}

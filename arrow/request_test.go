@@ -37,6 +37,20 @@ func TestInsertRequestCtx_setter(t *testing.T) {
 	require.Equal(t, ctx, request.Ctx())
 }
 
+func TestInsertRequestThread_default(t *testing.T) {
+	request := arrow.NewInsertRequest(validSpace, arrow.Arrow{})
+	id, ok := request.Thread()
+	require.False(t, ok)
+	require.Equal(t, uint32(0), id)
+}
+
+func TestInsertRequestThread_setter(t *testing.T) {
+	request := arrow.NewInsertRequest(validSpace, arrow.Arrow{}).ThreadID(42)
+	id, ok := request.Thread()
+	require.True(t, ok)
+	require.Equal(t, uint32(42), id)
+}
+
 func TestResponseDecode(t *testing.T) {
 	header := tarantool.Header{}
 	buf := bytes.NewBuffer([]byte{})

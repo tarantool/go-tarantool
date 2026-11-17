@@ -88,6 +88,13 @@ func (req SetRequest) Context(ctx context.Context) SetRequest {
 	return req
 }
 
+// ThreadID sets an attached thread id for the request.
+func (req SetRequest) ThreadID(id uint32) SetRequest {
+	req.impl = req.impl.ThreadID(id)
+
+	return req
+}
+
 // Type returns IPROTO type for set session settings request.
 func (req SetRequest) Type() iproto.Type {
 	return req.impl.Type()
@@ -106,6 +113,11 @@ func (req SetRequest) Ctx() context.Context {
 // Async returns is set session settings request expects a response.
 func (req SetRequest) Async() bool {
 	return req.impl.Async()
+}
+
+// Thread returns attached thread id.
+func (req SetRequest) Thread() (uint32, bool) {
+	return req.impl.Thread()
 }
 
 // Response creates a response for the SetRequest.
@@ -134,6 +146,13 @@ func (req GetRequest) Context(ctx context.Context) GetRequest {
 	return req
 }
 
+// ThreadID sets an attached thread id for the request.
+func (req GetRequest) ThreadID(id uint32) GetRequest {
+	req.impl = req.impl.ThreadID(id)
+
+	return req
+}
+
 // Type returns IPROTO type for get session settings request.
 func (req GetRequest) Type() iproto.Type {
 	return req.impl.Type()
@@ -152,6 +171,11 @@ func (req GetRequest) Ctx() context.Context {
 // Async returns is get session settings request expects a response.
 func (req GetRequest) Async() bool {
 	return req.impl.Async()
+}
+
+// Thread returns attached thread id.
+func (req GetRequest) Thread() (uint32, bool) {
+	return req.impl.Thread()
 }
 
 // Response creates a response for the GetRequest.

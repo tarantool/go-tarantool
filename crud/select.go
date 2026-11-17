@@ -135,3 +135,10 @@ func (req SelectRequest) Context(ctx context.Context) SelectRequest {
 
 	return req
 }
+
+// ThreadID sets an attached thread id for the request.
+func (req SelectRequest) ThreadID(id uint32) SelectRequest {
+	req.impl = req.impl.ThreadID(id)
+
+	return req
+}

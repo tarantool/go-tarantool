@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/tarantool/go-iproto"
+	"github.com/tarantool/go-option"
 	"github.com/vmihailenco/msgpack/v5"
 )
 
@@ -255,6 +256,24 @@ type Request interface {
 	Ctx() context.Context
 	// Async returns true if the request does not expect response.
 	Async() bool
+	// Thread returns an attached thread id and whether it is set. The id is
+	// sent to the server in the IPROTO_THREAD_ID request header field.
+	//
+	// The id 0 routes a request to the transaction thread (the default
+	// behavior for most requests). For call requests to functions registered
+	// on serving threads, the server may reroute a request without the
+	// thread id to a random serving thread. An id greater than 0 routes a
+	// request to the specified application serving thread: the server allows
+	// it only for call and eval requests (otherwise it returns an error) and
+	// requires Tarantool >= 3.7.1.
+	//
+	// Version behavior:
+	//   1.10.x: Ignored, request processed normally.
+	//   2.x – 3.6.x: Returns ER_INVALID_MSGPACK (code 20) "packet header".
+	//   3.7.0:  ER_THREAD_REQUESTS_DISABLED (code 304) — limited by
+	//           may_set_thread_id connection flag.
+	//   >= 3.7.1: Full support. The restriction was reverted.
+	Thread() (uint32, bool)
 	// Response creates a response for current request type.
 	Response(header Header, body io.Reader) (Response, error)
 }
@@ -268,9 +287,10 @@ type ConnectedRequest interface {
 }
 
 type baseRequest struct {
-	rtype iproto.Type
-	async bool
-	ctx   context.Context
+	rtype  iproto.Type
+	async  bool
+	ctx    context.Context
+	thread option.Uint32
 }
 
 // Type returns a IPROTO type for the request.
@@ -278,14 +298,19 @@ func (req baseRequest) Type() iproto.Type {
 	return req.rtype
 }
 
+// Ctx returns a context of the request.
+func (req baseRequest) Ctx() context.Context {
+	return req.ctx
+}
+
 // Async returns true if the request does not require a response.
 func (req baseRequest) Async() bool {
 	return req.async
 }
 
-// Ctx returns a context of the request.
-func (req baseRequest) Ctx() context.Context {
-	return req.ctx
+// Thread returns attached thread id.
+func (req baseRequest) Thread() (uint32, bool) {
+	return req.thread.Get()
 }
 
 // Response creates a response for the baseRequest.
@@ -340,14 +365,19 @@ func (req authRequest) Type() iproto.Type {
 	return iproto.IPROTO_AUTH
 }
 
+// Ctx returns a context of the request.
+func (req authRequest) Ctx() context.Context {
+	return nil
+}
+
 // Async returns true if the request does not require a response.
 func (req authRequest) Async() bool {
 	return false
 }
 
-// Ctx returns a context of the request.
-func (req authRequest) Ctx() context.Context {
-	return nil
+// Thread returns attached thread id.
+func (req authRequest) Thread() (uint32, bool) {
+	return 0, false
 }
 
 // Body fills an encoder with the auth request body.
@@ -414,6 +444,13 @@ func (req PingRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
 // the root context.
 func (req PingRequest) Context(ctx context.Context) PingRequest {
 	req.ctx = ctx
+	return req
+}
+
+// ThreadID sets an attached thread id for the request.
+func (req PingRequest) ThreadID(id uint32) PingRequest {
+	req.thread = option.SomeUint32(id)
+
 	return req
 }
 
@@ -601,6 +638,13 @@ func (req SelectRequest) Context(ctx context.Context) SelectRequest {
 	return req
 }
 
+// ThreadID sets an attached thread id for the request.
+func (req SelectRequest) ThreadID(id uint32) SelectRequest {
+	req.thread = option.SomeUint32(id)
+
+	return req
+}
+
 var selectsPool *sync.Pool = &sync.Pool{
 	New: func() any {
 		return &SelectResponse{}
@@ -678,6 +722,13 @@ func (req InsertRequest) Context(ctx context.Context) InsertRequest {
 	return req
 }
 
+// ThreadID sets an attached thread id for the request.
+func (req InsertRequest) ThreadID(id uint32) InsertRequest {
+	req.thread = option.SomeUint32(id)
+
+	return req
+}
+
 // ReplaceRequest helps you to create a replace request object for execution
 // by a Connection.
 type ReplaceRequest struct {
@@ -733,6 +784,13 @@ func (req ReplaceRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 // the root context.
 func (req ReplaceRequest) Context(ctx context.Context) ReplaceRequest {
 	req.ctx = ctx
+	return req
+}
+
+// ThreadID sets an attached thread id for the request.
+func (req ReplaceRequest) ThreadID(id uint32) ReplaceRequest {
+	req.thread = option.SomeUint32(id)
+
 	return req
 }
 
@@ -795,6 +853,13 @@ func (req DeleteRequest) Body(res SchemaResolver, enc *msgpack.Encoder) error {
 // the root context.
 func (req DeleteRequest) Context(ctx context.Context) DeleteRequest {
 	req.ctx = ctx
+	return req
+}
+
+// ThreadID sets an attached thread id for the request.
+func (req DeleteRequest) ThreadID(id uint32) DeleteRequest {
+	req.thread = option.SomeUint32(id)
+
 	return req
 }
 
@@ -880,6 +945,13 @@ func (req UpdateRequest) Context(ctx context.Context) UpdateRequest {
 	return req
 }
 
+// ThreadID sets an attached thread id for the request.
+func (req UpdateRequest) ThreadID(id uint32) UpdateRequest {
+	req.thread = option.SomeUint32(id)
+
+	return req
+}
+
 // UpsertRequest helps you to create an upsert request object for execution
 // by a Connection.
 type UpsertRequest struct {
@@ -958,6 +1030,13 @@ func (req UpsertRequest) Context(ctx context.Context) UpsertRequest {
 	return req
 }
 
+// ThreadID sets an attached thread id for the request.
+func (req UpsertRequest) ThreadID(id uint32) UpsertRequest {
+	req.thread = option.SomeUint32(id)
+
+	return req
+}
+
 // CallRequest helps you to create a call request object for execution
 // by a Connection.
 type CallRequest struct {
@@ -1016,6 +1095,13 @@ func (req CallRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
 // the root context.
 func (req CallRequest) Context(ctx context.Context) CallRequest {
 	req.ctx = ctx
+	return req
+}
+
+// ThreadID sets an attached thread id for the request.
+func (req CallRequest) ThreadID(id uint32) CallRequest {
+	req.thread = option.SomeUint32(id)
+
 	return req
 }
 
@@ -1080,6 +1166,13 @@ func (req EvalRequest) Context(ctx context.Context) EvalRequest {
 	return req
 }
 
+// ThreadID sets an attached thread id for the request.
+func (req EvalRequest) ThreadID(id uint32) EvalRequest {
+	req.thread = option.SomeUint32(id)
+
+	return req
+}
+
 // ExecuteRequest helps you to create an execute request object for execution
 // by a Connection.
 type ExecuteRequest struct {
@@ -1137,6 +1230,13 @@ func (req ExecuteRequest) Context(ctx context.Context) ExecuteRequest {
 	return req
 }
 
+// ThreadID sets an attached thread id for the request.
+func (req ExecuteRequest) ThreadID(id uint32) ExecuteRequest {
+	req.thread = option.SomeUint32(id)
+
+	return req
+}
+
 var executesPool = sync.Pool{
 	New: func() any {
 		return &ExecuteResponse{}
@@ -1188,5 +1288,12 @@ func (req WatchOnceRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
 // Context sets a passed context to the request.
 func (req WatchOnceRequest) Context(ctx context.Context) WatchOnceRequest {
 	req.ctx = ctx
+	return req
+}
+
+// ThreadID sets an attached thread id for the request.
+func (req WatchOnceRequest) ThreadID(id uint32) WatchOnceRequest {
+	req.thread = option.SomeUint32(id)
+
 	return req
 }

@@ -5,6 +5,7 @@ import (
 	"io"
 
 	"github.com/tarantool/go-iproto"
+	"github.com/tarantool/go-option"
 	"github.com/vmihailenco/msgpack/v5"
 
 	"github.com/tarantool/go-tarantool/v3"
@@ -13,9 +14,10 @@ import (
 // InsertRequest helps you to create an insert request object for execution
 // by a Connection.
 type InsertRequest struct {
-	arrow Arrow
-	space any
-	ctx   context.Context
+	arrow  Arrow
+	space  any
+	ctx    context.Context
+	thread option.Uint32
 }
 
 // NewInsertRequest returns a new InsertRequest.
@@ -36,6 +38,11 @@ func (r InsertRequest) Async() bool {
 	return false
 }
 
+// Thread returns attached thread id.
+func (r InsertRequest) Thread() (uint32, bool) {
+	return r.thread.Get()
+}
+
 // Ctx returns a context of the request.
 func (r InsertRequest) Ctx() context.Context {
 	return r.ctx
@@ -49,6 +56,13 @@ func (r InsertRequest) Ctx() context.Context {
 // the root context.
 func (r InsertRequest) Context(ctx context.Context) InsertRequest {
 	r.ctx = ctx
+	return r
+}
+
+// ThreadID sets an attached thread id for the request.
+func (r InsertRequest) ThreadID(id uint32) InsertRequest {
+	r.thread = option.SomeUint32(id)
+
 	return r
 }
 

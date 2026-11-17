@@ -10,6 +10,17 @@ Versioning](http://semver.org/spec/v2.0.0.html) except to the first release.
 
 ### Added
 
+- Add `ThreadID()` setter to public requests to select a serving thread:
+  the id is sent in the `IPROTO_THREAD_ID` request header. The `0` id routes
+  a request to the transaction thread (the default behavior), a non-zero id
+  routes `call`/`eval` requests to an application thread and requires
+  Tarantool >= 3.7.1 (#614).
+  Note: using `ThreadID()` with a non-zero id is incompatible with Tarantool
+  2.x–3.6.x (returns ER_INVALID_MSGPACK). Tarantool 1.10.x ignores the field.
+  Only send `IPROTO_THREAD_ID` when connecting to Tarantool >= 3.7.1.
+- Add `Thread()` method to the `Request` interface, so custom request
+  implementations need to be updated (#614).
+
 ### Changed
 
 ### Fixed

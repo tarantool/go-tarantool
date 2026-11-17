@@ -58,3 +58,10 @@ func (req TruncateRequest) Context(ctx context.Context) TruncateRequest {
 
 	return req
 }
+
+// ThreadID sets an attached thread id for the request.
+func (req TruncateRequest) ThreadID(id uint32) TruncateRequest {
+	req.impl = req.impl.ThreadID(id)
+
+	return req
+}

@@ -68,6 +68,13 @@ func (req InsertManyRequest) Context(ctx context.Context) InsertManyRequest {
 	return req
 }
 
+// ThreadID sets an attached thread id for the request.
+func (req InsertManyRequest) ThreadID(id uint32) InsertManyRequest {
+	req.impl = req.impl.ThreadID(id)
+
+	return req
+}
+
 // InsertObjectManyOpts describes options for `crud.insert_object_many` method.
 type InsertObjectManyOpts = OperationObjectManyOpts
 
@@ -124,6 +131,13 @@ func (req InsertObjectManyRequest) Body(res tarantool.SchemaResolver, enc *msgpa
 // Context sets a passed context to CRUD request.
 func (req InsertObjectManyRequest) Context(ctx context.Context) InsertObjectManyRequest {
 	req.impl = req.impl.Context(ctx)
+
+	return req
+}
+
+// ThreadID sets an attached thread id for the request.
+func (req InsertObjectManyRequest) ThreadID(id uint32) InsertObjectManyRequest {
+	req.impl = req.impl.ThreadID(id)
 
 	return req
 }

@@ -131,3 +131,10 @@ func (req StorageInfoRequest) Context(ctx context.Context) StorageInfoRequest {
 
 	return req
 }
+
+// ThreadID sets an attached thread id for the request.
+func (req StorageInfoRequest) ThreadID(id uint32) StorageInfoRequest {
+	req.impl = req.impl.ThreadID(id)
+
+	return req
+}

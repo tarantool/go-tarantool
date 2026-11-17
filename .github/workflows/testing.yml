@@ -37,7 +37,7 @@ jobs:
       fail-fast: false
       matrix:
         golang: ['1.24', 'stable']
-        tarantool: ['2.11', '3.4', 'master']
+        tarantool: ['2.11', '3.4', '3.8', 'master']
         coveralls: [false]
         fuzzing: [false]
         include:

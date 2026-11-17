@@ -65,6 +65,13 @@ func (req UserExistsRequest) Context(ctx context.Context) UserExistsRequest {
 	return req
 }
 
+// ThreadID sets an attached thread id for the request.
+func (req UserExistsRequest) ThreadID(id uint32) UserExistsRequest {
+	req.call = req.call.ThreadID(id)
+
+	return req
+}
+
 // Exists checks if the specified user exists in Tarantool.
 func (u *SchemaUser) Exists(ctx context.Context, username string) (bool, error) {
 	// Create a request and send it to Tarantool.
@@ -103,6 +110,13 @@ func NewUserCreateRequest(username string, options UserCreateOptions) UserCreate
 // Context sets a passed context to the request.
 func (req UserCreateRequest) Context(ctx context.Context) UserCreateRequest {
 	req.call = req.call.Context(ctx)
+	return req
+}
+
+// ThreadID sets an attached thread id for the request.
+func (req UserCreateRequest) ThreadID(id uint32) UserCreateRequest {
+	req.call = req.call.ThreadID(id)
+
 	return req
 }
 
@@ -158,6 +172,13 @@ func (req UserDropRequest) Context(ctx context.Context) UserDropRequest {
 	return req
 }
 
+// ThreadID sets an attached thread id for the request.
+func (req UserDropRequest) ThreadID(id uint32) UserDropRequest {
+	req.call = req.call.ThreadID(id)
+
+	return req
+}
+
 // UserDropResponse represents the response to a user drop request.
 type UserDropResponse struct{}
 
@@ -197,6 +218,13 @@ func NewUserPasswordRequest(username string) UserPasswordRequest {
 // Context sets a passed context to the request.
 func (req UserPasswordRequest) Context(ctx context.Context) UserPasswordRequest {
 	req.call = req.call.Context(ctx)
+	return req
+}
+
+// ThreadID sets an attached thread id for the request.
+func (req UserPasswordRequest) ThreadID(id uint32) UserPasswordRequest {
+	req.call = req.call.ThreadID(id)
+
 	return req
 }
 
@@ -274,6 +302,13 @@ func (req UserPasswdRequest) Context(ctx context.Context) UserPasswdRequest {
 	return req
 }
 
+// ThreadID sets an attached thread id for the request.
+func (req UserPasswdRequest) ThreadID(id uint32) UserPasswdRequest {
+	req.call = req.call.ThreadID(id)
+
+	return req
+}
+
 // UserPasswdResponse represents the response to a user passwd request.
 type UserPasswdResponse struct{}
 
@@ -319,6 +354,13 @@ func NewUserInfoRequest(username string) UserInfoRequest {
 // Context sets a passed context to the request.
 func (req UserInfoRequest) Context(ctx context.Context) UserInfoRequest {
 	req.call = req.call.Context(ctx)
+	return req
+}
+
+// ThreadID sets an attached thread id for the request.
+func (req UserInfoRequest) ThreadID(id uint32) UserInfoRequest {
+	req.call = req.call.ThreadID(id)
+
 	return req
 }
 
@@ -526,6 +568,13 @@ func (req UserGrantRequest) Context(ctx context.Context) UserGrantRequest {
 	return req
 }
 
+// ThreadID sets an attached thread id for the request.
+func (req UserGrantRequest) ThreadID(id uint32) UserGrantRequest {
+	req.call = req.call.ThreadID(id)
+
+	return req
+}
+
 // UserGrantResponse represents the response from a user grant request.
 type UserGrantResponse struct{}
 
@@ -572,6 +621,13 @@ func NewUserRevokeRequest(username string, privilege Privilege,
 // Context sets a passed context to the request.
 func (req UserRevokeRequest) Context(ctx context.Context) UserRevokeRequest {
 	req.call = req.call.Context(ctx)
+	return req
+}
+
+// ThreadID sets an attached thread id for the request.
+func (req UserRevokeRequest) ThreadID(id uint32) UserRevokeRequest {
+	req.call = req.call.ThreadID(id)
+
 	return req
 }
 

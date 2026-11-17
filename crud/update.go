@@ -78,3 +78,10 @@ func (req UpdateRequest) Context(ctx context.Context) UpdateRequest {
 
 	return req
 }
+
+// ThreadID sets an attached thread id for the request.
+func (req UpdateRequest) ThreadID(id uint32) UpdateRequest {
+	req.impl = req.impl.ThreadID(id)
+
+	return req
+}

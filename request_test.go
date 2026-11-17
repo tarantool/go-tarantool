@@ -270,6 +270,72 @@ func TestRequestsCtx_setter(t *testing.T) {
 	}
 }
 
+func TestRequestsThread_default(t *testing.T) {
+	tests := []struct {
+		req        Request
+		expectedId uint32
+	}{
+		{req: NewSelectRequest(validSpace), expectedId: 0},
+		{req: NewUpdateRequest(validSpace), expectedId: 0},
+		{req: NewUpsertRequest(validSpace), expectedId: 0},
+		{req: NewInsertRequest(validSpace), expectedId: 0},
+		{req: NewReplaceRequest(validSpace), expectedId: 0},
+		{req: NewDeleteRequest(validSpace), expectedId: 0},
+		{req: NewCallRequest(validExpr), expectedId: 0},
+		{req: NewEvalRequest(validExpr), expectedId: 0},
+		{req: NewExecuteRequest(validExpr), expectedId: 0},
+		{req: NewPingRequest(), expectedId: 0},
+		{req: NewPrepareRequest(validExpr), expectedId: 0},
+		{req: NewUnprepareRequest(validStmt), expectedId: 0},
+		{req: NewExecutePreparedRequest(validStmt), expectedId: 0},
+		{req: NewBeginRequest(), expectedId: 0},
+		{req: NewCommitRequest(), expectedId: 0},
+		{req: NewRollbackRequest(), expectedId: 0},
+		{req: NewIdRequest(validProtocolInfo), expectedId: 0},
+		{req: NewBroadcastRequest(validKey), expectedId: 0},
+		{req: NewWatchOnceRequest(validKey), expectedId: 0},
+	}
+
+	for _, test := range tests {
+		id, ok := test.req.Thread()
+		assert.Falsef(t, ok, "An unexpected thread id set for %T", test.req)
+		assert.Equalf(t, test.expectedId, id, "An invalid thread id for %T", test.req)
+	}
+}
+
+func TestRequestsThread_setter(t *testing.T) {
+	const validThread = uint32(42)
+	tests := []struct {
+		req        Request
+		expectedId uint32
+	}{
+		{req: NewSelectRequest(validSpace).ThreadID(validThread), expectedId: validThread},
+		{req: NewUpdateRequest(validSpace).ThreadID(validThread), expectedId: validThread},
+		{req: NewUpsertRequest(validSpace).ThreadID(validThread), expectedId: validThread},
+		{req: NewInsertRequest(validSpace).ThreadID(validThread), expectedId: validThread},
+		{req: NewReplaceRequest(validSpace).ThreadID(validThread), expectedId: validThread},
+		{req: NewDeleteRequest(validSpace).ThreadID(validThread), expectedId: validThread},
+		{req: NewCallRequest(validExpr).ThreadID(validThread), expectedId: validThread},
+		{req: NewEvalRequest(validExpr).ThreadID(validThread), expectedId: validThread},
+		{req: NewExecuteRequest(validExpr).ThreadID(validThread), expectedId: validThread},
+		{req: NewPingRequest().ThreadID(validThread), expectedId: validThread},
+		{req: NewPrepareRequest(validExpr).ThreadID(validThread), expectedId: validThread},
+		{req: NewUnprepareRequest(validStmt).ThreadID(validThread), expectedId: validThread},
+		{req: NewExecutePreparedRequest(validStmt).ThreadID(validThread), expectedId: validThread},
+		{req: NewBeginRequest().ThreadID(validThread), expectedId: validThread},
+		{req: NewCommitRequest().ThreadID(validThread), expectedId: validThread},
+		{req: NewRollbackRequest().ThreadID(validThread), expectedId: validThread},
+		{req: NewBroadcastRequest(validKey).ThreadID(validThread), expectedId: validThread},
+		{req: NewWatchOnceRequest(validKey).ThreadID(validThread), expectedId: validThread},
+	}
+
+	for _, test := range tests {
+		id, ok := test.req.Thread()
+		assert.Truef(t, ok, "The thread id is not set for %T", test.req)
+		assert.Equalf(t, test.expectedId, id, "An invalid thread id for %T", test.req)
+	}
+}
+
 func TestResponseDecode(t *testing.T) {
 	header := Header{}
 	data := bytes.NewBuffer([]byte{'v', '2'})

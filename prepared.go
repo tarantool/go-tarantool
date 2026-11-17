@@ -6,6 +6,7 @@ import (
 	"io"
 
 	"github.com/tarantool/go-iproto"
+	"github.com/tarantool/go-option"
 	"github.com/vmihailenco/msgpack/v5"
 )
 
@@ -85,6 +86,13 @@ func (req PrepareRequest) Context(ctx context.Context) PrepareRequest {
 	return req
 }
 
+// ThreadID sets an attached thread id for the request.
+func (req PrepareRequest) ThreadID(id uint32) PrepareRequest {
+	req.thread = option.SomeUint32(id)
+
+	return req
+}
+
 // Response creates a response for the PrepareRequest.
 func (req PrepareRequest) Response(header Header, body io.Reader) (Response, error) {
 	baseResp, err := createBaseResponse(header, body)
@@ -139,6 +147,13 @@ func (req UnprepareRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) error {
 // the root context.
 func (req UnprepareRequest) Context(ctx context.Context) UnprepareRequest {
 	req.ctx = ctx
+	return req
+}
+
+// ThreadID sets an attached thread id for the request.
+func (req UnprepareRequest) ThreadID(id uint32) UnprepareRequest {
+	req.thread = option.SomeUint32(id)
+
 	return req
 }
 
@@ -202,6 +217,13 @@ func (req ExecutePreparedRequest) Body(_ SchemaResolver, enc *msgpack.Encoder) e
 // the root context.
 func (req ExecutePreparedRequest) Context(ctx context.Context) ExecutePreparedRequest {
 	req.ctx = ctx
+	return req
+}
+
+// ThreadID sets an attached thread id for the request.
+func (req ExecutePreparedRequest) ThreadID(id uint32) ExecutePreparedRequest {
+	req.thread = option.SomeUint32(id)
+
 	return req
 }
 

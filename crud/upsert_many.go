@@ -76,6 +76,13 @@ func (req UpsertManyRequest) Context(ctx context.Context) UpsertManyRequest {
 	return req
 }
 
+// ThreadID sets an attached thread id for the request.
+func (req UpsertManyRequest) ThreadID(id uint32) UpsertManyRequest {
+	req.impl = req.impl.ThreadID(id)
+
+	return req
+}
+
 // UpsertObjectManyOpts describes options for `crud.upsert_object_many` method.
 type UpsertObjectManyOpts = OperationManyOpts
 
@@ -140,6 +147,13 @@ func (req UpsertObjectManyRequest) Body(res tarantool.SchemaResolver, enc *msgpa
 // Context sets a passed context to CRUD request.
 func (req UpsertObjectManyRequest) Context(ctx context.Context) UpsertObjectManyRequest {
 	req.impl = req.impl.Context(ctx)
+
+	return req
+}
+
+// ThreadID sets an attached thread id for the request.
+func (req UpsertObjectManyRequest) ThreadID(id uint32) UpsertObjectManyRequest {
+	req.impl = req.impl.ThreadID(id)
 
 	return req
 }

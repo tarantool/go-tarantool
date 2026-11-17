@@ -224,6 +224,14 @@ func SkipIfIsSyncUnsupported(t T) {
 	SkipIfFeatureUnsupported(t, "is sync", 3, 1, 0)
 }
 
+// SkipIfThreadRequestsUnsupported skips test run if Tarantool without
+// thread requests (IPROTO_THREAD_ID) support is used.
+func SkipIfThreadRequestsUnsupported(t T) {
+	t.Helper()
+
+	SkipIfFeatureUnsupported(t, "thread requests", 3, 7, 1)
+}
+
 // IsTcsSupported checks if Tarantool supports centralized storage.
 // Tarantool supports centralized storage with Enterprise since 3.3.0 version.
 func IsTcsSupported() (bool, error) {
