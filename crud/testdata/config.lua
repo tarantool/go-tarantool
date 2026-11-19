@@ -108,6 +108,35 @@ crud.init_storage()
 crud.init_router()
 crud.cfg{stats = true}
 
+-- Storage call test functions.
+box.schema.func.create('storage_call_test_echo', {
+    body = [[
+        function(...)
+            return ...
+        end
+    ]],
+    is_sandboxed = false,
+    if_not_exists = true,
+})
+box.schema.func.create('storage_call_test_returns', {
+    body = [[
+        function(...)
+            return select(1, ...), nil, false
+        end
+    ]],
+    is_sandboxed = false,
+    if_not_exists = true,
+})
+box.schema.func.create('storage_call_test_error', {
+    body = [[
+        function()
+            error('storage call test error')
+        end
+    ]],
+    is_sandboxed = false,
+    if_not_exists = true,
+})
+
 box.schema.user.create('test', { password = 'test' , if_not_exists = true })
 box.schema.user.grant('test', 'execute', 'universe', nil, { if_not_exists = true })
 box.schema.user.grant('test', 'create,read,write,drop,alter', 'space', nil, { if_not_exists = true })

@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/tarantool/go-option"
 	"github.com/vmihailenco/msgpack/v5"
 )
 
@@ -24,6 +25,10 @@ type Error struct {
 	Str string
 	// OperationData is the object/tuple with which an error occurred.
 	OperationData any
+	// OperationIndex is the index of the operation that failed in a batch.
+	OperationIndex uint64
+	// UnrefError is an optional error of releasing a bucket lock.
+	UnrefError any
 	// operationDataType contains the type of OperationData.
 	operationDataType reflect.Type
 }
@@ -31,6 +36,63 @@ type Error struct {
 // newError creates an Error object with a custom operation data type to decoding.
 func newError(operationDataType reflect.Type) *Error {
 	return &Error{operationDataType: operationDataType}
+}
+
+// decodeField decodes a single Error field from a msgpack map. It is reused
+// by error types that extend Error with additional fields.
+func (e *Error) decodeField(d *msgpack.Decoder, key string) error {
+	var err error
+
+	switch key {
+	case "class_name":
+		if e.ClassName, err = d.DecodeString(); err != nil {
+			return err
+		}
+	case "err":
+		if e.Err, err = d.DecodeString(); err != nil {
+			return err
+		}
+	case "file":
+		if e.File, err = d.DecodeString(); err != nil {
+			return err
+		}
+	case "line":
+		if e.Line, err = d.DecodeUint64(); err != nil {
+			return err
+		}
+	case "stack":
+		if e.Stack, err = d.DecodeString(); err != nil {
+			return err
+		}
+	case "str":
+		if e.Str, err = d.DecodeString(); err != nil {
+			return err
+		}
+	case "operation_data":
+		if e.operationDataType != nil {
+			tuple := reflect.New(e.operationDataType)
+			if err = d.DecodeValue(tuple); err != nil {
+				return err
+			}
+			e.OperationData = tuple.Elem().Interface()
+		} else {
+			if err = d.Decode(&e.OperationData); err != nil {
+				return err
+			}
+		}
+	case "operation_index":
+		if e.OperationIndex, err = d.DecodeUint64(); err != nil {
+			return err
+		}
+	case "unref_error":
+		if err = d.Decode(&e.UnrefError); err != nil {
+			return err
+		}
+	default:
+		return d.Skip()
+	}
+
+	return nil
 }
 
 // DecodeMsgpack provides custom msgpack decoder.
@@ -44,47 +106,8 @@ func (e *Error) DecodeMsgpack(d *msgpack.Decoder) error {
 		if err != nil {
 			return err
 		}
-		switch key {
-		case "class_name":
-			if e.ClassName, err = d.DecodeString(); err != nil {
-				return err
-			}
-		case "err":
-			if e.Err, err = d.DecodeString(); err != nil {
-				return err
-			}
-		case "file":
-			if e.File, err = d.DecodeString(); err != nil {
-				return err
-			}
-		case "line":
-			if e.Line, err = d.DecodeUint64(); err != nil {
-				return err
-			}
-		case "stack":
-			if e.Stack, err = d.DecodeString(); err != nil {
-				return err
-			}
-		case "str":
-			if e.Str, err = d.DecodeString(); err != nil {
-				return err
-			}
-		case "operation_data":
-			if e.operationDataType != nil {
-				tuple := reflect.New(e.operationDataType)
-				if err = d.DecodeValue(tuple); err != nil {
-					return err
-				}
-				e.OperationData = tuple.Elem().Interface()
-			} else {
-				if err = d.Decode(&e.OperationData); err != nil {
-					return err
-				}
-			}
-		default:
-			if err := d.Skip(); err != nil {
-				return err
-			}
+		if err := e.decodeField(d, key); err != nil {
+			return err
 		}
 	}
 
@@ -139,4 +162,63 @@ func (e ErrorMany) Error() string {
 	}
 
 	return strings.Join(str, "\n")
+}
+
+// StorageCallError describes the error returned by `crud.storage_call`.
+type StorageCallError struct {
+	// Base is the common CRUD error information.
+	Base Error
+	// MayHaveSideEffects indicates whether the target function may have
+	// committed changes before failing.
+	MayHaveSideEffects option.Bool
+	// FuncName is the name of the target function.
+	FuncName option.String
+	// BucketId is the bucket ID used to route the call.
+	BucketId option.Uint
+	// ReplicasetId is the ID of the replicaset where the error occurred.
+	ReplicasetId option.String
+}
+
+// Error converts a StorageCallError to a string.
+func (e StorageCallError) Error() string {
+	return e.Base.Str
+}
+
+// DecodeMsgpack provides custom msgpack decoder.
+func (e *StorageCallError) DecodeMsgpack(d *msgpack.Decoder) error {
+	l, err := d.DecodeMapLen()
+	if err != nil {
+		return err
+	}
+	for range l {
+		key, err := d.DecodeString()
+		if err != nil {
+			return err
+		}
+
+		switch key {
+		case "may_have_side_effects":
+			if err := d.Decode(&e.MayHaveSideEffects); err != nil {
+				return err
+			}
+		case "func_name":
+			if err := d.Decode(&e.FuncName); err != nil {
+				return err
+			}
+		case "bucket_id":
+			if err := d.Decode(&e.BucketId); err != nil {
+				return err
+			}
+		case "replicaset_id":
+			if err := d.Decode(&e.ReplicasetId); err != nil {
+				return err
+			}
+		default:
+			if err := e.Base.decodeField(d, key); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }

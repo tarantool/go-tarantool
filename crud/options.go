@@ -25,6 +25,16 @@ const (
 	fetchLatestMetadataOptName           = "fetch_latest_metadata"
 	noreturnOptName                      = "noreturn"
 	cachedOptName                        = "cached"
+	keyOptName                           = "key"
+	typeOptName                          = "type"
+	spaceOptName                         = "space"
+	tupleOptName                         = "tuple"
+	objectOptName                        = "object"
+	operationsOptName                    = "operations"
+	requestTimeoutOptName                = "request_timeout"
+	spaceNameOptName                     = "space_name"
+	funcNameOptName                      = "func_name"
+	argsOptName                          = "args"
 )
 
 // BaseOpts describes base options for CRUD operations.

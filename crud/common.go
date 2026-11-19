@@ -32,17 +32,25 @@
 //
 //   - upsert_object_many
 //
+//   - atomic_batch
+//
 //   - select
 //
 //   - min
 //
 //   - max
 //
+//   - locate
+//
 //   - truncate
 //
 //   - len
 //
 //   - storage_info
+//
+//   - storage_call
+//
+//   - storage_call_many
 //
 //   - count
 //
